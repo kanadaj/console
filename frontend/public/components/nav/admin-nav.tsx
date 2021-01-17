@@ -112,7 +112,7 @@ const AdminNav = () => {
           href="/dashboards"
           activePath="/dashboards/"
           name={t('nav~Overview')}
-          required={[FLAGS.CAN_GET_NS, FLAGS.OPENSHIFT]}
+          required={[FLAGS.CAN_GET_NS]}
         />
         <ResourceClusterLink
           id="projects"
