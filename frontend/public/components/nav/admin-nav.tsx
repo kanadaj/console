@@ -179,7 +179,6 @@ const AdminNav = () => {
           id="routes"
           resource="routes"
           name={t('nav~Routes')}
-          required={FLAGS.OPENSHIFT}
         />
         <ResourceNSLink id="ingresses" resource="ingresses" name={t('nav~Ingresses')} />
         <ResourceNSLink
