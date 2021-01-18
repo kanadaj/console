@@ -110,9 +110,9 @@ export const DetailsCard_ = connect(mapStateToProps)(
       ClusterVersionKind
     >(clusterVersionResource);
     React.useEffect(() => {
-      if (flagPending(openshiftFlag)) {
-        return;
-      }
+      // if (flagPending(openshiftFlag)) {
+      //   return;
+      // }
       const fetchK8sVersion = async () => {
         try {
           const version = await fetch('version');

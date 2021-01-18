@@ -13,16 +13,28 @@ export const CephClusterModel: K8sKind = {
   crd: true,
 };
 
+// export const OCSServiceModel: K8sKind = {
+//   label: 'Storage Cluster',
+//   labelPlural: 'Storage Clusters',
+//   apiVersion: 'v1',
+//   apiGroup: 'ocs.openshift.io',
+//   plural: 'storageclusters',
+//   abbr: 'OCS',
+//   namespaced: true,
+//   kind: 'StorageCluster',
+//   id: 'ocscluster',
+//   crd: true,
+// };
 export const OCSServiceModel: K8sKind = {
-  label: 'Storage Cluster',
-  labelPlural: 'Storage Clusters',
+  label: 'Ceph Cluster',
+  labelPlural: 'Ceph Clusters',
   apiVersion: 'v1',
-  apiGroup: 'ocs.openshift.io',
-  plural: 'storageclusters',
-  abbr: 'OCS',
+  apiGroup: 'ceph.rook.io',
+  plural: 'cephclusters',
+  abbr: 'CC',
   namespaced: true,
-  kind: 'StorageCluster',
-  id: 'ocscluster',
+  kind: 'CephCluster',
+  id: 'cephcluster',
   crd: true,
 };
 

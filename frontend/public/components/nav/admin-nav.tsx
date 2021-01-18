@@ -118,7 +118,6 @@ const AdminNav = () => {
           id="projects"
           resource="projects"
           name={t('nav~Projects')}
-          required={FLAGS.OPENSHIFT}
         />
         <HrefLink id="search" href="/search" name={t('nav~Search')} startsWith={searchStartsWith} />
         <HrefLink

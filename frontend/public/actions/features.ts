@@ -49,7 +49,7 @@ export const handleError = (res, flag, dispatch, cb) => {
   }
 };
 
-const projectListPath = '/apis/project.openshift.io/v1/projects?limit=1';
+const projectListPath = '/api/v1/namespaces?limit=1';
 const detectShowOpenShiftStartGuide = (dispatch, canListNS: boolean = false) => {
   // Skip the project check if we know the user can list all namespaces. This
   // avoids potentially listing thousands of projects more than once (projects
@@ -66,7 +66,7 @@ const detectShowOpenShiftStartGuide = (dispatch, canListNS: boolean = false) => 
   }
 
   fetchURL(projectListPath).then(
-    (res) => dispatch(setFlag(FLAGS.SHOW_OPENSHIFT_START_GUIDE, _.isEmpty(res.items))),
+    (res) => dispatch(setFlag(FLAGS.SHOW_OPENSHIFT_START_GUIDE, false)),
     (err) =>
       err?.response?.status === 404
         ? dispatch(setFlag(FLAGS.SHOW_OPENSHIFT_START_GUIDE, false))
