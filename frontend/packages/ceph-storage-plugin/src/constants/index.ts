@@ -33,16 +33,16 @@ export const ZONE_LABELS = [
 ];
 
 export enum OCS_PROVISIONER {
-  BLOCK = 'openshift-storage.rbd.csi.ceph.com',
-  FILE = 'openshift-storage.cephfs.csi.ceph.com',
+  BLOCK = 'rook-ceph.rbd.csi.ceph.com',
+  FILE = 'rook-ceph.cephfs.csi.ceph.com',
 }
 
 export const OCS_DEVICE_REPLICA = Object.freeze({
   '2': '2-way',
   '3': '3-way',
 });
-export const RGW_PROVISIONER = 'openshift-storage.ceph.rook.io/bucket';
-export const NOOBAA_PROVISIONER = 'openshift-storage.noobaa.io/obc';
+export const RGW_PROVISIONER = 'rook-ceph.ceph.rook.io/bucket';
+export const NOOBAA_PROVISIONER = 'noobaa.noobaa.io/obc';
 export const SECOND = 1000;
 
 export enum MODES {
