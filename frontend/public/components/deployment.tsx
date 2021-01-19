@@ -15,7 +15,7 @@ import {
 } from '@console/app/src/actions/modify-hpa';
 import { getActiveNamespace } from '@console/internal/reducers/ui';
 import { DeploymentModel } from '../models';
-import { DeploymentKind, k8sCreate, K8sKind, K8sResourceKind, K8sResourceKindReference } from '../module/k8s';
+import { DeploymentKind, K8sKind, K8sResourceKind, K8sResourceKindReference } from '../module/k8s';
 import { configureUpdateStrategyModal, errorModal } from './modals';
 import { Conditions } from './conditions';
 import { ResourceEventStream } from './events';

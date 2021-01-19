@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Alert, AlertActionLink } from '@patternfly/react-core';
+import { Alert } from '@patternfly/react-core';
 
 import { K8sKind, k8sPatch, K8sResourceKind } from '../../module/k8s/index';
 
