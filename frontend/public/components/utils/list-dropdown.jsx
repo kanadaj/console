@@ -205,9 +205,10 @@ const useProjectOrNamespaceModel = () => {
   const canCreateProject = useFlag(FLAGS.CAN_CREATE_PROJECT);
   const openshiftFlag = useFlag(FLAGS.OPENSHIFT);
 
-  if (flagPending(openshiftFlag) || flagPending(canCreateProject)) {
-    return [];
-  }
+  // We are not on openshift , no need to wait for these
+  // if (flagPending(openshiftFlag) || flagPending(canCreateProject)) {
+  //   return [];
+  // }
 
   // NamespaceModal is used when not on an openshift cluster
   const model = canCreateNamespace || !openshiftFlag ? NamespaceModel : ProjectModel;

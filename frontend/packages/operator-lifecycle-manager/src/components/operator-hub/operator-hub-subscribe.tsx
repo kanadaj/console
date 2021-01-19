@@ -654,7 +654,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
                 <h5 className="co-required">Installed Namespace</h5>
                 {selectedInstallMode === InstallModeType.InstallModeTypeAllNamespaces &&
                   globalNamespaceInstallMode}
-                {selectedInstallMode === InstallModeType.InstallModeTypeOwnNamespace &&
+                {(selectedInstallMode === InstallModeType.InstallModeTypeOwnNamespace || selectedInstallMode !== InstallModeType.InstallModeTypeAllNamespaces) &&
                   singleNamespaceInstallMode}
               </div>
               <div className="form-group">
