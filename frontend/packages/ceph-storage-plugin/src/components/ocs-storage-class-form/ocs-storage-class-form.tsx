@@ -125,7 +125,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
     ],
   );
 
-  if (cephClusterObj[0]?.metadata.name === CEPH_INTERNAL_CR_NAME) {
+  if (cephClusterObj[0]?.metadata.name === CEPH_INTERNAL_CR_NAME || cephClusterObj[0]?.metadata.name === 'rook-ceph') {
     return (
       <>
         {!poolDataLoadError && cephClusterObj && (

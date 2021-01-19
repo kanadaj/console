@@ -25,7 +25,7 @@ const cephStatus = cephValue.items[0];
 if (cephStatus?.status?.phase !== CLUSTER_STATUS.READY) {
   describe('Check for pool creation if ceph cluster is not in ready state', () => {
     beforeAll(async () => {
-      prepareStorageClassForm('openshift-storage.rbd.csi.ceph.com');
+      prepareStorageClassForm('rook-ceph.rbd.csi.ceph.com');
     });
 
     it('Should show that provisioner supports expanding', () => {
@@ -42,7 +42,7 @@ if (cephStatus?.status?.phase !== CLUSTER_STATUS.READY) {
 if (cephStatus?.status?.phase === CLUSTER_STATUS.READY) {
   describe('Check for pool creation if ceph cluster is in ready state', () => {
     beforeAll(async () => {
-      prepareStorageClassForm('openshift-storage.rbd.csi.ceph.com');
+      prepareStorageClassForm('rook-ceph.rbd.csi.ceph.com');
       await click(poolDropdownButton);
       await click(createPoolDropdown);
     });
@@ -81,7 +81,7 @@ if (cephStatus?.status?.phase === CLUSTER_STATUS.READY) {
 
     it('Should add the pool to the dropdown', async () => {
       await browser.refresh();
-      showProvisioner('openshift-storage.rbd.csi.ceph.com');
+      showProvisioner('rook-ceph.rbd.csi.ceph.com');
       await click(poolDropdownButton);
       expect(dropdownPoolName.getText()).toEqual('foo');
       expect(poolDescription.getText()).toEqual('Replica 2, no compression');

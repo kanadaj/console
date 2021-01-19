@@ -8,7 +8,7 @@ import { CEPH_STORAGE_NAMESPACE } from '../constants';
 
 export const StorageClassFormProvisoners: ExtensionSCProvisionerProp = Object.freeze({
   csi: {
-    'openshift-storage.rbd.csi.ceph.com': {
+    'rook-ceph.rbd.csi.ceph.com': {
       title: 'Ceph RBD',
       provisioner: 'rbd.csi.ceph.com',
       allowVolumeExpansion: true,
@@ -91,7 +91,7 @@ export const StorageClassFormProvisoners: ExtensionSCProvisionerProp = Object.fr
         },
       },
     },
-    'openshift-storage.cephfs.csi.ceph.com': {
+    'rook-ceph.cephfs.csi.ceph.com': {
       title: 'Ceph FS',
       provisioner: 'cephfs.csi.ceph.com',
       allowVolumeExpansion: true,
