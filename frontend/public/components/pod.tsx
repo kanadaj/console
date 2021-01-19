@@ -544,7 +544,7 @@ const PodGraphs = requirePrometheus(({ pod }) => {
             title={t('workload~Network in')}
             humanize={humanizeDecimalBytesPerSec}
             namespace={pod.metadata.namespace}
-            query={`(sum(irate(container_network_receive_bytes_total{pod='${pod.metadata.name}', namespace='${pod.metadata.namespace}'}[5m])) by (pod, namespace, interface)) + on(namespace,pod,interface) group_left(network_name) ( pod_network_name_info )`}
+            query={`(sum(irate(container_network_receive_bytes_total{pod='${pod.metadata.name}', namespace='${pod.metadata.namespace}'}[5m])) by (pod, namespace, interface))`}
             description={getNetworkName}
           />
         </div>
@@ -553,7 +553,7 @@ const PodGraphs = requirePrometheus(({ pod }) => {
             title={t('workload~Network out')}
             humanize={humanizeDecimalBytesPerSec}
             namespace={pod.metadata.namespace}
-            query={`(sum(irate(container_network_transmit_bytes_total{pod='${pod.metadata.name}', namespace='${pod.metadata.namespace}'}[5m])) by (pod, namespace, interface)) + on(namespace,pod,interface) group_left(network_name) ( pod_network_name_info )`}
+            query={`(sum(irate(container_network_transmit_bytes_total{pod='${pod.metadata.name}', namespace='${pod.metadata.namespace}'}[5m])) by (pod, namespace, interface))`}
             description={getNetworkName}
           />
         </div>
