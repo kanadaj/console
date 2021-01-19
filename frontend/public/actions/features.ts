@@ -40,7 +40,7 @@ const retryFlagDetection = (dispatch, cb) => {
 };
 
 export const handleError = (res, flag, dispatch, cb) => {
-  const status = res?.response?.status;
+  const status = res?.response?.status || res?.status;
   if (_.includes([403, 502], status)) {
     dispatch(setFlag(flag, undefined));
   }
@@ -177,7 +177,7 @@ const detectOpenShift = (dispatch) =>
   fetchURL(openshiftPath).then(
     (res) => dispatch(setFlag(FLAGS.OPENSHIFT, _.size(res.resources) > 0)),
     (err) =>
-      err?.response?.status === 404
+      err?.response?.status === 404 || err?.status === 404
         ? dispatch(setFlag(FLAGS.OPENSHIFT, false))
         : handleError(err, FLAGS.OPENSHIFT, dispatch, detectOpenShift),
   );
@@ -191,7 +191,7 @@ const detectClusterVersion = (dispatch) =>
       dispatch(setClusterID(clusterVersion.spec.clusterID));
     },
     (err) => {
-      if (_.includes([403, 404], err?.response?.status)) {
+      if (_.includes([403, 404], err?.response?.status) || _.includes([403, 404], err?.status)) {
         dispatch(setFlag(FLAGS.CLUSTER_VERSION, false));
       } else {
         handleError(err, FLAGS.CLUSTER_VERSION, dispatch, detectClusterVersion);
@@ -204,7 +204,7 @@ const detectCanCreateProject = (dispatch) =>
   fetchURL(projectRequestPath).then(
     (res) => dispatch(setFlag(FLAGS.CAN_CREATE_PROJECT, res.status === 'Success')),
     (err) => {
-      const status = err?.response?.status;
+      const status = err?.response?.status || err?.status;
       if (status === 403) {
         dispatch(setFlag(FLAGS.CAN_CREATE_PROJECT, false));
         dispatch(setCreateProjectMessage(_.get(err, 'json.details.causes[0].message')));
@@ -220,7 +220,7 @@ const detectUser = (dispatch) =>
       dispatch(setUser(user));
     },
     (err) => {
-      if (!_.includes([401, 403, 404, 500], err?.response?.status)) {
+      if (!_.includes([401, 403, 404, 500], err?.response?.status || err?.status)) {
         setTimeout(() => detectUser(dispatch), 15000);
       }
     },
