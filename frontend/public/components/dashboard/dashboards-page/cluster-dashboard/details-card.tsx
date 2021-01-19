@@ -193,6 +193,7 @@ export const DetailsCard_ = connect(mapStateToProps)(
                 </DetailItem>
               </>
             ) : (
+              <>
               <DetailItem
                 key="kubernetes"
                 title={t('dashboard~Kubernetes version')}
@@ -202,6 +203,15 @@ export const DetailsCard_ = connect(mapStateToProps)(
               >
                 {k8sGitVersion}
               </DetailItem>
+              {
+                !!k8sVersionError &&
+                (
+                  <div>
+                    {k8sVersionError}
+                  </div>
+                )
+              }
+              </>
             )}
           </DetailsBody>
         </DashboardCardBody>
