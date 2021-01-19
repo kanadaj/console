@@ -15,7 +15,7 @@ import {
 } from '@console/app/src/actions/modify-hpa';
 import { getActiveNamespace } from '@console/internal/reducers/ui';
 import { DeploymentModel } from '../models';
-import { DeploymentKind, K8sKind, K8sResourceKindReference } from '../module/k8s';
+import { DeploymentKind, k8sCreate, K8sKind, K8sResourceKind, K8sResourceKindReference } from '../module/k8s';
 import { configureUpdateStrategyModal, errorModal } from './modals';
 import { Conditions } from './conditions';
 import { ResourceEventStream } from './events';
@@ -35,6 +35,7 @@ import {
 } from './utils';
 import { ReplicaSetsPage } from './replicaset';
 import { WorkloadTableRow, WorkloadTableHeader } from './workload-table';
+import { restart } from './utils/workload-restart';
 
 const deploymentsReference: K8sResourceKindReference = 'Deployment';
 const { ModifyCount, AddStorage, common } = Kebab.factory;
@@ -52,6 +53,7 @@ const UpdateStrategy: KebabAction = (kind: K8sKind, deployment: DeploymentKind) 
   },
 });
 
+
 const PauseAction: KebabAction = (kind: K8sKind, obj: DeploymentKind) => ({
   // t('workload~Resume rollouts')
   // t('workload~Pause rollouts')
@@ -66,7 +68,21 @@ const PauseAction: KebabAction = (kind: K8sKind, obj: DeploymentKind) => ({
   },
 });
 
+const RolloutAction: KebabAction = (kind: K8sKind, obj: K8sResourceKind) => ({
+  // t('workload~Start rollout')
+  labelKey: 'workload~Start rollout',
+  callback: () => restart(kind, obj).catch((err) => errorModal({ error: err.message })),
+  accessReview: {
+    group: kind.apiGroup,
+    resource: kind.plural,
+    name: obj.metadata.name,
+    namespace: obj.metadata.namespace,
+    verb: 'patch',
+  },
+});
+
 export const menuActions = [
+  RolloutAction,
   hideActionForHPAs(ModifyCount),
   PauseAction,
   AddHealthChecks,
