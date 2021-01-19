@@ -108,9 +108,9 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
           );
         }
       }
-      catch(ex: any){
+      catch(error){
         // Ignore error and log to console
-        console.error("Failed to add resource pool to dropdown", ex)
+        console.error("Failed to add resource pool to dropdown", error)
       }
       return res;
     },
