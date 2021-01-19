@@ -25,7 +25,7 @@ export const dropdownUnits = {
   GiB: 'Gi',
   TiB: 'Ti',
 };
-export const CEPH_INTERNAL_CR_NAME = 'ocs-storagecluster-cephcluster';
+export const CEPH_INTERNAL_CR_NAME = 'rook-ceph';
 export const CEPH_EXTERNAL_CR_NAME = 'ocs-external-storagecluster-cephcluster';
 export const ZONE_LABELS = [
   'topology.kubernetes.io/zone',

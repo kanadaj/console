@@ -125,10 +125,10 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
     ],
   );
 
-  if (cephClusterObj[0]?.metadata.name === CEPH_INTERNAL_CR_NAME || cephClusterObj[0]?.metadata.name === 'rook-ceph') {
+  if (cephClusterObj[0]?.metadata.name === CEPH_INTERNAL_CR_NAME) {
     return (
-      <>
-        {!poolDataLoadError && cephClusterObj && (
+      <div>
+        {!poolDataLoadError && (
           <div className="form-group">
             <label className="co-required" htmlFor="ocs-storage-pool">
               {t('ceph-storage-plugin~Storage Pool')}
@@ -162,7 +162,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
             isInline
           />
         )}
-      </>
+      </div>
     );
   }
   if (cephClusterObj[0]?.metadata.name === CEPH_EXTERNAL_CR_NAME) {
