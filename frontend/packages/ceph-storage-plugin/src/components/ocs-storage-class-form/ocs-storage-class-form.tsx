@@ -87,24 +87,30 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
         pool?.spec?.compressionMode === 'none' || pool?.spec?.compressionMode === ''
           ? t('ceph-storage-plugin~no compression')
           : t('ceph-storage-plugin~with compression');
-      if (
-        pool?.status?.phase === POOL_STATE.READY &&
-        cephClusterObj[0]?.status?.phase === CLUSTER_STATUS.READY
-      ) {
-        res.push(
-          <DropdownItem
-            key={pool.metadata.uid}
-            component="button"
-            id={pool?.metadata?.name}
-            onClick={handleDropdownChange}
-            description={t('ceph-storage-plugin~Replica {{poolSize}} {{compressionText}}', {
-              poolSize: pool?.spec?.replicated?.size,
-              compressionText,
-            })}
-          >
-            {pool?.metadata?.name}
-          </DropdownItem>,
-        );
+      try{
+        if (
+          pool?.status?.phase === POOL_STATE.READY &&
+          cephClusterObj[0]?.status?.phase === CLUSTER_STATUS.READY
+        ) {
+          res.push(
+            <DropdownItem
+              key={pool.metadata.uid}
+              component="button"
+              id={pool?.metadata?.name}
+              onClick={handleDropdownChange}
+              description={t('ceph-storage-plugin~Replica {{poolSize}} {{compressionText}}', {
+                poolSize: pool?.spec?.replicated?.size,
+                compressionText,
+              })}
+            >
+              {pool?.metadata?.name}
+            </DropdownItem>,
+          );
+        }
+      }
+      catch(ex: any){
+        // Ignore error and log to console
+        console.error("Failed to add resource pool to dropdown", ex)
       }
       return res;
     },
@@ -128,7 +134,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
   if (cephClusterObj[0]?.metadata.name === CEPH_INTERNAL_CR_NAME) {
     return (
       <div>
-        {!poolDataLoadError && (
+        {!poolDataLoadError && !cephClusterObj && (
           <div className="form-group">
             <label className="co-required" htmlFor="ocs-storage-pool">
               {t('ceph-storage-plugin~Storage Pool')}
