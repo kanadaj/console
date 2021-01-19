@@ -115,7 +115,7 @@ export const DetailsCard_ = connect(mapStateToProps)(
       // }
       const fetchK8sVersion = async () => {
         try {
-          const version = await fetch('version');
+          const version = await fetch('/api/kubernetes/version');
           setK8sVersion(version);
         } catch (error) {
           setK8sVersionError(error);

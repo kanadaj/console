@@ -22,3 +22,5 @@
 /frontend/@types
 /frontend/package-lock.json
 /frontend/po-files
+
+yarn.lock
