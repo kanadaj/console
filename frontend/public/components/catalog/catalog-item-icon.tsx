@@ -99,6 +99,9 @@ import * as grafanaImg from '../../imgs/logos/grafana.svg';
 import * as prometheusImg from '../../imgs/logos/prometheus.svg';
 import * as sentryImg from '../../imgs/logos/sentry.svg';
 import * as kubernetesImg from '../../imgs/logos/kubernetes.svg';
+import * as kafkaImg from '../../imgs/logos/kafka.png';
+import * as clickhouseImg from '../../imgs/logos/clickhouse.svg';
+import * as zookeeperImg from '../../imgs/logos/zookeeper.svg';
 
 const logos = new Map<string, any>()
   .set('icon-3scale', threeScaleImg)
@@ -200,7 +203,10 @@ const logos = new Map<string, any>()
   .set('icon-zend', zendImg)
   .set('icon-grafana', grafanaImg)
   .set('icon-prometheus', prometheusImg)
-  .set('icon-sentry', sentryImg);
+  .set('icon-sentry', sentryImg)
+  .set('icon-kafka', kafkaImg)
+  .set('icon-zookeeper', zookeeperImg)
+  .set('icon-clickhouse', clickhouseImg);
 
 export const getIcons = (): { label: string; url: string }[] => {
   return Array.from(logos.entries()).map(([iconClass, url]) => ({
