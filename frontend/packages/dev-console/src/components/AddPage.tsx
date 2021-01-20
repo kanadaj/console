@@ -24,7 +24,7 @@ const AddPage: React.FC<AddPageProps> = ({ match }) => {
         <title>{`+${t('devconsole~Add')}`}</title>
       </Helmet>
       <NamespacedPage>
-        <Firehose resources={[{ kind: 'Project', prop: 'projects', isList: true }]}>
+        <Firehose resources={[{ kind: 'Namespace', prop: 'projects', isList: true }]}>
           <ProjectsExistWrapper title={t('devconsole~Add')}>
             {namespace ? (
               <ODCEmptyState title={t('devconsole~Add')} />

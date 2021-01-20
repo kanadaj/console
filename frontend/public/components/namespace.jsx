@@ -805,7 +805,7 @@ export const ProjectsPage = connectToFlags(
         filterLabel={t('namespace~by name or display name')}
         skipAccessReview
         textFilter="project-name"
-        kind="Project"
+        kind="Namespace"
         columnLayout={{
           columns: projectTableHeader({ showMetrics, showActions }).map((column) =>
             _.pick(column, ['title', 'additional', 'id']),
@@ -815,7 +815,7 @@ export const ProjectsPage = connectToFlags(
             tableColumns?.[projectColumnManagementID]?.length > 0
               ? new Set(tableColumns[projectColumnManagementID])
               : null,
-          type: 'Project',
+          type: 'Namespace',
         }}
       />
     );

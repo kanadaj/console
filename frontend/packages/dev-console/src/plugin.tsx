@@ -115,9 +115,6 @@ const plugin: Plugin<ConsumedExtensions> = [
         'data-quickstart-id': 'qs-nav-topology',
       },
     },
-    flags: {
-      required: [FLAGS.OPENSHIFT],
-    },
   },
   {
     type: 'NavItem/Href',
@@ -133,9 +130,6 @@ const plugin: Plugin<ConsumedExtensions> = [
         'data-tour-id': 'tour-monitoring-nav',
         'data-quickstart-id': 'qs-nav-monitoring',
       },
-    },
-    flags: {
-      required: [FLAGS.OPENSHIFT],
     },
   },
   {
@@ -185,10 +179,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         testID: 'project-details-header',
         'data-quickstart-id': 'qs-nav-project',
       },
-    },
-    flags: {
-      required: [FLAGS.OPENSHIFT],
-    },
+    }
   },
   {
     type: 'Overview/Resource',

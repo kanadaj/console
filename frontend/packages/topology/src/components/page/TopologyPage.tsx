@@ -51,8 +51,8 @@ const TopologyPage: React.FC<TopologyPageProps> = ({
   const namespace = match.params.name;
   const queryParams = useQueryParams();
   let viewType = queryParams.get('view') as TopologyViewType;
-  const { projects } = useK8sWatchResources<{ [key: string]: K8sResourceKind[] }>({
-    projects: { kind: 'Project', isList: true },
+  const { namespaces } = useK8sWatchResources<{ [key: string]: K8sResourceKind[] }>({
+    namespaces: { kind: 'Namespace', isList: true },
   });
   if (!viewType) {
     // Backwards Compatibility, check path. Otherwise use any stored preference
@@ -102,7 +102,7 @@ const TopologyPage: React.FC<TopologyPageProps> = ({
           viewType === TopologyViewType.graph ? 'topology-graph-page' : 'topology-list-page'
         }
       >
-        <ProjectsExistWrapper title={t('topology~Topology')} projects={projects}>
+        <ProjectsExistWrapper title={t('topology~Topology')} projects={namespaces}>
           {namespace ? (
             <TopologyDataRenderer
               viewType={viewType}

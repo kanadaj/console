@@ -338,13 +338,12 @@ export const NamespaceModel: K8sKind = {
 
 export const ProjectModel: K8sKind = {
   apiVersion: 'v1',
-  apiGroup: 'project.openshift.io',
-  label: 'Project',
-  plural: 'projects',
-  abbr: 'PR',
-  kind: 'Project',
-  id: 'project',
-  labelPlural: 'Projects',
+  label: 'Namespace',
+  plural: 'namespaces',
+  abbr: 'NS',
+  kind: 'Namespace',
+  id: 'namespace',
+  labelPlural: 'Namespaces',
 };
 
 export const ProjectRequestModel: K8sKind = {

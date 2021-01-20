@@ -24,7 +24,7 @@ const DeployImagePage: React.FunctionComponent<DeployImagePageProps> = ({ match,
       <div className="co-m-pane__body" style={{ paddingBottom: 0 }}>
         <QueryFocusApplication>
           {(desiredApplication) => (
-            <Firehose resources={[{ kind: 'Project', prop: 'projects', isList: true }]}>
+            <Firehose resources={[{ kind: 'Namespace', prop: 'projects', isList: true }]}>
               <DeployImage
                 forApplication={desiredApplication}
                 namespace={namespace}

@@ -9,7 +9,7 @@ import { Dropdown } from './dropdown';
 import { Firehose } from './firehose';
 import { LoadingInline } from './status-box';
 import { ResourceName } from './resource-icon';
-import { flagPending } from '../../reducers/features';
+//import { flagPending } from '../../reducers/features';
 import { useAccessReview } from '@console/internal/components/utils';
 import { createNamespaceModal, createProjectModal } from '../modals';
 import { NamespaceModel, ProjectModel } from '@console/internal/models';

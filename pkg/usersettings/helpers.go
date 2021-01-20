@@ -13,7 +13,7 @@ func newUserSettingMeta(name string, uid string) (*UserSettingMeta, error) {
 
 	if uid != "" {
 		resourceIdentifier = uid
-	} else if name == "kube:admin" {
+	} else if name == "kube:admin" || name == "kubeadmin" {
 		resourceIdentifier = "kubeadmin"
 	} else {
 		return nil, errors.New("User must have UID to get required resource data for user-settings")

@@ -3,7 +3,7 @@ import { useField } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { connectToFlags, FlagsObject } from '@console/internal/reducers/features';
 import { K8sKind } from '@console/internal/module/k8s';
-import { DeploymentModel, DeploymentConfigModel } from '@console/internal/models';
+import { DeploymentModel } from '@console/internal/models';
 import { FLAG_KNATIVE_SERVING_SERVICE, ServiceModel } from '@console/knative-plugin';
 import { RadioGroupField, RadioGroupOption } from '@console/shared';
 import { useAccessReview } from '@console/internal/components/utils';
@@ -46,19 +46,19 @@ const ResourceSection: React.FC<ResourceSectionProps> = ({ flags }) => {
       ),
     });
   }
-  if (!invalidTypes.includes(Resources.OpenShift)) {
-    radioOptions.push({
-      label: ReadableResourcesNames[Resources.OpenShift],
-      value: Resources.OpenShift,
-      children: createHelpText(
-        DeploymentConfigModel,
-        t(
-          'devconsole~A {{deploymentConfigLabel}} defines the template for a Pod and manages deploying new Images or configuration changes.',
-          { deploymentConfigLabel: DeploymentConfigModel.label },
-        ),
-      ),
-    });
-  }
+  // if (!invalidTypes.includes(Resources.OpenShift)) {
+  //   radioOptions.push({
+  //     label: ReadableResourcesNames[Resources.OpenShift],
+  //     value: Resources.OpenShift,
+  //     children: createHelpText(
+  //       DeploymentConfigModel,
+  //       t(
+  //         'devconsole~A {{deploymentConfigLabel}} defines the template for a Pod and manages deploying new Images or configuration changes.',
+  //         { deploymentConfigLabel: DeploymentConfigModel.label },
+  //       ),
+  //     ),
+  //   });
+  // }
 
   const knativeServiceAccess = useAccessReview({
     group: ServiceModel.apiGroup,

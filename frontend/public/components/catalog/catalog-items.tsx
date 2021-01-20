@@ -50,7 +50,7 @@ export const catalogCategories: Record<
       mongodb: { id: 'mongodb', label: 'Mongo', field: 'tags', values: ['mongodb'] },
       mysql: { id: 'mysql', label: 'MySQL', field: 'tags', values: ['mysql'] },
       postgresql: { id: 'postgresql', label: 'Postgres', field: 'tags', values: ['postgresql'] },
-      mariadb: { id: 'mariadb', label: 'MariaDB', field: 'tags', values: ['mariadb'] },
+      mariadb: { id: 'mariadb', label: 'MariaDB', field: 'tags', values: ['mariadb'] }
     },
   },
   middleware: {

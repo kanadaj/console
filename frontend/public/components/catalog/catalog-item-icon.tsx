@@ -95,6 +95,10 @@ import * as windowsImg from '../../imgs/logos/windows.svg';
 import * as wordpressImg from '../../imgs/logos/wordpress.svg';
 import * as xamarinImg from '../../imgs/logos/xamarin.svg';
 import * as zendImg from '../../imgs/logos/zend.svg';
+import * as grafanaImg from '../../imgs/logos/grafana.svg';
+import * as prometheusImg from '../../imgs/logos/prometheus.svg';
+import * as sentryImg from '../../imgs/logos/sentry.svg';
+import * as kubernetesImg from '../../imgs/logos/kubernetes.svg';
 
 const logos = new Map<string, any>()
   .set('icon-3scale', threeScaleImg)
@@ -141,6 +145,7 @@ const logos = new Map<string, any>()
   .set('icon-jruby', jrubyImg)
   .set('icon-js', jsImg)
   .set('icon-knative', knativeImg)
+  .set('icon-kubernetes', kubernetesImg)
   .set('icon-kubevirt', kubevirtImg)
   .set('icon-laravel', laravelImg)
   .set('icon-load-balancer', loadBalancerImg)
@@ -192,7 +197,10 @@ const logos = new Map<string, any>()
   .set('icon-windows', windowsImg)
   .set('icon-wordpress', wordpressImg)
   .set('icon-xamarin', xamarinImg)
-  .set('icon-zend', zendImg);
+  .set('icon-zend', zendImg)
+  .set('icon-grafana', grafanaImg)
+  .set('icon-prometheus', prometheusImg)
+  .set('icon-sentry', sentryImg);
 
 export const getIcons = (): { label: string; url: string }[] => {
   return Array.from(logos.entries()).map(([iconClass, url]) => ({
