@@ -35,7 +35,7 @@ import {
   top25ConsumerQueries,
   multilineQueries,
 } from '@console/shared/src/promql/cluster-dashboard';
-import { NodeModel, PodModel, ProjectModel } from '../../../../models';
+import { NodeModel, PodModel, NamespaceModel } from '../../../../models';
 import { getPrometheusQueryResponse } from '../../../../actions/dashboards';
 import { Humanize } from '../../../utils/types';
 import {
@@ -48,7 +48,7 @@ import { DataPoint, PrometheusResponse } from '../../../graphs';
 const cpuQueriesPopup = [
   {
     query: top25ConsumerQueries[OverviewQuery.PROJECTS_BY_CPU],
-    model: ProjectModel,
+    model: NamespaceModel,
     metric: 'namespace',
   },
   {
@@ -66,7 +66,7 @@ const cpuQueriesPopup = [
 const memQueriesPopup = [
   {
     query: top25ConsumerQueries[OverviewQuery.PROJECTS_BY_MEMORY],
-    model: ProjectModel,
+    model: NamespaceModel,
     metric: 'namespace',
   },
   {
@@ -84,7 +84,7 @@ const memQueriesPopup = [
 const storageQueriesPopup = [
   {
     query: top25ConsumerQueries[OverviewQuery.PROJECTS_BY_STORAGE],
-    model: ProjectModel,
+    model: NamespaceModel,
     metric: 'namespace',
   },
   {
@@ -102,7 +102,7 @@ const storageQueriesPopup = [
 const podQueriesPopup = [
   {
     query: top25ConsumerQueries[OverviewQuery.PROJECTS_BY_PODS],
-    model: ProjectModel,
+    model: NamespaceModel,
     metric: 'namespace',
   },
   {
@@ -115,7 +115,7 @@ const podQueriesPopup = [
 const networkInQueriesPopup = [
   {
     query: top25ConsumerQueries[OverviewQuery.PROJECTS_BY_NETWORK_IN],
-    model: ProjectModel,
+    model: NamespaceModel,
     metric: 'namespace',
   },
   {
@@ -133,7 +133,7 @@ const networkInQueriesPopup = [
 const networkOutQueriesPopup = [
   {
     query: top25ConsumerQueries[OverviewQuery.PROJECTS_BY_NETWORK_OUT],
-    model: ProjectModel,
+    model: NamespaceModel,
     metric: 'namespace',
   },
   {

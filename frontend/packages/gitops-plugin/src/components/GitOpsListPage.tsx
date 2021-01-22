@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import Helmet from 'react-helmet';
 import { useTranslation } from 'react-i18next';
 import { PageHeading, LoadingBox, ExternalLink } from '@console/internal/components/utils';
-import { ProjectModel, ConsoleLinkModel } from '@console/internal/models';
+import { NamespaceModel, ConsoleLinkModel } from '@console/internal/models';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { K8sResourceKind, referenceForModel } from '@console/internal/module/k8s';
 import { DevPreviewBadge } from '@console/shared';
@@ -13,7 +13,7 @@ import useDefaultSecret from './utils/useDefaultSecret';
 import { Split, SplitItem } from '@patternfly/react-core';
 import './GitOpsListPage.scss';
 
-const projectRes = { isList: true, kind: ProjectModel.kind, optional: true };
+const projectRes = { isList: true, kind: NamespaceModel.kind, optional: true };
 
 const GitOpsListPage: React.FC = () => {
   const [appGroups, setAppGroups] = React.useState(null);

@@ -24,6 +24,7 @@ import {
 } from '../../module/k8s';
 import { ErrorBoundaryFallback } from '../error';
 import { breadcrumbsForDetailsPage } from '../utils/breadcrumbs';
+import { NamespaceModel } from '@console/internal/models';
 
 export const DetailsPage = withFallback<DetailsPageProps>(({ pages = [], ...props }) => {
   const resourceKeys = _.map(props.resources, 'prop');
@@ -57,8 +58,8 @@ export const DetailsPage = withFallback<DetailsPageProps>(({ pages = [], ...prop
     <Firehose
       resources={[
         {
-          kind: props.kind,
-          kindObj: props.kindObj,
+          kind: props.kind === 'Project' ? 'Namespace' : props.kind,
+          kindObj: props.kind === 'Project' ? NamespaceModel : props.kindObj,
           name: props.name,
           namespace: props.namespace,
           isList: false,
@@ -72,7 +73,7 @@ export const DetailsPage = withFallback<DetailsPageProps>(({ pages = [], ...prop
         titleFunc={props.titleFunc}
         menuActions={props.menuActions}
         buttonActions={props.buttonActions}
-        kind={props.customKind || props.kind}
+        kind={props.customKind || (props.kind === 'Project' ? 'Namespace' : props.kind)}
         breadcrumbsFor={
           props.breadcrumbsFor
             ? props.breadcrumbsFor

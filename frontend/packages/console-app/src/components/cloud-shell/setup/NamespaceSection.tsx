@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import { useFormikContext, FormikValues, useField } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { TextInputTypes } from '@patternfly/react-core';
-import { ProjectModel } from '@console/internal/models';
+import { NamespaceModel } from '@console/internal/models';
 import { InputField, ResourceDropdownField, useFormikValidationFix, FLAGS } from '@console/shared';
 import { CREATE_NAMESPACE_KEY } from './cloud-shell-setup-utils';
 import { connectToFlags, WithFlagsProps } from '@console/internal/reducers/features';
@@ -50,8 +50,8 @@ const NamespaceSection: React.FC<NamespaceSectionProps> = ({ flags }) => {
         resources={[
           {
             isList: true,
-            kind: ProjectModel.kind,
-            prop: ProjectModel.id,
+            kind: NamespaceModel.kind,
+            prop: NamespaceModel.id,
           },
         ]}
         dataSelector={['metadata', 'name']}

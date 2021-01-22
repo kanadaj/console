@@ -11,7 +11,7 @@ import DetailsBody from '@console/shared/src/components/dashboard/details-card/D
 import DetailItem from '@console/shared/src/components/dashboard/details-card/DetailItem';
 import { getName, getRequester, GreenCheckCircleIcon } from '@console/shared';
 import { LabelList, resourcePathFromModel } from '../../utils';
-import { ProjectModel } from '../../../models';
+import { NamespaceModel } from '../../../models';
 import { ProjectDashboardContext } from './project-dashboard-context';
 
 export const DetailsCard: React.FC = () => {
@@ -20,7 +20,7 @@ export const DetailsCard: React.FC = () => {
   const labelsSubset = _.take(keys, 3);
   const firstThreelabels = _.pick(obj.metadata.labels, labelsSubset);
   const description = obj.metadata.annotations?.['openshift.io/description'];
-  const detailsLink = `${resourcePathFromModel(ProjectModel, obj.metadata.name)}/details`;
+  const detailsLink = `${resourcePathFromModel(NamespaceModel, obj.metadata.name)}/details`;
   const serviceMeshEnabled = obj.metadata?.labels?.['maistra.io/member-of'];
   const { t } = useTranslation();
   return (
@@ -39,7 +39,7 @@ export const DetailsCard: React.FC = () => {
           </DetailItem>
           <DetailItem isLoading={!obj} title={t('namespace~Labels')}>
             <div className="co-project-dashboard__details-labels">
-              <LabelList kind={ProjectModel.kind} labels={firstThreelabels} />
+              <LabelList kind={NamespaceModel.kind} labels={firstThreelabels} />
               {keys.length > 3 && (
                 <DashboardCardLink to={detailsLink}>{t('namespace~View all')}</DashboardCardLink>
               )}

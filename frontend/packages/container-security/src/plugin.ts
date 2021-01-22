@@ -13,7 +13,7 @@ import {
   HorizontalNavTab,
 } from '@console/plugin-sdk';
 import { ClusterServiceVersionModel } from '@console/operator-lifecycle-manager';
-import { NamespaceModel, PodModel, ProjectModel } from '@console/internal/models';
+import { NamespaceModel, PodModel } from '@console/internal/models';
 import { ImageManifestVulnModel } from './models';
 import { ContainerSecurityFlag } from './const';
 import { securityHealthHandler } from './components/summary';
@@ -152,7 +152,7 @@ const plugin: Plugin<ConsumedExtensions> = [
   {
     type: 'HorizontalNavTab',
     properties: {
-      model: ProjectModel,
+      model: NamespaceModel,
       page: {
         name: 'Vulnerabilities',
         href: 'vulnerabilities',

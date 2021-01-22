@@ -15,7 +15,7 @@ import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboa
 import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import { getNodeAddresses } from '@console/shared/src/selectors/node';
-import { PodModel, ProjectModel } from '@console/internal/models';
+import { PodModel, NamespaceModel } from '@console/internal/models';
 import {
   humanizeCpuCores,
   humanizeBinaryBytes,
@@ -46,7 +46,7 @@ const getPodConsumers = (query: string, nodeName: string) => ({
 
 const getProjectConsumers = (query: string) => ({
   query,
-  model: ProjectModel,
+  model: NamespaceModel,
   metric: 'namespace',
 });
 

@@ -10,7 +10,7 @@ import {
   getImageStreamIcon,
   getImageForIconClass,
 } from '@console/internal/components/catalog/catalog-item-icon';
-import { ProjectModel, ImageStreamModel } from '@console/internal/models';
+import { NamespaceModel, ImageStreamModel } from '@console/internal/models';
 import { FirehoseResource } from '@console/internal/components/utils';
 
 export interface ImageTag {
@@ -190,8 +190,8 @@ export const getProjectResource = (): FirehoseResource[] => {
   return [
     {
       isList: true,
-      kind: ProjectModel.kind,
-      prop: ProjectModel.id,
+      kind: NamespaceModel.kind,
+      prop: NamespaceModel.id,
     },
   ];
 };

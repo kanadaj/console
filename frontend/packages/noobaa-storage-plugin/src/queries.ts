@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import { ProjectModel } from '@console/internal/models';
+import { NamespaceModel } from '@console/internal/models';
 import { CapacityBreakdown, ServiceType, Metrics, Breakdown } from './constants';
 import { NooBaaBucketClassModel } from './models';
 
@@ -103,7 +103,7 @@ export const breakdownQueryMap = {
       },
     },
     [CapacityBreakdown.Metrics.PROJECTS]: {
-      model: ProjectModel,
+      model: NamespaceModel,
       metric: 'project',
       queries: {
         [ObjectServiceDashboardQuery.PROJECTS_BY_USED]: `sort_desc(topk(5, ${

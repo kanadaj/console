@@ -5,7 +5,7 @@ import DashboardCard from '@console/shared/src/components/dashboard/dashboard-ca
 import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
 import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
 import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
-import { PodModel, ProjectModel } from '@console/internal/models';
+import { PodModel, NamespaceModel } from '@console/internal/models';
 import ConsumerPopover from '@console/shared/src/components/dashboard/utilization-card/TopConsumerPopover';
 import {
   humanizeBinaryBytes,
@@ -63,7 +63,7 @@ const UtilizationCard: React.FC = () => {
           consumers={[
             {
               query: topConsumerQueries[HostQuery.PROJECTS_BY_CPU],
-              model: ProjectModel,
+              model: NamespaceModel,
               metric: 'namespace',
             },
             {
@@ -89,7 +89,7 @@ const UtilizationCard: React.FC = () => {
           consumers={[
             {
               query: topConsumerQueries[HostQuery.PROJECTS_BY_MEMORY],
-              model: ProjectModel,
+              model: NamespaceModel,
               metric: 'namespace',
             },
             {
@@ -115,7 +115,7 @@ const UtilizationCard: React.FC = () => {
           consumers={[
             {
               query: topConsumerQueries[HostQuery.PROJECTS_BY_STORAGE],
-              model: ProjectModel,
+              model: NamespaceModel,
               metric: 'namespace',
             },
             {

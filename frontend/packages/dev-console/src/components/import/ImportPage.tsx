@@ -5,7 +5,7 @@ import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { PageHeading, Firehose, FirehoseResource } from '@console/internal/components/utils';
 import DevPreviewBadge from '@console/shared/src/components/badges/DevPreviewBadge';
-import { ImageStreamModel, ProjectModel } from '@console/internal/models';
+import { ImageStreamModel, NamespaceModel } from '@console/internal/models';
 import { QUERY_PROPERTIES } from '../../const';
 import NamespacedPage, { NamespacedPageVariants } from '../NamespacedPage';
 import QueryFocusApplication from '../QueryFocusApplication';
@@ -71,7 +71,7 @@ const ImportPage: React.FunctionComponent<ImportPageProps> = ({ match, location 
         namespace: imageStreamNamespace,
       },
       {
-        kind: ProjectModel.kind,
+        kind: NamespaceModel.kind,
         prop: 'projects',
         isList: true,
       },
@@ -80,7 +80,7 @@ const ImportPage: React.FunctionComponent<ImportPageProps> = ({ match, location 
     importData = ImportFlows(t).docker;
     resources = [
       {
-        kind: ProjectModel.kind,
+        kind: NamespaceModel.kind,
         prop: 'projects',
         isList: true,
       },
@@ -89,7 +89,7 @@ const ImportPage: React.FunctionComponent<ImportPageProps> = ({ match, location 
     importData = ImportFlows(t).devfile;
     resources = [
       {
-        kind: ProjectModel.kind,
+        kind: NamespaceModel.kind,
         prop: 'projects',
         isList: true,
       },
@@ -104,7 +104,7 @@ const ImportPage: React.FunctionComponent<ImportPageProps> = ({ match, location 
         namespace: 'openshift',
       },
       {
-        kind: ProjectModel.kind,
+        kind: NamespaceModel.kind,
         prop: 'projects',
         isList: true,
       },

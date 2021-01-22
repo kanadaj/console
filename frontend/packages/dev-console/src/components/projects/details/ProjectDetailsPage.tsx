@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { history, useAccessReview, Page } from '@console/internal/components/utils';
 import { ALL_NAMESPACES_KEY } from '@console/shared';
 import { NamespaceDetails, projectMenuActions } from '@console/internal/components/namespace';
-import { ProjectModel, RoleBindingModel } from '@console/internal/models';
+import { NamespaceModel, RoleBindingModel } from '@console/internal/models';
 import { DetailsPage } from '@console/internal/components/factory';
 import { ProjectDashboard } from '@console/internal/components/dashboard/project-dashboard/project-dashboard';
 import { withStartGuide } from '@console/internal/components/start-guide';
@@ -76,8 +76,8 @@ export const PageContents: React.FC<MonitoringPageProps> = ({
       match={match}
       breadcrumbsFor={() => []}
       name={activeNamespace}
-      kind={ProjectModel.kind}
-      kindObj={ProjectModel}
+      kind={NamespaceModel.kind}
+      kindObj={NamespaceModel}
       menuActions={projectMenuActions}
       customData={{ activeNamespace, hideHeading: true }}
       pages={pages}

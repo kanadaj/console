@@ -17,7 +17,7 @@ import { WSFactory } from '../../module/ws-factory';
 import { LineBuffer } from './line-buffer';
 import * as screenfull from 'screenfull';
 import { k8sGet, k8sList, K8sResourceKind } from '@console/internal/module/k8s';
-import { ConsoleExternalLogLinkModel, ProjectModel } from '@console/internal/models';
+import { ConsoleExternalLogLinkModel, NamespaceModel } from '@console/internal/models';
 import { useFlag } from '@console/shared/src/hooks/flag';
 import { usePrevious } from '@console/shared/src/hooks/previous';
 
@@ -289,7 +289,7 @@ export const ResourceLog: React.FC<ResourceLogProps> = ({
     if (externalLogLinkFlag && resource.kind === 'Pod') {
       Promise.all([
         k8sList(ConsoleExternalLogLinkModel),
-        k8sGet(ProjectModel, resource.metadata.namespace),
+        k8sGet(NamespaceModel, resource.metadata.namespace),
       ])
         .then(([podLogLinks_, project]) => {
           // Project UID and namespace UID are the same value. Use the projects

@@ -338,12 +338,12 @@ export const NamespaceModel: K8sKind = {
 
 export const ProjectModel: K8sKind = {
   apiVersion: 'v1',
-  label: 'Namespace',
-  plural: 'namespaces',
-  abbr: 'NS',
-  kind: 'Namespace',
-  id: 'namespace',
-  labelPlural: 'Namespaces',
+  label: 'Project',
+  plural: 'projects',
+  abbr: 'P',
+  kind: 'Project',
+  id: 'project',
+  labelPlural: 'Projects',
 };
 
 export const ProjectRequestModel: K8sKind = {
