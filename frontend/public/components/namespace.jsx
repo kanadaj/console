@@ -550,7 +550,7 @@ const ProjectLink = connect(null, {
           setActiveNamespace(project.metadata.name);
           removeQueryArgument('project-name');
           // clear project-name filter when active namespace is changed
-          filterList(referenceForModel(NamespaceModel), 'project-name', '');
+          filterList(referenceForModel(ProjectModel), 'project-name', '');
         }}
         variant="link"
       >
@@ -1180,7 +1180,7 @@ const NamespaceBar_ = ({
 };
 
 const namespaceBarStateToProps = ({ k8s }) => {
-  const useProjects = k8s.hasIn(['RESOURCES', 'models', NamespaceModel.kind]);
+  const useProjects = k8s.hasIn(['RESOURCES', 'models', ProjectModel.kind]);
   return {
     useProjects,
   };
