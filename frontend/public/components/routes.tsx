@@ -46,7 +46,7 @@ export type IngressStatusProps = {
 const getRouteHost = (route: RouteKind, onlyAdmitted: boolean): string => {
   let oldestAdmittedIngress: RouteIngress;
   let oldestTransitionTime: string;
-  _.each(route.status.ingress, (ingress) => {
+  _.each(route.status?.ingress, (ingress) => {
     const admittedCondition = _.find(ingress.conditions, { type: 'Admitted', status: 'True' });
     if (
       admittedCondition &&
