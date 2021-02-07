@@ -800,8 +800,8 @@ export const ProjectsPage = connectToFlags(
       <ListPage
         {...rest}
         ListComponent={ProjectList}
-        canCreate={flags[FLAGS.CAN_CREATE_PROJECT]}
-        createHandler={() => createProjectModal({ blocking: true })}
+        canCreate={true}
+        createHandler={() => createNamespaceModal({ blocking: true })}
         filterLabel={t('namespace~by name or display name')}
         skipAccessReview
         textFilter="project-name"

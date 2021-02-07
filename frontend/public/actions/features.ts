@@ -66,7 +66,7 @@ const detectShowOpenShiftStartGuide = (dispatch, canListNS: boolean = false) => 
   }
 
   fetchURL(projectListPath).then(
-    (res) => dispatch(setFlag(FLAGS.SHOW_OPENSHIFT_START_GUIDE, false)),
+    () => dispatch(setFlag(FLAGS.SHOW_OPENSHIFT_START_GUIDE, false)),
     (err) =>
       err?.response?.status === 404
         ? dispatch(setFlag(FLAGS.SHOW_OPENSHIFT_START_GUIDE, false))
@@ -182,6 +182,16 @@ const detectOpenShift = (dispatch) =>
         : handleError(err, FLAGS.OPENSHIFT, dispatch, detectOpenShift),
   );
 
+const routePath = '/apis/route.openshift.io/v1/routes';
+const detectRoutes = (dispatch) =>
+  fetchURL(routePath).then(
+    (res) => dispatch(setFlag(FLAGS.ROUTES, _.size(res.resources) > 0)),
+    (err) =>
+      err?.response?.status === 404 || err?.status === 404
+        ? dispatch(setFlag(FLAGS.ROUTES, false))
+        : handleError(err, FLAGS.ROUTES, dispatch, detectRoutes),
+  );
+
 const clusterVersionPath = '/apis/config.openshift.io/v1/clusterversions/version';
 const detectClusterVersion = (dispatch) =>
   fetchURL<ClusterVersionKind>(clusterVersionPath).then(
@@ -263,6 +273,7 @@ export const detectFeatures = () => (dispatch: Dispatch) => {
     detectCanCreateProject,
     detectClusterVersion,
     detectUser,
+    detectRoutes,
     ...ssarCheckActions,
     ...customFeatureDetectors.map((ff) => ff.properties.detect),
   ].forEach((detect) => detect(dispatch));

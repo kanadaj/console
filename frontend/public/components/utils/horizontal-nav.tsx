@@ -261,7 +261,7 @@ export const HorizontalNav = React.memo((props: HorizontalNavProps) => {
   const pages = (props.pages || props.pagesFor(props.obj?.data)).concat(pluginPages);
 
   const routes = pages.map((p) => {
-    const path = `${props.match.path}/${p.path || p.href}`;
+    const path = `${_.trimEnd(props.match.path, '/')}/${p.path || p.href}`;
     const render = (params) => {
       return (
         <p.component

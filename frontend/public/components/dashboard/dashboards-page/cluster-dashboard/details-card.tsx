@@ -103,7 +103,7 @@ export const DetailsCard_ = connect(mapStateToProps)(
     const { infrastructure, infrastructureLoaded, infrastructureError } = React.useContext(
       ClusterDashboardContext,
     );
-    const [k8sVersion, setK8sVersion] = React.useState<Response>();
+    const [k8sVersion, setK8sVersion] = React.useState<any>();
     const [k8sVersionError, setK8sVersionError] = React.useState();
 
     const [clusterVersionData, clusterVersionLoaded, clusterVersionError] = useK8sWatchResource<
@@ -116,7 +116,7 @@ export const DetailsCard_ = connect(mapStateToProps)(
       const fetchK8sVersion = async () => {
         try {
           const version = await fetch('/api/kubernetes/version');
-          setK8sVersion(version);
+          setK8sVersion(await version.json());
         } catch (error) {
           setK8sVersionError(error);
         }
@@ -194,23 +194,16 @@ export const DetailsCard_ = connect(mapStateToProps)(
               </>
             ) : (
               <>
-              <DetailItem
-                key="kubernetes"
-                title={t('dashboard~Kubernetes version')}
-                error={!!k8sVersionError || (k8sVersion && !k8sGitVersion)}
-                isLoading={!k8sVersion}
-                valueClassName="co-select-to-copy"
-              >
-                {k8sGitVersion}
-              </DetailItem>
-              {
-                !!k8sVersionError &&
-                (
-                  <div>
-                    {k8sVersionError}
-                  </div>
-                )
-              }
+                <DetailItem
+                  key="kubernetes"
+                  title={t('dashboard~Kubernetes version')}
+                  error={!!k8sVersionError || (k8sVersion && !k8sGitVersion)}
+                  isLoading={!k8sVersion}
+                  valueClassName="co-select-to-copy"
+                >
+                  {k8sGitVersion}
+                </DetailItem>
+                {!!k8sVersionError && <div>{k8sVersionError}</div>}
               </>
             )}
           </DetailsBody>

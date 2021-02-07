@@ -114,11 +114,7 @@ const AdminNav = () => {
           name={t('nav~Overview')}
           required={[FLAGS.CAN_GET_NS]}
         />
-        <ResourceClusterLink
-          id="projects"
-          resource="projects"
-          name={t('nav~Projects')}
-        />
+        <ResourceClusterLink id="projects" resource="projects" name={t('nav~Projects')} />
         <HrefLink id="search" href="/search" name={t('nav~Search')} startsWith={searchStartsWith} />
         <HrefLink
           id="explore"
@@ -178,6 +174,7 @@ const AdminNav = () => {
           id="routes"
           resource="routes"
           name={t('nav~Routes')}
+          required={FLAGS.ROUTES}
         />
         <ResourceNSLink id="ingresses" resource="ingresses" name={t('nav~Ingresses')} />
         <ResourceNSLink

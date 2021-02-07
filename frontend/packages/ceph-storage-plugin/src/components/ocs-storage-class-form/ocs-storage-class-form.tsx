@@ -87,7 +87,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
         pool?.spec?.compressionMode === 'none' || pool?.spec?.compressionMode === ''
           ? t('ceph-storage-plugin~no compression')
           : t('ceph-storage-plugin~with compression');
-      try{
+      try {
         if (
           pool?.status?.phase === POOL_STATE.READY &&
           cephClusterObj[0]?.status?.phase === CLUSTER_STATUS.READY
@@ -107,10 +107,8 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
             </DropdownItem>,
           );
         }
-      }
-      catch(error){
-        // Ignore error and log to console
-        console.error("Failed to add resource pool to dropdown", error)
+      } catch (error) {
+        // Ignore error
       }
       return res;
     },
@@ -391,7 +389,7 @@ export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChan
   };
 
   return (
-    isKmsSupported && (
+    (isKmsSupported && (
       <Form>
         <FormGroup
           fieldId="storage-class-encryption"
@@ -451,7 +449,7 @@ export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChan
           )}
         </FormGroup>
       </Form>
-    )
+    )) || <div />
   );
 };
 
