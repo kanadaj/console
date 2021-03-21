@@ -9,7 +9,7 @@ export const testBucket = {
   },
   spec: {
     ssl: false,
-    storageClassName: 'openshift-storage.noobaa.io',
+    storageClassName: 'rook-ceph.noobaa.io',
     generateBucketName: 'test-bucket',
   },
 };

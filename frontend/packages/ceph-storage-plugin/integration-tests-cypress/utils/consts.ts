@@ -1,5 +1,5 @@
 // OCS namespace
-export const NS = 'openshift-storage';
+export const NS = 'rook-ceph';
 export const ACCESS_KEY = '[a-zA-Z0-9]{20}';
 export const ATTACH_TO_DEPLOYMENT = 'Attach to Deployment';
 export const BOUND = 'Bound';
@@ -10,7 +10,7 @@ export const NOOBAA_LABEL = 'app=noobaa';
 export const NO_ANNOTATIONS = '0 annotations';
 export const OBC_NAME = 'test-obc';
 export const OBC_RESOURCE_PATH = 'objectbucket.io~v1alpha1~ObjectBucketClaim';
-export const OBC_STORAGE_CLASS = 'openshift-storage\\.noobaa\\.io';
-export const OBC_STORAGE_CLASS_EXACT = 'openshift-storage.noobaa.io';
+export const OBC_STORAGE_CLASS = 'rook-ceph\\.noobaa\\.io';
+export const OBC_STORAGE_CLASS_EXACT = 'rook-ceph.noobaa.io';
 export const SECOND = 1000;
 export const SECRET_KEY = '[a-zA-Z0-9/+]{40}';

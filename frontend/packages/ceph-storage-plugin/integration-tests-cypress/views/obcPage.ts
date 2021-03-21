@@ -28,7 +28,7 @@ export class CreateOBCHandler {
     cy.byTestID('sc-dropdown')
       .should('be.visible')
       .click();
-    cy.contains('openshift-storage.noobaa.io').click();
+    cy.contains('rook-ceph.noobaa.io').click();
     modal.submit();
   }
 
