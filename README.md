@@ -1,8 +1,6 @@
-# OpenShift Console
+# OpenShift Console for Kubernetes
 
-Codename: "Bridge"
-
-[quay.io/openshift/origin-console](https://quay.io/repository/openshift/origin-console?tab=tags)
+This is a fork of [Red Hat's Openshift Console](https://quay.io/repository/openshift/origin-console?tab=tags) modified to support as much of it's featureset on upstream Kubernetes as possible. It is not intended to function with Openshift or OKD, and has some hacks to forcefully replace Openshift entities with Kubernetes equivalents such as Namespaces being used as the data source for Openshift's "Projects". 
 
 The console is a more friendly `kubectl` in the form of a single page webapp. It also integrates with other services like monitoring, chargeback, and OLM. Some things that go on behind the scenes include:
 
@@ -41,58 +39,6 @@ to. OpenShift 4.x clusters can be installed using the
 You can also use [CodeReady Containers](https://github.com/code-ready/crc)
 for local installs. More information about installing OpenShift can be found at
 <https://try.openshift.com/>.
-
-#### OpenShift (no authentication)
-
-For local development, you can disable OAuth and run bridge with an OpenShift
-user's access token. If you've installed OpenShift 4.0, run the following
-commands to login as the kubeadmin user and start a local console for
-development. Make sure to replace `/path/to/install-dir` with the directory you
-used to install OpenShift.
-
-```
-oc login -u kubeadmin -p $(cat /path/to/install-dir/auth/kubeadmin-password)
-source ./contrib/oc-environment.sh
-./bin/bridge
-```
-
-The console will be running at [localhost:9000](http://localhost:9000).
-
-If you don't have `kubeadmin` access, you can use any user's API token,
-although you will be limited to that user's access and might not be able to run
-the full integration test suite.
-
-#### OpenShift (with authentication)
-
-If you need to work on the backend code for authentication or you need to test
-different users, you can set up authentication in your development environment.
-Registering an OpenShift OAuth client requires administrative privileges for
-the entire cluster, not just a local project. You must be logged in as a
-cluster admin such as `system:admin` or `kubeadmin`.
-
-To run bridge locally connected to an OpenShift cluster, create an
-`OAuthClient` resource with a generated secret and read that secret:
-
-```
-oc process -f examples/console-oauth-client.yaml | oc apply -f -
-oc get oauthclient console-oauth-client -o jsonpath='{.secret}' > examples/console-client-secret
-```
-
-If the CA bundle of the OpenShift API server is unavailable, fetch the CA
-certificates from a service account secret. Otherwise copy the CA bundle to
-`examples/ca.crt`:
-
-```
-oc get secrets -n default --field-selector type=kubernetes.io/service-account-token -o json | \
-    jq '.items[0].data."ca.crt"' -r | python -m base64 -d > examples/ca.crt
-# Note: use "openssl base64" because the "base64" tool is different between mac and linux
-```
-
-Finally run the console and visit [localhost:9000](http://localhost:9000):
-
-```
-./examples/run-bridge.sh
-```
 
 #### Native Kubernetes
 
