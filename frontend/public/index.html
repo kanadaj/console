@@ -9,6 +9,10 @@
       <title>[[ .CustomProductName ]]</title>
       <meta name="application-name" content="[[ .CustomProductName ]]">
     [[ else ]]
+      [[ if eq .Branding "kubernetes" ]]
+      <title>Kubernetes</title>
+      <meta name="application-name" content="Kubernetes">
+      [[ end ]]
       [[ if eq .Branding "okd" ]]
       <title>OKD</title>
       <meta name="application-name" content="OKD">
@@ -40,6 +44,12 @@
       <link rel="mask-icon" href="<%= require('./imgs/okd-mask-icon.svg') %>" color="#DB242F">
       <meta name="msapplication-TileColor" content="#000000">
       <meta name="msapplication-TileImage" content="<%= require('./imgs/okd-mstile-144x144.png') %>">
+      [[ else if eq .Branding "kubernetes" ]]
+      <link rel="shortcut icon" href="<%= require('./imgs/kubernetes-logo.png') %>">
+      <link rel="apple-touch-icon-precomposed" sizes="144x144" href="<%= require('./imgs/kubernetes-logo.png') %>">
+      <link rel="mask-icon" href="<%= require('./imgs/kubernetes-logo.svg') %>" color="#DB242F">
+      <meta name="msapplication-TileColor" content="#000000">
+      <meta name="msapplication-TileImage" content="<%= require('./imgs/kubernetes-logo.png') %>">
       [[ else ]]
       <link rel="shortcut icon" href="<%= require('./imgs/openshift-favicon.png') %>">
       <link rel="apple-touch-icon-precomposed" sizes="144x144" href="<%= require('./imgs/openshift-apple-touch-icon-precomposed.png') %>">

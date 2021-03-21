@@ -5,6 +5,7 @@ import { Brand, PageHeader } from '@patternfly/react-core';
 import { MastheadToolbar } from './masthead-toolbar';
 import { history } from './utils';
 import okdLogoImg from '../imgs/okd-logo.svg';
+import kubernetesLogoImg from '../imgs/kubernetes-logo.svg';
 import openshiftLogoImg from '../imgs/openshift-logo.svg';
 import ocpLogoImg from '../imgs/openshift-platform-logo.svg';
 import onlineLogoImg from '../imgs/openshift-online-logo.svg';
@@ -14,6 +15,10 @@ export const getBrandingDetails = () => {
   let logoImg, productName;
   // Webpack won't bundle these images if we don't directly reference them, hence the switch
   switch (window.SERVER_FLAGS.branding) {
+    case 'kubernetes':
+      logoImg = kubernetesLogoImg;
+      productName = 'Kubernetes';
+      break;
     case 'openshift':
       logoImg = openshiftLogoImg;
       productName = 'Red Hat OpenShift';

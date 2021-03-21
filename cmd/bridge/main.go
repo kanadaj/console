@@ -109,7 +109,7 @@ func main() {
 	fK8sPublicEndpoint := fs.String("k8s-public-endpoint", "", "Endpoint to use when rendering kubeconfigs for clients. Useful for when bridge uses an internal endpoint clients can't access for communicating with the API server.")
 
 	fDexAPIHost := fs.String("dex-api-host", "", "Target host and port of the Dex API service.")
-	fBranding := fs.String("branding", "okd", "Console branding for the masthead logo and title. One of okd, openshift, ocp, online, dedicated, or azure. Defaults to okd.")
+	fBranding := fs.String("branding", "kubernetes", "Console branding for the masthead logo and title. One of kubernetes, okd, openshift, ocp, online, dedicated, or azure. Defaults to okd.")
 	fCustomProductName := fs.String("custom-product-name", "", "Custom product name for console branding.")
 	fCustomLogoFile := fs.String("custom-logo-file", "", "Custom product image for console branding.")
 	fStatuspageID := fs.String("statuspage-id", "", "Unique ID assigned by statuspage.io page that provides status info.")
@@ -192,6 +192,7 @@ func main() {
 	}
 	switch branding {
 	case "okd":
+	case "kubernetes":
 	case "openshift":
 	case "ocp":
 	case "online":
