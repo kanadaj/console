@@ -28,6 +28,10 @@ the script, for example:
 yarn http-server -a 127.0.0.1
 ```
 
+See the plugin development section in
+[Console Dynamic Plugins README](/frontend/packages/console-dynamic-plugin-sdk/README.md) for details
+on how to run Bridge using local plugins.
+
 ## Deployment on cluster
 
 Console dynamic plugins are supposed to be deployed via [OLM operators](https://github.com/operator-framework).
@@ -42,21 +46,40 @@ Note that the `Service` exposing the HTTP server is annotated to have a signed
 generated and mounted into the image. This allows us to run the server with HTTP/TLS enabled, using
 a trusted CA certificate.
 
+## Enabling the plugin
+
+Once deployed on the cluster, demo plugin must be enabled before it can be loaded by Console.
+
+To enable the plugin manually, edit [Console operator](https://github.com/openshift/console-operator)
+config and make sure the plugin's name is listed in the `spec.plugins` sequence (add one if missing):
+
+```sh
+oc edit console.operator.openshift.io cluster
+```
+
+```yaml
+# ...
+spec:
+  plugins:
+    - console-demo-plugin
+# ...
+```
+
 ## Docker image
 
 Following commands should be executed in Console repository root.
 
 1. Build the image:
    ```sh
-   docker build -f Dockerfile.plugins.demo -t $USER/console-demo-plugin .
+   docker build -f Dockerfile.plugins.demo -t quay.io/$USER/console-demo-plugin .
    ```
 2. Run the image:
    ```sh
-   docker run -it -p 9001:9001 $USER/console-demo-plugin
+   docker run -it -p 9001:9001 quay.io/$USER/console-demo-plugin
    ```
-3. Push the image to Docker Hub or similar image registry:
+3. Push the image to image registry:
    ```sh
-   docker push $USER/console-demo-plugin
+   docker push quay.io/$USER/console-demo-plugin
    ```
 
-To test a locally built demo plugin image, simply update and re-apply `oc-manifest.yaml`.
+Update and apply `oc-manifest.yaml` to use a custom plugin image.

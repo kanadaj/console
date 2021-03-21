@@ -14,11 +14,9 @@ import {
   YAMLTemplate,
   HrefNavItem,
   HorizontalNavTab,
-  CatalogItemProvider,
-  CatalogItemType,
+  DetailPageBreadCrumbs,
 } from '@console/plugin-sdk';
 import { NamespaceRedirect } from '@console/internal/components/utils/namespace-redirect';
-import { AddAction } from '@console/dev-console/src/extensions/add-actions';
 import * as models from './models';
 import { yamlTemplates } from './yaml-templates';
 import {
@@ -32,11 +30,17 @@ import {
   FLAG_KNATIVE_EVENTING_BROKER,
   FLAG_CAMEL_KAMELETS,
 } from './const';
-import { getKebabActionsForKind } from './utils/kebab-actions';
+import { getKebabActionsForKind, getKebabActionsForWorkload } from './utils/kebab-actions';
 import { TopologyConsumedExtensions, topologyPlugin } from './topology/topology-plugin';
-import * as eventSourceIcon from './imgs/event-source.svg';
-import * as channelIcon from './imgs/channel.svg';
-import { eventSourceProvider, kameletsProvider } from './catalog';
+
+import {
+  eventSourceBreadcrumbsProvider,
+  channelBreadcrumbsProvider,
+  brokerBreadcrumbsProvider,
+  eventSourceModelsProviderForBreadcrumbs,
+  channelModelsProviderForBreadcrumbs,
+  brokerModelProviderForBreadcrumbs,
+} from './providers';
 
 type ConsumedExtensions =
   | NavSection
@@ -51,11 +55,9 @@ type ConsumedExtensions =
   | HrefNavItem
   | YAMLTemplate
   | ResourceDetailsPage
-  | AddAction
   | TopologyConsumedExtensions
   | HorizontalNavTab
-  | CatalogItemProvider
-  | CatalogItemType;
+  | DetailPageBreadCrumbs;
 
 const plugin: Plugin<ConsumedExtensions> = [
   {
@@ -249,6 +251,18 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
+    type: 'Page/Resource/Details',
+    properties: {
+      model: models.KnativeServingModel,
+      loader: async () =>
+        (
+          await import(
+            './components/overview/KnativeServingDetailsPage' /* webpackChunkName: "knative-serving-details-page" */
+          )
+        ).default,
+    },
+  },
+  {
     type: 'Page/Resource/List',
     properties: {
       model: models.ServiceModel,
@@ -406,41 +420,34 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
+    type: 'Page/Route',
+    properties: {
+      exact: true,
+      path: '/knatify/ns/:ns',
+      loader: async () =>
+        (
+          await import(
+            './components/knatify/CreateKnatifyPage' /* webpackChunkName: "knatify-create" */
+          )
+        ).default,
+    },
+    flags: {
+      required: [FLAG_KNATIVE_SERVING_SERVICE],
+    },
+  },
+  {
     type: 'KebabActions',
     properties: {
       getKebabActionsForKind,
     },
   },
   {
-    type: 'AddAction',
+    type: 'KebabActions',
     flags: {
-      required: [FLAG_KNATIVE_EVENTING],
+      required: [FLAG_KNATIVE_SERVING_SERVICE],
     },
     properties: {
-      id: 'knative-event-source',
-      url: '/catalog?catalogType=EventSource',
-      // t('knative-plugin~Event Source')
-      label: '%knative-plugin~Event Source%',
-      // t('knative-plugin~Create an Event source to register interest in a class of events from a particular system')
-      description:
-        '%knative-plugin~Create an Event source to register interest in a class of events from a particular system%',
-      icon: eventSourceIcon,
-    },
-  },
-  {
-    type: 'AddAction',
-    flags: {
-      required: [FLAG_KNATIVE_EVENTING, FLAG_KNATIVE_EVENTING_CHANNEL],
-    },
-    properties: {
-      id: 'knative-eventing-channel',
-      url: '/channel',
-      // t('knative-plugin~Channel')
-      label: '%knative-plugin~Channel%',
-      // t('knative-plugin~Create a Knative Channel to create an event forwarding and persistence layer with in-memory and reliable implementations')
-      description:
-        '%knative-plugin~Create a Knative Channel to create an event forwarding and persistence layer with in-memory and reliable implementations%',
-      icon: channelIcon,
+      getKebabActionsForKind: getKebabActionsForWorkload,
     },
   },
   {
@@ -548,47 +555,24 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
-    type: 'Catalog/ItemType',
+    type: 'DetailPageBreadCrumbs',
     properties: {
-      type: 'EventSource',
-      // t('knative-plugin~Event Sources')
-      title: '%knative-plugin~Event Sources%',
-      // t('knative-plugin~Event sources are objects that link to an event producer and an event sink or consumer. Cluster administrators can customize the content made available in the catalog.')
-      catalogDescription:
-        '%knative-plugin~Event sources are objects that link to an event producer and an event sink or consumer. Cluster administrators can customize the content made available in the catalog.%',
-      // t('knative-plugin~**Event sources** are objects that link to an event producer and an event sink or consumer.')
-      typeDescription:
-        '%knative-plugin~**Event sources** are objects that link to an event producer and an event sink or consumer.%',
-      filters: [
-        {
-          // t('knative-plugin~Provider')
-          label: '%knative-plugin~Provider%',
-          attribute: 'provider',
-        },
-      ],
-    },
-    flags: {
-      required: [FLAG_KNATIVE_EVENTING],
+      getModels: eventSourceModelsProviderForBreadcrumbs,
+      breadcrumbsProvider: eventSourceBreadcrumbsProvider,
     },
   },
   {
-    type: 'Catalog/ItemProvider',
+    type: 'DetailPageBreadCrumbs',
     properties: {
-      type: 'EventSource',
-      provider: eventSourceProvider,
-    },
-    flags: {
-      required: [FLAG_KNATIVE_EVENTING],
+      getModels: channelModelsProviderForBreadcrumbs,
+      breadcrumbsProvider: channelBreadcrumbsProvider,
     },
   },
   {
-    type: 'Catalog/ItemProvider',
+    type: 'DetailPageBreadCrumbs',
     properties: {
-      type: 'EventSource',
-      provider: kameletsProvider,
-    },
-    flags: {
-      required: [FLAG_CAMEL_KAMELETS],
+      getModels: brokerModelProviderForBreadcrumbs,
+      breadcrumbsProvider: brokerBreadcrumbsProvider,
     },
   },
   ...topologyPlugin,

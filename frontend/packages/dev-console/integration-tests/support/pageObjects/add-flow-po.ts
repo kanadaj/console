@@ -1,9 +1,10 @@
-export const cardTitle = 'div.catalog-tile-pf-title';
+export const cardTitle = '.catalog-tile-pf-title';
 
 export const gitPO = {
   noWorkLoadsText: 'h2.co-hint-block__title',
   sectionTitle: '.odc-form-section__heading',
   gitRepoUrl: '[data-test-id="git-form-input-url"]',
+  builderImageCard: '.odc-selector-card',
   nodeName: '[data-test-id="application-form-app-name"]',
   appName: '[id$=application-name-field]',
   create: '[data-test-id="submit-button"]',
@@ -72,7 +73,7 @@ export const gitPO = {
       memoryRequest: 'input[name="limits.memory.requestValue"]',
       memoryLimit: 'input[name="limits.memory.limitValue"]',
       cpuRequestHelperText: 'div#form-resource-limit-limits-cpu-request-field-helper',
-      cpuLimiHelperText: 'div#form-resource-limit-limits-cpu-limit-field-helper',
+      cpuLimitHelperText: 'div#form-resource-limit-limits-cpu-limit-field-helper',
       memoryRequestHelperText: 'div#form-resource-limit-limits-memory-request-field-helper',
       memoryLimitHelperText: 'div#form-resource-limit-limits-memory-limit-field-helper',
     },
@@ -91,32 +92,37 @@ export const catalogPO = {
   cancel: '[data-test-id="reset-button"]',
   catalogTypes: {
     operatorBacked: '[data-test="kind-cluster-service-version"]',
-    helmCharts: '[data-test="kind-helm-chart"]',
-    builderImage: '[data-test="kind-image-stream"]',
-    template: '[data-test="kind-template"]',
+    helmCharts: 'a[href="/?catalogType=HelmChart"]',
+    builderImage: 'ul:nth-child(3) > li:nth-child(1) > a', // This needs to be changed
+    template: 'a[href="/?catalogType=Template"]',
     serviceClass: '[data-test="kind-cluster-service-class"]',
   },
   cards: {
-    mariaDBTemplate: '[data-test="Template-mariadb-persistent"]',
-    phpCakeTemplate: '[data-test="Template-cakephp-mysql-persistent"]',
-    nodeJsBuilderImage: '[data-test="ImageStream-nodejs"]',
+    mariaDBTemplate: 'a[data-test="Template-MariaDB"] .catalog-tile-pf-title',
+    phpCakeTemplate: '[data-test="Template-CakePHP + MySQL"] .catalog-tile-pf-title',
+    nodeJsBuilderImage: 'a[data-test="BuilderImage-Node.js"] .catalog-tile-pf-title',
+    nodejsPostgreSQL:
+      'a[data-test="Template-Node.js + PostgreSQL (Ephemeral)"] .catalog-tile-pf-title',
+    apacheHTTPServer: 'a[data-test="Template-Apache HTTP Server"] .catalog-tile-pf-title',
+    nginxHTTPServer:
+      'a[data-test="Template-Nginx HTTP server and a reverse proxy"] .catalog-tile-pf-title',
   },
   sidePane: {
     dialog: '[role="dialog"]',
     instantiateTemplate: '[role="dialog"] .pf-m-primary',
     create: 'a[title="Create"]',
     installHelmChart: 'a[title="Install Helm Chart"]',
-    createApplication: 'a[title="Create Application"]',
+    createApplication: '[role="dialog"] a[role="button"]',
   },
   mariaDBTemplate: {
     namespace: '#namespace',
     title: 'h1.co-m-pane__heading',
     memoryLimit: '#MEMORY_LIMIT',
-    imageSrreamNameSpace: '#NAMESPACE',
+    imageStreamNameSpace: '#NAMESPACE',
     databaseServiceName: '#DATABASE_SERVICE_NAME',
     mariaDBConnectionUserName: '#MYSQL_USER',
   },
-  createknativeServing: {
+  createKnativeServing: {
     logo: 'h1.co-clusterserviceversion-logo__name__clusterserviceversion',
     name: '#root_metadata_name',
     labels: 'input[placeholder="app=frontend"]',
@@ -128,6 +134,7 @@ export const catalogPO = {
     yamlView: '#form-radiobutton-editorType-yaml-field',
     formView: '#form-radiobutton-editorType-form-field',
     cancel: '[data-test-id="reset-button"]',
+    chartVersion: '#form-dropdown-chartVersion-field',
   },
   s2I: {
     gitRepoUrl: '[data-test-id="git-form-input-url"]',
@@ -190,5 +197,17 @@ export const eventSourcePO = {
   },
   containerImage: {
     image: '[data-test-id="container-image-field"]',
+  },
+};
+
+export const devFilePO = {
+  form: '[data-test-id="import-devfile-form"]',
+  formFields: {
+    validatedMessage: '#form-input-git-url-field-helper',
+    advancedGitOptions: {
+      gitReference: '#form-input-git-ref-field',
+      contextDir: 'form-input-git-dir-field',
+      sourceSecret: '',
+    },
   },
 };

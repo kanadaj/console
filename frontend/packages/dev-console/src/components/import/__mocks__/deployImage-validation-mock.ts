@@ -1,5 +1,6 @@
 import { DeployImageFormData, Resources } from '../import-types';
 import { healthChecksProbeInitialData } from '../../health-checks/health-checks-probe-utils';
+import { serverlessInitialValues } from './serverless-mock';
 
 export const mockDeployImageFormData: DeployImageFormData = {
   project: {
@@ -77,14 +78,7 @@ export const mockDeployImageFormData: DeployImageFormData = {
   },
   isSearchingForImage: false,
   resources: Resources.OpenShift,
-  serverless: {
-    scaling: {
-      minpods: 0,
-      maxpods: '',
-      concurrencytarget: '',
-      concurrencylimit: '',
-    },
-  },
+  serverless: serverlessInitialValues,
   route: {
     create: true,
     targetPort: '',
@@ -139,4 +133,33 @@ export const mockDeployImageFormData: DeployImageFormData = {
     },
   },
   healthChecks: healthChecksProbeInitialData,
+};
+
+export const mockImageStreamData = {
+  apiVersion: 'image.openshift.io/v1',
+  kind: 'ImageStream',
+  metadata: {
+    labels: {
+      app: 'test-app',
+      'app.kubernetes.io/component': 'test-app',
+      'app.kubernetes.io/instance': 'test-app',
+      'app.kubernetes.io/part-of': 'mock-app',
+    },
+    name: 'test-app',
+    namespace: 'mock-project',
+  },
+  spec: {
+    tags: [
+      {
+        name: 'latest',
+        annotations: {
+          'openshift.io/generated-by': 'OpenShiftWebConsole',
+          'openshift.io/imported-from': 'myimage',
+        },
+        from: { kind: 'DockerImage', name: 'myimage' },
+        importPolicy: { insecure: false },
+        referencePolicy: { type: 'Local' },
+      },
+    ],
+  },
 };

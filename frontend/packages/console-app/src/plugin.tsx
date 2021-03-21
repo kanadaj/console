@@ -29,6 +29,7 @@ import {
   ClusterOperatorModel,
 } from '@console/internal/models';
 import { referenceForModel, ClusterOperator } from '@console/internal/module/k8s';
+import '@console/internal/i18n.js';
 import {
   fetchK8sHealth,
   getK8sHealthState,
@@ -52,7 +53,10 @@ import {
   QuickStartContext,
   useValuesForQuickStartContext,
 } from './components/quick-starts/utils/quick-start-context';
-import '@console/internal/i18n.js';
+import {
+  FileUploadContext,
+  useValuesFileUploadContext,
+} from './components/file-upload/file-upload-context';
 
 type ConsumedExtensions =
   | Perspective
@@ -114,7 +118,8 @@ const plugin: Plugin<ConsumedExtensions> = [
   {
     type: 'Dashboards/Overview/Health/URL',
     properties: {
-      title: 'Cluster',
+      // t('console-app~Cluster')
+      title: '%console-app~Cluster%',
       url: 'healthz',
       fetch: fetchK8sHealth,
       healthHandler: getK8sHealthState,
@@ -131,14 +136,16 @@ const plugin: Plugin<ConsumedExtensions> = [
   {
     type: 'Dashboards/Overview/Health/Prometheus',
     properties: {
-      title: 'Control Plane',
+      // t('console-app~Control Plane')
+      title: '%console-app~Control Plane%',
       queries: [API_SERVERS_UP, CONTROLLER_MANAGERS_UP, SCHEDULERS_UP, API_SERVER_REQUESTS_SUCCESS],
       healthHandler: getControlPlaneHealth,
       popupComponent: () =>
         import(
           './components/dashboards-page/ControlPlaneStatus' /* webpackChunkName: "console-app" */
         ).then((m) => m.default),
-      popupTitle: 'Control Plane status',
+      // t('console-app~Control Plane status')
+      popupTitle: '%console-app~Control Plane status%',
       disallowedProviders: ['IBMCloud'],
     },
   },
@@ -176,13 +183,13 @@ const plugin: Plugin<ConsumedExtensions> = [
         import(
           '@console/shared/src/components/dashboard/inventory-card/utils' /* webpackChunkName: "console-app" */
         ).then((m) => m.getPVCStatusGroups),
-      useAbbr: true,
     },
   },
   {
     type: 'Dashboards/Overview/Health/Operator',
     properties: {
-      title: 'Cluster operators',
+      // t('console-app~Cluster operators')
+      title: '%console-app~Cluster operators%',
       resources: [
         {
           kind: referenceForModel(ClusterOperatorModel),
@@ -228,7 +235,8 @@ const plugin: Plugin<ConsumedExtensions> = [
       id: 'volumesnapshots',
       section: 'storage',
       componentProps: {
-        name: 'Volume Snapshot Contents',
+        // t('console-app~VolumeSnapshotContents')
+        name: '%console-app~VolumeSnapshotContents%',
         resource: referenceForModel(VolumeSnapshotContentModel),
       },
     },
@@ -286,6 +294,13 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       Provider: QuickStartContext.Provider,
       useValueHook: useValuesForQuickStartContext,
+    },
+  },
+  {
+    type: 'ContextProvider',
+    properties: {
+      Provider: FileUploadContext.Provider,
+      useValueHook: useValuesFileUploadContext,
     },
   },
 ];

@@ -3,7 +3,6 @@ import {
   Plugin,
   ModelDefinition,
   ModelFeatureFlag,
-  KebabActions,
   NavSection,
   HrefNavItem,
   ResourceNSNavItem,
@@ -18,7 +17,6 @@ import {
 } from '@console/plugin-sdk';
 import { NamespaceRedirect } from '@console/internal/components/utils/namespace-redirect';
 import { referenceForModel } from '@console/internal/module/k8s';
-import { AddAction } from '@console/dev-console/src/extensions/add-actions';
 import { FLAG_OPENSHIFT_PIPELINE } from './const';
 import {
   newPipelineTemplate,
@@ -28,7 +26,6 @@ import {
   newClusterTaskTemplate,
 } from './templates';
 import * as models from './models';
-import * as pipelineIcon from './images/pipeline.svg';
 import {
   pipelinesTopologyPlugin,
   PipelineTopologyConsumedExtensions,
@@ -47,6 +44,7 @@ const {
   TriggerBindingModel,
   TriggerTemplateModel,
 } = models;
+
 type ConsumedExtensions =
   | ModelDefinition
   | ModelFeatureFlag
@@ -58,11 +56,9 @@ type ConsumedExtensions =
   | ResourceDetailsPage
   | Perspective
   | RoutePage
-  | KebabActions
   | OverviewResourceTab
   | YAMLTemplate
   | OverviewTabSection
-  | AddAction
   | PipelineTopologyConsumedExtensions;
 
 const plugin: Plugin<ConsumedExtensions> = [
@@ -462,29 +458,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       model: ClusterTaskModel,
       template: newClusterTaskTemplate,
-    },
-  },
-  {
-    type: 'AddAction',
-    flags: {
-      required: [FLAG_OPENSHIFT_PIPELINE],
-    },
-    properties: {
-      id: 'pipeline',
-      url: `/k8s/ns/:namespace/${referenceForModel(PipelineModel)}/~new/builder`,
-      // t('pipelines-plugin~Pipeline')
-      label: '%pipelines-plugin~Pipeline%',
-      // t('pipelines-plugin~Create a Tekton Pipeline to automate delivery of your Application')
-      description:
-        '%pipelines-plugin~Create a Tekton Pipeline to automate delivery of your Application%',
-      icon: pipelineIcon,
-      accessReview: [
-        {
-          group: PipelineModel.apiGroup,
-          resource: PipelineModel.plural,
-          verb: 'create',
-        },
-      ],
     },
   },
   ...pipelinesTopologyPlugin,

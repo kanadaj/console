@@ -285,10 +285,8 @@ export const RoleBindingsPage = ({
   staticFilters = undefined,
   name,
   kind,
-  createPath = `/k8s/${
-    namespace
-      ? `ns/${namespace}/rolebindings/~new?namespace=${namespace}`
-      : `cluster/rolebindings/~new${name && kind ? `?subjectName=${name}&subjectKind=${kind}` : ''}`
+  createPath = `/k8s/cluster/rolebindings/~new${
+    name && kind ? `?subjectName=${name}&subjectKind=${kind}` : ''
   }`,
 }) => {
   const { t } = useTranslation();
@@ -377,28 +375,6 @@ const ClusterRoleDropdown = (props) => {
   );
 };
 
-const bindingKinds = [
-  {
-    value: 'RoleBinding',
-    title: i18next.t('bindings~Namespace RoleBinding (RoleBinding)'),
-    desc: i18next.t(
-      'bindings~Grant the permissions to a user or set of users within the selected namespace.',
-    ),
-  },
-  {
-    value: 'ClusterRoleBinding',
-    title: i18next.t('bindings~Cluster-wide RoleBinding (ClusterRoleBinding)'),
-    desc: i18next.t(
-      'bindings~Grant the permissions to a user or set of users at the cluster level and in all namespaces.',
-    ),
-  },
-];
-const subjectKinds = [
-  { value: 'User', title: i18next.t('bindings~User') },
-  { value: 'Group', title: i18next.t('bindings~Group') },
-  { value: 'ServiceAccount', title: i18next.t('bindings~ServiceAccount') },
-];
-
 const Section = ({ label, children }) => (
   <div>
     <div className="co-form-section__label">{label}</div>
@@ -419,7 +395,7 @@ class BaseEditRoleBindingWithTranslation extends React.Component {
       'subjects',
     ]);
     existingData.kind = props.kind;
-    const { subjectKind, subjectName } = this.props.fixed.subjectRef;
+    const { subjectKind, subjectName } = this.props.fixed.subjectRef || {};
     const data = _.defaultsDeep({}, props.fixed, existingData, {
       apiVersion: 'rbac.authorization.k8s.io/v1',
       kind: 'RoleBinding',
@@ -522,6 +498,28 @@ class BaseEditRoleBindingWithTranslation extends React.Component {
     const { fixed, saveButtonText, t } = this.props;
     const RoleDropdown = kind === 'RoleBinding' ? NsRoleDropdown : ClusterRoleDropdown;
     const title = `${this.props.titleVerb} ${kindObj(kind).label}`;
+    const isSubjectDisabled = fixed?.subjectRef?.subjectName ? true : false;
+    const bindingKinds = [
+      {
+        value: 'RoleBinding',
+        title: t('bindings~Namespace role binding (RoleBinding)'),
+        desc: t(
+          'bindings~Grant the permissions to a user or set of users within the selected namespace.',
+        ),
+      },
+      {
+        value: 'ClusterRoleBinding',
+        title: t('bindings~Cluster-wide role binding (ClusterRoleBinding)'),
+        desc: t(
+          'bindings~Grant the permissions to a user or set of users at the cluster level and in all namespaces.',
+        ),
+      },
+    ];
+    const subjectKinds = [
+      { value: 'User', title: t('bindings~User'), disabled: false },
+      { value: 'Group', title: t('bindings~Group'), disabled: false },
+      { value: 'ServiceAccount', title: t('bindings~ServiceAccount'), disabled: false },
+    ];
 
     return (
       <div className="co-m-pane__body">
@@ -605,7 +603,7 @@ class BaseEditRoleBindingWithTranslation extends React.Component {
             <div className="form-group">
               <RadioGroup
                 currentValue={subject.kind}
-                items={subjectKinds}
+                items={subjectKinds.map((obj) => ({ ...obj, disabled: isSubjectDisabled }))}
                 onChange={this.changeSubjectKind}
               />
             </div>
@@ -633,7 +631,7 @@ class BaseEditRoleBindingWithTranslation extends React.Component {
                 value={subject.name}
                 required
                 id="subject-name"
-                disabled={fixed.subjectRef.subjectName ? true : false}
+                disabled={isSubjectDisabled}
                 data-test="subject-name"
               />
             </div>

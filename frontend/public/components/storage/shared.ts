@@ -1,6 +1,11 @@
 import { isCephProvisioner } from '@console/shared/src/utils';
 
 export const cephRBDProvisionerSuffix = 'rbd.csi.ceph.com';
+
+export const snapshotPVCStorageClassAnnotation = 'snapshot.storage.kubernetes.io/pvc-storage-class';
+export const snapshotPVCAccessModeAnnotation = 'snapshot.storage.kubernetes.io/pvc-access-modes';
+export const snapshotPVCVolumeModeAnnotation = 'snapshot.storage.kubernetes.io/pvc-volume-mode';
+
 //See https://kubernetes.io/docs/concepts/storage/persistent-volumes/#types-of-persistent-volumes for more details
 export const provisionerAccessModeMapping = {
   'kubernetes.io/no-provisioner': ['ReadWriteOnce'],
@@ -20,6 +25,8 @@ export const provisionerAccessModeMapping = {
   'manila.csi.openstack.org': ['ReadWriteOnce', 'ReadWriteMany', 'ReadOnlyMany'],
   'ebs.csi.aws.com': ['ReadWriteOnce'],
   'csi.ovirt.org': ['ReadWriteOnce'],
+  'cinder.csi.openstack.org': ['ReadWriteOnce'],
+  'pd.csi.storage.gke.io': ['ReadWriteOnce'],
 };
 export const initialAccessModes = ['ReadWriteOnce', 'ReadWriteMany', 'ReadOnlyMany'];
 export const accessModeRadios = [

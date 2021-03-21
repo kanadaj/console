@@ -2,12 +2,12 @@ import * as _ from 'lodash';
 import { formatDuration } from '@console/internal/components/utils/datetime';
 import {
   ContainerStatus,
-  K8sResourceKind,
   k8sUpdate,
   k8sGet,
   SecretKind,
   K8sResourceCommon,
   K8sKind,
+  PersistentVolumeClaimKind,
 } from '@console/internal/module/k8s';
 import {
   LOG_SOURCE_RESTARTING,
@@ -20,16 +20,17 @@ import { errorModal } from '@console/internal/components/modals/error-modal';
 import { PIPELINE_SERVICE_ACCOUNT, SecretAnnotationId } from '../components/pipelines/const';
 import { PipelineModalFormWorkspace } from '../components/pipelines/modals/common/types';
 import {
-  getLatestRun,
-  PipelineRun,
-  runStatus,
-  PipelineParam,
+  PipelineRunKind,
   PipelineRunParam,
   PipelineTaskRef,
   PipelineRunWorkspace,
-  TaskRunKind,
   PipelineTask,
-} from './pipeline-augment';
+  PipelineKind,
+  TaskRunKind,
+  TektonParam,
+  TektonResultsRun,
+} from '../types';
+import { getLatestRun, runStatus } from './pipeline-augment';
 import { pipelineRunFilterReducer, pipelineRunStatus } from './pipeline-filter-reducer';
 import {
   PipelineRunModel,
@@ -124,44 +125,16 @@ export const PipelineResourceListFilterLabels = {
   [PipelineResourceListFilterId.CloudEvent]: 'Cloud Event',
 };
 
-// to be used by both Pipeline and Pipelinerun visualisation
-const sortTasksByRunAfterAndFrom = (
-  tasks: PipelineVisualizationTaskItem[],
-): PipelineVisualizationTaskItem[] => {
-  // check and sort tasks by 'runAfter' and 'from' dependency
-  const output = tasks;
-  for (let i = 0; i < output.length; i++) {
-    let flag = -1;
-    if (conditions.hasRunAfterDependency(output[i])) {
-      for (let j = 0; j < output.length; j++) {
-        if (i < j && output[j].taskRef.name === output[i].runAfter[output[i].runAfter.length - 1]) {
-          flag = j;
-        }
-      }
-    } else if (conditions.hasFromDependency(output[i])) {
-      for (let j = i + 1; j < output.length; j++) {
-        if (output[j].taskRef.name === output[i].resources.inputs[0].from[0]) {
-          flag = j;
-        }
-      }
-    }
-    if (flag > -1) {
-      // swap with last matching task
-      const temp = output[flag];
-      output[flag] = output[i];
-      output[i] = temp;
-    }
-  }
-  return output;
-};
-
 /**
  * Appends the pipeline run status to each tasks in the pipeline.
  * @param pipeline
  * @param pipelineRun
+ * @param isFinallyTasks
  */
-const appendPipelineRunStatus = (pipeline, pipelineRun) => {
-  return _.map(pipeline.spec.tasks, (task) => {
+export const appendPipelineRunStatus = (pipeline, pipelineRun, isFinallyTasks = false) => {
+  const tasks = (isFinallyTasks ? pipeline.spec.finally : pipeline.spec.tasks) || [];
+
+  return tasks.map((task) => {
     if (!pipelineRun.status) {
       return task;
     }
@@ -183,6 +156,8 @@ const appendPipelineRunStatus = (pipeline, pipelineRun) => {
       mTask.status = { reason: runStatus.Idle };
     } else if (mTask.status && mTask.status.conditions) {
       mTask.status.reason = pipelineRunStatus(mTask) || runStatus.Idle;
+    } else if (mTask.status && !mTask.status.reason) {
+      mTask.status.reason = runStatus.Idle;
     }
     return mTask;
   });
@@ -191,11 +166,12 @@ export const hasInlineTaskSpec = (tasks: PipelineTask[] = []): boolean =>
   tasks.some((task) => !!(task.taskSpec && !task.taskRef));
 
 export const getPipelineTasks = (
-  pipeline: K8sResourceKind,
-  pipelineRun: K8sResourceKind = {
+  pipeline: PipelineKind,
+  pipelineRun: PipelineRunKind = {
     apiVersion: '',
     metadata: {},
     kind: 'PipelineRun',
+    spec: {},
   },
 ): PipelineVisualizationTaskItem[][] => {
   // Each unit in 'out' array is termed as stage | out = [stage1 = [task1], stage2 = [task2,task3], stage3 = [task4]]
@@ -204,11 +180,9 @@ export const getPipelineTasks = (
     return out;
   }
   const taskList = appendPipelineRunStatus(pipeline, pipelineRun);
-  // Step 1: Sort Tasks to get in correct order
-  const tasks = sortTasksByRunAfterAndFrom(taskList);
 
-  // Step 2: Push all nodes without any dependencies in different stages
-  tasks.forEach((task) => {
+  // Step 1: Push all nodes without any dependencies in different stages
+  taskList.forEach((task) => {
     if (!conditions.hasFromDependency(task) && !conditions.hasRunAfterDependency(task)) {
       if (out.length === 0) {
         out.push([]);
@@ -217,14 +191,14 @@ export const getPipelineTasks = (
     }
   });
 
-  // Step 3: Push nodes with 'from' dependency and stack similar tasks in a stage
-  tasks.forEach((task) => {
+  // Step 2: Push nodes with 'from' dependency and stack similar tasks in a stage
+  taskList.forEach((task) => {
     if (!conditions.hasRunAfterDependency(task) && conditions.hasFromDependency(task)) {
       let flag = out.length - 1;
       for (let i = 0; i < out.length; i++) {
         for (const t of out[i]) {
           if (
-            t.taskRef.name === task.resources.inputs[0].from[0] ||
+            t.taskRef?.name === task.resources.inputs[0].from[0] ||
             t.name === task.resources.inputs[0].from[0]
           ) {
             flag = i;
@@ -249,13 +223,13 @@ export const getPipelineTasks = (
     }
   });
 
-  // Step 4: Push nodes with 'runAfter' dependencies and stack similar tasks in a stage
-  tasks.forEach((task) => {
+  // Step 3: Push nodes with 'runAfter' dependencies and stack similar tasks in a stage
+  taskList.forEach((task) => {
     if (conditions.hasRunAfterDependency(task)) {
       let flag = out.length - 1;
       for (let i = 0; i < out.length; i++) {
         for (const t of out[i]) {
-          if (t.taskRef.name === task.runAfter[0] || t.name === task.runAfter[0]) {
+          if (t.taskRef?.name === task.runAfter[0] || t.name === task.runAfter[0]) {
             flag = i;
           }
         }
@@ -276,6 +250,9 @@ export const getPipelineTasks = (
   return out;
 };
 
+export const getFinallyTasksWithStatus = (pipeline: PipelineKind, pipelineRun: PipelineRunKind) =>
+  appendPipelineRunStatus(pipeline, pipelineRun, true);
+
 export const containerToLogSourceStatus = (container: ContainerStatus): string => {
   if (!container) {
     return LOG_SOURCE_WAITING;
@@ -294,7 +271,7 @@ export const containerToLogSourceStatus = (container: ContainerStatus): string =
 };
 
 export type LatestPipelineRunStatus = {
-  latestPipelineRun: PipelineRun;
+  latestPipelineRun: PipelineRunKind;
   status: string;
 };
 
@@ -302,7 +279,7 @@ export type LatestPipelineRunStatus = {
  * Takes pipeline runs and produces a latest pipeline run state.
  */
 export const getLatestPipelineRunStatus = (
-  pipelineRuns: PipelineRun[],
+  pipelineRuns: PipelineRunKind[],
 ): LatestPipelineRunStatus => {
   if (!pipelineRuns || pipelineRuns.length === 0) {
     // Not enough data to build the current state
@@ -327,7 +304,7 @@ export const getLatestPipelineRunStatus = (
   };
 };
 
-export const getPipelineRunParams = (pipelineParams: PipelineParam[]): PipelineRunParam[] => {
+export const getPipelineRunParams = (pipelineParams: TektonParam[]): PipelineRunParam[] => {
   return (
     pipelineParams &&
     pipelineParams.map((param) => ({
@@ -373,7 +350,7 @@ export const calculateRelativeTime = (startTime: string, completionTime?: string
   return 'a few seconds';
 };
 
-export const pipelineRunDuration = (run: PipelineRun | TaskRunKind): string => {
+export const pipelineRunDuration = (run: PipelineRunKind | TaskRunKind): string => {
   const startTime = _.get(run, ['status', 'startTime'], null);
   const completionTime = _.get(run, ['status', 'completionTime'], null);
 
@@ -456,4 +433,33 @@ export const pipelinesTab = (kindObj: K8sKind) => {
     default:
       return null;
   }
+};
+
+type ResultColumn = [string, string];
+
+export type ResultCells = {
+  rows: ResultColumn[];
+  columns: ResultColumn;
+};
+
+export const getCellsFromResults = (results: TektonResultsRun[]): ResultCells => {
+  // t('pipelines-plugin~Name') t('pipelines-plugin~Value')
+  return {
+    columns: ['pipelines-plugin~Name', 'pipelines-plugin~Value'],
+    rows: results.map((result) => [result.name, result.value]),
+  };
+};
+
+export const getMatchedPVCs = (
+  pvcResources: PersistentVolumeClaimKind[],
+  ownerResourceName: string,
+  ownerResourceKind: string,
+): PersistentVolumeClaimKind[] => {
+  return pvcResources.filter((pvc) => {
+    const { ownerReferences = [] } = pvc.metadata;
+
+    return ownerReferences.some(
+      (reference) => reference.name === ownerResourceName && reference.kind === ownerResourceKind,
+    );
+  });
 };

@@ -11,9 +11,10 @@ export interface EventListenerDetailsProps {
 
 const EventListenerDetails: React.FC<EventListenerDetailsProps> = ({ obj: eventListener }) => {
   const { t } = useTranslation();
+  const triggers = eventListener.spec.triggers?.filter((trigger) => trigger.template?.name) || [];
   return (
     <div className="co-m-pane__body">
-      <SectionHeading text={t('pipelines-plugin~Event listener details')} />
+      <SectionHeading text={t('pipelines-plugin~Event Listener details')} />
       <div className="row">
         <div className="col-sm-6">
           <ResourceSummary resource={eventListener} />
@@ -23,10 +24,12 @@ const EventListenerDetails: React.FC<EventListenerDetailsProps> = ({ obj: eventL
             eventListener={eventListener}
             namespace={eventListener.metadata.namespace}
           />
-          <EventListenerTriggers
-            namespace={eventListener.metadata.namespace}
-            triggers={eventListener.spec.triggers}
-          />
+          {triggers.length > 0 && (
+            <EventListenerTriggers
+              namespace={eventListener.metadata.namespace}
+              triggers={triggers}
+            />
+          )}
         </div>
       </div>
     </div>

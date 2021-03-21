@@ -3,8 +3,11 @@ import * as React from 'react';
 import * as classNames from 'classnames';
 import { connect } from 'react-redux';
 import { useTranslation } from 'react-i18next';
+import i18next from 'i18next';
 import { KEY_CODES, Tooltip, FocusTrap } from '@patternfly/react-core';
 import { AngleRightIcon, EllipsisVIcon } from '@patternfly/react-icons';
+import { subscribeToExtensions } from '@console/plugin-sdk/src/api/subscribeToExtensions';
+import { KebabActions, isKebabActions } from '@console/plugin-sdk/src/typings/kebab-actions';
 import Popper from '@console/shared/src/components/popper/Popper';
 import {
   annotationsModal,
@@ -29,7 +32,6 @@ import {
 } from '../../module/k8s';
 import { impersonateStateToProps } from '../../reducers/ui';
 import { connectToModel } from '../../kinds';
-import { registry } from '../../plugins';
 import { VolumeSnapshotModel } from '../../models';
 
 export const kebabOptionsToMenu = (options: KebabOption[]): KebabMenuOption[] => {
@@ -84,7 +86,6 @@ const KebabItem_: React.FC<KebabItemProps & { isAllowed: boolean }> = ({
   };
   const disabled = !isAllowed || option.isDisabled;
   const classes = classNames('pf-c-dropdown__menu-item', { 'pf-m-disabled': disabled });
-
   return (
     <button
       className={classes}
@@ -256,7 +257,7 @@ const kebabFactory: KebabFactory = {
   Delete: (kind, obj) => ({
     // t('details-page~Delete {{kind}}', {kind: kind.label})
     labelKey: 'details-page~Delete {{kind}}',
-    labelKind: { kind: kind.label },
+    labelKind: { kind: kind.labelKey ? i18next.t(kind.labelKey) : kind.label },
     callback: () =>
       deleteModal({
         kind,
@@ -267,7 +268,7 @@ const kebabFactory: KebabFactory = {
   Edit: (kind, obj) => ({
     // t('details-page~Edit {{kind}}', {kind: kind.label})
     labelKey: 'details-page~Edit {{kind}}',
-    labelKind: { kind: kind.label },
+    labelKind: { kind: kind.labelKey ? i18next.t(kind.labelKey) : kind.label },
     dataTest: `Edit ${kind.label}`,
     href: `${resourceObjPath(obj, kind.crd ? referenceForModel(kind) : kind.kind)}/yaml`,
     // TODO: Fallback to "View YAML"? We might want a similar fallback for annotations, labels, etc.
@@ -398,16 +399,20 @@ kebabFactory.common = [
   kebabFactory.Delete,
 ];
 
+let kebabActionExtensions: KebabActions[] = [];
+
+subscribeToExtensions<KebabActions>((extensions) => {
+  kebabActionExtensions = extensions;
+}, isKebabActions);
+
 export const getExtensionsKebabActionsForKind = (kind: K8sKind) => {
-  const extensionActions = [];
-  _.forEach(registry.getKebabActions(), (getActions: any) => {
-    if (getActions) {
-      _.forEach(getActions.properties.getKebabActionsForKind(kind), (kebabAction) => {
-        extensionActions.push(kebabAction);
-      });
-    }
+  const actionsForKind: KebabAction[] = [];
+  kebabActionExtensions.forEach((e) => {
+    e.properties.getKebabActionsForKind(kind).forEach((kebabAction) => {
+      actionsForKind.push(kebabAction);
+    });
   });
-  return extensionActions;
+  return actionsForKind;
 };
 
 export const ResourceKebab = connectToModel((props: ResourceKebabProps) => {
@@ -549,7 +554,7 @@ export type KebabOption = {
   hidden?: boolean;
   label?: React.ReactNode;
   labelKey?: string;
-  labelKind?: { [key: string]: string };
+  labelKind?: { [key: string]: string | string[] };
   href?: string;
   callback?: () => any;
   accessReview?: AccessReviewResourceAttributes;

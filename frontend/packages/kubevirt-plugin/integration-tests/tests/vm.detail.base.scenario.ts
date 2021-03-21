@@ -38,12 +38,12 @@ describe('Kubevirt VM details tab', () => {
     targetPort: '20080',
   });
 
-  beforeAll(() => {
+  beforeAll(async () => {
     createResource(testVM);
     exposeServices(nodePortServices);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     deleteResource(testVM);
   });
 
@@ -60,7 +60,7 @@ describe('Kubevirt VM details tab', () => {
       profile: Workload.DESKTOP.toLowerCase(),
       template: NOT_AVAILABLE,
       bootOrder: ['rootdisk (Disk)', 'nic-0 (NIC)', 'cloudinitdisk (Disk)'],
-      flavorConfig: 'Tiny: 1 vCPU, 1 GiB Memory',
+      flavorConfig: 'Tiny: 1 CPU | 1 GiB Memory',
       ip: NOT_AVAILABLE,
       pod: NOT_AVAILABLE,
       node: NOT_AVAILABLE,
@@ -72,7 +72,7 @@ describe('Kubevirt VM details tab', () => {
       description: await vmView.vmDetailDesc(testName, vmName).getText(),
       os: await vmView.vmDetailOS(testName, vmName).getText(),
       profile: await vmView.vmDetailWorkloadProfile(testName, vmName).getText(),
-      template: await vmView.vmDetailTemplate(testName, vmName).getText(),
+      template: await vmView.vmDetailTemplate().getText(),
       bootOrder: await vmView.vmDetailBootOrder(testName, vmName).getText(),
       flavorConfig: await vmView.vmDetailFlavor(testName, vmName).getText(),
       ip: await vmView.vmDetailIP(testName, vmName).getText(),

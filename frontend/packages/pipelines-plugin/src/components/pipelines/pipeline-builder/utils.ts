@@ -3,12 +3,7 @@ import { apiVersionForModel, referenceForModel } from '@console/internal/module/
 import { getRandomChars } from '@console/shared';
 import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
 import { PipelineModel, TaskModel } from '../../../models';
-import {
-  Pipeline,
-  PipelineResourceTask,
-  PipelineResourceTaskParam,
-  PipelineTask,
-} from '../../../utils/pipeline-augment';
+import { PipelineKind, PipelineTask, TaskKind, TektonParam } from '../../../types';
 import { removeEmptyDefaultFromPipelineParams } from '../detail-page-tabs/utils';
 import { getTaskParameters } from '../resource-utils';
 import { TASK_ERROR_STRINGS, TaskErrorType } from './const';
@@ -28,7 +23,7 @@ export const getErrorMessage = (errorTypes: TaskErrorType[], errorMap: TaskError
   return hasRequestedError.length > 0 ? TASK_ERROR_STRINGS[hasRequestedError[0]] : null;
 };
 
-export const taskParamIsRequired = (param: PipelineResourceTaskParam): boolean => {
+export const taskParamIsRequired = (param: TektonParam): boolean => {
   return !('default' in param);
 };
 
@@ -45,7 +40,7 @@ export const safeName = (reservedNames: string[], desiredName: string): string =
 
 export const convertResourceToTask = (
   usedNames: string[],
-  resource: PipelineResourceTask,
+  resource: TaskKind,
   runAfter?: string[],
 ): PipelineTask => {
   const kind = resource.kind ?? TaskModel.kind;
@@ -98,10 +93,20 @@ const removeEmptyDefaultParams = (task: PipelineTask): PipelineTask => {
 export const convertBuilderFormToPipeline = (
   formValues: PipelineBuilderFormValues,
   namespace: string,
-  existingPipeline?: Pipeline,
-): Pipeline => {
-  const { name, resources, params, tasks, listTasks, ...unhandledSpec } = formValues;
+  existingPipeline?: PipelineKind,
+): PipelineKind => {
+  const {
+    name,
+    resources,
+    params,
+    workspaces,
+    tasks,
+    listTasks,
+    finallyTasks,
+    ...unhandledSpec
+  } = formValues;
   const listIds = listTasks.map((listTask) => listTask.name);
+  const extraYamlSpec = _.omit(unhandledSpec, 'finallyListTasks');
 
   return {
     ...existingPipeline,
@@ -114,20 +119,24 @@ export const convertBuilderFormToPipeline = (
     },
     spec: {
       ...existingPipeline?.spec,
-      ...unhandledSpec,
+      ...extraYamlSpec,
       params: removeEmptyDefaultFromPipelineParams(params),
       resources,
+      workspaces,
       tasks: tasks.map((task) => removeEmptyDefaultParams(removeListRunAfters(task, listIds))),
+      finally: finallyTasks,
     },
   };
 };
 
-export const convertPipelineToBuilderForm = (pipeline: Pipeline): PipelineBuilderFormYamlValues => {
+export const convertPipelineToBuilderForm = (
+  pipeline: PipelineKind,
+): PipelineBuilderFormYamlValues => {
   if (!pipeline) return null;
 
   const {
     metadata: { name },
-    spec: { params = [], resources = [], tasks = [] },
+    spec: { params = [], resources = [], workspaces = [], tasks = [] },
   } = pipeline;
 
   return {
@@ -137,8 +146,11 @@ export const convertPipelineToBuilderForm = (pipeline: Pipeline): PipelineBuilde
       name,
       params,
       resources,
+      workspaces,
       tasks,
       listTasks: [],
+      finallyTasks: pipeline.spec?.finally ?? [],
+      finallyListTasks: [],
     },
   };
 };

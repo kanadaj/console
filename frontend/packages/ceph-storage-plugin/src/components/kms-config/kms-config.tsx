@@ -4,26 +4,28 @@ import { useTranslation } from 'react-i18next';
 
 import * as classNames from 'classnames';
 import {
+  InputGroup,
   FormGroup,
   TextInput,
   FormSelect,
   FormSelectOption,
   Button,
   ValidatedOptions,
+  Tooltip,
 } from '@patternfly/react-core';
 import { global_palette_blue_300 as blueInfoColor } from '@patternfly/react-tokens/dist/js/global_palette_blue_300';
-import { PencilAltIcon } from '@patternfly/react-icons';
+import { PencilAltIcon, EyeIcon, EyeSlashIcon } from '@patternfly/react-icons';
 
+import { setEncryptionDispatch, parseURL, kmsConfigValidation } from './utils';
 import { advancedKMSModal } from '../modals/advanced-kms-modal/advanced-kms-modal';
 import {
   InternalClusterState,
   InternalClusterAction,
   ActionType,
 } from '../ocs-install/internal-mode/reducer';
-import { KMSProviders } from '../../constants/ocs-install';
-import { KMSConfig } from '../ocs-install/types';
-import { State, Action } from '../ocs-install/attached-devices/create-sc/state';
-import { setEncryptionDispatch, parseURL } from './utils';
+import { KMSProviders } from '../../constants';
+import { KMSConfig } from '../../types';
+import { State, Action } from '../ocs-install/attached-devices-mode/reducer';
 import { StorageClassState, StorageClassClusterAction } from '../../utils/storage-pool';
 
 import './kms-config.scss';
@@ -31,41 +33,43 @@ import './kms-config.scss';
 export const KMSConfigure: React.FC<KMSConfigureProps> = ({ state, dispatch, mode, className }) => {
   const { t } = useTranslation();
   const { kms } = state;
+  const kmsObj: KMSConfig = _.cloneDeep(kms);
+
+  // Vault as default KMS
   const [kmsProvider, setKMSProvider] = React.useState<string>(KMSProviders[0].name);
+  const [revealToken, setRevealToken] = React.useState(false);
+
+  React.useEffect(() => {
+    const hasHandled: boolean = kmsConfigValidation(kms);
+    if (kms.hasHandled !== hasHandled) {
+      setEncryptionDispatch(ActionType.SET_KMS_ENCRYPTION, mode, dispatch, {
+        ...kms,
+        hasHandled,
+      });
+    }
+  }, [dispatch, mode, kms]);
 
   const setServiceName = (name: string) => {
-    const kmsObj: KMSConfig = kms;
     kmsObj.name.value = name;
-    name !== '' ? (kms.name.valid = true) : (kms.name.valid = false);
-    kmsObj.hasHandled = kms.name.valid;
+    kmsObj.name.valid = name !== '';
     setEncryptionDispatch(ActionType.SET_KMS_ENCRYPTION, mode, dispatch, kmsObj);
   };
 
   const setAddress = (address: string) => {
-    const kmsObj: KMSConfig = kms;
     kmsObj.address.value = address;
-    address !== '' && parseURL(address.trim())
-      ? (kms.address.valid = true)
-      : (kms.address.valid = false);
-    kmsObj.hasHandled = kms.address.valid;
+    kmsObj.address.valid = address !== '' && parseURL(address.trim()) != null;
     setEncryptionDispatch(ActionType.SET_KMS_ENCRYPTION, mode, dispatch, kmsObj);
   };
 
   const setAddressPort = (port: string) => {
-    const kmsObj: KMSConfig = kms;
     kmsObj.port.value = port;
-    port !== '' && !_.isNaN(Number(port)) && Number(port) > 0
-      ? (kms.port.valid = true)
-      : (kms.port.valid = false);
-    kmsObj.hasHandled = kms.port.valid;
+    kmsObj.port.valid = port !== '' && !_.isNaN(Number(port)) && Number(port) > 0;
     setEncryptionDispatch(ActionType.SET_KMS_ENCRYPTION, mode, dispatch, kmsObj);
   };
 
   const setToken = (token: string) => {
-    const kmsObj: KMSConfig = kms;
     kmsObj.token.value = token;
-    token !== '' ? (kms.token.valid = true) : (kms.token.valid = false);
-    kmsObj.hasHandled = kms.token.valid;
+    kmsObj.token.valid = token !== '';
     setEncryptionDispatch(ActionType.SET_KMS_ENCRYPTION, mode, dispatch, kmsObj);
   };
 
@@ -178,15 +182,22 @@ export const KMSConfigure: React.FC<KMSConfigureProps> = ({ state, dispatch, mod
           validated={isValid(kms.token.valid)}
           isRequired
         >
-          <TextInput
-            value={kms.token.value}
-            onChange={setToken}
-            type="password"
-            id="kms-token"
-            name="kms-token"
-            isRequired
-            validated={isValid(kms.token.valid)}
-          />
+          <InputGroup className="ocs-install-kms__form-token">
+            <TextInput
+              value={kms.token.value}
+              onChange={setToken}
+              type={revealToken ? 'text' : 'password'}
+              id="kms-token"
+              name="kms-token"
+              isRequired
+              validated={isValid(kms.token.valid)}
+            />
+            <Tooltip content={revealToken ? 'Hide token' : 'Reveal token'}>
+              <Button variant="control" onClick={() => setRevealToken(!revealToken)}>
+                {revealToken ? <EyeSlashIcon /> : <EyeIcon />}
+              </Button>
+            </Tooltip>
+          </InputGroup>
         </FormGroup>
       )}
       <Button variant="link" className={`${className}__form-body`} onClick={openAdvancedModal}>

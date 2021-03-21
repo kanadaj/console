@@ -15,7 +15,7 @@ import { receivedResources } from './k8s';
 import { setClusterID, setCreateProjectMessage, setUser } from './common';
 import client, { fetchURL } from '../graphql/client';
 import { SSARQuery } from './features.gql';
-import { SSARQueryType, SSARQueryVariables } from '../../@types/gql/schema';
+import { SSARQueryType, SSARQueryVariables } from '../../@types/console/generated/graphql-schema';
 import {
   ResolvedFeatureFlag as DynamicFeatureFlag,
   isFeatureFlag as isDynamicFeatureFlag,
@@ -257,15 +257,10 @@ const ssarCheckActions = ssarChecks.map(({ flag, resourceAttributes, after }) =>
 });
 
 export const detectFeatures = () => (dispatch: Dispatch) => {
-  const customFeatureDetectors: CustomFeatureFlag[] = [];
   subscribeToExtensions<CustomFeatureFlag>(
-    extensionDiffListener((added) => {
-      added.forEach((e) => {
-        if (!customFeatureDetectors.includes(e)) {
-          customFeatureDetectors.push(e);
-        }
-      });
-    }),
+    extensionDiffListener((added) =>
+      added.forEach((detector) => detector.properties.detect(dispatch)),
+    ),
     isCustomFeatureFlag,
   );
   [
@@ -275,7 +270,6 @@ export const detectFeatures = () => (dispatch: Dispatch) => {
     detectUser,
     detectRoutes,
     ...ssarCheckActions,
-    ...customFeatureDetectors.map((ff) => ff.properties.detect),
   ].forEach((detect) => detect(dispatch));
 };
 

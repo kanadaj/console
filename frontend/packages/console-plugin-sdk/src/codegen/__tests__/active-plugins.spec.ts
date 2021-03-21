@@ -13,7 +13,6 @@ import { getTemplatePackage } from '../../utils/test-utils';
 
 const parseJSONC = jest.spyOn(jsoncModule, 'parseJSONC');
 const validateExtensionsFileSchema = jest.spyOn(assetPluginModule, 'validateExtensionsFileSchema');
-const reloadModule = jest.spyOn(activePluginsModule, 'reloadModule');
 
 const {
   getActivePluginsModule,
@@ -23,7 +22,7 @@ const {
 } = activePluginsModule;
 
 beforeEach(() => {
-  [parseJSONC, validateExtensionsFileSchema, reloadModule].forEach((mock) => mock.mockReset());
+  [parseJSONC, validateExtensionsFileSchema].forEach((mock) => mock.mockReset());
 });
 
 describe('getActivePluginsModule', () => {
@@ -47,7 +46,14 @@ describe('getActivePluginsModule', () => {
       { type: 'Dynamic/Bar', properties: { baz: 1, qux: { $codeRef: 'a.b' } } },
     ];
 
-    const dynamicExtensionHook = (pkg: PluginPackage) => {
+    const moduleHook = jest.fn(
+      () => `
+      import { moduleHookTest } from '@console/test';
+      moduleHookTest();
+      `,
+    );
+
+    const extensionHook = jest.fn((pkg: PluginPackage) => {
       switch (pkg) {
         case fooPluginPackage:
           return JSON.stringify(fooDynamicExtensions);
@@ -56,11 +62,16 @@ describe('getActivePluginsModule', () => {
         default:
           throw new Error('invalid arguments');
       }
-    };
+    });
 
-    expect(getActivePluginsModule([fooPluginPackage, barPluginPackage], dynamicExtensionHook)).toBe(
+    expect(
+      getActivePluginsModule([fooPluginPackage, barPluginPackage], moduleHook, extensionHook),
+    ).toBe(
       trimStartMultiLine(
         `
+        import { moduleHookTest } from '@console/test';
+        moduleHookTest();
+
         const activePlugins = [];
 
         activePlugins.push({
@@ -83,6 +94,13 @@ describe('getActivePluginsModule', () => {
         `,
       ),
     );
+
+    expect(moduleHook.mock.calls.length).toBe(1);
+    expect(moduleHook.mock.calls[0]).toEqual([]);
+
+    expect(extensionHook.mock.calls.length).toBe(2);
+    expect(extensionHook.mock.calls[0]).toEqual([fooPluginPackage]);
+    expect(extensionHook.mock.calls[1]).toEqual([barPluginPackage]);
   });
 });
 
@@ -116,7 +134,9 @@ describe('loadActivePluginsForTestPurposes', () => {
       { type: 'Dynamic/Bar', properties: { baz: 1, qux: { $codeRef: 'a.b' } } },
     ];
 
-    const dynamicExtensionHook = (pkg: PluginPackage) => {
+    const moduleHook = jest.fn<void>();
+
+    const extensionHook = jest.fn((pkg: PluginPackage) => {
       switch (pkg) {
         case fooPluginPackage:
           return fooDynamicExtensions;
@@ -125,13 +145,17 @@ describe('loadActivePluginsForTestPurposes', () => {
         default:
           throw new Error('invalid arguments');
       }
-    };
+    });
 
     jest.doMock('foo/src/plugin.ts', () => ({ default: fooStaticExtensions }), { virtual: true });
     jest.doMock('bar-plugin/index.ts', () => ({ default: barStaticExtensions }), { virtual: true });
 
     expect(
-      loadActivePluginsForTestPurposes([fooPluginPackage, barPluginPackage], dynamicExtensionHook),
+      loadActivePluginsForTestPurposes(
+        [fooPluginPackage, barPluginPackage],
+        moduleHook,
+        extensionHook,
+      ),
     ).toEqual([
       {
         name: 'foo',
@@ -142,6 +166,13 @@ describe('loadActivePluginsForTestPurposes', () => {
         extensions: [...barStaticExtensions, ...barDynamicExtensions],
       },
     ]);
+
+    expect(moduleHook.mock.calls.length).toBe(1);
+    expect(moduleHook.mock.calls[0]).toEqual([]);
+
+    expect(extensionHook.mock.calls.length).toBe(2);
+    expect(extensionHook.mock.calls[0]).toEqual([fooPluginPackage]);
+    expect(extensionHook.mock.calls[1]).toEqual([barPluginPackage]);
   });
 });
 
@@ -156,16 +187,6 @@ describe('getExecutableCodeRefSource', () => {
 
   it('transforms encoded code reference into executable CodeRef function source', () => {
     const validationResult = new ValidationResult('test');
-
-    reloadModule.mockImplementation((request: string) => {
-      switch (request) {
-        case 'test-plugin/src/foo.ts':
-        case '@console/test-plugin/src/foo.ts':
-          return { bar: 'value' };
-        default:
-          throw new Error('invalid mock arguments');
-      }
-    });
 
     expect(
       getExecutableCodeRefSource(
@@ -225,53 +246,6 @@ describe('getExecutableCodeRefSource', () => {
     expect(validationResult.getErrors().length).toBe(1);
     expect(validationResult.getErrors()[0]).toBe("Module 'foo' is not exposed in property 'qux'");
   });
-
-  it('fails when requested module resolution throws an error', () => {
-    const validationResult = new ValidationResult('test');
-
-    reloadModule.mockImplementation(() => {
-      throw new Error('boom');
-    });
-
-    expect(
-      getExecutableCodeRefSource(
-        { $codeRef: 'foo.bar' },
-        'qux',
-        getPluginPackage('test-plugin', { foo: 'src/foo.ts' }),
-        validationResult,
-      ),
-    ).toBe('() => Promise.resolve(null)');
-
-    expect(validationResult.getErrors().length).toBe(1);
-    expect(validationResult.getErrors()[0]).toBe(
-      "Cannot import 'test-plugin/src/foo.ts' in property 'qux'",
-    );
-  });
-
-  it('fails on missing module export', () => {
-    const validationResult = new ValidationResult('test');
-
-    reloadModule.mockImplementation((request: string) => {
-      switch (request) {
-        case 'test-plugin/src/foo.ts':
-          return { bar: 'value' };
-        default:
-          throw new Error('invalid mock arguments');
-      }
-    });
-
-    expect(
-      getExecutableCodeRefSource(
-        { $codeRef: 'foo.baz' },
-        'qux',
-        getPluginPackage('test-plugin', { foo: 'src/foo.ts' }),
-        validationResult,
-      ),
-    ).toBe('() => Promise.resolve(null)');
-
-    expect(validationResult.getErrors().length).toBe(1);
-    expect(validationResult.getErrors()[0]).toBe("Invalid module export 'baz' in property 'qux'");
-  });
 });
 
 describe('getDynamicExtensions', () => {
@@ -295,18 +269,17 @@ describe('getDynamicExtensions', () => {
       consolePlugin: { entry: 'src/plugin.ts' },
     };
 
-    const extensionsObject: { data: Extension[] } = {
-      data: [
-        { type: 'Dynamic/Foo', properties: { test: true, mux: { $codeRef: 'a.b' } } },
-        { type: 'Dynamic/Bar', properties: { baz: 1, qux: { $codeRef: 'foo.bar' } } },
-      ],
-    };
+    const extensionsJSON: Extension[] = [
+      { type: 'Dynamic/Foo', properties: { test: true, mux: { $codeRef: 'a.b' } } },
+      { type: 'Dynamic/Bar', properties: { baz: 1, qux: { $codeRef: 'foo.bar' } } },
+    ];
 
     const extensionsFilePath = `${pluginPackage._path}/${extensionsFile}`;
     const errorCallback = jest.fn();
+    const codeRefTransformer = jest.fn<string>((codeRefSource) => `ref(${codeRefSource})`);
 
     fsExistsSync.mockImplementation(() => true);
-    parseJSONC.mockImplementation(() => extensionsObject);
+    parseJSONC.mockImplementation(() => extensionsJSON);
     validateExtensionsFileSchema.mockImplementation(() => new ValidationResult('test'));
 
     getExecutableCodeRefSourceMock.mockImplementation((ref: EncodedCodeRef) => {
@@ -319,7 +292,9 @@ describe('getDynamicExtensions', () => {
       throw new Error('invalid mock arguments');
     });
 
-    expect(getDynamicExtensions(pluginPackage, extensionsFilePath, errorCallback)).toBe(
+    expect(
+      getDynamicExtensions(pluginPackage, extensionsFilePath, errorCallback, codeRefTransformer),
+    ).toBe(
       trimStartMultiLine(
         `
         [
@@ -327,14 +302,14 @@ describe('getDynamicExtensions', () => {
             "type": "Dynamic/Foo",
             "properties": {
               "test": true,
-              "mux": () => import('test-plugin/src/aaa.ts').then((m) => m.b)
+              "mux": ref(() => import('test-plugin/src/aaa.ts').then((m) => m.b))
             }
           },
           {
             "type": "Dynamic/Bar",
             "properties": {
               "baz": 1,
-              "qux": () => import('test-plugin/src/foo.ts').then((m) => m.bar)
+              "qux": ref(() => import('test-plugin/src/foo.ts').then((m) => m.bar))
             }
           }
         ]`,
@@ -342,9 +317,18 @@ describe('getDynamicExtensions', () => {
     );
 
     expect(errorCallback).not.toHaveBeenCalled();
+
+    expect(codeRefTransformer.mock.calls.length).toBe(2);
+    expect(codeRefTransformer.mock.calls[0]).toEqual([
+      "() => import('test-plugin/src/aaa.ts').then((m) => m.b)",
+    ]);
+    expect(codeRefTransformer.mock.calls[1]).toEqual([
+      "() => import('test-plugin/src/foo.ts').then((m) => m.bar)",
+    ]);
+
     expect(fsExistsSync).toHaveBeenCalledWith(extensionsFilePath);
     expect(parseJSONC).toHaveBeenCalledWith(extensionsFilePath);
-    expect(validateExtensionsFileSchema).toHaveBeenCalledWith(extensionsObject, extensionsFilePath);
+    expect(validateExtensionsFileSchema).toHaveBeenCalledWith(extensionsJSON, extensionsFilePath);
 
     expect(getExecutableCodeRefSourceMock.mock.calls.length).toBe(2);
     expect(getExecutableCodeRefSourceMock.mock.calls[0]).toEqual([
@@ -371,12 +355,16 @@ describe('getDynamicExtensions', () => {
 
     const extensionsFilePath = `${pluginPackage._path}/${extensionsFile}`;
     const errorCallback = jest.fn();
+    const codeRefTransformer = jest.fn<string>(_.identity);
 
     fsExistsSync.mockImplementation(() => false);
 
-    expect(getDynamicExtensions(pluginPackage, extensionsFilePath, errorCallback)).toBe('[]');
+    expect(
+      getDynamicExtensions(pluginPackage, extensionsFilePath, errorCallback, codeRefTransformer),
+    ).toBe('[]');
 
     expect(errorCallback).not.toHaveBeenCalled();
+    expect(codeRefTransformer).not.toHaveBeenCalled();
     expect(fsExistsSync).toHaveBeenCalledWith(extensionsFilePath);
     expect(parseJSONC).not.toHaveBeenCalled();
     expect(validateExtensionsFileSchema).not.toHaveBeenCalled();
@@ -391,24 +379,28 @@ describe('getDynamicExtensions', () => {
       consolePlugin: { entry: 'src/plugin.ts' },
     };
 
-    const extensionsObject: { data: Extension[] } = { data: [] };
+    const extensionsJSON: Extension[] = [];
     const extensionsFilePath = `${pluginPackage._path}/${extensionsFile}`;
     const errorCallback = jest.fn();
+    const codeRefTransformer = jest.fn<string>(_.identity);
 
     fsExistsSync.mockImplementation(() => true);
-    parseJSONC.mockImplementation(() => extensionsObject);
+    parseJSONC.mockImplementation(() => extensionsJSON);
     validateExtensionsFileSchema.mockImplementation(() => {
       const result = new ValidationResult('test');
       result.addError('schema validation error');
       return result;
     });
 
-    expect(getDynamicExtensions(pluginPackage, extensionsFilePath, errorCallback)).toBe('[]');
+    expect(
+      getDynamicExtensions(pluginPackage, extensionsFilePath, errorCallback, codeRefTransformer),
+    ).toBe('[]');
 
     expect(errorCallback).toHaveBeenCalledWith(expect.any(String));
+    expect(codeRefTransformer).not.toHaveBeenCalled();
     expect(fsExistsSync).toHaveBeenCalledWith(extensionsFilePath);
     expect(parseJSONC).toHaveBeenCalledWith(extensionsFilePath);
-    expect(validateExtensionsFileSchema).toHaveBeenCalledWith(extensionsObject, extensionsFilePath);
+    expect(validateExtensionsFileSchema).toHaveBeenCalledWith(extensionsJSON, extensionsFilePath);
     expect(getExecutableCodeRefSourceMock).not.toHaveBeenCalled();
   });
 
@@ -420,18 +412,17 @@ describe('getDynamicExtensions', () => {
       consolePlugin: { entry: 'src/plugin.ts' },
     };
 
-    const extensionsObject: { data: Extension[] } = {
-      data: [
-        { type: 'Dynamic/Foo', properties: { test: true, mux: { $codeRef: 'a.b' } } },
-        { type: 'Dynamic/Bar', properties: { baz: 1, qux: { $codeRef: 'foo.bar' } } },
-      ],
-    };
+    const extensionsJSON: Extension[] = [
+      { type: 'Dynamic/Foo', properties: { test: true, mux: { $codeRef: 'a.b' } } },
+      { type: 'Dynamic/Bar', properties: { baz: 1, qux: { $codeRef: 'foo.bar' } } },
+    ];
 
     const extensionsFilePath = `${pluginPackage._path}/${extensionsFile}`;
     const errorCallback = jest.fn();
+    const codeRefTransformer = jest.fn<string>(_.identity);
 
     fsExistsSync.mockImplementation(() => true);
-    parseJSONC.mockImplementation(() => extensionsObject);
+    parseJSONC.mockImplementation(() => extensionsJSON);
     validateExtensionsFileSchema.mockImplementation(() => new ValidationResult('test'));
 
     getExecutableCodeRefSourceMock.mockImplementation(
@@ -452,12 +443,21 @@ describe('getDynamicExtensions', () => {
       },
     );
 
-    expect(getDynamicExtensions(pluginPackage, extensionsFilePath, errorCallback)).toBe('[]');
+    expect(
+      getDynamicExtensions(pluginPackage, extensionsFilePath, errorCallback, codeRefTransformer),
+    ).toBe('[]');
 
     expect(errorCallback).toHaveBeenCalledWith(expect.any(String));
+
+    expect(codeRefTransformer.mock.calls.length).toBe(2);
+    expect(codeRefTransformer.mock.calls[0]).toEqual(['() => Promise.resolve(null)']);
+    expect(codeRefTransformer.mock.calls[1]).toEqual([
+      "() => import('test-plugin/src/foo.ts').then((m) => m.bar)",
+    ]);
+
     expect(fsExistsSync).toHaveBeenCalledWith(extensionsFilePath);
     expect(parseJSONC).toHaveBeenCalledWith(extensionsFilePath);
-    expect(validateExtensionsFileSchema).toHaveBeenCalledWith(extensionsObject, extensionsFilePath);
+    expect(validateExtensionsFileSchema).toHaveBeenCalledWith(extensionsJSON, extensionsFilePath);
 
     expect(getExecutableCodeRefSourceMock.mock.calls.length).toBe(2);
     expect(getExecutableCodeRefSourceMock.mock.calls[0]).toEqual([

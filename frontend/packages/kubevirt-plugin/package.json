@@ -12,7 +12,7 @@
     "@console/shared": "0.0.0-fixed",
     "@console/topology": "0.0.0-fixed",
     "@console/dev-console": "0.0.0-fixed",
-    "@patternfly/react-console": "1.x",
+    "@patternfly/react-console": "4.3.2",
     "unique-names-generator": "4.3.1"
   },
   "consolePlugin": {
@@ -40,6 +40,11 @@
         "integration-tests/tests/vm.tab.snapshots.scenario.ts",
         "integration-tests/tests/vmi.actions.scenario.ts"
       ]
+    },
+    "exposedModules": {
+      "standaloneConsole": "src/components/vms/vm-console/StandaloneVMConsolePage.tsx",
+      "icons": "src/utils/icons.tsx",
+      "createVM": "src/components/create-vm"
     }
   }
 }

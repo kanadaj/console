@@ -1,13 +1,15 @@
 import * as React from 'react';
 import { useFormikContext, FormikValues } from 'formik';
 import { useTranslation } from 'react-i18next';
+import * as _ from 'lodash';
 import { RadioGroupField } from '@console/shared';
 import FormSection from '../section/FormSection';
 import { imageRegistryType } from '../../../utils/imagestream-utils';
 import ImageStream from './ImageStream';
 import ImageSearch from './ImageSearch';
+import { ResourceLink } from '@console/internal/components/utils';
 
-const ImageSearchSection: React.FC = () => {
+const ImageSearchSection: React.FC<{ disabled?: boolean }> = ({ disabled = false }) => {
   const { t } = useTranslation();
   const { values, setFieldValue, initialValues } = useFormikContext<FormikValues>();
   const [registry, setRegistry] = React.useState(values.registry);
@@ -32,20 +34,26 @@ const ImageSearchSection: React.FC = () => {
       title={t('devconsole~Image')}
       subTitle={t('devconsole~Deploy an existing Image from an Image Stream or Image registry.')}
     >
+      {!_.isEmpty(values.containers) && (
+        <div className="co-section-heading-tertiary">
+          {t('devconsole~Container')}
+          <ResourceLink kind="Container" name={values.containers[0].name} linkTo={false} />
+        </div>
+      )}
       <RadioGroupField
         name="registry"
         options={[
           {
-            label: imageRegistryType.External.label,
-            value: imageRegistryType.External.value,
-            isDisabled: values.formType === 'edit' && values.registry === 'internal',
+            label: imageRegistryType(t).External.label,
+            value: imageRegistryType(t).External.value,
+            isDisabled: (values.formType === 'edit' && values.registry === 'internal') || disabled,
             activeChildren: <ImageSearch />,
           },
           {
-            label: imageRegistryType.Internal.label,
-            value: imageRegistryType.Internal.value,
-            isDisabled: values.formType === 'edit' && values.registry === 'external',
-            activeChildren: <ImageStream />,
+            label: imageRegistryType(t).Internal.label,
+            value: imageRegistryType(t).Internal.value,
+            isDisabled: (values.formType === 'edit' && values.registry === 'external') || disabled,
+            activeChildren: <ImageStream disabled={disabled} />,
           },
         ]}
       />

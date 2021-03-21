@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import { TemplateKind } from '@console/internal/module/k8s';
-import { getLabel } from '@console/shared';
+import { getLabel, getName } from '@console/shared';
 import {
   CloudInitDataHelper,
   CloudInitDataFormKeys,
@@ -21,6 +21,7 @@ import {
   DiskBus,
   ROOT_DISK_NAME,
   DataVolumeSourceType,
+  DEFAULT_DISK_SIZE,
 } from '../../constants/vm';
 import {
   getCloudInitVolume,
@@ -34,11 +35,13 @@ import { compareVersions, removeOSDups } from '../../utils/sort';
 import { selectVM, isCommonTemplate } from './basic';
 import { convertToBaseValue, humanizeBinaryBytes } from '@console/internal/components/utils';
 import { isTemplateSourceError, TemplateSourceStatus } from '../../statuses/template/types';
-import { vCPUCount } from '../vm/cpu';
 import { BootSourceState } from '../../components/create-vm/forms/boot-source-form-reducer';
+import { stringValueUnitSplit } from '../../components/form/size-unit-utils';
 import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
 import { DiskWrapper } from '../../k8s/wrapper/vm/disk-wrapper';
 import { getDataVolumeStorageSize } from '../dv/selectors';
+import { getFlavorData } from '../vm/flavor-data';
+import { VM_TEMPLATE_NAME_PARAMETER } from '../../constants';
 
 export const getTemplatesWithLabels = (templates: TemplateKind[], labels: string[]) => {
   const requiredLabels = labels.filter((label) => label);
@@ -108,12 +111,16 @@ export const getTemplateOperatingSystems = (templates: TemplateKind[]) => {
         (t) =>
           !!Object.keys(getAnnotations(t, {})).find((annotation) => annotation === nameAnnotation),
       );
+      const vm = selectVM(template);
+      const dvTemplates = getDataVolumeTemplates(vm);
+      const dv = dvTemplates.find((dvt) => getName(dvt) === VM_TEMPLATE_NAME_PARAMETER);
 
       return {
         id: osId,
         name: getAnnotation(template, nameAnnotation),
         baseImageName: getParameterValue(template, TEMPLATE_BASE_IMAGE_NAME_PARAMETER),
         baseImageNamespace: getParameterValue(template, TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER),
+        baseImageRecomendedSize: dv && stringValueUnitSplit(getDataVolumeStorageSize(dv)),
       };
     }),
   );
@@ -157,7 +164,7 @@ export const getTemplateSizeRequirementInBytes = (
     sourceSize = convertToBaseValue(getDataVolumeStorageSize(templateSource.dvTemplate));
   }
 
-  return templatesSize + sourceSize + (isCDRom ? convertToBaseValue('20Gi') : 0);
+  return templatesSize + sourceSize + (isCDRom ? convertToBaseValue(DEFAULT_DISK_SIZE) : 0);
 };
 
 export const getTemplateMemory = (template: TemplateKind): string => {
@@ -165,13 +172,13 @@ export const getTemplateMemory = (template: TemplateKind): string => {
   return humanizeBinaryBytes(baseMemoryValue).string;
 };
 
-export const getTemplateFlavorDesc = (
-  template: TemplateKind,
-  addMemoryText: boolean = true,
-): string =>
-  `${_.capitalize(getFlavor(template) || 'Custom')} ${vCPUCount(
-    getCPU(selectVM(template)),
-  )} CPU | ${getTemplateMemory(template).concat(addMemoryText ? ' Memory' : '')}`;
+export const getTemplateFlavorData = (template: TemplateKind) => {
+  return getFlavorData({
+    cpu: getCPU(selectVM(template)),
+    memory: getMemory(selectVM(template)),
+    flavor: getFlavor(template),
+  });
+};
 
 export const getDefaultDiskBus = (template: TemplateKind): DiskBus => {
   const vmWrapper = new VMWrapper(template);

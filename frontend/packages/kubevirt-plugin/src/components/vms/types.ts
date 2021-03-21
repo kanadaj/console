@@ -3,12 +3,11 @@ import {
   K8sResourceKind,
   PersistentVolumeClaimKind,
   PodKind,
-  TemplateKind,
 } from '@console/internal/module/k8s';
 import { VMIKind, VMKind } from '../../types/vm';
 import { VMGenericLikeEntityKind, VMILikeEntityKind } from '../../types/vmLike';
 import { VMImportKind } from '../../types/vm-import/ovirt/vm-import';
-import { V1alpha1DataVolume } from '../../types/vm/disk/V1alpha1DataVolume';
+import { V1alpha1DataVolume } from '../../types/api';
 
 type PendingChange = {
   isPendingChange: boolean;
@@ -34,7 +33,6 @@ export type VMTabProps = {
   vmis?: VMIKind[];
   pods?: PodKind[];
   migrations?: K8sResourceKind[];
-  templates?: TemplateKind[];
   pvcs?: PersistentVolumeClaimKind[];
   dataVolumes?: V1alpha1DataVolume[];
   vmImports?: VMImportKind[];

@@ -8,14 +8,33 @@ import {
 import { BuildStrategyType } from '@console/internal/components/build';
 import { DeploymentConfigModel, DeploymentModel } from '@console/internal/models';
 import { hasIcon } from '@console/internal/components/catalog/catalog-item-icon';
-import { ServiceModel } from '@console/knative-plugin';
-import { Pipeline } from '@console/pipelines-plugin/src/utils/pipeline-augment';
+import {
+  KNATIVE_AUTOSCALEWINDOW_ANNOTATION,
+  KNATIVE_CONCURRENCYTARGET_ANNOTATION,
+  KNATIVE_CONCURRENCYUTILIZATION_ANNOTATION,
+  KNATIVE_MAXSCALE_ANNOTATION,
+  KNATIVE_MINSCALE_ANNOTATION,
+  KNATIVE_SERVING_LABEL,
+  ServiceModel,
+} from '@console/knative-plugin';
+import { PipelineKind } from '@console/pipelines-plugin/src/types';
+import {
+  PIPELINE_RUNTIME_LABEL,
+  PIPELINE_RUNTIME_VERSION_LABEL,
+} from '@console/pipelines-plugin/src/const';
+import { isDockerPipeline } from '@console/pipelines-plugin/src/components/import/pipeline/pipeline-template-utils';
 import { UNASSIGNED_KEY } from '@console/topology/src/const';
-import { Resources, DeploymentData, GitReadableTypes } from '../import/import-types';
+import {
+  Resources,
+  DeploymentData,
+  GitReadableTypes,
+  ServerlessData,
+} from '../import/import-types';
 import { AppResources } from './edit-application-types';
 import { RegistryType } from '../../utils/imagestream-utils';
 import { getHealthChecksData } from '../health-checks/create-health-checks-probe-utils';
 import { detectGitType } from '../import/import-validation-utils';
+import { getAutoscaleWindow } from '../import/serverless/serverless-utils';
 
 export enum CreateApplicationFlow {
   Git = 'Import from Git',
@@ -74,7 +93,7 @@ export const getGitDataFromBuildConfig = (buildConfig: K8sResourceKind) => {
   return gitData;
 };
 
-const getGitDataFromPipeline = (pipeline: Pipeline) => {
+const getGitDataFromPipeline = (pipeline: PipelineKind) => {
   const params = pipeline?.spec?.params;
   const url = (params?.find((param) => param?.name === 'GIT_REPO')?.default ?? '') as string;
   const ref = params?.find((param) => param?.name === 'GIT_REVISION')?.default ?? '';
@@ -88,6 +107,19 @@ const getGitDataFromPipeline = (pipeline: Pipeline) => {
     secret: '',
     isUrlValidating: false,
   };
+};
+
+export const getKsvcRouteData = (resource: K8sResourceKind) => {
+  const { metadata, spec } = resource;
+  const containers = spec?.template?.spec?.containers ?? [];
+  const port = containers?.[0]?.ports?.[0]?.containerPort ?? '';
+  const routeData = {
+    create: metadata?.labels?.[`${KNATIVE_SERVING_LABEL}/visibility`] !== 'cluster-local',
+    unknownTargetPort: _.toString(port),
+    targetPort: _.toString(port),
+    defaultUnknownPort: 8080,
+  };
+  return routeData;
 };
 
 export const getRouteData = (route: K8sResourceKind, resource: K8sResourceKind) => {
@@ -110,24 +142,19 @@ export const getRouteData = (route: K8sResourceKind, resource: K8sResourceKind) 
     },
   };
   if (getResourcesType(resource) === Resources.KnativeService) {
-    const containers = _.get(resource, 'spec.template.spec.containers', []);
-    const port = _.get(containers[0], 'ports[0].containerPort', '');
     routeData = {
       ...routeData,
-      disable:
-        _.get(resource, 'metadata.labels["serving.knative.dev/visibility"]', '') !==
-        'cluster-local',
-      create:
-        _.get(resource, 'metadata.labels["serving.knative.dev/visibility"]', '') !==
-        'cluster-local',
-      unknownTargetPort: _.toString(port),
-      targetPort: _.toString(port),
+      ...getKsvcRouteData(resource),
     };
   }
   return routeData;
 };
 
-export const getBuildData = (buildConfig: K8sResourceKind, pipeline: Pipeline, gitType: string) => {
+export const getBuildData = (
+  buildConfig: K8sResourceKind,
+  pipeline: PipelineKind,
+  gitType: string,
+) => {
   const buildStrategyType = _.get(buildConfig, 'spec.strategy.type', '');
   let buildStrategyData;
   switch (buildStrategyType) {
@@ -150,31 +177,49 @@ export const getBuildData = (buildConfig: K8sResourceKind, pipeline: Pipeline, g
     },
     strategy:
       buildStrategyType ||
-      (pipeline?.metadata?.labels?.['pipeline.openshift.io/strategy'] ===
-      _.toLower(BuildStrategyType.Docker)
-        ? BuildStrategyType.Docker
-        : BuildStrategyType.Source),
+      (isDockerPipeline(pipeline) ? BuildStrategyType.Docker : BuildStrategyType.Source),
   };
   return buildData;
 };
 
-export const getServerlessData = (resource: K8sResourceKind) => {
-  let serverlessData = {
+export const getServerlessData = (resource: K8sResourceKind): ServerlessData => {
+  let serverlessData: ServerlessData = {
     scaling: {
-      minpods: 0,
+      minpods: '',
       maxpods: '',
       concurrencytarget: '',
       concurrencylimit: '',
+      autoscale: {
+        autoscalewindow: '',
+        autoscalewindowUnit: 's',
+        defaultAutoscalewindowUnit: 's',
+      },
+      concurrencyutilization: '',
     },
   };
   if (getResourcesType(resource) === Resources.KnativeService) {
-    const annotations = _.get(resource, 'spec.template.metadata.annotations');
+    const {
+      spec: {
+        template: { metadata, spec },
+      },
+    } = resource;
+    const annotations = metadata?.annotations;
+    const autoscalewindowAnnotation = annotations?.[KNATIVE_AUTOSCALEWINDOW_ANNOTATION] || '';
+    const { autoscalewindow, autoscalewindowUnit, defaultAutoscalewindowUnit } = getAutoscaleWindow(
+      autoscalewindowAnnotation,
+    );
     serverlessData = {
       scaling: {
-        minpods: _.get(annotations, 'autoscaling.knative.dev/minScale', 0),
-        maxpods: _.get(annotations, 'autoscaling.knative.dev/maxScale', ''),
-        concurrencytarget: _.get(annotations, 'autoscaling.knative.dev/target', ''),
-        concurrencylimit: _.get(resource, 'spec.template.spec.containerConcurrency', ''),
+        minpods: annotations?.[KNATIVE_MINSCALE_ANNOTATION] || '',
+        maxpods: annotations?.[KNATIVE_MAXSCALE_ANNOTATION] || '',
+        concurrencytarget: annotations?.[KNATIVE_CONCURRENCYTARGET_ANNOTATION] || '',
+        concurrencylimit: spec?.containerConcurrency || '',
+        autoscale: {
+          autoscalewindow,
+          autoscalewindowUnit,
+          defaultAutoscalewindowUnit,
+        },
+        concurrencyutilization: annotations?.[KNATIVE_CONCURRENCYUTILIZATION_ANNOTATION] || '',
       },
     };
   }
@@ -187,7 +232,10 @@ export const getDeploymentData = (resource: K8sResourceKind) => {
     replicas: 1,
     triggers: { image: true, config: true },
   };
-  const container = resource.spec?.template?.spec?.containers?.[0];
+  const container = _.find(
+    resource.spec?.template?.spec?.containers,
+    (c) => c.name === resource.metadata.name,
+  );
   const env = container?.env ?? [];
   switch (getResourcesType(resource)) {
     case Resources.KnativeService:
@@ -274,7 +322,7 @@ export const getUserLabels = (resource: K8sResourceKind) => {
 export const getCommonInitialValues = (
   editAppResource: K8sResourceKind,
   route: K8sResourceKind,
-  pipelineData: Pipeline,
+  pipelineData: PipelineKind,
   name: string,
   namespace: string,
 ) => {
@@ -313,7 +361,7 @@ export const getIconInitialValues = (editAppResource: K8sResourceKind) => {
 
 export const getGitAndDockerfileInitialValues = (
   buildConfig: K8sResourceKind,
-  pipeline: Pipeline,
+  pipeline: PipelineKind,
 ) => {
   if (_.isEmpty(buildConfig) && _.isEmpty(pipeline)) {
     return {};
@@ -332,10 +380,9 @@ export const getGitAndDockerfileInitialValues = (
         'Dockerfile',
     },
     image: {
-      selected:
-        currentImage[0] || (pipeline?.metadata?.labels?.['pipeline.openshift.io/runtime'] ?? ''),
+      selected: pipeline?.metadata?.labels?.[PIPELINE_RUNTIME_LABEL] || currentImage[0] || '',
       recommended: '',
-      tag: currentImage[1] || '',
+      tag: pipeline?.metadata?.labels?.[PIPELINE_RUNTIME_VERSION_LABEL] || currentImage[1] || '',
       tagObj: {},
       ports: [],
       isRecommending: false,
@@ -346,7 +393,7 @@ export const getGitAndDockerfileInitialValues = (
   return initialValues;
 };
 
-const deployImageInitialValues = {
+export const deployImageInitialValues = {
   searchTerm: '',
   registry: 'external',
   allowInsecureRegistry: false,
@@ -423,7 +470,7 @@ export const getInternalImageInitialValues = (editAppResource: K8sResourceKind) 
 export const getExternalImagelValues = (appResource: K8sResourceKind) => {
   const name = _.get(appResource, 'spec.template.spec.containers[0].image', null);
   if (_.isEmpty(appResource) || !name) {
-    return {};
+    return deployImageInitialValues;
   }
   return {
     ...deployImageInitialValues,

@@ -7,13 +7,13 @@ import { history } from '@console/internal/components/utils';
 import { getActiveApplication } from '@console/internal/reducers/ui';
 import { RootState } from '@console/internal/redux';
 import { K8sResourceKind } from '@console/internal/module/k8s';
-import { ALLOW_SERVICE_BINDING_FLAG } from '@console/topology/src/const';
 import { sanitizeApplicationValue } from '@console/topology/src/utils/application-utils';
 import { DeployImageFormData, FirehoseList, Resources } from './import-types';
 import { createOrUpdateDeployImageResources } from './deployImage-submit-utils';
 import { deployValidationSchema } from './deployImage-validation-utils';
 import DeployImageForm from './DeployImageForm';
 import { healthChecksProbeInitialData } from '../health-checks/health-checks-probe-utils';
+import { useUpdateKnScalingDefaultValues } from './serverless/useUpdateKnScalingDefaultValues';
 
 export interface DeployImageProps {
   namespace: string;
@@ -23,7 +23,6 @@ export interface DeployImageProps {
 
 interface StateProps {
   activeApplication: string;
-  serviceBindingAvailable: boolean;
 }
 
 type Props = DeployImageProps & StateProps;
@@ -75,10 +74,16 @@ const DeployImage: React.FC<Props> = ({
     isSearchingForImage: false,
     serverless: {
       scaling: {
-        minpods: 0,
+        minpods: '',
         maxpods: '',
         concurrencytarget: '',
         concurrencylimit: '',
+        autoscale: {
+          autoscalewindow: '',
+          autoscalewindowUnit: '',
+          defaultAutoscalewindowUnit: 's',
+        },
+        concurrencyutilization: '',
       },
     },
     route: {
@@ -141,6 +146,8 @@ const DeployImage: React.FC<Props> = ({
     healthChecks: healthChecksProbeInitialData,
   };
 
+  const initialVals = useUpdateKnScalingDefaultValues(initialValues);
+
   const handleSubmit = (
     values: DeployImageFormData,
     helpers: FormikHelpers<DeployImageFormData>,
@@ -169,7 +176,7 @@ const DeployImage: React.FC<Props> = ({
 
   return (
     <Formik
-      initialValues={initialValues}
+      initialValues={initialVals}
       onSubmit={handleSubmit}
       onReset={history.goBack}
       validationSchema={deployValidationSchema(t)}
@@ -187,7 +194,6 @@ const mapStateToProps = (state: RootState, ownProps: OwnProps): StateProps => {
 
   return {
     activeApplication: activeApplication !== ALL_APPLICATIONS_KEY ? activeApplication : '',
-    serviceBindingAvailable: state.FLAGS.get(ALLOW_SERVICE_BINDING_FLAG),
   };
 };
 

@@ -10,6 +10,7 @@ import {
   augmentExtension,
   isExtensionInUse,
   getGatingFlagNames,
+  mergeExtensionProperties,
   PluginStore,
 } from '../store';
 import { Extension, ModelDefinition } from '../typings';
@@ -222,18 +223,60 @@ describe('getGatingFlagNames', () => {
   });
 });
 
+describe('mergeExtensionProperties', () => {
+  it('shallowly merges the given object into extension properties', () => {
+    expect(
+      mergeExtensionProperties(
+        {
+          type: 'Foo/Bar',
+          properties: {},
+        },
+        {
+          test: true,
+          qux: { foo: ['value'], baz: 1 },
+        },
+      ),
+    ).toEqual({
+      type: 'Foo/Bar',
+      properties: {
+        test: true,
+        qux: { foo: ['value'], baz: 1 },
+      },
+    });
+
+    expect(
+      mergeExtensionProperties(
+        {
+          type: 'Foo/Bar',
+          properties: {
+            test: true,
+            qux: { foo: ['value'], baz: 1 },
+          },
+        },
+        {
+          test: false,
+          qux: { baz: 2 },
+        },
+      ),
+    ).toEqual({
+      type: 'Foo/Bar',
+      properties: {
+        test: false,
+        qux: { baz: 2 },
+      },
+    });
+  });
+
+  it('returns a new extension instance', () => {
+    const testExtension: Extension = { type: 'Foo/Bar', properties: {} };
+    const updatedExtension = mergeExtensionProperties(testExtension, {});
+
+    expect(updatedExtension).not.toBe(testExtension);
+    expect(Object.isFrozen(updatedExtension)).toBe(true);
+  });
+});
+
 describe('PluginStore', () => {
-  let debounce: jest.SpyInstance<typeof _.debounce>;
-
-  beforeEach(() => {
-    debounce = jest.spyOn(_, 'debounce');
-    debounce.mockImplementation((func) => func);
-  });
-
-  afterEach(() => {
-    debounce.mockRestore();
-  });
-
   describe('constructor', () => {
     it('processes all plugins and stores their extensions in staticPluginExtensions', () => {
       const store = new PluginStore([
@@ -314,24 +357,24 @@ describe('PluginStore', () => {
         },
       ]);
 
-      const dynamicExtensions1: Extension[] = [
+      const dynamicPluginExtensions1: Extension[] = [
         { type: 'Qux', properties: { value: 'test' }, flags: { required: ['foo', 'bar'] } },
       ];
 
-      const dynamicExtensions2: Extension[] = [
+      const dynamicPluginExtensions2: Extension[] = [
         { type: 'Mux', properties: {}, flags: { required: ['foo'], disallowed: ['bar'] } },
       ];
 
       store.addDynamicPlugin(
         'Test1@1.2.3',
-        getPluginManifest('Test1', '1.2.3', dynamicExtensions1),
-        dynamicExtensions1,
+        getPluginManifest('Test1', '1.2.3', dynamicPluginExtensions1),
+        dynamicPluginExtensions1,
       );
 
       store.addDynamicPlugin(
         'Test2@2.3.4',
-        getPluginManifest('Test2', '2.3.4', dynamicExtensions2),
-        dynamicExtensions2,
+        getPluginManifest('Test2', '2.3.4', dynamicPluginExtensions2),
+        dynamicPluginExtensions2,
       );
 
       store.setDynamicPluginEnabled('Test1@1.2.3', true);

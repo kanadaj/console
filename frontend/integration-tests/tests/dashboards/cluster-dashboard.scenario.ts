@@ -5,8 +5,8 @@ import * as sideNavView from '../../views/sidenav.view';
 const inventoryItems = [
   { title: 'Node', link: '/k8s/cluster/nodes' },
   { title: 'Pod', link: '/k8s/all-namespaces/pods' },
-  { title: 'Storage Class', link: '/k8s/cluster/storageclasses' },
-  { title: 'PVC', link: '/k8s/all-namespaces/persistentvolumeclaims' },
+  { title: 'StorageClass', link: '/k8s/cluster/storageclasses' },
+  { title: 'PersistentVolumeClaim', link: '/k8s/all-namespaces/persistentvolumeclaims' },
 ];
 
 const utilizationItems = ['CPU', 'Memory', 'Filesystem', 'Network transfer', 'Pod count'];

@@ -26,19 +26,16 @@ import CloudShell from '@console/app/src/components/cloud-shell/CloudShell';
 import CloudShellTab from '@console/app/src/components/cloud-shell/CloudShellTab';
 import DetectPerspective from '@console/app/src/components/detect-perspective/DetectPerspective';
 import DetectNamespace from '@console/app/src/components/detect-namespace/DetectNamespace';
-import { withExtensions, isContextProvider } from '@console/plugin-sdk';
+import { useExtensions, withExtensions, isContextProvider } from '@console/plugin-sdk';
 import { GuidedTour } from '@console/app/src/components/tour';
-
-const consoleLoader = () =>
-  import(
-    '@console/kubevirt-plugin/src/components/connected-vm-console/vm-console-page' /* webpackChunkName: "kubevirt" */
-  ).then((m) => m.VMConsolePage);
+import { isStandaloneRoutePage } from '@console/dynamic-plugin-sdk/src/extensions/pages';
 import QuickStartDrawer from '@console/app/src/components/quick-starts/QuickStartDrawer';
+import ToastProvider from '@console/shared/src/components/toast/ToastProvider';
 import '../i18n';
 import '../vendor.scss';
 import '../style.scss';
 
-//PF4 Imports
+// PF4 Imports
 import { Page, SkipToContent } from '@patternfly/react-core';
 
 const breakpointMD = 768;
@@ -213,6 +210,28 @@ render(<LoadingBox />, document.getElementById('app'));
 
 const AppWithTranslation = withTranslation()(App);
 
+const AppRouter = () => {
+  const standaloneRouteExtensions = useExtensions(isStandaloneRoutePage);
+  return (
+    <Router history={history} basename={window.SERVER_FLAGS.basePath}>
+      <Switch>
+        {standaloneRouteExtensions.map((e) => (
+          <Route
+            key={e.uid}
+            render={(componentProps) => (
+              <AsyncComponent loader={e.properties.component} {...componentProps} />
+            )}
+            path={e.properties.path}
+            exact={e.properties.exact}
+          />
+        ))}
+        <Route path="/terminal" component={CloudShellTab} />
+        <Route path="/" component={AppWithTranslation} />
+      </Switch>
+    </Router>
+  );
+};
+
 graphQLReady.onReady(() => {
   const startDiscovery = () => store.dispatch(watchAPIServices());
 
@@ -284,18 +303,9 @@ graphQLReady.onReady(() => {
   render(
     <React.Suspense fallback={<LoadingBox />}>
       <Provider store={store}>
-        <Router history={history} basename={window.SERVER_FLAGS.basePath}>
-          <Switch>
-            <Route
-              path="/k8s/ns/:ns/virtualmachineinstances/:name/standaloneconsole"
-              render={(componentProps) => (
-                <AsyncComponent loader={consoleLoader} {...componentProps} />
-              )}
-            />
-            <Route path="/terminal" component={CloudShellTab} />
-            <Route path="/" component={AppWithTranslation} />
-          </Switch>
-        </Router>
+        <ToastProvider>
+          <AppRouter />
+        </ToastProvider>
       </Provider>
     </React.Suspense>,
     document.getElementById('app'),

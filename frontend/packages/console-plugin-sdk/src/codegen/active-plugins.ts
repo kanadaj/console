@@ -14,21 +14,15 @@ import { trimStartMultiLine } from '../utils/string';
 import { consolePkgScope, PluginPackage } from './plugin-resolver';
 
 /**
- * Reload the requested module, bypassing `require.cache` mechanism.
- */
-export const reloadModule = (request: string) => {
-  delete require.cache[require.resolve(request)];
-  return require(request);
-};
-
-/**
  * Generate the `@console/active-plugins` virtual module source.
  */
 export const getActivePluginsModule = (
   pluginPackages: PluginPackage[],
-  dynamicExtensionHook: (pkg: PluginPackage) => string = _.constant('[]'),
+  moduleHook: () => string = _.constant(''),
+  extensionHook: (pkg: PluginPackage) => string = _.constant('[]'),
 ) => {
   let output = `
+    ${moduleHook()}
     const activePlugins = [];
   `;
 
@@ -39,7 +33,7 @@ export const getActivePluginsModule = (
         name: '${pkg.name}',
         extensions: [
           ...require('${pkg.name}/${pkg.consolePlugin.entry}').default,
-          ...${dynamicExtensionHook(pkg)},
+          ...${extensionHook(pkg)},
         ],
       });
     `;
@@ -58,8 +52,10 @@ export const getActivePluginsModule = (
  */
 export const loadActivePluginsForTestPurposes = (
   pluginPackages: PluginPackage[],
-  dynamicExtensionHook: (pkg: PluginPackage) => Extension[] = _.constant([]),
+  moduleHook: VoidFunction = _.noop,
+  extensionHook: (pkg: PluginPackage) => Extension[] = _.constant([]),
 ) => {
+  moduleHook();
   const activePlugins: ActivePlugin[] = [];
 
   for (const pkg of pluginPackages) {
@@ -67,7 +63,7 @@ export const loadActivePluginsForTestPurposes = (
       name: pkg.name,
       extensions: [
         ...require(`${pkg.name}/${pkg.consolePlugin.entry}`).default,
-        ...dynamicExtensionHook(pkg),
+        ...extensionHook(pkg),
       ],
     });
   }
@@ -101,20 +97,6 @@ export const getExecutableCodeRefSource = (
   }
 
   const importPath = `${pkg.name}/${exposedModules[moduleName]}`;
-  let requestedModule: object;
-
-  try {
-    requestedModule = reloadModule(importPath);
-  } catch (error) {
-    validationResult.addError(`Cannot import '${importPath}' ${errorTrace}`);
-    return emptyCodeRefSource;
-  }
-
-  if (!requestedModule[exportName]) {
-    validationResult.addError(`Invalid module export '${exportName}' ${errorTrace}`);
-    return emptyCodeRefSource;
-  }
-
   const pluginReference = pkg.name.replace(`${consolePkgScope}/`, '');
   const webpackChunkName = `${pluginReference}/code-refs/${moduleName}`;
   const webpackMagicComment = `/* webpackChunkName: '${webpackChunkName}' */`;
@@ -131,6 +113,7 @@ export const getDynamicExtensions = (
   pkg: PluginPackage,
   extensionsFilePath: string,
   errorCallback: (errorMessage: string) => void,
+  codeRefTransformer: (codeRefSource: string) => string = _.identity,
 ) => {
   const emptyArraySource = '[]';
 
@@ -148,13 +131,15 @@ export const getDynamicExtensions = (
 
   const codeRefValidationResult = new ValidationResult(extensionsFilePath);
   const source = JSON.stringify(
-    ext.data,
+    ext,
     (key, value) =>
       isEncodedCodeRef(value)
-        ? `%${getExecutableCodeRefSource(value, key, pkg, codeRefValidationResult)}%`
+        ? `@${codeRefTransformer(
+            getExecutableCodeRefSource(value, key, pkg, codeRefValidationResult),
+          )}@`
         : value,
     2,
-  ).replace(/"%(.*)%"/g, '$1');
+  ).replace(/"@(.*)@"/g, '$1');
 
   if (codeRefValidationResult.hasErrors()) {
     errorCallback(codeRefValidationResult.formatErrors());

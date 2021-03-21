@@ -48,11 +48,11 @@ export const clearRuntimeMetadata = (base: K8sResourceCommon) => {
   }
   if (base?.metadata) {
     const { metadata } = base;
-    delete metadata.selfLink;
     delete metadata.resourceVersion;
     delete metadata.uid;
     delete metadata.creationTimestamp;
     delete metadata.deletionTimestamp;
     delete metadata.generation;
+    delete metadata.managedFields;
   }
 };

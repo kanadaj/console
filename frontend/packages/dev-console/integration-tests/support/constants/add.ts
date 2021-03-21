@@ -9,6 +9,7 @@ export enum addOptions {
   HelmChart = 'Helm Chart',
   Pipeline = 'Pipeline',
   EventSource = 'Event Source',
+  DevFile = 'Import from Devfile',
 }
 
 export enum buildConfigOptions {
@@ -38,6 +39,10 @@ export enum catalogCards {
   dotnetCoreExample = '.NET Core Example',
   cakePhp = 'CakePHP + MySQL',
   nodeJs = 'Node.js',
+  nodeJsPostgreSQL = 'Node.js + PostgreSQL (Ephemeral)',
+  apacheHTTPServer = 'Apache HTTP Server',
+  nginxHTTPServer = 'Nginx HTTP server and a reverse proxy',
+  jenkins = 'Jenkins',
 }
 
 export enum catalogTypes {
@@ -46,4 +51,17 @@ export enum catalogTypes {
   BuilderImage = 'Builder Image',
   Template = 'Template',
   ServiceClass = 'Service Class',
+}
+
+export enum builderImages {
+  Perl = 'Perl',
+  PHP = 'PHP',
+  Nginx = 'Nginx',
+  Httpd = 'Httpd',
+  NETCore = '.NET Core',
+  Go = 'Go',
+  Ruby = 'Ruby',
+  Python = 'Python',
+  Java = 'Java',
+  NodeJs = 'Node.js',
 }

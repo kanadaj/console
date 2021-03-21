@@ -3,7 +3,7 @@ import { useFormikContext } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { TextInputTypes } from '@patternfly/react-core';
 import { InputField } from '@console/shared';
-import { PipelineParameters, PipelineResources } from '../detail-page-tabs';
+import { PipelineParameters, PipelineResources, PipelineWorkspaces } from '../detail-page-tabs';
 import PipelineBuilderVisualization from './PipelineBuilderVisualization';
 import {
   PipelineBuilderFormikValues,
@@ -53,7 +53,7 @@ const PipelineBuilderFormEditor: React.FC<PipelineBuilderFormEditorProps> = (pro
       <div>
         <h2>{t('pipelines-plugin~Parameters')}</h2>
         <PipelineParameters
-          addLabel={t('pipelines-plugin~Add parameters')}
+          addLabel={t('pipelines-plugin~Add parameter')}
           fieldName="formData.params"
         />
       </div>
@@ -61,8 +61,16 @@ const PipelineBuilderFormEditor: React.FC<PipelineBuilderFormEditorProps> = (pro
       <div>
         <h2>{t('pipelines-plugin~Resources')}</h2>
         <PipelineResources
-          addLabel={t('pipelines-plugin~Add resources')}
+          addLabel={t('pipelines-plugin~Add resource')}
           fieldName="formData.resources"
+        />
+      </div>
+
+      <div>
+        <h2>{t('pipelines-plugin~Workspaces')}</h2>
+        <PipelineWorkspaces
+          addLabel={t('pipelines-plugin~Add workspace')}
+          fieldName="formData.workspaces"
         />
       </div>
     </>

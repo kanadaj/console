@@ -4,7 +4,8 @@ import { click, createResource, deleteResource } from '@console/shared/src/test-
 import * as virtualMachineView from '../views/virtualMachine.view';
 import * as editAffinityView from '../views/dialogs/editAffinityView';
 import { saveButton } from '../views/kubevirtUIResource.view';
-import { VM_CREATE_AND_EDIT_TIMEOUT_SECS } from './utils/constants/common';
+import { VM_CREATE_AND_EDIT_TIMEOUT_SECS, VM_IMPORT_TIMEOUT_SECS } from './utils/constants/common';
+import { VM_STATUS } from './utils/constants/vm';
 import { VirtualMachine } from './models/virtualMachine';
 import { getVMManifest } from './mocks/mocks';
 import { getNodes, getRandStr, labelNode, taintNode } from './utils/utils';
@@ -12,7 +13,7 @@ import { MatchLabels } from '@console/internal/module/k8s';
 import { ProvisionSource } from './utils/constants/enums/provisionSource';
 
 describe('KubeVirt VM scheduling', () => {
-  const testVM = getVMManifest(ProvisionSource.CONTAINER, testName, `vm-${getRandStr(5)}`);
+  const testVM = getVMManifest(ProvisionSource.URL, testName, `vm-${getRandStr(5)}`);
   const vm: VirtualMachine = new VirtualMachine(testVM.metadata);
   const labels: MatchLabels = {
     key1: 'value1',
@@ -29,6 +30,7 @@ describe('KubeVirt VM scheduling', () => {
 
   beforeAll(async () => {
     createResource(testVM);
+    await vm.waitForStatus(VM_STATUS.Off, VM_IMPORT_TIMEOUT_SECS);
   });
 
   afterAll(() => {

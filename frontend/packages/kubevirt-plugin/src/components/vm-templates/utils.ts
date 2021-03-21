@@ -1,21 +1,24 @@
 import { history } from '@console/internal/components/utils';
 import { TemplateKind } from '@console/internal/module/k8s';
 import { VMWizardName } from '../../constants';
-import { getWorkloadProfile } from '../../selectors/vm';
-import { getTemplateName, isCommonTemplate } from '../../selectors/vm-template/basic';
+import { getFlavor, getWorkloadProfile } from '../../selectors/vm';
+import {
+  getTemplateName,
+  isCommonTemplate,
+  isDeprecatedTemplate,
+} from '../../selectors/vm-template/basic';
 import { isTemplateSourceError, TemplateSourceStatus } from '../../statuses/template/types';
 import { TemplateItem } from '../../types/template';
 import { getVMWizardCreateLink } from '../../utils/url';
 import { sourceErrorModal, sourceNotReadyModal } from '../modals/vm-template-modals/source-modal';
+import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
+import { getFlavorData } from '../../selectors/vm/flavor-data';
 
 const DEFAULT_OS_VARIANT = 'template.kubevirt.io/default-os-variant';
 
-export const filterTemplates = (
-  userTemplates: TemplateKind[],
-  commonTemplates: TemplateKind[],
-): TemplateItem[] => {
-  const userTemplateItems: TemplateItem[] = userTemplates
-    .filter((t) => !isCommonTemplate(t))
+export const filterTemplates = (templates: TemplateKind[]): TemplateItem[] => {
+  const userTemplateItems: TemplateItem[] = templates
+    .filter((t) => !isCommonTemplate(t) && !isDeprecatedTemplate(t))
     .map((t) => ({
       metadata: {
         name: t.metadata.name,
@@ -26,33 +29,35 @@ export const filterTemplates = (
       variants: [t],
     }));
 
-  const commonTemplateItems = commonTemplates.reduce((acc, t) => {
-    const name = getTemplateName(t);
-    if (acc[name]) {
-      const isRecommended = t.metadata.labels?.[DEFAULT_OS_VARIANT] === 'true';
-      if (isRecommended) {
-        acc[name].metadata = {
-          name: t.metadata.name,
-          uid: t.metadata.uid,
-          namespace: t.metadata.namespace,
-        };
-        acc[name].variants.unshift(t);
+  const commonTemplateItems = templates
+    .filter((t) => isCommonTemplate(t) && !isDeprecatedTemplate(t))
+    .reduce((acc, t) => {
+      const name = getTemplateName(t);
+      if (acc[name]) {
+        const isRecommended = t.metadata.labels?.[DEFAULT_OS_VARIANT] === 'true';
+        if (isRecommended) {
+          acc[name].metadata = {
+            name: t.metadata.name,
+            uid: t.metadata.uid,
+            namespace: t.metadata.namespace,
+          };
+          acc[name].variants.unshift(t);
+        } else {
+          acc[name].variants.push(t);
+        }
       } else {
-        acc[name].variants.push(t);
+        acc[name] = {
+          metadata: {
+            name: t.metadata.name,
+            uid: t.metadata.uid,
+            namespace: t.metadata.namespace,
+          },
+          isCommon: true,
+          variants: [t],
+        };
       }
-    } else {
-      acc[name] = {
-        metadata: {
-          name: t.metadata.name,
-          uid: t.metadata.uid,
-          namespace: t.metadata.namespace,
-        },
-        isCommon: true,
-        variants: [t],
-      };
-    }
-    return acc;
-  }, {} as { [key: string]: TemplateItem });
+      return acc;
+    }, {} as { [key: string]: TemplateItem });
 
   Object.keys(commonTemplateItems).forEach((key) => {
     const recommendedProfile = getWorkloadProfile(commonTemplateItems[key].variants[0]);
@@ -65,7 +70,7 @@ export const filterTemplates = (
 };
 
 export const createVMAction = (
-  template: TemplateItem,
+  template: TemplateKind,
   sourceStatus: TemplateSourceStatus,
   namespace: string,
 ) => {
@@ -75,11 +80,20 @@ export const createVMAction = (
     history.push(
       getVMWizardCreateLink({
         wizardName: VMWizardName.BASIC,
-        template: template.variants[0],
+        template,
         namespace,
       }),
     );
   } else {
     sourceNotReadyModal({});
   }
+};
+
+export const getVMTemplateResourceFlavorData = (template: TemplateKind, vmWrapper: VMWrapper) => {
+  const flavorValues = {
+    flavor: getFlavor(template),
+    cpu: vmWrapper.getCPU(),
+    memory: vmWrapper.getMemory(),
+  };
+  return getFlavorData(flavorValues);
 };

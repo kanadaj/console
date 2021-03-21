@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { TFunction } from 'i18next';
+import i18next, { TFunction } from 'i18next';
 
 import { Dropdown } from '../utils';
 import {
@@ -16,6 +16,7 @@ const LanguagePreferencesModal = (props: LanguagePreferencesModalProps) => {
   const supportedLocales = {
     en: 'English',
     zh: '中文',
+    ko: '한국어',
     ja: '日本語',
   };
   const langOptions = Object.keys(supportedLocales).map((lang) => ({
@@ -24,7 +25,8 @@ const LanguagePreferencesModal = (props: LanguagePreferencesModalProps) => {
   }));
   const initLang =
     localStorage.getItem('bridge/language') ||
-    langOptions.find((lang) => lang.lang === i18n.language)?.lang;
+    // handles languages we support, languages we don't support, and subsets of languages we support (such as en-us, zh-cn, etc.)
+    i18next.languages.find((lang) => langOptions.some((langOption) => langOption.lang === lang));
   const [language, setLanguage] = React.useState(initLang);
   const { close } = props;
   const submit: React.FormEventHandler<HTMLFormElement> = (e) => {
@@ -36,13 +38,8 @@ const LanguagePreferencesModal = (props: LanguagePreferencesModalProps) => {
 
   return (
     <form onSubmit={submit} name="form" className="modal-content modal-content--no-inner-scroll">
-      <ModalTitle>{t('language-preferences-modal~Edit language preferences')}</ModalTitle>
+      <ModalTitle>{t('language-preferences-modal~Edit language preference')}</ModalTitle>
       <ModalBody>
-        <p>
-          {t(
-            'language-preferences-modal~All interface content will appear in your selected language.',
-          )}
-        </p>
         <div className="form-group">
           <label htmlFor="language_dropdown">{t('language-preferences-modal~Language')}</label>
           <Dropdown

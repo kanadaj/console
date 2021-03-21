@@ -1,15 +1,15 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { TFunction } from 'i18next';
 import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   DisconnectedIcon,
   LockIcon,
 } from '@patternfly/react-icons';
-import { TFunction } from 'i18next';
 import { POOL_PROGRESS } from '../constants/storage-pool-const';
-import { KMSConfig } from '../components/ocs-install/types';
+import { KMSConfig } from '../types';
 
 export const LoadingComponent: React.FC = () => {
   const { t } = useTranslation();
@@ -58,7 +58,7 @@ export const PROGRESS_STATUS = (t: TFunction) => [
     name: POOL_PROGRESS.NOTREADY,
     icon: LockIcon,
     desc: t(
-      'ceph-storage-plugin~The creation of an OCS storage cluster is still in progress or have failed please try again after the storage cluster is ready to use.',
+      'ceph-storage-plugin~The creation of an OCS storage cluster is still in progress or has failed. Please try again after the storage cluster is ready to use.',
     ),
     className: '',
   },

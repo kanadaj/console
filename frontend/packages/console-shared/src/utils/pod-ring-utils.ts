@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { TFunction } from 'i18next';
+import i18next, { TFunction } from 'i18next';
 import * as _ from 'lodash';
 import * as classNames from 'classnames';
 import { DaemonSetModel, PodModel, JobModel, CronJobModel } from '@console/internal/models';
@@ -33,7 +33,7 @@ type PodRingLabelData = {
 };
 
 const podKindString = (count: number) =>
-  (count === 1 ? PodModel.label : PodModel.plural).toLowerCase();
+  count === 1 ? i18next.t('console-shared~Pod') : i18next.t('console-shared~Pods');
 
 const isPendingPods = (
   pods: ExtPodKind[],
@@ -199,7 +199,7 @@ export const hpaPodRingLabel = (
     (!currentPods && !!desiredPods) || !pods.every((p) => p.status?.phase === 'Running');
   return {
     title: scaling ? t('console-shared~Autoscaling') : t('console-shared~Autoscaled'),
-    subTitle: t('console-shared~to {{podSubTitle}}', { podSubTitle: desiredPods }),
+    subTitle: t('console-shared~to {{count}} Pod', { count: desiredPods }),
     longTitle: false,
     longSubtitle: false,
     reversed: true,

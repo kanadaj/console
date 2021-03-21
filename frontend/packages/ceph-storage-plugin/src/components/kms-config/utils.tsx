@@ -10,9 +10,9 @@ import {
   KMSSecretName,
   KMSConfigMapCSIName,
 } from '../../constants';
-import { Action } from '../ocs-install/attached-devices/create-sc/state';
+import { Action } from '../ocs-install/attached-devices-mode/reducer';
 import { InternalClusterAction } from '../ocs-install/internal-mode/reducer';
-import { KMSConfig, KMSConfigMap } from '../ocs-install/types';
+import { KMSConfig, KMSConfigMap } from '../../types';
 import { StorageClassClusterAction } from '../../utils/storage-pool';
 
 export const parseURL = (url: string) => {
@@ -33,7 +33,7 @@ export const generateCASecret = (caCertificate: string) => ({
     namespace: CEPH_STORAGE_NAMESPACE,
   },
   stringData: {
-    'ca.cert': caCertificate,
+    cert: caCertificate,
   },
 });
 
@@ -47,7 +47,7 @@ export const generateClientSecret = (clientCertificate: string) => ({
     namespace: CEPH_STORAGE_NAMESPACE,
   },
   stringData: {
-    'tls.cert': clientCertificate,
+    cert: clientCertificate,
   },
 });
 
@@ -61,7 +61,7 @@ export const generateClientKeySecret = (clientKey: string) => ({
     namespace: CEPH_STORAGE_NAMESPACE,
   },
   stringData: {
-    'tls.key': clientKey,
+    key: clientKey,
   },
 });
 
@@ -184,3 +184,21 @@ export const setEncryptionDispatch = (
     dispatch({ type: stateType });
   }
 };
+
+export const getPort = (url: URL) => {
+  if (url.port === '') {
+    return url.protocol === 'http:' ? '80' : '443';
+  }
+  return url.port;
+};
+
+export const scKmsConfigValidation = (kms: KMSConfig): boolean =>
+  kms.name?.valid &&
+  kms.address?.valid &&
+  kms.port?.valid &&
+  kms.name.value !== '' &&
+  kms.address.value !== '' &&
+  kms.port.value !== '';
+
+export const kmsConfigValidation = (kms: KMSConfig): boolean =>
+  kms.token?.valid && kms.token.value !== '' && scKmsConfigValidation(kms);

@@ -1,4 +1,73 @@
-{
-  "$schema": "../console-dynamic-plugin-sdk/dist/schema/console-extensions.json",
-  "data": []
-}
+[
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "model": {
+        "group": "kubevirt.io",
+        "version": "v1alpha3",
+        "kind": "VirtualMachine"
+      },
+      "flag": "KUBEVIRT"
+    }
+  },
+  {
+    "type": "console.page/route/standalone",
+    "properties": {
+      "exact": false,
+      "path": "/k8s/ns/:ns/virtualmachineinstances/:name/standaloneconsole",
+      "component": { "$codeRef": "standaloneConsole" }
+    }
+  },
+  {
+    "type": "dev-console.add/action",
+    "properties": {
+      "id": "dev-catalog-virtualization",
+      "href": "/catalog?catalogType=VmTemplate",
+      "label": "%kubevirt-plugin~Virtual Machines%",
+      "description": "%kubevirt-plugin~Create a Virtual Machine from a template%",
+      "icon": { "$codeRef": "icons.vmIconElement" }
+    },
+    "flags": {
+      "required": ["KUBEVIRT"]
+    }
+  },
+  {
+    "type": "console.catalog/item-type",
+    "properties": {
+      "type": "VmTemplate",
+      "title": "%kubevirt-plugin~Virtual Machines%",
+      "catalogDescription": "%kubevirt-plugin~Quickly create a virtual machine from a template.%",
+      "typeDescription": "%kubevirt-plugin~**Virtual Machines** are templates for quickly creating a virtual machine.%",
+      "filters": [
+        {
+          "label": "%kubevirt-plugin~Template Providers%",
+          "attribute": "templateProvider"
+        }
+      ]
+    },
+    "flags": {
+      "required": ["KUBEVIRT"]
+    }
+  },
+  {
+    "type": "console.catalog/item-provider",
+    "properties": {
+      "type": "VmTemplate",
+      "provider": { "$codeRef": "createVM.catalogVMTemplateProvider" }
+    },
+    "flags": {
+      "required": ["KUBEVIRT"]
+    }
+  },
+
+  {
+    "type": "console.catalog/item-filter",
+    "properties": {
+      "type": "Template",
+      "filter": { "$codeRef": "createVM.catalogVMTemplateFilter" }
+    },
+    "flags": {
+      "required": ["KUBEVIRT"]
+    }
+  }
+]

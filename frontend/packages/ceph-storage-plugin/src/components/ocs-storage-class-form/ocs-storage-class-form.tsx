@@ -27,7 +27,6 @@ import {
 } from '@console/internal/components/utils/k8s-watch-hook';
 import { useFlag } from '@console/shared/src/hooks/flag';
 import { ProvisionerProps } from '@console/plugin-sdk';
-import TechPreviewBadge from '@console/shared/src/components/badges/TechPreviewBadge';
 import { ConfigMapKind, K8sResourceKind } from '@console/internal/module/k8s/types';
 import { ButtonBar } from '@console/internal/components/utils/button-bar';
 import { ConfigMapModel } from '@console/internal/models';
@@ -37,16 +36,21 @@ import {
   CEPH_EXTERNAL_CR_NAME,
   CLUSTER_STATUS,
   CEPH_STORAGE_NAMESPACE,
+  KMSConfigMapCSIName,
 } from '../../constants';
-import { KMSConfigMapCSIName } from '../../constants/ocs-install';
-import { cephBlockPoolResource, cephClusterResource } from '../../constants/resources';
-import { CephClusterKind, StoragePoolKind } from '../../types';
+import { cephBlockPoolResource, cephClusterResource } from '../../resources';
+import { CephClusterKind, StoragePoolKind, KMSConfig, KMSConfigMap } from '../../types';
 import { storagePoolModal } from '../modals/storage-pool-modal/storage-pool-modal';
 import { POOL_STATE } from '../../constants/storage-pool-const';
 import { KMSConfigure } from '../kms-config/kms-config';
 import { scReducer, scInitialState, SCActionType } from '../../utils/storage-pool';
-import { KMSConfig, KMSConfigMap } from '../ocs-install/types';
-import { createKmsResources, setEncryptionDispatch, parseURL } from '../kms-config/utils';
+import {
+  createKmsResources,
+  setEncryptionDispatch,
+  parseURL,
+  scKmsConfigValidation,
+  getPort,
+} from '../kms-config/utils';
 import './ocs-storage-class-form.scss';
 import { GUARDED_FEATURES } from '../../features';
 
@@ -114,6 +118,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
     },
     [
       <DropdownItem
+        data-test="create-new-pool-button"
         key="first-item"
         component="button"
         onClick={() =>
@@ -142,6 +147,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
               toggle={
                 <DropdownToggle
                   id="pool-dropdown-id"
+                  data-test="pool-dropdown-toggle"
                   onToggle={() => setOpen(!isOpen)}
                   toggleIndicator={CaretDownIcon}
                 >
@@ -202,7 +208,6 @@ const StorageClassEncryptionLabel: React.FC = () => {
       <span className="ocs-storageClass-encryption__pv-title--padding">
         {t('ceph-storage-plugin~Enable Encryption')}
       </span>
-      <TechPreviewBadge />
     </div>
   );
 };
@@ -297,6 +302,7 @@ export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChan
       const kmsData = JSON.parse(csiConfigMap?.data[serviceNames[serviceNames.length - 1]]);
       setCurrentKMS(kmsData);
       const url = parseURL(kmsData.VAULT_ADDR);
+      const port = getPort(url);
       const kmsObj: KMSConfig = {
         name: {
           value: kmsData.KMS_SERVICE_NAME,
@@ -307,7 +313,7 @@ export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChan
           valid: true,
         },
         port: {
-          value: url.port,
+          value: port,
           valid: true,
         },
         backend: kmsData.VAULT_BACKEND_PATH,
@@ -329,14 +335,9 @@ export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChan
   }, [csiConfigMap, editKMS, isKmsSupported]);
 
   React.useEffect(() => {
-    if (isKmsSupported && editKMS) {
-      if (state.kms.name.valid && state.kms.address.valid && state.kms.port.valid) {
-        setValidSave(true);
-      } else {
-        setValidSave(false);
-      }
-      setEncryptionDispatch(SCActionType.SET_KMS_ENCRYPTION, '', dispatch, state.kms);
-    }
+    if (isKmsSupported && (editKMS || !_.isEqual(state.kms, scInitialState.kms)))
+      scKmsConfigValidation(state.kms) ? setValidSave(true) : setValidSave(false);
+    else setValidSave(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     state.kms.name.value,
@@ -345,6 +346,8 @@ export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChan
     state.kms.name.valid,
     state.kms.address.valid,
     state.kms.port.valid,
+    editKMS,
+    csiConfigMapLoaded,
     isKmsSupported,
   ]);
 

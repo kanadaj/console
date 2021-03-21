@@ -44,6 +44,7 @@ export const resolveDefaultVMTemplate = (params: DefaultVMLikeEntityParams): Tem
       }),
     )
     .removeStorage('rootdisk')
+    .removeStorage(VM_TEMPLATE_NAME_PARAMETER)
     .prependStorage({
       disk: new DiskWrapper()
         .init({

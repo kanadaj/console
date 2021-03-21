@@ -1,5 +1,5 @@
 import { Extension } from '@console/plugin-sdk/src/typings/base';
-import { codeRefSymbol } from '../coderefs/coderef-resolver';
+import { applyCodeRefSymbol } from '../coderefs/coderef-resolver';
 import { SupportedExtension } from '../schema/console-extensions';
 import { ConsolePluginManifestJSON } from '../schema/plugin-manifest';
 import { RemoteEntryModule, CodeRef, Update } from '../types';
@@ -12,14 +12,14 @@ export const getPluginManifest = (
   name,
   version,
   extensions: extensions as SupportedExtension[],
-  dependencies: { '@console/pluginAPI': '~0.0.1' },
+  dependencies: { '@console/pluginAPI': '*' },
 });
 
 export const getExecutableCodeRefMock = <T = any>(
   resolvedValue: T,
 ): jest.Mock<ReturnType<CodeRef<T>>> => {
   const ref = jest.fn(() => Promise.resolve(resolvedValue));
-  ref[codeRefSymbol] = true;
+  applyCodeRefSymbol<T>(ref);
   return ref;
 };
 

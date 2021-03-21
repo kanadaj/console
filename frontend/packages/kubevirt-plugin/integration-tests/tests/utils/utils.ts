@@ -172,6 +172,16 @@ export const waitForFilterCount = (status: Status, targetCount: number) => {
   };
 };
 
+export const waitForTextStartsWith = (elem: any, text: string) => {
+  return async () => {
+    if (!(await elem.isPresent())) {
+      return false;
+    }
+    const content = await elem.getText();
+    return content.startsWith(text);
+  };
+};
+
 export const waitFor = async (element, text, count = 1) => {
   let sequenceNumber = 0;
   while (sequenceNumber !== count) {
@@ -291,6 +301,14 @@ export function uploadOSImage(
   volumeMode: boolean,
 ) {
   execSync(
-    `virtctl image-upload dv ${dv} --image-path=${imagePath} --size=10Gi --storage-class=${STORAGE_CLASS} --access-mode=${accessMode} --block-volume=${volumeMode} -n ${ns} --insecure`,
+    `virtctl image-upload dv ${dv} --image-path=${imagePath} --size=1Gi --storage-class=${STORAGE_CLASS} --access-mode=${accessMode} --block-volume=${volumeMode} -n ${ns} --insecure`,
   );
+}
+
+export function getCommonTemplateName(os: string): string {
+  return execSync(
+    `kubectl get template -n openshift -l template.kubevirt.io/default-os-variant | grep ${os} | awk -F ' ' '{print $1}'`,
+  )
+    .toString()
+    .trim();
 }

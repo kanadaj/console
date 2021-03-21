@@ -1,7 +1,11 @@
 import * as dagre from 'dagre';
 import * as _ from 'lodash';
-import { Pipeline, PipelineRun } from '../../../utils/pipeline-augment';
-import { getPipelineTasks, PipelineVisualizationTaskItem } from '../../../utils/pipeline-utils';
+import { PipelineKind, PipelineRunKind } from '../../../types';
+import {
+  getPipelineTasks,
+  getFinallyTasksWithStatus,
+  PipelineVisualizationTaskItem,
+} from '../../../utils/pipeline-utils';
 import {
   NODE_HEIGHT,
   NodeType,
@@ -10,6 +14,8 @@ import {
   PipelineLayout,
   DAGRE_BUILDER_PROPS,
   DAGRE_VIEWER_PROPS,
+  FINALLY_NODE_PADDING,
+  FINALLY_NODE_VERTICAL_SPACING,
 } from './const';
 import {
   PipelineEdgeModel,
@@ -22,13 +28,16 @@ import {
   PipelineTaskNodeModel,
   BuilderNodeModelData,
   PipelineRunAfterNodeModelData,
+  BuilderFinallyNodeModel,
+  FinallyNodeModel,
+  PipelineFinallyNodeModel,
 } from './types';
 
-const createGenericNode: NodeCreatorSetup = (type, width?) => (name, data) => ({
+const createGenericNode: NodeCreatorSetup = (type, width?, height?) => (name, data) => ({
   id: name,
   data,
-  height: NODE_HEIGHT,
-  width: width != null ? width : NODE_WIDTH,
+  height: height ?? NODE_HEIGHT,
+  width: width ?? NODE_WIDTH,
   type,
 });
 
@@ -47,6 +56,11 @@ export const createInvalidTaskListNode: NodeCreator<TaskListNodeModelData> = cre
 export const createBuilderNode: NodeCreator<BuilderNodeModelData> = createGenericNode(
   NodeType.BUILDER_NODE,
 );
+
+export const createFinallyNode = (height): NodeCreator<FinallyNodeModel> =>
+  createGenericNode(NodeType.FINALLY_NODE, NODE_WIDTH + FINALLY_NODE_PADDING * 2, height);
+export const createBuilderFinallyNode = (height): NodeCreator<BuilderFinallyNodeModel> =>
+  createGenericNode(NodeType.BUILDER_FINALLY_NODE, NODE_WIDTH + FINALLY_NODE_PADDING * 2, height);
 
 export const getNodeCreator = (type: NodeType): NodeCreator<PipelineRunAfterNodeModelData> => {
   switch (type) {
@@ -167,8 +181,8 @@ export const handleParallelToParallelNodes = (
 
 export const tasksToNodes = (
   taskList: PipelineVisualizationTaskItem[],
-  pipeline?: Pipeline,
-  pipelineRun?: PipelineRun,
+  pipeline?: PipelineKind,
+  pipelineRun?: PipelineRunKind,
 ): PipelineMixedNodeModel[] => {
   const nodeList: PipelineTaskNodeModel[] = taskList.map((task) =>
     createTaskNode(task.name, {
@@ -223,14 +237,73 @@ export const getEdgesFromNodes = (nodes: PipelineMixedNodeModel[]): PipelineEdge
     }),
   ).filter((edgeList) => !!edgeList);
 
+export const getFinallyTaskHeight = (allTasksLength: number, disableBuilder: boolean): number => {
+  return (
+    allTasksLength * NODE_HEIGHT +
+    (allTasksLength - 1) * FINALLY_NODE_VERTICAL_SPACING +
+    (!disableBuilder ? NODE_HEIGHT : 0) +
+    FINALLY_NODE_PADDING * 2
+  );
+};
+
+export const getLastRegularTasks = (regularTasks: PipelineMixedNodeModel[]): string[] => {
+  const runAfters = _.uniq(
+    regularTasks.reduce((acc, { data: { task: { runAfter } } }) => {
+      return runAfter ? acc.concat(runAfter) : acc;
+    }, []),
+  );
+  return _.difference(
+    regularTasks.map((n) => n.id),
+    runAfters,
+  );
+};
+
+export const connectFinallyTasksToNodes = (
+  nodes: PipelineMixedNodeModel[],
+  pipeline?: PipelineKind,
+  pipelineRun?: PipelineRunKind,
+): PipelineMixedNodeModel[] => {
+  if (!pipeline.spec?.finally) {
+    return nodes;
+  }
+  const finallyTasks = pipelineRun
+    ? getFinallyTasksWithStatus(pipeline, pipelineRun)
+    : pipeline.spec.finally;
+  const regularRunAfters = getLastRegularTasks(nodes);
+  const name = 'finally-node';
+  const finallyGroupNode: PipelineFinallyNodeModel = createFinallyNode(
+    getFinallyTaskHeight(finallyTasks.length, true),
+  )(name, {
+    isFinallyTask: true,
+    pipeline,
+    pipelineRun,
+    task: {
+      isFinallyTask: true,
+      name,
+      runAfter: regularRunAfters,
+      finallyTasks: finallyTasks.map((ft) => ({
+        ...ft,
+        disableTooltip: false,
+      })),
+    },
+  });
+  return [...nodes, finallyGroupNode];
+};
+
 export const getTopologyNodesEdges = (
-  pipeline: Pipeline,
-  pipelineRun?: PipelineRun,
+  pipeline: PipelineKind,
+  pipelineRun?: PipelineRunKind,
 ): { nodes: PipelineMixedNodeModel[]; edges: PipelineEdgeModel[] } => {
   const taskList: PipelineVisualizationTaskItem[] = _.flatten(
     getPipelineTasks(pipeline, pipelineRun),
   );
-  const nodes: PipelineMixedNodeModel[] = tasksToNodes(taskList, pipeline, pipelineRun);
+  const taskNodes: PipelineMixedNodeModel[] = tasksToNodes(taskList, pipeline, pipelineRun);
+
+  const nodes: PipelineMixedNodeModel[] = connectFinallyTasksToNodes(
+    taskNodes,
+    pipeline,
+    pipelineRun,
+  );
   const edges: PipelineEdgeModel[] = getEdgesFromNodes(nodes);
 
   return { nodes, edges };

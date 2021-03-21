@@ -1,10 +1,22 @@
 export const topologyPO = {
-  switcher: '.odc-topology__view-switcher > svg',
+  switcher: '[data-test-id="topology-switcher-view"]',
+  noWorkLoadsText: 'h2.co-hint-block__title',
+  title: 'h1.ocs-page-layout__title',
   graph: {
     reset: '#reset-view',
     zoomIn: '#zoom-in',
     zoomOut: '#zoom-out',
     fitToScreen: '#fit-to-screen',
+    emptyGraph: '[data-test-id="topology"]',
+    filterDropdown: '[id^=pf-select-toggle-id]',
+    nodeLabel: 'g.odc-base-node__label',
+    contextMenu: '#popper-container ul',
+    workloads: 'g[data-surface="true"]',
+    node: '[data-test-id="base-node-handler"]',
+    workload: '[data-type="workload"]',
+    contextMenuOptions: {
+      addToProject: '.pf-topology-context-sub-menu',
+    },
   },
   list: {
     appName: '#HelmRelease ul li div',
@@ -18,6 +30,19 @@ export const topologyPO = {
     close: 'button[aria-label="Close"]',
     labelsList: '[data-test="label-list"]',
     editAnnotations: '[data-test="edit-annotations"]',
+    tabName: '[role="dialog"] li button',
+    detailsTab: {
+      labels: 'dt[data-test-selector$="Labels"]',
+      annotations: '[data-test-selector="details-item-label__Annotations"]',
+    },
+    resourcesTab: {
+      startLastRun: '[role="dialog"] li.list-group-item.pipeline-overview div button',
+      pipelineRuns: 'li.odc-pipeline-run-item',
+    },
+    monitoringTab: {
+      viewMonitoringDashBoardLink: '',
+    },
+    releaseNotesTab: {},
   },
   addStorage: {
     pvc: {
@@ -59,4 +84,5 @@ export const topologyPO = {
       cancel: '[data-test="cancel"]',
     },
   },
+  search: 'g.is-filtered',
 };

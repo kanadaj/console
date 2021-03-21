@@ -36,7 +36,6 @@ export type ObjectMetadata = {
   namespace?: string;
   ownerReferences?: OwnerReference[];
   resourceVersion?: string;
-  selfLink?: string;
   uid?: string;
 };
 
@@ -959,7 +958,9 @@ export type K8sKind = {
   abbr: string;
   kind: string;
   label: string;
+  labelKey?: string;
   labelPlural: string;
+  labelPluralKey?: string;
   plural: string;
   propagationPolicy?: 'Foreground' | 'Background';
 

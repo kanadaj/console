@@ -1,9 +1,12 @@
 import * as _ from 'lodash-es';
-import { Dropdown, DropdownToggle, DropdownItem } from '@patternfly/react-core';
+import { Button, Dropdown, DropdownToggle, DropdownItem } from '@patternfly/react-core';
+import { AngleDownIcon, AngleRightIcon } from '@patternfly/react-icons';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-import { connect } from 'react-redux';
+// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// @ts-ignore
+import { useDispatch, useSelector } from 'react-redux';
 import { Map as ImmutableMap } from 'immutable';
 
 import { RedExclamationCircleIcon } from '@console/shared';
@@ -12,10 +15,19 @@ import Dashboard from '@console/shared/src/components/dashboard/Dashboard';
 import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
 import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
 import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
+import DashboardCardLink from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardLink';
 import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 
-import * as UIActions from '../../../actions/ui';
+import {
+  monitoringDashboardsPatchAllVariables,
+  monitoringDashboardsPatchVariable,
+  monitoringDashboardsSetEndTime,
+  monitoringDashboardsSetPollInterval,
+  monitoringDashboardsSetTimespan,
+  monitoringDashboardsVariableOptionsLoaded,
+  queryBrowserDeleteAllQueries,
+} from '../../../actions/ui';
 import { ErrorBoundaryFallback } from '../../error';
 import { RootState } from '../../../redux';
 import { getPrometheusURL, PrometheusEndpoint } from '../../graphs/helpers';
@@ -26,7 +38,7 @@ import BarChart from './bar-chart';
 import Graph from './graph';
 import SingleStat from './single-stat';
 import Table from './table';
-import { Panel } from './types';
+import { MONITORING_DASHBOARDS_DEFAULT_TIMESPAN, Panel } from './types';
 
 const NUM_SAMPLES = 30;
 
@@ -100,7 +112,7 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({
               id={`${id}-dropdown`}
               isDisabled={true}
             >
-              <RedExclamationCircleIcon /> {t('monitoring~Error loading options')}
+              <RedExclamationCircleIcon /> {t('public~Error loading options')}
             </DropdownToggle>
           }
         />
@@ -129,17 +141,22 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({
   );
 };
 
-const SingleVariableDropdown_: React.FC<SingleVariableDropdownProps> = ({
-  id,
-  isHidden,
-  name,
-  options,
-  optionsLoaded,
-  patchVariable,
-  query,
-  timespan,
-  value,
-}) => {
+const SingleVariableDropdown: React.FC<SingleVariableDropdownProps> = ({ id, name }) => {
+  const timespan = useSelector(({ UI }: RootState) =>
+    UI.getIn(['monitoringDashboards', 'timespan']),
+  );
+  const { isHidden, options, query, value } = useSelector(({ UI }: RootState) => {
+    const variables = UI.getIn(['monitoringDashboards', 'variables']).toJS();
+    return {
+      isHidden: variables[name].isHidden,
+      options: variables[name].options,
+      query: evaluateTemplate(variables[name].query, variables, timespan),
+      value: variables[name].value,
+    };
+  });
+
+  const dispatch = useDispatch();
+
   const safeFetch = React.useCallback(useSafeFetch(), []);
 
   const [isError, setIsError] = React.useState(false);
@@ -159,27 +176,27 @@ const SingleVariableDropdown_: React.FC<SingleVariableDropdownProps> = ({
         timespan,
       });
 
-      patchVariable(name, { isLoading: true });
+      dispatch(monitoringDashboardsPatchVariable(name, { isLoading: true }));
 
       safeFetch(url)
         .then(({ data }) => {
           setIsError(false);
           const newOptions = _.flatMap(data?.result, ({ metric }) => _.values(metric)).sort();
-          optionsLoaded(name, newOptions);
+          dispatch(monitoringDashboardsVariableOptionsLoaded(name, newOptions));
         })
         .catch((err) => {
-          patchVariable(name, { isLoading: false });
+          dispatch(monitoringDashboardsPatchVariable(name, { isLoading: false }));
           if (err.name !== 'AbortError') {
             setIsError(true);
           }
         });
     }
-  }, [name, patchVariable, query, safeFetch, optionsLoaded, timespan]);
+  }, [dispatch, name, query, safeFetch, timespan]);
 
-  const onChange = React.useCallback((v: string) => patchVariable(name, { value: v }), [
-    name,
-    patchVariable,
-  ]);
+  const onChange = React.useCallback(
+    (v: string) => dispatch(monitoringDashboardsPatchVariable(name, { value: v })),
+    [dispatch, name],
+  );
 
   if (isHidden || (!isError && _.isEmpty(options))) {
     return null;
@@ -196,161 +213,104 @@ const SingleVariableDropdown_: React.FC<SingleVariableDropdownProps> = ({
     />
   );
 };
-const SingleVariableDropdown = connect(
-  ({ UI }: RootState, { name }: { name: string }) => {
-    const variables = UI.getIn(['monitoringDashboards', 'variables']).toJS();
-    const timespan = UI.getIn(['monitoringDashboards', 'timespan']);
-    const { isHidden, options, query, value } = variables[name] ?? {};
-    return {
-      isHidden,
-      options,
-      query: evaluateTemplate(query, variables, timespan),
-      timespan,
-      value,
-    };
-  },
-  {
-    optionsLoaded: UIActions.monitoringDashboardsVariableOptionsLoaded,
-    patchVariable: UIActions.monitoringDashboardsPatchVariable,
-  },
-)(SingleVariableDropdown_);
 
-const AllVariableDropdowns_: React.FC<AllVariableDropdownsProps> = ({ variables }) => (
-  <>
-    {variables.keySeq().map((name) => (
-      <SingleVariableDropdown key={name} id={name} name={name} />
-    ))}
-  </>
-);
-const AllVariableDropdowns = connect(({ UI }: RootState) => ({
-  variables: UI.getIn(['monitoringDashboards', 'variables']),
-}))(AllVariableDropdowns_);
+const AllVariableDropdowns = () => {
+  const variables = useSelector(({ UI }: RootState) =>
+    UI.getIn(['monitoringDashboards', 'variables']),
+  );
 
-const TimespanDropdown_: React.FC<TimespanDropdownProps> = ({ timespan, setTimespan }) => {
+  return (
+    <>
+      {variables.keySeq().map((name: string) => (
+        <SingleVariableDropdown key={name} id={name} name={name} />
+      ))}
+    </>
+  );
+};
+
+export const TimespanDropdown = () => {
   const { t } = useTranslation();
 
-  const onChange = React.useCallback((v: string) => setTimespan(parsePrometheusDuration(v)), [
-    setTimespan,
-  ]);
+  const timespan = useSelector(({ UI }: RootState) =>
+    UI.getIn(['monitoringDashboards', 'timespan']),
+  );
+
+  const dispatch = useDispatch();
+  const onChange = React.useCallback(
+    (v: string) => {
+      dispatch(monitoringDashboardsSetTimespan(parsePrometheusDuration(v)));
+      dispatch(monitoringDashboardsSetEndTime(null));
+    },
+    [dispatch],
+  );
 
   const timespanOptions = {
-    '5m': t('monitoring~{{count}} minute', { count: 5 }),
-    '15m': t('monitoring~{{count}} minute', { count: 15 }),
-    '30m': t('monitoring~{{count}} minute', { count: 30 }),
-    '1h': t('monitoring~{{count}} hour', { count: 1 }),
-    '2h': t('monitoring~{{count}} hour', { count: 2 }),
-    '6h': t('monitoring~{{count}} hour', { count: 6 }),
-    '12h': t('monitoring~{{count}} hour', { count: 12 }),
-    '1d': t('monitoring~{{count}} day', { count: 1 }),
-    '2d': t('monitoring~{{count}} day', { count: 2 }),
-    '1w': t('monitoring~{{count}} week', { count: 1 }),
-    '2w': t('monitoring~{{count}} week', { count: 2 }),
+    '5m': t('public~Last {{count}} minute', { count: 5 }),
+    '15m': t('public~Last {{count}} minute', { count: 15 }),
+    '30m': t('public~Last {{count}} minute', { count: 30 }),
+    '1h': t('public~Last {{count}} hour', { count: 1 }),
+    '2h': t('public~Last {{count}} hour', { count: 2 }),
+    '6h': t('public~Last {{count}} hour', { count: 6 }),
+    '12h': t('public~Last {{count}} hour', { count: 12 }),
+    '1d': t('public~Last {{count}} day', { count: 1 }),
+    '2d': t('public~Last {{count}} day', { count: 2 }),
+    '1w': t('public~Last {{count}} week', { count: 1 }),
+    '2w': t('public~Last {{count}} week', { count: 2 }),
   };
 
   return (
     <VariableDropdown
       id="monitoring-time-range-dropdown"
       items={timespanOptions}
-      label={t('monitoring~Time range')}
+      label={t('public~Time range')}
       onChange={onChange}
       selectedKey={formatPrometheusDuration(timespan)}
     />
   );
 };
 
-export const TimespanDropdown = connect(
-  ({ UI }: RootState) => ({
-    timespan: UI.getIn(['monitoringDashboards', 'timespan']),
-  }),
-  {
-    setTimespan: UIActions.monitoringDashboardsSetTimespan,
-  },
-)(TimespanDropdown_);
-
-const PollIntervalDropdown_ = ({ interval, setInterval }) => {
+export const PollIntervalDropdown = () => {
   const { t } = useTranslation();
+
+  const interval = useSelector(({ UI }: RootState) =>
+    UI.getIn(['monitoringDashboards', 'pollInterval']),
+  );
+
+  const dispatch = useDispatch();
+  const setInterval = React.useCallback(
+    (v: number) => dispatch(monitoringDashboardsSetPollInterval(v)),
+    [dispatch],
+  );
 
   return (
     <div className="form-group monitoring-dashboards__dropdown-wrap">
       <label htmlFor="refresh-interval-dropdown" className="monitoring-dashboards__dropdown-title">
-        {t('monitoring~Refresh interval')}
+        {t('public~Refresh interval')}
       </label>
       <IntervalDropdown
+        id="refresh-interval-dropdown"
         interval={interval}
         setInterval={setInterval}
-        id="refresh-interval-dropdown"
       />
     </div>
   );
 };
 
-export const PollIntervalDropdown = connect(
-  ({ UI }: RootState) => ({
-    interval: UI.getIn(['monitoringDashboards', 'pollInterval']),
-  }),
-  {
-    setInterval: UIActions.monitoringDashboardsSetPollInterval,
-  },
-)(PollIntervalDropdown_);
+const QueryBrowserLink = ({ queries }) => {
+  const { t } = useTranslation();
 
-// Matches Prometheus labels surrounded by {{ }} in the graph legend label templates
-const legendTemplateOptions = { interpolate: /{{([a-zA-Z_][a-zA-Z0-9_]*)}}/g };
-
-const CardBody_: React.FC<CardBodyProps> = ({ panel, pollInterval, timespan, variables }) => {
-  const formatLegendLabel = React.useCallback(
-    (labels, i) => {
-      const legendFormat = panel.targets?.[i]?.legendFormat;
-      const compiled = _.template(legendFormat, legendTemplateOptions);
-      try {
-        return compiled(labels);
-      } catch (e) {
-        // If we can't format the label (e.g. if one of it's variables is missing from `labels`),
-        // show the template string instead
-        return legendFormat;
-      }
-    },
-    [panel],
-  );
-
-  const variablesJS: VariablesMap = variables.toJS();
-
-  const rawQueries = _.map(panel.targets, 'expr');
-  if (!rawQueries.length) {
-    return null;
-  }
-  const queries = rawQueries.map((expr) => evaluateTemplate(expr, variablesJS, timespan));
-
-  if (_.some(queries, _.isUndefined)) {
-    return <LoadingInline />;
-  }
+  const params = new URLSearchParams();
+  queries.forEach((q, i) => params.set(`query${i}`, q));
 
   return (
-    <>
-      {panel.type === 'grafana-piechart-panel' && (
-        <BarChart pollInterval={pollInterval} query={queries[0]} />
-      )}
-      {panel.type === 'graph' && (
-        <Graph
-          formatLegendLabel={panel.legend?.show ? formatLegendLabel : undefined}
-          isStack={panel.stack}
-          pollInterval={pollInterval}
-          queries={queries}
-        />
-      )}
-      {panel.type === 'singlestat' && (
-        <SingleStat panel={panel} pollInterval={pollInterval} query={queries[0]} />
-      )}
-      {panel.type === 'table' && (
-        <Table panel={panel} pollInterval={pollInterval} queries={queries} />
-      )}
-    </>
+    <DashboardCardLink
+      aria-label={t('public~Inspect')}
+      to={`/monitoring/query-browser?${params.toString()}`}
+    >
+      {t('public~Inspect')}
+    </DashboardCardLink>
   );
 };
-const CardBody = connect(({ UI }: RootState) => ({
-  pollInterval: UI.getIn(['monitoringDashboards', 'pollInterval']),
-  timespan: UI.getIn(['monitoringDashboards', 'timespan']),
-  variables: UI.getIn(['monitoringDashboards', 'variables']),
-}))(CardBody_);
 
 // Determine how many columns a panel should span. If panel specifies a `span`, use that. Otherwise
 // look for a `breakpoint` percentage. If neither are specified, default to 12 (full width).
@@ -383,7 +343,35 @@ const getPanelClassModifier = (panel: Panel): string => {
   }
 };
 
+// Matches Prometheus labels surrounded by {{ }} in the graph legend label templates
+const legendTemplateOptions = { interpolate: /{{([a-zA-Z_][a-zA-Z0-9_]*)}}/g };
+
 const Card: React.FC<CardProps> = ({ panel }) => {
+  const pollInterval = useSelector(({ UI }: RootState) =>
+    UI.getIn(['monitoringDashboards', 'pollInterval']),
+  );
+  const timespan = useSelector(({ UI }: RootState) =>
+    UI.getIn(['monitoringDashboards', 'timespan']),
+  );
+  const variables = useSelector(({ UI }: RootState) =>
+    UI.getIn(['monitoringDashboards', 'variables']),
+  );
+
+  const formatLegendLabel = React.useCallback(
+    (labels, i) => {
+      const legendFormat = panel.targets?.[i]?.legendFormat;
+      const compiled = _.template(legendFormat, legendTemplateOptions);
+      try {
+        return compiled(labels);
+      } catch (e) {
+        // If we can't format the label (e.g. if one of it's variables is missing from `labels`),
+        // show the template string instead
+        return legendFormat;
+      }
+    },
+    [panel],
+  );
+
   if (panel.type === 'row') {
     return (
       <>
@@ -398,6 +386,15 @@ const Card: React.FC<CardProps> = ({ panel }) => {
     return null;
   }
 
+  const variablesJS: VariablesMap = variables.toJS();
+
+  const rawQueries = _.map(panel.targets, 'expr');
+  if (!rawQueries.length) {
+    return null;
+  }
+  const queries = rawQueries.map((expr) => evaluateTemplate(expr, variablesJS, timespan));
+  const isLoading = _.some(queries, _.isUndefined);
+
   const panelClassModifier = getPanelClassModifier(panel);
 
   return (
@@ -410,23 +407,76 @@ const Card: React.FC<CardProps> = ({ panel }) => {
       >
         <DashboardCardHeader className="monitoring-dashboards__card-header">
           <DashboardCardTitle>{panel.title}</DashboardCardTitle>
+          {!isLoading && <QueryBrowserLink queries={queries} />}
         </DashboardCardHeader>
         <DashboardCardBody className="co-dashboard-card__body--dashboard-graph">
-          <CardBody panel={panel} />
+          {isLoading ? (
+            <LoadingInline />
+          ) : (
+            <>
+              {panel.type === 'grafana-piechart-panel' && (
+                <BarChart pollInterval={pollInterval} query={queries[0]} />
+              )}
+              {panel.type === 'graph' && (
+                <Graph
+                  formatLegendLabel={panel.legend?.show ? formatLegendLabel : undefined}
+                  isStack={panel.stack}
+                  pollInterval={pollInterval}
+                  queries={queries}
+                />
+              )}
+              {panel.type === 'singlestat' && (
+                <SingleStat panel={panel} pollInterval={pollInterval} query={queries[0]} />
+              )}
+              {panel.type === 'table' && (
+                <Table panel={panel} pollInterval={pollInterval} queries={queries} />
+              )}
+            </>
+          )}
         </DashboardCardBody>
       </DashboardCard>
     </div>
   );
 };
 
+const PanelsRow: React.FC<{ row: Row }> = ({ row }) => {
+  const showButton = row.showTitle && !_.isEmpty(row.title);
+
+  const [isExpanded, toggleIsExpanded] = useBoolean(showButton ? !row.collapse : true);
+
+  const Icon = isExpanded ? AngleDownIcon : AngleRightIcon;
+  const title = isExpanded ? 'Hide' : 'Show';
+
+  return (
+    <div>
+      {showButton && (
+        <Button
+          aria-label={title}
+          className="pf-m-link--align-left"
+          onClick={toggleIsExpanded}
+          style={{ fontSize: 24 }}
+          title={title}
+          variant="plain"
+        >
+          <Icon />
+          &nbsp;{row.title}
+        </Button>
+      )}
+      {isExpanded && (
+        <div className="monitoring-dashboards__row">
+          {_.map(row.panels, (panel) => (
+            <Card key={panel.id} panel={panel} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Board: React.FC<BoardProps> = ({ rows }) => (
   <>
-    {_.map(rows, (row, i) => (
-      <div className="monitoring-dashboards__row" key={i}>
-        {_.map(row.panels, (panel) => (
-          <Card key={panel.id} panel={panel} />
-        ))}
-      </div>
+    {_.map(rows, (row) => (
+      <PanelsRow key={_.map(row.panels, 'id').join()} row={row} />
     ))}
   </>
 );
@@ -438,12 +488,10 @@ const GrafanaLink = () =>
     </span>
   );
 
-const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
-  deleteAll,
-  match,
-  patchAllVariables,
-}) => {
+const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ match }) => {
   const { t } = useTranslation();
+
+  const dispatch = useDispatch();
 
   const [board, setBoard] = React.useState<string>();
   const [boards, setBoards] = React.useState<Board[]>([]);
@@ -453,7 +501,7 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
   const safeFetch = React.useCallback(useSafeFetch(), []);
 
   // Clear queries on unmount
-  React.useEffect(() => deleteAll, [deleteAll]);
+  React.useEffect(() => () => dispatch(queryBrowserDeleteAllQueries()), [dispatch]);
 
   React.useEffect(() => {
     safeFetch('/api/console/monitoring-dashboard-config')
@@ -469,7 +517,7 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
             };
           } catch (e) {
             setError(
-              t('monitoring~Could not parse JSON data for dashboard "{{dashboard}}"', {
+              t('public~Could not parse JSON data for dashboard "{{dashboard}}"', {
                 dashboard: item.metadata.name,
               }),
             );
@@ -510,13 +558,18 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
             });
           }
         });
-        patchAllVariables(allVariables);
+        dispatch(monitoringDashboardsPatchAllVariables(allVariables));
+
+        // Set time range options to their defaults since they may have been changed on the
+        // previous dashboard
+        dispatch(monitoringDashboardsSetEndTime(null));
+        dispatch(monitoringDashboardsSetTimespan(MONITORING_DASHBOARDS_DEFAULT_TIMESPAN));
 
         setBoard(newBoard);
         history.replace(`/monitoring/dashboards/${newBoard}`);
       }
     },
-    [board, boards, patchAllVariables],
+    [board, boards, dispatch],
   );
 
   // Default to displaying the first board
@@ -531,18 +584,33 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
   }
 
   const data = _.find(boards, { name: board })?.data;
-  const rows = _.isEmpty(data?.rows) ? [{ panels: data?.panels }] : data?.rows;
+
+  // If we don't find any rows, build the rows array based on what we have in `data.panels`
+  const rows = data?.rows?.length
+    ? data.rows
+    : data?.panels?.reduce((acc, panel) => {
+        if (panel.type === 'row' || acc.length === 0) {
+          acc.push(panel);
+        } else {
+          const row = acc[acc.length - 1];
+          if (_.isNil(row.panels)) {
+            row.panels = [];
+          }
+          row.panels.push(panel);
+        }
+        return acc;
+      }, []);
 
   return (
     <>
       <Helmet>
-        <title>{t('monitoring~Metrics dashboards')}</title>
+        <title>{t('public~Metrics dashboards')}</title>
       </Helmet>
       <div className="co-m-nav-title co-m-nav-title--detail">
         <div className="monitoring-dashboards__header">
           <h1 className="co-m-pane__heading">
             <span>
-              {t('monitoring~Dashboards')} <GrafanaLink />
+              {t('public~Dashboards')} <GrafanaLink />
             </span>
           </h1>
           <div className="monitoring-dashboards__options">
@@ -555,7 +623,7 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
             <VariableDropdown
               id="monitoring-board-dropdown"
               items={boardItems}
-              label={t('monitoring~Dashboard')}
+              label={t('public~Dashboard')}
               onChange={changeBoard}
               selectedKey={board}
             />
@@ -567,10 +635,6 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
     </>
   );
 };
-const MonitoringDashboardsPage = connect(null, {
-  deleteAll: UIActions.queryBrowserDeleteAllQueries,
-  patchAllVariables: UIActions.monitoringDashboardsPatchAllVariables,
-})(MonitoringDashboardsPage_);
 
 type TemplateVariable = {
   hide: number;
@@ -581,7 +645,10 @@ type TemplateVariable = {
 };
 
 type Row = {
+  collapse?: boolean;
   panels: Panel[];
+  showTitle?: boolean;
+  title?: string;
 };
 
 type Board = {
@@ -617,34 +684,11 @@ type VariableDropdownProps = {
 
 type SingleVariableDropdownProps = {
   id: string;
-  isHidden: boolean;
   name: string;
-  options?: string[];
-  patchVariable: (key: string, patch: Variable) => undefined;
-  query?: string;
-  optionsLoaded: (key: string, newOptions: string[]) => undefined;
-  timespan: number;
-  value?: string;
 };
 
 type BoardProps = {
   rows: Row[];
-};
-
-type AllVariableDropdownsProps = {
-  variables: ImmutableMap<string, ImmutableMap<string, any>>;
-};
-
-type TimespanDropdownProps = {
-  timespan: number;
-  setTimespan: (v: number) => never;
-};
-
-type CardBodyProps = {
-  panel: Panel;
-  pollInterval: null | number;
-  timespan: number;
-  variables: ImmutableMap<string, ImmutableMap<string, any>>;
 };
 
 type CardProps = {
@@ -652,11 +696,9 @@ type CardProps = {
 };
 
 type MonitoringDashboardsPageProps = {
-  deleteAll: () => undefined;
   match: {
     params: { board: string };
   };
-  patchAllVariables: (variables: VariablesMap) => undefined;
 };
 
 export default withFallback(MonitoringDashboardsPage, ErrorBoundaryFallback);

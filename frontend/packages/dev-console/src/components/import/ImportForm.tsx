@@ -12,13 +12,20 @@ import {
   usePostFormSubmitAction,
 } from '@console/shared';
 import { useExtensions, Perspective, isPerspective } from '@console/plugin-sdk';
-import { UNASSIGNED_KEY, ALLOW_SERVICE_BINDING_FLAG } from '@console/topology/src/const';
+import { UNASSIGNED_KEY } from '@console/topology/src/const';
 import { sanitizeApplicationValue } from '@console/topology/src/utils/application-utils';
 import { NormalizedBuilderImages, normalizeBuilderImages } from '../../utils/imagestream-utils';
-import { GitImportFormData, FirehoseList, ImportData, Resources } from './import-types';
+import {
+  GitImportFormData,
+  FirehoseList,
+  ImportData,
+  Resources,
+  BaseFormData,
+} from './import-types';
 import { createOrUpdateResources, handleRedirect } from './import-submit-utils';
 import { validationSchema } from './import-validation-utils';
-import { healthChecksProbeInitialData } from '../health-checks/health-checks-probe-utils';
+import { useUpdateKnScalingDefaultValues } from './serverless/useUpdateKnScalingDefaultValues';
+import { getBaseInitialValues } from './form-initial-values';
 
 export interface ImportFormProps {
   namespace: string;
@@ -33,7 +40,6 @@ export interface ImportFormProps {
 
 export interface StateProps {
   activeApplication: string;
-  serviceBindingAvailable: boolean;
 }
 
 const ImportForm: React.FC<ImportFormProps & StateProps> = ({
@@ -48,21 +54,21 @@ const ImportForm: React.FC<ImportFormProps & StateProps> = ({
   const [perspective] = useActivePerspective();
   const perspectiveExtensions = useExtensions<Perspective>(isPerspective);
   const postFormCallback = usePostFormSubmitAction();
+
+  const initialBaseValues: BaseFormData = getBaseInitialValues(namespace, activeApplication);
   const initialValues: GitImportFormData = {
-    name: '',
-    project: {
-      name: namespace || '',
-      displayName: '',
-      description: '',
-    },
+    ...initialBaseValues,
     application: {
-      initial: sanitizeApplicationValue(activeApplication),
-      name: sanitizeApplicationValue(activeApplication),
+      ...initialBaseValues.application,
       selectedKey:
         activeApplication === t('devconsole~no application group')
           ? UNASSIGNED_KEY
           : activeApplication,
       isInContext: !!sanitizeApplicationValue(activeApplication),
+    },
+    resourceTypesNotValid: contextualSource ? [Resources.KnativeService] : [],
+    pipeline: {
+      enabled: false,
     },
     git: {
       url: '',
@@ -76,47 +82,8 @@ const ImportForm: React.FC<ImportFormProps & StateProps> = ({
     docker: {
       dockerfilePath: 'Dockerfile',
     },
-    image: {
-      selected: '',
-      recommended: '',
-      tag: '',
-      tagObj: {},
-      ports: [],
-      isRecommending: false,
-      couldNotRecommend: false,
-    },
-    route: {
-      disable: false,
-      create: true,
-      targetPort: '',
-      defaultUnknownPort: 8080,
-      path: '',
-      hostname: '',
-      secure: false,
-      tls: {
-        termination: '',
-        insecureEdgeTerminationPolicy: '',
-        caCertificate: '',
-        certificate: '',
-        destinationCACertificate: '',
-        privateKey: '',
-      },
-    },
-    resources: Resources.Kubernetes,
-    resourceTypesNotValid: contextualSource ? [Resources.KnativeService] : [],
-    serverless: {
-      scaling: {
-        minpods: 0,
-        maxpods: '',
-        concurrencytarget: '',
-        concurrencylimit: '',
-      },
-    },
-    pipeline: {
-      enabled: false,
-    },
     build: {
-      env: [],
+      ...initialBaseValues.build,
       triggers: {
         webhook: true,
         image: true,
@@ -124,35 +91,9 @@ const ImportForm: React.FC<ImportFormProps & StateProps> = ({
       },
       strategy: importData.buildStrategy || 'Source',
     },
-    deployment: {
-      env: [],
-      triggers: {
-        image: true,
-        config: true,
-      },
-      replicas: 1,
-    },
-    labels: {},
-    limits: {
-      cpu: {
-        request: '',
-        requestUnit: 'm',
-        defaultRequestUnit: 'm',
-        limit: '',
-        limitUnit: 'm',
-        defaultLimitUnit: 'm',
-      },
-      memory: {
-        request: '',
-        requestUnit: 'Mi',
-        defaultRequestUnit: 'Mi',
-        limit: '',
-        limitUnit: 'Mi',
-        defaultLimitUnit: 'Mi',
-      },
-    },
-    healthChecks: healthChecksProbeInitialData,
   };
+
+  const initialVals = useUpdateKnScalingDefaultValues(initialValues);
   const builderImages: NormalizedBuilderImages =
     imageStreams && imageStreams.loaded && normalizeBuilderImages(imageStreams.data);
 
@@ -199,7 +140,7 @@ const ImportForm: React.FC<ImportFormProps & StateProps> = ({
 
   return (
     <Formik
-      initialValues={initialValues}
+      initialValues={initialVals}
       onSubmit={handleSubmit}
       onReset={history.goBack}
       validationSchema={validationSchema(t)}
@@ -214,7 +155,6 @@ const mapStateToProps = (state: RootState, ownProps: OwnProps): StateProps => {
   const activeApplication = ownProps.forApplication || getActiveApplication(state);
   return {
     activeApplication: activeApplication !== ALL_APPLICATIONS_KEY ? activeApplication : '',
-    serviceBindingAvailable: state.FLAGS.get(ALLOW_SERVICE_BINDING_FLAG),
   };
 };
 

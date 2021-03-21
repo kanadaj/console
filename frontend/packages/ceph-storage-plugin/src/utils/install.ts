@@ -5,6 +5,7 @@ import {
   StorageClassResourceKind,
   K8sResourceKind,
   MatchExpression,
+  k8sPatch,
 } from '@console/internal/module/k8s';
 import {
   humanizeBinaryBytes,
@@ -16,8 +17,8 @@ import {
   LABEL_OPERATOR,
 } from '@console/local-storage-operator-plugin/src/constants';
 import { getNodeCPUCapacity, getNodeAllocatableMemory, getName } from '@console/shared';
-import { ocsTaint, NO_PROVISIONER, AVAILABLE, MINIMUM_NODES, ZONE_LABELS } from '../constants';
-import { Discoveries } from '../components/ocs-install/attached-devices/create-sc/state';
+import { NodeModel } from '@console/internal/models';
+import { ocsTaint, NO_PROVISIONER, MINIMUM_NODES, ZONE_LABELS } from '../constants';
 import { getSCAvailablePVs } from '../selectors';
 
 export const hasNoTaints = (node: NodeKind) => {
@@ -27,6 +28,21 @@ export const hasNoTaints = (node: NodeKind) => {
 export const hasOCSTaint = (node: NodeKind) => {
   const taints: Taint[] = node.spec?.taints || [];
   return taints.some((taint: Taint) => _.isEqual(taint, ocsTaint));
+};
+
+export const taintNodes = (selectedNodes: NodeKind[]): Promise<NodeKind>[] => {
+  const taintNodesRequest = selectedNodes.map((node) => {
+    const taints = node?.spec?.taints ? [...node.spec.taints, ocsTaint] : [ocsTaint];
+    const patch = [
+      {
+        value: taints,
+        path: '/spec/taints',
+        op: node.spec.taints ? 'replace' : 'add',
+      },
+    ];
+    return k8sPatch(NodeModel, node, patch);
+  });
+  return taintNodesRequest;
 };
 
 export const getConvertedUnits = (value: string) => {
@@ -41,14 +57,6 @@ export const filterSCWithoutNoProv = (sc: StorageClassResourceKind) =>
 
 export const getZone = (node: NodeKind) =>
   node.metadata.labels?.[ZONE_LABELS[0]] || node.metadata.labels?.[ZONE_LABELS[1]];
-
-export const getTotalDeviceCapacity = (list: Discoveries[]): number =>
-  list.reduce((res, device) => {
-    if (device?.status?.state === AVAILABLE) {
-      return res + device.size;
-    }
-    return res;
-  }, 0);
 
 export const getAssociatedNodes = (pvs: K8sResourceKind[]): string[] => {
   const nodes = pvs.reduce((res, pv) => {
@@ -92,7 +100,8 @@ export const shouldDeployAsMinimal = (cpu: number, memory: number, nodesCount: n
   return false;
 };
 
-export const isFlexibleScaling = (nodes, zones): boolean => !!(nodes >= MINIMUM_NODES && zones < 3);
+export const isFlexibleScaling = (nodes: number, zones: number): boolean =>
+  !!(nodes >= MINIMUM_NODES && zones < 3);
 
 export const countNodesPerZone = (nodes: NodeKind[]) =>
   nodes.reduce((acc, curr) => {
@@ -118,8 +127,8 @@ export const isArbiterSC = (
   );
   const uniqZones: Set<string> = new Set(nodesData.map(getZone));
   const uniqSelectedNodesZones: Set<string> = new Set(tableData.map(getZone));
-  if (uniqZones.size < 3) return false;
-  if (uniqSelectedNodesZones.size !== 2) return false;
+  if (_.compact([...uniqZones]).length < 3) return false;
+  if (_.compact([...uniqSelectedNodesZones]).length !== 2) return false;
   const zonePerNode = countNodesPerZone(tableData);
   return Object.keys(zonePerNode).every((zone) => zonePerNode[zone] >= 2);
 };

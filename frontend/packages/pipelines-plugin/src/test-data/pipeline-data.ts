@@ -1,6 +1,7 @@
 import { K8sResourceKind } from '@console/internal/module/k8s';
-import { Pipeline, PipelineRun, TaskRunKind, PipelineSpec } from '../utils/pipeline-augment';
-import { TektonResourceLabel } from '../components/pipelines/const';
+import { PipelineKind, PipelineRunKind, TaskRunKind, PipelineSpec, TaskKind } from '../types';
+import { TektonResourceLabel, preferredNameAnnotation } from '../components/pipelines/const';
+import { TaskKindAlpha } from '../components/pipelines/resource-utils';
 
 export enum DataState {
   IN_PROGRESS = 'In Progress',
@@ -25,16 +26,18 @@ export enum PipelineExampleNames {
   CONDITIONAL_PIPELINE = 'conditional-pipeline',
   INVALID_PIPELINE_MISSING_TASK = 'missing-task-pipeline',
   INVALID_PIPELINE_INVALID_TASK = 'invalid-task-pipeline',
+  EMBEDDED_PIPELINE_SPEC = 'embedded-pipeline-spec',
+  PIPELINE_WITH_FINALLY = 'pipeline-with-finally',
 }
 
 type CombinedPipelineTestData = {
   dataSource: string; // where the data was sourced from
-  pipeline: Pipeline;
-  pipelineRuns: { [key in DataState]?: PipelineRun };
+  pipeline: PipelineKind;
+  pipelineRuns: { [key in DataState]?: PipelineRunKind };
   taskRuns?: TaskRunKind[];
   pods?: K8sResourceKind[];
   // esLint seems to be having issues detecting the usage above - but typescript is properly typing the value
-  eslint_workaround?: PipelineRun;
+  eslint_workaround?: PipelineRunKind;
 };
 
 type PipelineTestData = { [key in PipelineExampleNames]?: CombinedPipelineTestData };
@@ -280,6 +283,24 @@ const pipelineSpec: PipelineSpecData = {
           kind: 'Task',
           name: 'echo-hello',
         },
+      },
+    ],
+  },
+  [PipelineExampleNames.PIPELINE_WITH_FINALLY]: {
+    tasks: [
+      {
+        name: 'hello-world-1',
+        taskRef: { name: 'hello-world-1' },
+      },
+      {
+        name: 'hello-world-2',
+        taskRef: { name: 'hello-world-2' },
+      },
+    ],
+    finally: [
+      {
+        name: 'run-anyway',
+        taskRef: { name: 'run-anyway' },
       },
     ],
   },
@@ -989,8 +1010,6 @@ export const pipelineTestData: PipelineTestData = {
         name: 'cluster-mock-app-pipeline',
         namespace: 'openshift',
         resourceVersion: '672093',
-        selfLink:
-          '/apis/tekton.dev/v1alpha1/namespaces/openshift/pipelines/cluster-mock-app-pipeline',
         uid: 'd22b9451-cd71-47f3-be1a-4ca93647b76e',
       },
       spec: pipelineSpec[PipelineExampleNames.CLUSTER_PIPELINE],
@@ -1010,8 +1029,6 @@ export const pipelineTestData: PipelineTestData = {
           name: 'react-web-app-cluster-mock-app-pipeline-aaz5bv',
           namespace: 'andrew-test',
           resourceVersion: '677828',
-          selfLink:
-            '/apis/tekton.dev/v1alpha1/namespaces/andrew-test/pipelineruns/react-web-app-cluster-mock-app-pipeline-aaz5bv',
           uid: 'd067dfb0-dc9d-49b2-a998-c93636c50b7d',
         },
         spec: {
@@ -1665,8 +1682,6 @@ export const pipelineTestData: PipelineTestData = {
               '{"apiVersion":"tekton.dev/v1beta1","kind":"Task","metadata":{"annotations":{},"name":"fetch-secure-data","namespace":"karthik"},"spec":{"steps":[{"image":"ubuntu","name":"fetch-and-write","script":"if [ \\"hunter2\\" = \\"$(cat $(workspaces.super-secret-password.path)/password)\\" ]; then\\n  cp $(workspaces.secure-store.path)/recipe.txt $(workspaces.filedrop.path)\\nelse\\n  echo \\"wrong password!\\"\\n  exit 1\\nfi\\n"}],"workspaces":[{"name":"super-secret-password"},{"name":"secure-store"},{"name":"filedrop"}]}}\n',
             'pipeline.tekton.dev/release': 'devel',
           },
-          selfLink:
-            '/apis/tekton.dev/v1beta1/namespaces/karthik/taskruns/fetch-and-print-recipe-sn3peo-fetch-the-recipe-2rjgw',
           resourceVersion: '527180',
           name: 'fetch-and-print-recipe-sn3peo-fetch-the-recipe-2rjgw',
           uid: '8eab0635-3d63-4f5b-b1a5-48bc6f2fab60',
@@ -1885,9 +1900,182 @@ export const pipelineTestData: PipelineTestData = {
       },
     },
   },
+  [PipelineExampleNames.EMBEDDED_PIPELINE_SPEC]: {
+    dataSource: 'embedded-pipelineSpec',
+    pipeline: null,
+    pipelineRuns: {
+      [DataState.IN_PROGRESS]: {
+        apiVersion: 'tekton.dev/v1alpha1',
+        kind: 'PipelineRun',
+        metadata: {
+          name: 'pipelinerun-with-embedded-pipelineSpec',
+          namespace: 'tekton-pipelines',
+          creationTimestamp: '2020-10-29T06:11:46Z',
+        },
+        spec: {
+          pipelineSpec: {
+            tasks: [
+              {
+                name: 'echo-good-morning',
+                taskSpec: {
+                  metadata: {
+                    labels: {
+                      app: 'example',
+                    },
+                  },
+                  steps: [
+                    {
+                      name: 'echo',
+                      image: 'ubuntu',
+                      script: ['#!/usr/bin/env bash echo "Good Morning!"'],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          resources: [
+            { name: 'source-repo', resourceRef: { name: 'mapit-git' } },
+            { name: 'web-image', resourceRef: { name: 'mapit-image' } },
+          ],
+        },
+      },
+      [DataState.SUCCESS]: {
+        apiVersion: 'tekton.dev/v1alpha1',
+        kind: 'PipelineRun',
+        metadata: {
+          name: 'pipelinerun-wit-embedded-pipelineSpec-p1bun0',
+          namespace: 'tekton-pipelines',
+          creationTimestamp: '2020-10-29T09:58:19Z',
+          annotations: {
+            [preferredNameAnnotation]: 'pipelinerun-wit-embedded-pipelineSpec',
+          },
+        },
+        spec: {
+          pipelineSpec: {
+            tasks: [
+              {
+                name: 'echo-good-morning',
+                taskSpec: {
+                  metadata: {
+                    labels: {
+                      app: 'example',
+                    },
+                  },
+                  steps: [
+                    {
+                      name: 'echo',
+                      image: 'ubuntu',
+                      script: ['#!/usr/bin/env bash echo "Good Morning!"'],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          resources: [
+            { name: 'source-repo', resourceRef: { name: 'mapit-git' } },
+            {
+              name: 'web-image',
+              resourceRef: { name: 'mapit-image' },
+            },
+          ],
+        },
+      },
+      [DataState.SKIPPED]: {
+        apiVersion: 'tekton.dev/v1alpha1',
+        kind: 'PipelineRun',
+        metadata: {
+          name: 'embedded-pipelineSpec-br8cxv',
+          namespace: 'tekton-pipelines',
+          creationTimestamp: '2020-10-29T06:11:46Z',
+          labels: { [TektonResourceLabel.pipeline]: 'embedded-pipelineSpec' },
+        },
+        spec: {
+          pipelineRef: { name: 'embedded-pipelineSpec' },
+          resources: [
+            { name: 'source-repo', resourceRef: { name: 'mapit-git' } },
+            { name: 'web-image', resourceRef: { name: 'mapit-image' } },
+          ],
+        },
+      },
+    },
+  },
+  [PipelineExampleNames.PIPELINE_WITH_FINALLY]: {
+    dataSource: 'finally-pipeline',
+    pipeline: {
+      apiVersion: 'tekton.dev/v1alpha1',
+      kind: 'Pipeline',
+      metadata: {
+        name: 'finally-pipeline',
+        namespace: 'tekton-pipelines',
+      },
+      spec: pipelineSpec[PipelineExampleNames.PIPELINE_WITH_FINALLY],
+    },
+    pipelineRuns: {
+      [DataState.SUCCESS]: {
+        apiVersion: 'tekton.dev/v1alpha1',
+        kind: 'PipelineRun',
+        metadata: {
+          name: 'finally-pipeline-3tt7aw',
+          namespace: 'tekton-pipelines',
+          labels: { [TektonResourceLabel.pipeline]: 'finally-pipeline' },
+        },
+        spec: {
+          pipelineRef: { name: 'finally-pipeline' },
+        },
+        status: {
+          pipelineSpec: pipelineSpec[PipelineExampleNames.PIPELINE_WITH_FINALLY],
+          completionTime: '2019-10-29T11:57:53Z',
+          conditions: [
+            {
+              lastTransitionTime: '2019-09-12T20:38:01Z',
+              message: 'All Tasks have completed executing',
+              reason: 'Succeeded',
+              status: 'True',
+              type: 'Succeeded',
+            },
+          ],
+          taskRuns: {
+            'pipeline-p1bun0-hello-world-1-rlj9b': {
+              pipelineTaskName: 'hello-world-1',
+              status: {
+                completionTime: '2019-12-10T11:18:38Z',
+                conditions: [{ status: 'True', type: 'Succeeded' }],
+                podName: 'test',
+                startTime: '2019-12-10T11:18:38Z',
+              },
+            },
+            'pipeline-p1bun0-hello-world-2-wccp2': {
+              pipelineTaskName: 'hello-world-2',
+              status: {
+                completionTime: '2019-12-10T11:18:38Z',
+                conditions: [{ status: 'True', type: 'Succeeded' }],
+                podName: 'test',
+                startTime: '2019-12-10T11:18:38Z',
+              },
+            },
+            'pipeline-p1bun0-run-anyway-cnd82': {
+              pipelineTaskName: 'run-anyway',
+              status: {
+                completionTime: '2019-12-10T11:18:38Z',
+                conditions: [{ status: 'True', type: 'Succeeded' }],
+                podName: 'test',
+                startTime: '2019-12-10T11:18:38Z',
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 };
 
-export const taskTestData = {
+type TaskTestData = {
+  v1alpha1: { buildah: TaskKindAlpha };
+  v1beta1: { buildah: TaskKind };
+};
+export const taskTestData: TaskTestData = {
   v1alpha1: {
     buildah: {
       apiVersion: 'tekton.dev/v1alpha1',

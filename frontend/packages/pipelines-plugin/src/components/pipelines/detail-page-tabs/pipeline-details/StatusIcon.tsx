@@ -1,4 +1,5 @@
 import * as React from 'react';
+import * as cx from 'classnames';
 import { useTranslation } from 'react-i18next';
 import {
   AngleDoubleRightIcon,
@@ -15,13 +16,14 @@ interface StatusIconProps {
   status: string;
   height?: number;
   width?: number;
+  disableSpin?: boolean;
 }
 
-export const StatusIcon: React.FC<StatusIconProps> = ({ status, ...props }) => {
+export const StatusIcon: React.FC<StatusIconProps> = ({ status, disableSpin, ...props }) => {
   switch (status) {
     case runStatus['In Progress']:
     case runStatus.Running:
-      return <SyncAltIcon {...props} className="fa-spin" />;
+      return <SyncAltIcon {...props} className={cx({ 'fa-spin': !disableSpin })} />;
 
     case runStatus.Succeeded:
       return <CheckCircleIcon {...props} />;

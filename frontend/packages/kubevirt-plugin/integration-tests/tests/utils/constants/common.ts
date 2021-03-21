@@ -1,9 +1,8 @@
-import { execSync } from 'child_process';
-
 export const {
   STORAGE_CLASS = 'standard',
   KUBEVIRT_PROJECT_NAME = 'openshift-cnv',
   VOLUME_MODE,
+  CNV_25 = false,
 } = process.env;
 export const REMOTE_IMAGE =
   'http://cnv-qe-server.rhevdev.lab.eng.rdu2.redhat.com/files/cnv-tests/cirros-images/cirros-0.4.0-x86_64-disk.qcow2';
@@ -14,10 +13,6 @@ export const {
   WIN10_IMAGE = REMOTE_IMAGE,
 } = process.env;
 
-const rhelTinyCommonTemplateName = execSync(
-  "kubectl get template -n openshift | grep rhel7-desktop-tiny | awk '{print $1}'",
-).toString();
-
 export const NOT_AVAILABLE = 'Not available';
 
 // TIMEOUTS
@@ -26,13 +21,13 @@ export const CLONE_VM_TIMEOUT_SECS = 720 * SEC;
 export const CLONED_VM_BOOTUP_TIMEOUT_SECS = 300 * SEC;
 export const PAGE_LOAD_TIMEOUT_SECS = 15 * SEC;
 export const TEMPLATE_ACTIONS_TIMEOUT_SECS = 90 * SEC;
-export const VM_ACTIONS_TIMEOUT_SECS = 250 * SEC;
+export const VM_ACTIONS_TIMEOUT_SECS = 260 * SEC;
 export const VM_BOOTUP_TIMEOUT_SECS = 230 * SEC;
 export const VM_MIGRATION_TIMEOUT_SECS = 260 * SEC;
 export const VM_STOP_TIMEOUT_SECS = 220 * SEC;
 export const VM_DELETE_TIMEOUT_SECS = 220 * SEC;
 export const VM_IP_ASSIGNMENT_TIMEOUT_SECS = 180 * SEC;
-export const VM_IMPORT_TIMEOUT_SECS = 160 * SEC;
+export const VM_IMPORT_TIMEOUT_SECS = 300 * SEC;
 export const WINDOWS_IMPORT_TIMEOUT_SECS = 150 * SEC;
 export const VM_CREATE_AND_EDIT_TIMEOUT_SECS = 200 * SEC;
 export const VM_CREATE_AND_EDIT_AND_CLOUDINIT_TIMEOUT_SECS = 15 * 60 * SEC;
@@ -78,7 +73,6 @@ export const NODE_READY_STATUS = 'Ready';
 // Kubevirt related
 export const KUBEVIRT_STORAGE_CLASS_DEFAULTS = 'kubevirt-storage-class-defaults';
 
-export const commonTemplateVersion = () => rhelTinyCommonTemplateName.match(/v\d+\.\d+\.\d+/)[0];
 export const INNER_TEMPLATE_VERSION = 'v0.11.0';
 
 export const COMMON_TEMPLATES_NAMESPACE = 'openshift';

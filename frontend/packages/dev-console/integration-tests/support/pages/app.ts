@@ -1,34 +1,34 @@
 import { detailsPage } from '../../../../integration-tests-cypress/views/details-page';
 import { nav } from '../../../../integration-tests-cypress/views/nav';
 import { devNavigationMenu, switchPerspective } from '../constants/global';
-import { modal } from '../../../../integration-tests-cypress/views/modal';
 import { devNavigationMenuPO } from '../pageObjects/global-po';
 import { pageTitle } from '../constants/pageTitle';
+import { modal } from '../../../../integration-tests-cypress/views/modal';
 
 export const app = {
-  waitForLoad: (timeout: number = 30000) =>
-    cy.get('.co-m-loader', { timeout }).should('not.be.visible'),
+  waitForDocumentLoad: () => {
+    cy.document()
+      .its('readyState')
+      .should('eq', 'complete');
+  },
+  waitForLoad: (timeout: number = 80000) => {
+    cy.get('.co-m-loader', { timeout }).should('not.exist');
+    cy.get('.pf-c-spinner', { timeout }).should('not.exist');
+    app.waitForDocumentLoad();
+  },
+};
+export const sidePane = {
+  close: () => cy.get('button[aria-label="Close"]').click({ force: true }),
 };
 
 export const perspective = {
   switchTo: (perspectiveName: switchPerspective) => {
-    switch (perspectiveName) {
-      case switchPerspective.Administrator: {
-        nav.sidenav.switcher.changePerspectiveTo('Administrator');
-        break;
-      }
-      case switchPerspective.Developer: {
-        nav.sidenav.switcher.changePerspectiveTo('Developer');
-        break;
-      }
-      default: {
-        throw new Error('Option is not available');
-      }
-    }
+    app.waitForLoad();
+    nav.sidenav.switcher.changePerspectiveTo(perspectiveName);
   },
 };
 
-export const naviagteTo = (opt: devNavigationMenu) => {
+export const navigateTo = (opt: devNavigationMenu) => {
   switch (opt) {
     case devNavigationMenu.Add: {
       cy.get(devNavigationMenuPO.add)
@@ -36,7 +36,7 @@ export const naviagteTo = (opt: devNavigationMenu) => {
         .then(() => {
           cy.url().should('include', 'add');
           app.waitForLoad();
-          // Bug: ODC-5119 is created related to Accesibiity violation - Until bug fix, below line is commented to execute the scripts in CI
+          // Bug: ODC-5119 is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
           // cy.testA11y('Add Page in dev perspective');
         });
       break;
@@ -44,7 +44,7 @@ export const naviagteTo = (opt: devNavigationMenu) => {
     case devNavigationMenu.Topology: {
       cy.get(devNavigationMenuPO.topology).click();
       cy.url().should('include', 'topology');
-      // Bug: ODC-5119 is created related to Accesibiity violation - Until bug fix, below line is commented to execute the scripts in CI
+      // Bug: ODC-5119 is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
       // cy.testA11y('Topology Page in dev perspective');
       break;
     }
@@ -69,7 +69,8 @@ export const naviagteTo = (opt: devNavigationMenu) => {
     case devNavigationMenu.Pipelines: {
       cy.get(devNavigationMenuPO.pipelines).click();
       detailsPage.titleShouldContain(pageTitle.Pipelines);
-      cy.testA11y('Pipelines Page in dev perspective');
+      // Bug: ODC-5119 is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
+      // cy.testA11y('Pipelines Page in dev perspective');
       break;
     }
     case devNavigationMenu.Search: {
@@ -102,6 +103,12 @@ export const naviagteTo = (opt: devNavigationMenu) => {
       cy.testA11y('Secrets Page in dev perspective');
       break;
     }
+    case devNavigationMenu.Environments: {
+      cy.get(devNavigationMenuPO.environments).click();
+      detailsPage.titleShouldContain(pageTitle.Environments);
+      cy.testA11y('Environments Page in dev perspective');
+      break;
+    }
     default: {
       throw new Error('Option is not available');
     }
@@ -109,43 +116,50 @@ export const naviagteTo = (opt: devNavigationMenu) => {
 };
 
 export const projectNameSpace = {
-  selectCreateProjectOption: () => {
+  clickProjectDropdown: () => {
     cy.byLegacyTestID('namespace-bar-dropdown')
       .find('button')
-      .eq(0)
+      .first()
       .click();
-    cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
+  },
+  selectCreateProjectOption: () => {
+    cy.document().then((doc) => {
+      if (doc.readyState === 'complete') {
+        projectNameSpace.clickProjectDropdown();
+        cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
+      }
+    });
   },
 
   enterProjectName: (projectName: string) => {
-    cy.get('form[name="form"]').should('be.visible');
+    modal.shouldBeOpened();
     cy.get('#input-name').type(projectName);
   },
 
   selectOrCreateProject: (projectName: string) => {
-    cy.byLegacyTestID('namespace-bar-dropdown')
-      .find('button')
-      .eq(0)
-      .click();
-    // Bug: ODC-5129 - is created related to Accesibiity violation - Until bug fix, below line is commented to execute the scripts in CI
+    projectNameSpace.clickProjectDropdown();
+    // Bug: ODC-5129 - is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
     // cy.testA11y('Create Project modal');
     cy.byLegacyTestID('dropdown-text-filter').type(projectName);
+    cy.document()
+      .its('readyState')
+      .should('eq', 'complete');
     cy.get('[role="listbox"]').then(($el) => {
       if ($el.find('li[role="option"]').length === 0) {
         cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
         cy.byTestID('input-name').type(projectName);
-        modal.submit();
+        cy.byTestID('confirm-action').click();
       } else {
         cy.get(`[id="${projectName}-link"]`).click();
+        cy.document()
+          .its('readyState')
+          .should('eq', 'complete');
       }
     });
   },
 
   selectProject: (projectName: string) => {
-    cy.byLegacyTestID('namespace-bar-dropdown')
-      .find('button')
-      .eq(0)
-      .click();
+    projectNameSpace.clickProjectDropdown();
     cy.byLegacyTestID('dropdown-text-filter').type(projectName);
     cy.get(`[id="${projectName}-link"]`).click();
   },

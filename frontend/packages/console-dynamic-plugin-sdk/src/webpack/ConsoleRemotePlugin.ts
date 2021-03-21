@@ -5,7 +5,6 @@ import * as _ from 'lodash';
 import { ConsoleAssetPlugin } from './ConsoleAssetPlugin';
 import { ConsolePackageJSON } from '../schema/plugin-package';
 import { SchemaValidator } from '../validation/SchemaValidator';
-import consolePkgMetadataSchema from '../../dist/schema/plugin-package';
 import { sharedVendorModules } from '../shared-modules';
 import { remoteEntryFile } from '../constants';
 
@@ -13,11 +12,14 @@ export const validatePackageFileSchema = (
   pkg: ConsolePackageJSON,
   description = 'package.json',
 ) => {
+  const schema = require('../../dist/schema/plugin-package').default;
   const validator = new SchemaValidator(description);
-  validator.assert.validSemverString(pkg.version, 'pkg.version');
 
   if (pkg.consolePlugin) {
-    validator.validate(consolePkgMetadataSchema, pkg.consolePlugin, 'pkg.consolePlugin');
+    validator.validate(schema, pkg.consolePlugin, 'pkg.consolePlugin');
+
+    validator.assert.validDNSSubdomainName(pkg.consolePlugin.name, 'pkg.consolePlugin.name');
+    validator.assert.validSemverString(pkg.consolePlugin.version, 'pkg.consolePlugin.version');
 
     if (_.isPlainObject(pkg.consolePlugin.dependencies)) {
       Object.entries(pkg.consolePlugin.dependencies).forEach(([depName, versionRange]) => {
@@ -53,7 +55,7 @@ export class ConsoleRemotePlugin {
     // Apply relevant webpack plugins
     compiler.hooks.afterPlugins.tap(ConsoleRemotePlugin.name, () => {
       new webpack.container.ContainerPlugin({
-        name: this.pkg.name,
+        name: this.pkg.consolePlugin.name,
         library: { type: remoteEntryLibraryType, name: remoteEntryCallback },
         filename: remoteEntryFile,
         exposes: this.pkg.consolePlugin.exposedModules || {},
@@ -63,22 +65,34 @@ export class ConsoleRemotePlugin {
     });
 
     // Post-process generated remote entry source
+    // TODO(vojtech): fix 'webpack-sources' type incompatibility when updating to latest webpack 5
     compiler.hooks.emit.tap(ConsoleRemotePlugin.name, (compilation) => {
       compilation.updateAsset(remoteEntryFile, (source) => {
-        const newSource = new ReplaceSource(source);
+        const newSource = new ReplaceSource(source as any);
         newSource.insert(
           remoteEntryCallback.length + 1,
-          `'${this.pkg.name}@${this.pkg.version}', `,
+          `'${this.pkg.consolePlugin.name}@${this.pkg.consolePlugin.version}',`,
         );
         return newSource;
       });
     });
 
-    // Skip processing config.entry option if it's missing or empty
+    // Skip processing entry option if it's missing or empty
     // TODO(vojtech): latest webpack 5 allows `entry: {}` so use that & remove following code
     if (_.isPlainObject(compiler.options.entry) && _.isEmpty(compiler.options.entry)) {
       compiler.hooks.entryOption.tap(ConsoleRemotePlugin.name, () => {
         return true;
+      });
+    }
+
+    // Set default publicPath if output.publicPath option is missing or empty
+    // TODO(vojtech): mainTemplate is deprecated in latest webpack 5, adapt code accordingly
+    if (_.isEmpty(compiler.options.output.publicPath)) {
+      compiler.hooks.thisCompilation.tap(ConsoleRemotePlugin.name, (compilation) => {
+        compilation.mainTemplate.hooks.requireExtensions.tap(ConsoleRemotePlugin.name, () => {
+          const pluginBaseURL = `/api/plugins/${this.pkg.consolePlugin.name}/`;
+          return `${webpack.RuntimeGlobals.publicPath} = "${pluginBaseURL}";`;
+        });
       });
     }
   }

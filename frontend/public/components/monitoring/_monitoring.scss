@@ -31,9 +31,8 @@ $tooltip-background-color: #151515;
   padding-right: 10px;
 }
 
-.graph-wrapper--query-browser {
-  padding-left: 50px;
-  padding-right: 10px;
+.graph-wrapper.graph-wrapper--query-browser {
+  padding: 5px 10px 15px 50px;
 
   &--with-legend {
     min-height: 305px;
@@ -266,6 +265,10 @@ $monitoring-line-height: 18px;
   display: flex;
   flex-flow: row wrap;
   font-size: ($font-size-base - 1);
+}
+
+.prometheus-template-tag {
+  margin: 0 2px;
 }
 
 .query-browser__autocomplete-match {

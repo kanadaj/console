@@ -47,7 +47,6 @@ const config: Configuration = {
   },
   devServer: {
     writeToDisk: true,
-    progress: true,
     hot: HOT_RELOAD !== 'false',
     inline: HOT_RELOAD !== 'false',
     contentBase: false,
@@ -221,8 +220,8 @@ const config: Configuration = {
     new CopyWebpackPlugin([{ from: './packages/gitops-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/kubevirt-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/ceph-storage-plugin/locales', to: 'locales' }]),
-    new CopyWebpackPlugin([{ from: './packages/noobaa-storage-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/metal3-plugin/locales', to: 'locales' }]),
+    new CopyWebpackPlugin([{ from: './packages/insights-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([
       { from: './packages/local-storage-operator-plugin/locales', to: 'locales' },
     ]),

@@ -38,12 +38,12 @@ import {
 } from '../../../selectors/vm-template/basic';
 import { getTemplateOSIcon, PinnedIcon } from '../../vm-templates/os-icons';
 import { VMTemplateLabel } from '../../vm-templates/label';
-import { V1alpha1DataVolume } from '../../../types/vm/disk/V1alpha1DataVolume';
+import { V1alpha1DataVolume } from '../../../types/api';
 import { getTemplateSourceStatus } from '../../../statuses/template/template-source-status';
 import { TemplateSource } from '../../vm-templates/vm-template-source';
 import { getWorkloadProfile } from '../../../selectors/vm';
 import {
-  getTemplateFlavorDesc,
+  getTemplateFlavorData,
   getTemplateOperatingSystems,
   getTemplateSizeRequirementInBytes,
 } from '../../../selectors/vm-template/advanced';
@@ -52,7 +52,7 @@ import { isTemplateSourceError, TemplateSourceStatus } from '../../../statuses/t
 import { usePinnedTemplates } from '../../../hooks/use-pinned-templates';
 import { BOOT_SOURCE_AVAILABLE, BOOT_SOURCE_REQUIRED } from '../../../constants';
 import { FormPFSelect } from '../../form/form-pf-select';
-import { VMTemplateSupport } from '../../vm-templates/vm-template';
+import VMTemplateSupport from '../../vm-templates/VMTemplateSupport';
 import { useVmTemplatesFilters } from '../hooks/use-vm-templates-filters';
 
 import './select-template.scss';
@@ -121,7 +121,10 @@ export const TemplateTile: React.FC<TemplateTileProps> = ({
             </StackItem>
             <StackItem>
               <b>{t('kubevirt-plugin~Flavor ')}</b>
-              {getTemplateFlavorDesc(template)}
+              {t(
+                'kubevirt-plugin~{{flavor}}: {{count}} CPU | {{memory}} Memory',
+                getTemplateFlavorData(template),
+              )}
             </StackItem>
             <StackItem>
               <b>{t('kubevirt-plugin~Storage ')}</b>
@@ -277,7 +280,6 @@ export const SelectTemplate: React.FC<SelectTemplateProps> = ({
                           }
                           selections={namespace}
                           className="kv-select-template__project"
-                          closeOnSelect={false}
                         >
                           {(canListNs
                             ? [allProjects, ...namespaces.sort()]

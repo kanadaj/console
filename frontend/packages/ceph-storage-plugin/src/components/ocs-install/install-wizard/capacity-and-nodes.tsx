@@ -17,31 +17,31 @@ import { humanizeBinaryBytes, Dropdown } from '@console/internal/components/util
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { StorageClassResourceKind, NodeKind, K8sResourceKind } from '@console/internal/module/k8s';
 import { useDeepCompareMemoize } from '@console/shared';
-import { State, Action } from '../attached-devices/create-sc/state';
-import { scResource } from '../../../constants/resources';
-import { arbiterText } from '../../../constants';
+import { State, Action } from '../attached-devices-mode/reducer';
+import { scResource } from '../../../resources';
+import { arbiterText, MODES } from '../../../constants';
 import { getZone, isArbiterSC } from '../../../utils/install';
 import { AdvancedSubscription } from '../subscription-icon';
+import { ActionType, InternalClusterAction, InternalClusterState } from '../internal-mode/reducer';
+import './_capacity-and-nodes.scss';
 
-export const SelectNodesText: React.FC<SelectNodesTextProps> = React.memo(({ text, replica }) => {
+export const SelectNodesText: React.FC<SelectNodesTextProps> = React.memo(({ text }) => {
   const { t } = useTranslation();
+  const label = 'cluster.ocs.openshift.io/openshift-storage=""';
   return (
     <TextContent>
       <Text>{text}</Text>
       <Text>
-        <Trans t={t} ns="ceph-storage-plugin" i18nKey="nodesText">
-          The selected nodes will be labeled with&nbsp;
-          <Label color="blue">cluster.ocs.openshift.io/openshift-storage=&quot;&quot;</Label>
-          &nbsp;(unless they are already labeled). {{ replica }} of the selected nodes will be used
-          for initial deployment. The remaining nodes will be used by OpenShift as scheduling
-          targets for OCS scaling.
+        <Trans t={t} ns="ceph-storage-plugin">
+          If not labeled, the selected nodes are labeled <Label color="blue">{{ label }}</Label> to
+          make them target hosts for OCS components.
         </Trans>
       </Text>
     </TextContent>
   );
 });
 
-type SelectNodesTextProps = { text: string; replica: number };
+type SelectNodesTextProps = { text: string };
 
 export const SelectNodesDetails: React.FC<SelectNodesDetailsProps> = React.memo(
   ({ nodes, cpu, zones, memory }) => {
@@ -56,6 +56,7 @@ export const SelectNodesDetails: React.FC<SelectNodesDetailsProps> = React.memo(
             memory: humanizeBinaryBytes(memory).string,
           })}
           {t('ceph-storage-plugin~{{zoneCount, number}} zone', { zoneCount: zones, count: zones })}
+          {')'}
         </Text>
       </TextContent>
     );
@@ -69,7 +70,32 @@ type SelectNodesDetailsProps = {
   memory: number;
 };
 
-export const StretchClusterFormGroup: React.FC<stretchClusterFormGroupProps> = ({
+export const EnableTaintNodes: React.FC<EnableTaintNodesProps> = ({ state, dispatch, mode }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Checkbox
+      label={t('ceph-storage-plugin~Enable taint nodes')}
+      description={t('ceph-storage-plugin~Selected nodes will be dedicated to OCS use only')}
+      className="ocs-install__enable-taint"
+      id="taint-nodes"
+      isChecked={state.enableTaint}
+      onChange={() =>
+        mode === MODES.INTERNAL
+          ? dispatch({ type: ActionType.SET_ENABLE_TAINT, payload: !state.enableTaint })
+          : dispatch({ type: 'setEnableTaint', value: !state.enableTaint })
+      }
+    />
+  );
+};
+
+type EnableTaintNodesProps = {
+  state: State | InternalClusterState;
+  dispatch: React.Dispatch<Action | InternalClusterAction>;
+  mode: string;
+};
+
+export const StretchClusterFormGroup: React.FC<StretchClusterFormGroupProps> = ({
   state,
   dispatch,
   pvData,
@@ -96,7 +122,7 @@ export const StretchClusterFormGroup: React.FC<stretchClusterFormGroupProps> = (
     if (stretchClusterChecked) {
       const uniqZones: Set<string> = new Set(nodesDataMemoized.map((node) => getZone(node)));
       const uniqSelectedNodesZones: Set<string> = new Set(nodes.map((node) => getZone(node)));
-      setZones(_.difference([...uniqZones], [...uniqSelectedNodesZones]));
+      setZones(_.difference(_.compact([...uniqZones]), _.compact([...uniqSelectedNodesZones])));
     }
   }, [storageClass, stretchClusterChecked, nodes, isArbiterDisabled, dispatch, nodesDataMemoized]);
 
@@ -161,7 +187,7 @@ export const StretchClusterFormGroup: React.FC<stretchClusterFormGroupProps> = (
   );
 };
 
-type stretchClusterFormGroupProps = {
+type StretchClusterFormGroupProps = {
   state: State;
   dispatch: React.Dispatch<Action>;
   pvData: K8sResourceKind[];

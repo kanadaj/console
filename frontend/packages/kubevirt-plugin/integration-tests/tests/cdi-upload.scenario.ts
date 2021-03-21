@@ -4,6 +4,7 @@ import { testName } from '@console/internal-integration-tests/protractor.conf';
 import { browser, ExpectedConditions as until } from 'protractor';
 import {
   click,
+  createResource,
   removeLeakedResources,
   withResource,
   withResources,
@@ -21,6 +22,7 @@ import {
   FEDORA_IMAGE,
   RHEL7_IMAGE,
   WIN10_IMAGE,
+  VM_IMPORT_TIMEOUT_SECS,
 } from './utils/constants/common';
 import {
   GOLDEN_OS_IMAGES_NS,
@@ -30,15 +32,16 @@ import {
   RHEL7_PVC,
   WIN10_PVC,
 } from './utils/constants/pvc';
-import { TemplateByName } from './utils/constants/wizard';
+import { VM_STATUS } from './utils/constants/vm';
+import { Flavor, TemplateByName } from './utils/constants/wizard';
 import { PVCData } from './types/pvc';
 import { UploadForm } from './models/pvcUploadForm';
 import { PVC } from './models/pvc';
 import { VMBuilder } from './models/vmBuilder';
 import { VMTemplateBuilder } from './models/vmtemplateBuilder';
 import { getBasicVMBuilder, getBasicVMTBuilder } from './mocks/vmBuilderPresets';
-import { flavorConfigs } from './mocks/mocks';
 import { uploadOSImage } from './utils/utils';
+import { AccessMode, VolumeMode, getTestDataVolume } from './mocks/mocks';
 
 function imagePull(src, dest) {
   if (src === CIRROS_IMAGE) {
@@ -113,15 +116,20 @@ describe('KubeVirt Auto Clone', () => {
       2 * CDI_UPLOAD_TIMEOUT_SECS,
     );
 
-    it('ID(CNV-5176) It shows an error when uploading data to golden OS again', async () => {
-      await withResource(leakedResources, rhel7PVC.getDVResource(), async () => {
-        await rhel7PVC.create();
-        await uploadForm.openForm();
-        await uploadForm.selectGoldenOS(rhel7PVC.os);
-        await browser.wait(until.presenceOf(errorMessage));
-        expect(errorMessage.getText()).toContain('Operating system source already defined');
-      });
-    });
+    it(
+      'ID(CNV-5176) It shows an error when uploading data to golden OS again',
+      async () => {
+        await withResource(leakedResources, rhel7PVC.getDVResource(), async () => {
+          await rhel7PVC.create();
+          await uploadForm.openForm();
+          await uploadForm.selectGoldenOS(rhel7PVC.os);
+          await browser.wait(until.presenceOf(errorMessage));
+          const alertText = await errorMessage.getText();
+          expect(alertText).toContain('Operating system source already defined');
+        });
+      },
+      CDI_UPLOAD_TIMEOUT_SECS,
+    );
   });
 
   describe('KubeVirt GOLDEN OS Creation', () => {
@@ -137,97 +145,94 @@ describe('KubeVirt Auto Clone', () => {
       execSync(`rm ${FEDORA_PVC.image} ${WIN10_PVC.image}`);
     });
 
-    it(
-      'ID(CNV-5042) Create multiple VMs from the same golden os template',
-      async () => {
-        const vm1 = new VMBuilder(getBasicVMBuilder())
-          .setOS(rhel7PVC.os)
-          .generateNameForPrefix('auto-clone-vm1')
-          .setStartOnCreation(true)
-          .setCustomize(true)
-          .build();
+    it('ID(CNV-5042) Create multiple VMs from the same golden os template', async () => {
+      const vm1 = new VMBuilder(getBasicVMBuilder())
+        .setSelectTemplateName(TemplateByName.RHEL7)
+        .generateNameForPrefix('auto-clone-vm1')
+        .setStartOnCreation(false)
+        .build();
 
-        const vm2 = new VMBuilder(getBasicVMBuilder())
-          .setOS(rhel7PVC.os)
-          .generateNameForPrefix('auto-clone-vm2')
-          .setStartOnCreation(true)
-          .setCustomize(true)
-          .build();
+      const vm2 = new VMBuilder(getBasicVMBuilder())
+        .setSelectTemplateName(TemplateByName.RHEL7)
+        .generateNameForPrefix('auto-clone-vm2')
+        .build();
 
-        await withResources(
-          leakedResources,
-          [vm1.asResource(), vm2.asResource(), rhel7PVC.getDVResource()],
-          async () => {
-            await rhel7PVC.create();
-            await vm1.create();
-            await vm1.navigateToDetail();
-            await vm2.create();
-            await vm2.navigateToDetail();
-          },
-        );
-      },
-      VM_BOOTUP_TIMEOUT_SECS + CLONE_VM_TIMEOUT_SECS,
-    );
+      await withResources(
+        leakedResources,
+        [vm1.asResource(), vm2.asResource(), rhel7PVC.getDVResource()],
+        async () => {
+          await rhel7PVC.create();
+          await vm1.create();
+          await vm2.create();
+          await vm1.start();
+        },
+      );
+    }, 1200000);
 
-    it(
-      'ID(CNV-5041) VM can be up after deleting backend golden PVC',
-      async () => {
-        const fedora = new VMBuilder(getBasicVMBuilder())
-          .setOS(fedoraPVC.os)
-          .generateNameForPrefix('auto-clone-vm-with-pvc-deleted')
-          .setStartOnCreation(false)
-          .setCustomize(true)
-          .build();
+    it('ID(CNV-5041) VM can be up after deleting backend golden PVC', async () => {
+      const fedora = new VMBuilder(getBasicVMBuilder())
+        .setSelectTemplateName(TemplateByName.FEDORA)
+        .generateNameForPrefix('auto-clone-vm-with-pvc-deleted')
+        .setStartOnCreation(false)
+        .build();
 
-        await withResources(
-          leakedResources,
-          [fedora.asResource(), fedoraPVC.getDVResource()],
-          async () => {
-            await fedoraPVC.create();
-            await fedora.create();
-            await fedora.stop();
-            await fedoraPVC.delete();
-            await fedora.start();
-            await fedora.navigateToDetail();
-          },
-        );
-      },
-      (VM_BOOTUP_TIMEOUT_SECS + CLONE_VM_TIMEOUT_SECS) * 2,
-    );
+      await withResources(
+        leakedResources,
+        [fedora.asResource(), fedoraPVC.getDVResource()],
+        async () => {
+          await fedoraPVC.create();
+          await fedora.create();
+          await fedora.waitForStatus(VM_STATUS.Off, VM_IMPORT_TIMEOUT_SECS);
+          await fedoraPVC.delete();
+          await fedora.start();
+          await fedora.navigateToDetail();
+        },
+      );
+    }, 1200000);
 
-    it(
-      'ID(CNV-5043) Create Fedora/RHEL/Windows VMs from golden os template',
-      async () => {
-        // skip creating fedora/rhel vm here as it's covered above.
-        const win10 = new VMBuilder(getBasicVMBuilder())
-          .setOS(win10PVC.os)
-          .setFlavor(flavorConfigs.Medium)
-          .generateNameForPrefix('auto-clone-win10-vm')
-          .setStartOnCreation(true)
-          .setCustomize(true)
-          .build();
+    it('ID(CNV-5043) Create Fedora/RHEL/Windows VMs from golden os template', async () => {
+      // skip creating fedora/rhel vm here as it's covered above.
+      const win10 = new VMBuilder(getBasicVMBuilder())
+        .setFlavor({ flavor: Flavor.MEDIUM }) // Win does not have tiny flavor
+        .setSelectTemplateName(TemplateByName.WINDOWS_10)
+        .generateNameForPrefix('auto-clone-win10-vm')
+        .setStartOnCreation(false)
+        .build();
 
-        await withResources(
-          leakedResources,
-          [win10.asResource(), win10PVC.getDVResource()],
-          async () => {
-            await win10PVC.create();
-            await win10.create();
-            await win10.navigateToDetail();
-          },
-        );
-      },
-      VM_BOOTUP_TIMEOUT_SECS + CLONE_VM_TIMEOUT_SECS,
-    );
+      await withResources(
+        leakedResources,
+        [win10.asResource(), win10PVC.getDVResource()],
+        async () => {
+          await win10PVC.create();
+          await win10.create();
+          await win10.waitForStatus(VM_STATUS.Off, VM_IMPORT_TIMEOUT_SECS);
+          await win10.start();
+          await win10.navigateToDetail();
+        },
+      );
+    }, 1200000);
   });
 
   describe('Auto-clone from cli', () => {
     const vmTemplate = new VMTemplateBuilder(getBasicVMTBuilder())
       .setName(TemplateByName.RHEL8)
       .build();
+    let volumeMode;
+    if (VolumeMode === 'Filesystem') {
+      volumeMode = false;
+    }
+    if (VolumeMode === 'Block') {
+      volumeMode = true;
+    }
 
     beforeAll(async () => {
-      uploadOSImage('rhel8', GOLDEN_OS_IMAGES_NS, cirrosPVC.image, 'ReadWriteMany', true);
+      if (STORAGE_CLASS === 'ocs-storagecluster-ceph-rbd') {
+        uploadOSImage('rhel8', GOLDEN_OS_IMAGES_NS, cirrosPVC.image, AccessMode, volumeMode);
+      }
+      if (STORAGE_CLASS === 'hostpath-provisioner') {
+        const testDV = getTestDataVolume('rhel8', GOLDEN_OS_IMAGES_NS);
+        createResource(testDV);
+      }
     });
 
     afterAll(async () => {

@@ -25,7 +25,7 @@ Cypress.Commands.add('install', (mode: 'Internal' | 'Attached' = 'Internal', enc
 
       cy.log('Subscribe to OCS Operator');
       cy.byLegacyTestID('operator-install-btn').click({ force: true });
-      cy.byTestID('Operator recommended namespace:-radio-input').should('be.checked');
+      cy.byTestID('Operator recommended Namespace:-radio-input').should('be.checked');
       cy.byTestID('enable-monitoring').click();
       cy.byTestID('install-operator').click();
       cy.byTestID('success-icon', { timeout: 180000 }).should('be.visible');
@@ -50,7 +50,10 @@ Cypress.Commands.add('install', (mode: 'Internal' | 'Attached' = 'Internal', enc
 
       // Make changes to this once we add annotation
       cy.log(`Install OCS in ${mode} Mode`);
-      commonFlows.navigateToOCS(true);
+      // Reload because StorageCluster CRD is not registered in the UI; hence getting 404 Error
+      cy.visit('/');
+      cy.reload(true);
+      commonFlows.navigateToOCS();
       cy.byLegacyTestID('horizontal-link-Storage Cluster').click();
       cy.byTestID('item-create').click();
 

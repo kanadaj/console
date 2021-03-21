@@ -11,17 +11,25 @@ export enum devNavigationMenu {
   ConfigMaps = 'Config Maps',
   Secrets = 'Secrets',
   GitOps = 'GitOps',
+  Environments = 'Environments',
 }
 
 export enum switchPerspective {
-  Developer = 'Developer Perspective',
-  Administrator = ' Administrator Perspective',
+  Developer = 'Developer',
+  Administrator = ' Administrator',
 }
 
 export enum operators {
-  pipelineOperator = 'Pipeline Operator',
-  serverlessOperator = 'Serverless Operator',
-  virtualizationOperator = 'Virtualization Operator',
-  knativeCamelOperator = 'knative Apache Camel Operator',
-  eclipseCheOperator = 'Eclipse Che',
+  PipelinesOperator = 'Pipeline',
+  ServerlessOperator = 'Serverless',
+  VirtualizationOperator = 'Virtualization',
+  KnativeCamelOperator = 'Knative Apache Camel K',
+  EclipseCheOperator = 'Eclipse Che',
+  GitOpsOperator = 'GitOps',
+  WebTerminalOperator = 'Web Terminal',
+}
+
+export enum authenticationType {
+  BasicAuthentication = 'Basic Authentication',
+  SSHKey = 'SSHKey',
 }

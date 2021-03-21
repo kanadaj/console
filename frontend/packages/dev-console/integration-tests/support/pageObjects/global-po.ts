@@ -11,4 +11,19 @@ export const devNavigationMenuPO = {
   project: '[data-test-id="project-details-header"]',
   configMaps: '#ConfigMap',
   secret: '#Secret',
+  dropdownButton: '[data-test-id="dropdown-button"]',
+  environments: '[data-test-id="environments-header"]',
+};
+
+export const createSourceSecret = {
+  form: 'form.co-create-secret-form.modal-content',
+  secretName: '#secret-name',
+  authenticationType: '#dropdown-selectbox',
+  basicAuthentication: {
+    userName: '#username',
+    password: '#password',
+  },
+  sshKey: {
+    sshPrivateKey: '[data-test-id="file-input-textarea"]',
+  },
 };

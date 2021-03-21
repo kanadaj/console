@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import GitUrlParse from 'git-url-parse';
+import * as GitUrlParse from 'git-url-parse';
 import i18next from 'i18next';
 import {
   K8sResourceKind,
@@ -28,19 +28,44 @@ export const WORKLOAD_TYPES = [
   'pods',
 ];
 
+export type CheDecoratorData = {
+  cheURL?: string;
+  cheIconURL?: string;
+};
+
 export const getServiceBindingStatus = ({ FLAGS }: RootState): boolean =>
   FLAGS.get(ALLOW_SERVICE_BINDING_FLAG);
 
-export const getCheURL = (consoleLinks: K8sResourceKind[]) =>
-  _.get(_.find(consoleLinks, ['metadata.name', 'che']), 'spec.href', '');
+export const getCheDecoratorData = (consoleLinks: K8sResourceKind[]): CheDecoratorData => {
+  const cheConsoleLink = _.find(consoleLinks, ['metadata.name', 'che']);
+  return {
+    cheURL: cheConsoleLink?.spec?.href,
+    cheIconURL: cheConsoleLink?.spec?.applicationMenu?.imageURL,
+  };
+};
+
+const getFullGitURL = (gitUrl: GitUrlParse.GitUrl, branch?: string) => {
+  const baseUrl = `https://${gitUrl.resource}/${gitUrl.owner}/${gitUrl.name}`;
+  if (!branch) {
+    return baseUrl;
+  }
+  if (gitUrl.resource.includes('github')) {
+    return `${baseUrl}/tree/${branch}`;
+  }
+  if (gitUrl.resource.includes('gitlab')) {
+    return `${baseUrl}/-/tree/${branch}`;
+  }
+  if (gitUrl.resource.includes('bitbucket')) {
+    return `${baseUrl}/src/${branch}`;
+  }
+  return baseUrl;
+};
 
 export const getEditURL = (vcsURI?: string, gitBranch?: string, cheURL?: string) => {
   if (!vcsURI) {
     return null;
   }
-  const parsedURL = GitUrlParse(vcsURI);
-  const gitURL = `https://${parsedURL.source}/${parsedURL.owner}/${parsedURL.name}`;
-  const fullGitURL = gitBranch ? `${gitURL}/tree/${gitBranch}` : gitURL;
+  const fullGitURL = getFullGitURL(GitUrlParse(vcsURI), gitBranch);
   return cheURL ? `${cheURL}/f?url=${fullGitURL}&policies.create=peruser` : fullGitURL;
 };
 

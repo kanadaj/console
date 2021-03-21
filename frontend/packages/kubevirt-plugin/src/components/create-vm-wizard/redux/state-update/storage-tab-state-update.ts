@@ -5,6 +5,7 @@ import {
   hasStoragesChanged,
   iGetProvisionSourceStorage,
   iGetProvisionSourceAdditionalStorage,
+  iGetStorages,
 } from '../../selectors/immutable/storage';
 import {
   getNewProvisionSourceStorage,
@@ -28,6 +29,10 @@ import { iGetCommonData, iGetLoadedCommonData } from '../../selectors/immutable/
 import { toShallowJS } from '../../../../utils/immutable';
 import { getEmptyInstallStorage } from '../../../../utils/storage';
 import { getDataVolumeStorageClassName } from '../../../../selectors/dv/selectors';
+import {
+  getDefaultSCAccessModes,
+  getDefaultSCVolumeMode,
+} from '../../../../selectors/config-map/sc-defaults';
 
 export const prefillInitialDiskUpdater = ({ id, prevState, dispatch, getState }: UpdateOptions) => {
   const state = getState();
@@ -52,18 +57,20 @@ export const prefillInitialDiskUpdater = ({ id, prevState, dispatch, getState }:
   // Depends on OPERATING_SYSTEM CLONE_COMMON_BASE_DISK_IMAGE PROVISION_SOURCE_TYPE FLAVOR USER_TEMPLATE and WORKLOAD_PROFILE
   const newSourceStorage = getNewProvisionSourceStorage(state, id);
   const oldType =
-    oldSourceStorage &&
-    StorageUISource.fromTypes(
-      new VolumeWrapper(oldSourceStorage.volume).getType(),
-      new DataVolumeWrapper(oldSourceStorage.dataVolume).getType(),
-    );
+    (oldSourceStorage &&
+      StorageUISource.fromTypes(
+        new VolumeWrapper(oldSourceStorage.volume).getType(),
+        new DataVolumeWrapper(oldSourceStorage.dataVolume).getType(),
+      )) ||
+    null;
 
   const newType =
-    newSourceStorage &&
-    StorageUISource.fromTypes(
-      new VolumeWrapper(newSourceStorage.volume).getType(),
-      new DataVolumeWrapper(newSourceStorage.dataVolume).getType(),
-    );
+    (newSourceStorage &&
+      StorageUISource.fromTypes(
+        new VolumeWrapper(newSourceStorage.volume).getType(),
+        new DataVolumeWrapper(newSourceStorage.dataVolume).getType(),
+      )) ||
+    null;
 
   const baseDiskImageChanged =
     newSourceStorage?.dataVolume?.spec?.source?.pvc?.name !==
@@ -201,7 +208,85 @@ export const internalStorageDiskBusUpdater = ({
   }
 };
 
+const initialStorageDiskUpdater = ({ id, prevState, dispatch, getState }: UpdateOptions) => {
+  const state = getState();
+
+  if (!hasStoragesChanged(prevState, state, id)) {
+    return;
+  }
+
+  const provisionSourceStorage = iGetProvisionSourceStorage(state, id)?.toJSON();
+
+  if (provisionSourceStorage) {
+    const removableRootDisk = iGetStorages(state, id)
+      ?.toJSON()
+      ?.find((disk) => disk.type === VMWizardStorageType.TEMPLATE);
+
+    removableRootDisk &&
+      dispatch(
+        vmWizardInternalActions[InternalActionType.RemoveStorage](id, removableRootDisk?.id),
+      );
+  }
+};
+
 const initialStorageClassUpdater = ({ id, prevState, dispatch, getState }: UpdateOptions) => {
+  const state = getState();
+  const provisionSourceStorage = iGetProvisionSourceStorage(state, id)?.toJSON();
+  const storageClassConfigMap = iGetCommonData(
+    state,
+    id,
+    VMWizardProps.storageClassConfigMap,
+  )?.toJSON();
+
+  const { commonTemplateName } = iGetCommonData(state, id, VMWizardProps.initialData).toJSON();
+
+  if (
+    !hasStoragesChanged(prevState, state, id) ||
+    !storageClassConfigMap ||
+    !commonTemplateName ||
+    !provisionSourceStorage
+  ) {
+    return;
+  }
+
+  const provisionSourceStorageClassName = getDataVolumeStorageClassName(
+    provisionSourceStorage?.dataVolume,
+  );
+
+  const storageClassVolumeMode = getDefaultSCVolumeMode(
+    storageClassConfigMap?.data,
+    provisionSourceStorageClassName,
+  );
+
+  const storageClassAccessMode = getDefaultSCAccessModes(
+    storageClassConfigMap?.data,
+    provisionSourceStorageClassName,
+  );
+
+  if (
+    storageClassVolumeMode &&
+    storageClassAccessMode &&
+    !provisionSourceStorage?.dataVolume?.spec?.source?.pvc
+  ) {
+    const updatedStorage = new DataVolumeWrapper(provisionSourceStorage.dataVolume)
+      .setVolumeMode(storageClassVolumeMode)
+      .setAccessModes(storageClassAccessMode)
+      .asResource();
+    dispatch(
+      vmWizardInternalActions[InternalActionType.UpdateStorage](id, {
+        ...provisionSourceStorage,
+        dataVolume: updatedStorage,
+      }),
+    );
+  }
+};
+
+const initialDefaultStorageClassUpdater = ({
+  id,
+  prevState,
+  dispatch,
+  getState,
+}: UpdateOptions) => {
   const state = getState();
 
   if (
@@ -218,8 +303,8 @@ const initialStorageClassUpdater = ({ id, prevState, dispatch, getState }: Updat
       iProvisionSourceStorage && iProvisionSourceStorage.toJSON();
 
     if (
-      provisionSourceStorage &&
-      !getDataVolumeStorageClassName(provisionSourceStorage?.dataVolume)
+      provisionSourceStorage?.dataVolume &&
+      !getDataVolumeStorageClassName(provisionSourceStorage.dataVolume)
     ) {
       const updatedStorage = new DataVolumeWrapper(provisionSourceStorage.dataVolume)
         .setStorageClassName(storageClassName)
@@ -240,7 +325,9 @@ export const updateStorageTabState = (options: UpdateOptions) =>
     prefillInitialDiskUpdater,
     windowsToolsUpdater,
     internalStorageDiskBusUpdater,
+    initialDefaultStorageClassUpdater,
     initialStorageClassUpdater,
+    initialStorageDiskUpdater,
   ].forEach((updater) => {
     updater && updater(options);
   });

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { navFactory } from '@console/internal/components/utils';
 import { DetailsPage } from '@console/internal/components/factory';
-import { PodModel, TemplateModel } from '@console/internal/models';
+import { PodModel } from '@console/internal/models';
 import { VMDisksAndFileSystemsPage } from '../vm-disks/vm-disks';
 import { VMNics } from '../vm-nics';
 import {
@@ -18,12 +18,11 @@ import {
   VM_DETAIL_CONSOLES_HREF,
 } from '../../constants';
 import { VMEvents } from './vm-events';
-import { VMConsoleFirehose } from './vm-console';
+import VMConsoleDetailsPage from './vm-console/VMConsoleDetailsPage';
 import { VMDetailsFirehose } from './vm-details';
 import { vmiMenuActionsCreator } from './menu-actions';
 import { VMDashboard } from './vm-dashboard';
 import VMIDetailsPageInfoMessage from '../info-messages/VMIDetailsPageInfoMessage';
-import { TEMPLATE_TYPE_LABEL, TEMPLATE_TYPE_VM } from '../../constants/vm';
 import { breadcrumbsForVMPage } from './vm-details-page';
 
 export const VirtualMachinesInstanceDetailsPage: React.FC<VirtualMachinesInstanceDetailsPageProps> = (
@@ -47,7 +46,7 @@ export const VirtualMachinesInstanceDetailsPage: React.FC<VirtualMachinesInstanc
   const consolePage = {
     href: VM_DETAIL_CONSOLES_HREF,
     name: t('kubevirt-plugin~Console'),
-    component: VMConsoleFirehose,
+    component: VMConsoleDetailsPage,
   };
 
   const nicsPage = {
@@ -82,12 +81,6 @@ export const VirtualMachinesInstanceDetailsPage: React.FC<VirtualMachinesInstanc
     }),
     getResource(PodModel, { namespace, prop: 'pods' }),
     getResource(VirtualMachineInstanceMigrationModel, { namespace, prop: 'migrations' }),
-    getResource(TemplateModel, {
-      isList: true,
-      namespace,
-      prop: 'templates',
-      matchLabels: { [TEMPLATE_TYPE_LABEL]: TEMPLATE_TYPE_VM },
-    }),
   ];
 
   return (

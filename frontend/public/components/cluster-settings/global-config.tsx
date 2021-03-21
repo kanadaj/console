@@ -12,10 +12,22 @@ import { addIDPItems } from './oauth';
 import { TextFilter } from '../factory';
 import { fuzzyCaseInsensitive } from '../factory/table-filters';
 import { withExtensions, isGlobalConfig, GlobalConfig } from '@console/plugin-sdk';
+import i18next from 'i18next';
 
 const stateToProps = (state: RootState) => ({
   configResources: state.k8s.getIn(['RESOURCES', 'configResources']),
 });
+
+export const breadcrumbsForGlobalConfig = (detailsPageKind: string, detailsPagePath: string) => [
+  {
+    name: i18next.t('details-page~Global configuration'),
+    path: '/settings/cluster/globalconfig',
+  },
+  {
+    name: i18next.t('details-page~{{kind}} details', { kind: detailsPageKind }),
+    path: detailsPagePath,
+  },
+];
 
 const ItemRow = ({ item }) => {
   return (
@@ -46,7 +58,7 @@ const GlobalConfigPage_: React.FC<GlobalConfigPageProps & GlobalConfigPageExtens
   const { t } = useTranslation();
 
   const oauthMenuItems = _.map(addIDPItems, (label: string, id: string) => ({
-    label: t('oauth~{{label}}', { label }),
+    label: t('public~{{label}}', { label }),
     href: `/settings/idp/${id}`,
   }));
 

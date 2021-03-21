@@ -2,11 +2,11 @@ import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
 import { VMIWrapper } from '../../k8s/wrapper/vm/vmi-wrapper';
 import * as _ from 'lodash';
 import { BootableDeviceType } from '../../types/types';
-import { getBootableDevicesInOrder, getDevices } from '../vm/devices';
+import { getBootableDevicesInOrder, getTransformedDevices } from '../vm/devices';
 import { getVMIBootableDevicesInOrder, getVMIDevices } from '../vmi/devices';
 import { createBasicLookup } from '@console/shared';
 import { getSimpleName } from '../utils';
-import { V1Disk } from '../../types/vm/disk/V1Disk';
+import { V1Disk } from '../../types/api';
 import { VolumeWrapper } from '../../k8s/wrapper/vm/volume-wrapper';
 import { DiskWrapper } from '../../k8s/wrapper/vm/disk-wrapper';
 import { V1NetworkInterface } from '../../types/vm/index';
@@ -86,7 +86,7 @@ export const isBootOrderChanged = (vm: VMWrapper, vmi: VMIWrapper): boolean => {
   // Implicit boot order - no boot order is configured
   // Check whether the order of the disks in the YAML has changed
   if (vmBootOrder.length === 0) {
-    const vmDevices = getDevices(vm.asResource());
+    const vmDevices = getTransformedDevices(vm.asResource());
     const vmiDevices = getVMIDevices(vmi.asResource());
 
     return vmDevices.some((bootableDevice, index) => !_.isEqual(bootableDevice, vmiDevices[index]));

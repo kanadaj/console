@@ -62,21 +62,18 @@ describe('Kubevirt VM Next Run Configuration', () => {
   it('ID(CNV-5326) Change Flavor from tiny to custom while VM is running.', async () => {
     await vm.navigateToDetail();
     await vm.modalEditFlavor();
-    expect(await isPCInfoAlertPresent()).toBeTruthy();
     await selectOptionByText(editFlavorView.flavorDropdown, Flavor.CUSTOM);
-    expect(await isPCAlertPresent()).toBeTruthy();
     await fillInput(editFlavorView.cpusInput(), '1');
     await fillInput(editFlavorView.memoryInput(), '1');
     await click(saveButton);
 
     await isLoaded();
-    expect(await isPCAlertPresent()).toBeTruthy();
 
     const alertTabs = await alertHeadings();
     const alertTabAttrs = await alertValues();
+    const mergedAlerts = [...alertTabs, ...alertTabAttrs];
 
-    expect(alertTabs.includes('Details')).toBeTruthy();
-    expect(alertTabAttrs.includes('Flavor')).toBeTruthy();
+    expect(['Details', 'Flavor']).toEqual(mergedAlerts);
   });
 
   it('ID(CNV-5327) Change Custom Flavor while VM is running.', async () => {

@@ -14,10 +14,10 @@ import * as projectDashboardView from '../../views/dashboard.view';
 const inventoryItems = [
   { title: 'Deployment', link: `/k8s/ns/${testName}/deployments` },
   { title: 'Pod', link: `/k8s/ns/${testName}/pods` },
-  { title: 'PVC', link: `/k8s/ns/${testName}/persistentvolumeclaims` },
+  { title: 'PersistentVolumeClaim', link: `/k8s/ns/${testName}/persistentvolumeclaims` },
   { title: 'Service', link: `/k8s/ns/${testName}/services` },
   { title: 'Route', link: `/k8s/ns/${testName}/routes` },
-  { title: 'Config Map', link: `/k8s/ns/${testName}/configmaps` },
+  { title: 'ConfigMap', link: `/k8s/ns/${testName}/configmaps` },
   { title: 'Secret', link: `/k8s/ns/${testName}/secrets` },
 ];
 

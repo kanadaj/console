@@ -2,7 +2,12 @@ import * as _ from 'lodash-es';
 import * as React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 
-import { FLAGS, useActivePerspective } from '@console/shared';
+import {
+  FLAGS,
+  useActivePerspective,
+  useUserSettings,
+  getPerspectiveVisitedKey,
+} from '@console/shared';
 import { connectToFlags, flagPending, FlagsObject } from '../reducers/features';
 import { GlobalNotifications } from './global-notifications';
 import { NamespaceBar } from './namespace';
@@ -56,15 +61,35 @@ type DefaultPageProps = {
 const DefaultPage_: React.FC<DefaultPageProps> = ({ flags }) => {
   const [activePerspective] = useActivePerspective();
   const perspectiveExtensions = useExtensions<Perspective>(isPerspective);
-  if (Object.keys(flags).some((key) => flagPending(flags[key]))) {
+  const [visited, setVisited, visitedLoaded] = useUserSettings<boolean>(
+    getPerspectiveVisitedKey(activePerspective),
+    false,
+  );
+  const firstVisit = React.useRef<boolean>();
+
+  // First time thru, capture first visit status
+  if (firstVisit.current == null && visitedLoaded) {
+    firstVisit.current = !visited;
+  }
+
+  React.useEffect(() => {
+    if (visitedLoaded && !visited) {
+      // Mark perspective as visited
+      setVisited(true);
+    }
+  }, [visitedLoaded, visited, setVisited]);
+
+  if (Object.keys(flags).some((key) => flagPending(flags[key])) || !visitedLoaded) {
     return <LoadingBox />;
   }
+
   const perspective = perspectiveExtensions.find((p) => p.properties.id === activePerspective);
+
   // support redirecting to perspective landing page
   return flags[FLAGS.OPENSHIFT] ? (
-    <Redirect to={perspective.properties.getLandingPageURL(flags)} />
+    <Redirect to={perspective.properties.getLandingPageURL(flags, firstVisit.current)} />
   ) : (
-    <Redirect to={perspective.properties.getK8sLandingPageURL(flags)} />
+    <Redirect to={perspective.properties.getK8sLandingPageURL(flags, firstVisit.current)} />
   );
 };
 
@@ -80,21 +105,46 @@ const LazyRoute = (props) => (
   />
 );
 
-const getPluginPageRoutes = (activePerspective: string, routePages: RoutePage[]) =>
-  routePages.map((r) => {
-    if (r.properties.perspective && r.properties.perspective !== activePerspective) {
-      return null;
-    }
-    const Component = r.properties.loader ? LazyRoute : Route;
-    return <Component {...r.properties} key={Array.from(r.properties.path).join(',')} />;
-  });
+const getPluginPageRoutes = (
+  activePerspective: string,
+  setActivePerspective: (perspective: string) => void,
+  routePages: RoutePage[],
+) => {
+  const activeRoutes = routePages
+    .filter((r) => !r.properties.perspective || r.properties.perspective === activePerspective)
+    .map((r) => {
+      const Component = r.properties.loader ? LazyRoute : Route;
+      return <Component {...r.properties} key={Array.from(r.properties.path).join(',')} />;
+    });
+
+  const inactiveRoutes = routePages
+    .filter((r) => r.properties.perspective && r.properties.perspective !== activePerspective)
+    .map((r) => {
+      const key = Array.from(r.properties.path)
+        .concat([r.properties.perspective])
+        .join(',');
+
+      return (
+        <Route
+          {...r.properties}
+          key={key}
+          component={() => {
+            React.useEffect(() => setActivePerspective(r.properties.perspective));
+            return null;
+          }}
+        />
+      );
+    });
+
+  return [activeRoutes, inactiveRoutes];
+};
 
 const AppContents: React.FC<{}> = () => {
-  const [activePerspective] = useActivePerspective();
+  const [activePerspective, setActivePerspective] = useActivePerspective();
   const routePageExtensions = useExtensions<RoutePage>(isRoutePage);
-  const pluginPageRoutes = React.useMemo(
-    () => getPluginPageRoutes(activePerspective, routePageExtensions),
-    [activePerspective, routePageExtensions],
+  const [pluginPageRoutes, inactivePluginPageRoutes] = React.useMemo(
+    () => getPluginPageRoutes(activePerspective, setActivePerspective, routePageExtensions),
+    [activePerspective, setActivePerspective, routePageExtensions],
   );
 
   return (
@@ -198,24 +248,6 @@ const AppContents: React.FC<{}> = () => {
               }
             />
 
-            <LazyRoute
-              path="/catalog/create-service-instance"
-              exact
-              loader={() =>
-                import(
-                  './service-catalog/create-instance' /* webpackChunkName: "create-service-instance" */
-                ).then((m) => m.CreateInstancePage)
-              }
-            />
-            <LazyRoute
-              path="/k8s/ns/:ns/serviceinstances/:name/create-binding"
-              exact
-              loader={() =>
-                import(
-                  './service-catalog/create-binding' /* webpackChunkName: "create-binding" */
-                ).then((m) => m.CreateBindingPage)
-              }
-            />
             <LazyRoute
               path="/catalog/instantiate-template"
               exact
@@ -628,6 +660,8 @@ const AppContents: React.FC<{}> = () => {
 
             <Route path="/k8s/all-namespaces/:plural" exact component={ResourceListPage} />
             <Route path="/k8s/all-namespaces/:plural/:name" component={ResourceDetailsPage} />
+
+            {inactivePluginPageRoutes}
 
             <LazyRoute
               path="/error"

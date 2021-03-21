@@ -219,6 +219,12 @@ h6 {
   --pf-global--FontSize--md: 1rem;
 }
 
+.pf-c-modal-box__header {
+  // prevent header from collapsing in Safari
+  // temp fix for upstream issue https://github.com/patternfly/patternfly/issues/3825
+  flex-shrink: 0;
+}
+
 .pf-c-page {
   display: block !important;
   position: relative;
@@ -311,7 +317,8 @@ h6 {
   .pf-l-stack {
     font-size: $font-size-base;
   }
-  .pf-c-form-control.pf-m-success, .pf-c-form-control[aria-invalid="true"] {
+  .pf-c-form-control.pf-m-success,
+  .pf-c-form-control[aria-invalid='true'] {
     --pf-global--FontSize--md: #{$font-size-base};
   }
   .pf-c-form-control {
@@ -320,7 +327,7 @@ h6 {
       &.pf-m-success {
         -webkit-animation-name: autofill-success;
       }
-      &[aria-invalid="true"] {
+      &[aria-invalid='true'] {
         -webkit-animation-name: autofill-invalid;
       }
     }
@@ -380,7 +387,8 @@ h6 {
 }
 
 // Necessary due to setting $pf-global--enable-reset to false
-.pf-c-pagination .pf-c-options-menu__menu {
+.pf-c-pagination .pf-c-options-menu__menu,
+.pf-c-alert-group {
   list-style: none;
 }
 
@@ -504,6 +512,6 @@ button.pf-c-dropdown__menu-item.pf-m-disabled {
   position: absolute !important;
 }
 
-.text-muted{
+.text-muted {
   color: var(--pf-global--Color--200);
 }

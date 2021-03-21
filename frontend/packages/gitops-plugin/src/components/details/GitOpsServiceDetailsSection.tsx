@@ -30,13 +30,19 @@ const GitOpsServiceDetailsSection: React.FC<GitOpsServiceDetailsSectionProps> = 
               <Card>
                 <CardTitle className="odc-gitops-service__title co-nowrap">
                   {service.workloadKind ? (
-                    <ResourceLink kind={service.workloadKind} name={service.name} linkTo={false} />
+                    <ResourceLink kind={service.workloadKind} linkTo={false}>
+                      <Label className="odc-gitops-service__title__label" isTruncated>
+                        {service.name}
+                      </Label>
+                    </ResourceLink>
                   ) : (
-                    <span className="co-resource-item__resource-name">{service.name}</span>
+                    <Label className="odc-gitops-service__title__name" isTruncated>
+                      <span className="co-resource-item__resource-name">{service.name}</span>
+                    </Label>
                   )}
                 </CardTitle>
                 <CardBody>
-                  <Label className="co-nowrap" style={{ fontSize: '12px' }} color="cyan">
+                  <Label className="co-nowrap odc-gitops-service__image" color="cyan" isTruncated>
                     {service.image || <div>{t('gitops-plugin~Image not available')}</div>}
                   </Label>
                   <Split className="odc-gitops-service__details">
@@ -51,13 +57,14 @@ const GitOpsServiceDetailsSection: React.FC<GitOpsServiceDetailsSectionProps> = 
                     <ExternalLink
                       additionalClassName="odc-gitops-service__url co-truncate co-nowrap"
                       href={service.source?.url}
-                      text={
-                        <>
-                          {service.source?.icon}&nbsp;
+                    >
+                      <>
+                        {service.source?.icon}&nbsp;
+                        <Label className="odc-gitops-service__url-label" isTruncated>
                           {service.source?.url}
-                        </>
-                      }
-                    />
+                        </Label>
+                      </>
+                    </ExternalLink>
                   ) : (
                     <div className="odc-gitops-service__details">
                       {t('gitops-plugin~Service source URL not available')}

@@ -1,11 +1,5 @@
 import * as React from 'react';
-import {
-  BoltIcon,
-  CatalogIcon,
-  CodeIcon,
-  DatabaseIcon,
-  LaptopCodeIcon,
-} from '@patternfly/react-icons';
+import { CodeIcon } from '@patternfly/react-icons';
 import {
   Plugin,
   ModelFeatureFlag,
@@ -27,29 +21,13 @@ import {
 } from '@console/plugin-sdk';
 import { NamespaceRedirect } from '@console/internal/components/utils/namespace-redirect';
 import { FLAGS } from '@console/shared/src/constants';
-import {
-  BuildConfigModel,
-  ImageStreamModel,
-  DeploymentConfigModel,
-  SecretModel,
-  RouteModel,
-  ServiceModel,
-  ImageStreamImportsModel,
-  ConfigMapModel,
-  DeploymentModel,
-} from '@console/internal/models';
+import { SecretModel, ConfigMapModel } from '@console/internal/models';
 import { referenceForModel } from '@console/internal/module/k8s';
 import { doConnectsToBinding } from '@console/topology/src/utils/connector-utils';
 import { getKebabActionsForKind } from './utils/kebab-actions';
 import { INCONTEXT_ACTIONS_CONNECTS_TO } from './const';
-import { AddAction } from './extensions/add-actions';
-import * as yamlIcon from './images/yaml.svg';
-import * as importGitIcon from './images/from-git.svg';
-import * as dockerfileIcon from './images/dockerfile.svg';
-import * as devfileIcon from './images/devfile.svg';
 import { usePerspectiveDetection } from './utils/usePerspectiveDetection';
 import { getGuidedTour } from './components/guided-tour';
-import { CatalogConsumedExtensions, catalogPlugin } from './components/catalog/catalog-plugin';
 
 type ConsumedExtensions =
   | ModelFeatureFlag
@@ -66,10 +44,8 @@ type ConsumedExtensions =
   | OverviewResourceTab
   | YAMLTemplate
   | OverviewTabSection
-  | AddAction
   | GuidedTour
-  | PostFormSubmissionAction
-  | CatalogConsumedExtensions;
+  | PostFormSubmissionAction;
 
 const plugin: Plugin<ConsumedExtensions> = [
   {
@@ -201,7 +177,7 @@ const plugin: Plugin<ConsumedExtensions> = [
       name: '%devconsole~Developer%',
       icon: <CodeIcon />,
       defaultPins: [referenceForModel(ConfigMapModel), referenceForModel(SecretModel)],
-      getLandingPageURL: () => '/topology',
+      getLandingPageURL: (flags, isFirstVisit) => (isFirstVisit ? '/add' : '/topology'),
       getK8sLandingPageURL: () => '/add',
       getImportRedirectURL: (project) => `/topology/ns/${project}`,
       usePerspectiveDetection,
@@ -222,6 +198,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         '/project-details',
         '/dev-monitoring',
         '/helm-releases',
+        '/upload-jar',
       ],
       component: NamespaceRedirect,
     },
@@ -363,6 +340,19 @@ const plugin: Plugin<ConsumedExtensions> = [
   {
     type: 'Page/Route',
     properties: {
+      exact: true,
+      path: ['/upload-jar/all-namespaces', '/upload-jar/ns/:ns'],
+      loader: async () =>
+        (
+          await import(
+            './components/import/jar/UploadJarPage' /* webpackChunkName: "dev-console-uploadjar" */
+          )
+        ).default,
+    },
+  },
+  {
+    type: 'Page/Route',
+    properties: {
       perspective: 'dev',
       exact: false,
       path: ['/project-details/all-namespaces', '/project-details/ns/:ns'],
@@ -471,180 +461,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
-    type: 'AddAction',
-    properties: {
-      id: 'import-from-samples',
-      url: '/samples',
-      // t('devconsole~Samples')
-      label: '%devconsole~Samples%',
-      // t('devconsole~Create an Application from a code sample')
-      description: '%devconsole~Create an Application from a code sample%',
-      icon: <LaptopCodeIcon />,
-      accessReview: [
-        BuildConfigModel,
-        ImageStreamModel,
-        DeploymentConfigModel,
-        SecretModel,
-        RouteModel,
-        ServiceModel,
-      ].map((model) => ({
-        group: model.apiGroup || '',
-        resource: model.plural,
-        verb: 'create',
-      })),
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'import-from-git',
-      url: '/import',
-      // t('devconsole~From Git')
-      label: '%devconsole~From Git%',
-      // t('devconsole~Import code from your Git repository to be built and deployed')
-      description: '%devconsole~Import code from your Git repository to be built and deployed%',
-      icon: importGitIcon,
-      accessReview: [
-        BuildConfigModel,
-        ImageStreamModel,
-        DeploymentConfigModel,
-        SecretModel,
-        RouteModel,
-        ServiceModel,
-      ].map((model) => ({
-        group: model.apiGroup || '',
-        resource: model.plural,
-        verb: 'create',
-      })),
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'import-from-devfile',
-      url: '/import?importType=devfile',
-      // t('devconsole~From Devfile')
-      label: '%devconsole~From Devfile%',
-      // t('devconsole~Import your Devfile from your Git repository to be built and deployed')
-      description:
-        '%devconsole~Import your Devfile from your Git repository to be built and deployed%',
-      icon: devfileIcon,
-      accessReview: [
-        BuildConfigModel,
-        ImageStreamModel,
-        DeploymentModel,
-        SecretModel,
-        RouteModel,
-        ServiceModel,
-      ].map((model) => ({
-        group: model.apiGroup || '',
-        resource: model.plural,
-        verb: 'create',
-      })),
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'deploy-image',
-      url: '/deploy-image',
-      // t('devconsole~Container Image')
-      label: '%devconsole~Container Image%',
-      // t('devconsole~Deploy an existing Image from an Image registry or Image stream tag')
-      description:
-        '%devconsole~Deploy an existing Image from an Image registry or Image stream tag%',
-      iconClass: 'pficon-image',
-      accessReview: [
-        BuildConfigModel,
-        ImageStreamModel,
-        DeploymentConfigModel,
-        ImageStreamImportsModel,
-        SecretModel,
-        RouteModel,
-        ServiceModel,
-      ].map((model) => ({
-        group: model.apiGroup || '',
-        resource: model.plural,
-        verb: 'create',
-      })),
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'import-from-dockerfile',
-      url: '/import?importType=docker',
-      // t('devconsole~From Dockerfile')
-      label: '%devconsole~From Dockerfile%',
-      // t('devconsole~Import your Dockerfile from your Git repository to be built and deployed')
-      description:
-        '%devconsole~Import your Dockerfile from your Git repository to be built and deployed%',
-      icon: dockerfileIcon,
-      accessReview: [
-        BuildConfigModel,
-        ImageStreamModel,
-        DeploymentConfigModel,
-        SecretModel,
-        RouteModel,
-        ServiceModel,
-      ].map((model) => ({
-        group: model.apiGroup || '',
-        resource: model.plural,
-        verb: 'create',
-      })),
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'import-yaml',
-      url: '/k8s/ns/:namespace/import',
-      // t('devconsole~YAML')
-      label: '%devconsole~YAML%',
-      // t('devconsole~Create resources from their YAML or JSON definitions')
-      description: '%devconsole~Create resources from their YAML or JSON definitions%',
-      icon: yamlIcon,
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'dev-catalog',
-      url: '/catalog',
-      // t('devconsole~From Catalog')
-      label: '%devconsole~From Catalog%',
-      // t('devconsole~Browse the catalog to discover, deploy and connect to services')
-      description: '%devconsole~Browse the catalog to discover, deploy and connect to services%',
-      icon: <CatalogIcon />,
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'dev-catalog-databases',
-      url: '/catalog?category=databases',
-      // t('devconsole~Database')
-      label: '%devconsole~Database%',
-      // t('devconsole~Browse the catalog to discover database services to add to your Application')
-      description:
-        '%devconsole~Browse the catalog to discover database services to add to your Application%',
-      icon: <DatabaseIcon />,
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'operator-backed',
-      url: '/catalog?catalogType=OperatorBackedService',
-      // t('devconsole~Operator Backed')
-      label: '%devconsole~Operator Backed%',
-      // t('devconsole~Browse the catalog to discover and deploy operator managed services')
-      description:
-        '%devconsole~Browse the catalog to discover and deploy operator managed services%',
-      icon: <BoltIcon />,
-    },
-  },
-  {
     type: 'GuidedTour',
     properties: {
       perspective: 'dev',
@@ -658,7 +474,6 @@ const plugin: Plugin<ConsumedExtensions> = [
       callback: doConnectsToBinding,
     },
   },
-  ...catalogPlugin,
 ];
 
 export default plugin;

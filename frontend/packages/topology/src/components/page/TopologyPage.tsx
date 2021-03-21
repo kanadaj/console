@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { matchPath, match as RMatch } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import { useQueryParams, useUserSettingsCompatibility } from '@console/shared/src';
-import { useTranslation } from 'react-i18next';
+import { Button } from '@patternfly/react-core';
 import { removeQueryArgument, setQueryArgument } from '@console/internal/components/utils';
 import { useK8sWatchResources } from '@console/internal/components/utils/k8s-watch-hook';
 import { K8sResourceKind } from '@console/internal/module/k8s';
@@ -26,7 +27,6 @@ interface TopologyPageProps {
     name?: string;
   }>;
   activeViewStorageKey?: string;
-  title?: string;
   hideProjects?: boolean;
   defaultViewType?: TopologyViewType;
 }
@@ -34,7 +34,6 @@ interface TopologyPageProps {
 const TopologyPage: React.FC<TopologyPageProps> = ({
   match,
   activeViewStorageKey = LAST_TOPOLOGY_VIEW_LOCAL_STORAGE_KEY,
-  title,
   hideProjects = false,
   defaultViewType = TopologyViewType.graph,
 }) => {
@@ -104,13 +103,18 @@ const TopologyPage: React.FC<TopologyPageProps> = ({
       >
         <ProjectsExistWrapper title={t('topology~Topology')} projects={namespaces}>
           {namespace ? (
-            <TopologyDataRenderer
-              viewType={viewType}
-              title={title !== undefined ? title : t('topology~Topology')}
-            />
+            <TopologyDataRenderer viewType={viewType} />
           ) : (
             <CreateProjectListPage title={t('topology~Topology')}>
-              {t('topology~Select a Project to view the topology')}
+              {(openProjectModal) => (
+                <Trans t={t} ns="topology">
+                  Select a Project to view the topology or{' '}
+                  <Button isInline variant="link" onClick={openProjectModal}>
+                    create a Project
+                  </Button>
+                  .
+                </Trans>
+              )}
             </CreateProjectListPage>
           )}
         </ProjectsExistWrapper>

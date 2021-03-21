@@ -55,7 +55,8 @@ describe('Tests involving guest agent', () => {
     createResource(multusNAD);
 
     // create linux vm
-    const cloudInit = `#cloud-config\nuser: cloud-user\npassword: atomic\nchpasswd: {expire: False}\nruncmd:\n- dnf install -y qemu-guest-agent\n- systemctl start qemu-guest-agent`;
+    const cloudInit =
+      '#cloud-config\nuser: cloud-user\npassword: atomic\nchpasswd: {expire: False}\nruncmd:\n- dnf install -y qemu-guest-agent\n- systemctl start qemu-guest-agent';
     const testVM = getVMManifest(ProvisionSource.CONTAINER, testName, VM_LINUX_NAME, cloudInit);
     vmLinux = new VirtualMachine(testVM.metadata);
     createResource(testVM);
@@ -69,9 +70,6 @@ describe('Tests involving guest agent', () => {
     await vmLinux.navigateToOverview();
 
     // create windows VM
-    // for cmd-line scripts only
-    execSync(`kubectl config set-context --current --namespace=${testName}`);
-
     execSync('kubectl create -f -', {
       input: getFakeWindowsVM({
         name: VM_WINDOWS_NAME,
@@ -87,7 +85,6 @@ describe('Tests involving guest agent', () => {
     deleteResource(multusNAD);
     deleteResource(vmLinux.asResource());
     deleteResource(vmWindows.asResource());
-    execSync(`kubectl config set-context --current --namespace=default`);
   });
 
   describe('Testing guest agent data', () => {
@@ -133,10 +130,6 @@ describe('Tests involving guest agent', () => {
       'ID(CNV-1721) connects via exposed service',
       async () => {
         await vmWindows.navigateToDetail();
-        await browser.wait(
-          waitForStringInElement(vmView.vmDetailTimeZone(testName, VM_WINDOWS_NAME), 'UTC'),
-          VM_WITH_GA_CREATE_AND_EDIT_CLOUDINIT_TIMEOUT_SECS,
-        );
         await vmWindows.navigateToConsole();
         await browser.wait(until.presenceOf(consoleTypeSelector));
         await click(consoleTypeSelector);
@@ -158,7 +151,7 @@ describe('Tests involving guest agent', () => {
 
         // the next command follows recommendation by documentation
         execSync(
-          `virtctl expose virtualmachine ${vmWindows.name} --name ${vmWindows.name}-rdp --port 4567 --target-port 3389 --type NodePort`,
+          `virtctl expose virtualmachine ${vmWindows.name} --name ${vmWindows.name}-rdp  --namespace=${testName} --port 4567 --target-port 3389 --type NodePort`,
         );
 
         await browser.wait(until.presenceOf(desktopClientTitle));
@@ -171,11 +164,13 @@ describe('Tests involving guest agent', () => {
         expect(launchRemoteDesktopButton.isEnabled()).toBe(true);
 
         // there should be just the single laucher-pod
-        const hostIP = execSync("kubectl get pod -o json | jq '.items[0].status.hostIP' -r")
+        const hostIP = execSync(
+          `kubectl get -n ${testName} pod $(kubectl get -n ${testName} pods -o name | grep ${vmWindows.name} | cut -d'/' -f 2) -o jsonpath='{.status.hostIP}'`,
+        )
           .toString()
           .trim();
         const port = execSync(
-          `kubectl get service ${vmWindows.name}-rdp -o json | jq '.spec.ports[0].nodePort' -r`,
+          `kubectl get -n ${testName} service ${vmWindows.name}-rdp -o jsonpath='{.spec.ports[0].nodePort}'`,
         )
           .toString()
           .trim();
@@ -185,12 +180,13 @@ describe('Tests involving guest agent', () => {
         await browser.wait(
           until.textToBePresentInElement(manualConnectionTitle, 'Manual Connection'),
         );
-        const titles = rdpManualConnectionTitles();
+        const titles = rdpManualConnectionTitles;
+        await browser.wait(until.presenceOf(titles));
         expect(titles.first().getText()).toBe('RDP Address:');
         expect(titles.last().getText()).toBe('RDP Port:');
 
-        const values = rdpManualConnectionValues();
-        expect(values.count()).toBe(2);
+        const values = rdpManualConnectionValues;
+        await browser.wait(until.presenceOf(values));
         expect(values.first().getText()).toBe(hostIP);
         expect(values.last().getText()).toBe(port);
 
@@ -201,6 +197,7 @@ describe('Tests involving guest agent', () => {
       VM_CREATE_AND_EDIT_TIMEOUT_SECS,
     );
 
+    // TODO: consider move this to Tier2 tests
     it(
       'ID(CNV-1726) connects via L2 network',
       async () => {
@@ -244,12 +241,13 @@ describe('Tests involving guest agent', () => {
         await browser.wait(
           until.textToBePresentInElement(manualConnectionTitle, 'Manual Connection'),
         );
-        const titles = rdpManualConnectionTitles();
+        const titles = rdpManualConnectionTitles;
+        await browser.wait(until.presenceOf(titles));
         expect(titles.first().getText()).toBe('RDP Address:');
         expect(titles.last().getText()).toBe('RDP Port:');
 
-        const values = rdpManualConnectionValues();
-        expect(values.count()).toBe(2);
+        const values = rdpManualConnectionValues;
+        await browser.wait(until.presenceOf(values));
         expect(values.first().getText()).toBe(VM_WINDOWS_IP);
         expect(values.last().getText()).toBe('3389');
 

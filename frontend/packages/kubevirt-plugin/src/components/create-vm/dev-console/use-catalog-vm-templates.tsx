@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { Form, Stack, StackItem } from '@patternfly/react-core';
 import { getNamespace } from '@console/shared';
-import { CatalogExtensionHook, CatalogItem } from '@console/plugin-sdk';
+import { CatalogExtensionHook, CatalogItem } from '@console/dynamic-plugin-sdk';
 import { humanizeBinaryBytes, SectionHeading } from '@console/internal/components/utils';
 import { PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
 import { FormRow } from '../../form/form-row';
@@ -16,7 +16,7 @@ import {
   templateProviders,
 } from '../../../selectors/vm-template/basic';
 import {
-  getTemplateFlavorDesc,
+  getTemplateFlavorData,
   getTemplateSizeRequirementInBytes,
 } from '../../../selectors/vm-template/advanced';
 import { isTemplateSourceError } from '../../../statuses/template/types';
@@ -24,7 +24,7 @@ import { SourceDescription } from '../../vm-templates/vm-template-source';
 import { useVmTemplatesResources } from '../hooks/use-vm-templates-resources';
 import { filterTemplates } from '../../vm-templates/utils';
 import { getTemplateSourceStatus } from '../../../statuses/template/template-source-status';
-import { V1alpha1DataVolume } from '../../../types/vm/disk/V1alpha1DataVolume';
+import { V1alpha1DataVolume } from '../../../types/api';
 import { TemplateItem } from '../../../types/template';
 import { VMTemplateSupportDescription } from '../../vm-templates/vm-template-resource';
 import { getDescription } from '../../../selectors/selectors';
@@ -55,7 +55,10 @@ const normalizeVmTemplates = (
     const sourceProvider = !isTemplateSourceError(sourceStatus) && sourceStatus?.provider;
     const imgUrl = getTemplateOSIcon(tmp);
     const workloadType = getWorkloadProfile(tmp) || t('kubevirt-plugin~Not available');
-    const flavor = getTemplateFlavorDesc(tmp, false);
+    const flavor = t(
+      'kubevirt-plugin~{{flavor}}: {{count}} CPU | {{memory}}',
+      getTemplateFlavorData(tmp),
+    );
     const storage = getTemplateSizeRequirementInBytes(tmp, sourceStatus);
     const storageLabel = storage
       ? humanizeBinaryBytes(storage).string
@@ -118,7 +121,7 @@ const normalizeVmTemplates = (
                   'kubevirt-plugin~You will be able to change the flavor after selecting this template',
                 )}
               >
-                {getTemplateFlavorDesc(tmp)}
+                {flavor}
               </FormRow>
               <FormRow
                 className="vm-side-drawer-form-row"
@@ -205,7 +208,7 @@ const useCatalogVmTemplates: CatalogExtensionHook<CatalogItem[]> = ({
   } = useVmTemplatesResources(namespace);
 
   return React.useMemo(() => {
-    const templates = filterTemplates(userTemplates, baseTemplates).filter((tmp) => {
+    const templates = filterTemplates([...userTemplates, ...baseTemplates]).filter((tmp) => {
       const tempSourceStatus = getTemplateSourceStatus({
         pods,
         pvcs,

@@ -1,5 +1,5 @@
 import { browser, ExpectedConditions as until } from 'protractor';
-import { listViewAction } from '@console/shared/src/test-utils/actions.view';
+import { listViewAction } from '../views/actions.view';
 import { testName } from '@console/internal-integration-tests/protractor.conf';
 import {
   createResource,
@@ -44,7 +44,7 @@ describe('KubeVirt VM Snapshots', () => {
       await editVMSnapshotsView.snapshotNameInput
         .clear()
         .then(() => editVMSnapshotsView.snapshotNameInput.sendKeys(TEST_SNAPSHOT));
-      if (editVMSnapshotsView.approveUnsupportedCheckbox.isPresent()) {
+      if (await editVMSnapshotsView.approveUnsupportedCheckbox.isPresent()) {
         await click(editVMSnapshotsView.approveUnsupportedCheckbox);
       }
       await click(saveButton);

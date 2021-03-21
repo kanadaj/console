@@ -1,6 +1,5 @@
 import { CPURaw, V1Network, V1NetworkInterface } from '../../../types/vm';
-import { V1Disk } from '../../../types/vm/disk/V1Disk';
-import { V1Volume } from '../../../types/vm/disk/V1Volume';
+import { V1Disk, V1Volume } from '../../../types/api';
 import { K8sResourceKindMethods } from '../types/types';
 import { BootableDeviceType } from '../../../types';
 
@@ -29,3 +28,13 @@ export interface VMILikeMethods extends K8sResourceKindMethods {
 
   getCPU: () => CPURaw;
 }
+
+export type BootDevice =
+  | {
+      device: V1Disk;
+      type: 'disk';
+    }
+  | {
+      device: V1NetworkInterface;
+      type: 'interface';
+    };

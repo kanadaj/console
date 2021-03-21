@@ -1,9 +1,10 @@
 /* eslint-disable no-await-in-loop */
-import { browser, ExpectedConditions as until } from 'protractor';
+import { browser, ExpectedConditions as until, element, by } from 'protractor';
 import { isLoaded } from '@console/internal-integration-tests/views/crud.view';
 import { clickNavLink } from '@console/internal-integration-tests/views/sidenav.view';
 import { click, fillInput, asyncForEach } from '@console/shared/src/test-utils/utils';
 import { K8sKind } from '@console/internal/module/k8s';
+import { VirtualMachineModel } from '@console/kubevirt-plugin/src/models';
 import {
   selectOptionByText,
   enabledAsBoolean,
@@ -33,7 +34,7 @@ import { DiskDialog } from '../dialogs/diskDialog';
 import { Flavor, StepTitle, TemplateByName } from '../utils/constants/wizard';
 import * as view from '../../views/wizard.view';
 import { resourceHorizontalTab, dropDownItem, dropDownItemMain } from '../../views/uiResource.view';
-import { saveButton } from '../../views/kubevirtUIResource.view';
+import { continueButton, saveButton, modalTitle } from '../../views/kubevirtUIResource.view';
 import { confirmActionButton } from '../../views/importWizard.view';
 import { virtualizationTitle } from '../../views/vms.list.view';
 import { diskStorageClass } from '../../views/dialogs/diskDialog.view';
@@ -56,17 +57,22 @@ export class Wizard {
       await isLoaded();
     }
     if (model === VirtualMachineTemplateModel) {
-      await click(resourceHorizontalTab(VirtualMachineTemplateModel));
-      await isLoaded();
+      await click(view.createItemButton);
+      await click(view.createVMTWithWizardButton);
     }
 
-    await click(view.createItemButton);
-    await click(view.createWithWizardButton);
+    if (model === VirtualMachineModel) {
+      await click(view.createItemButton);
+      await click(view.createWithWizardButton);
 
-    if (customize) {
-      await this.selectTemplate(template);
-      await this.next();
-      await click(view.customizeButton);
+      if (customize) {
+        await this.selectTemplate(template);
+        await this.next();
+        if (await modalTitle.isPresent()) {
+          await click(continueButton);
+        }
+        await click(view.customizeButton);
+      }
     }
   }
 
@@ -114,6 +120,13 @@ export class Wizard {
 
   async fillProvider(provider: string) {
     await fillInput(view.providerInput, provider);
+  }
+
+  async selectNamespace(namespace: string) {
+    await selectItemFromDropdown(
+      $('#project-dropdown'),
+      element(by.cssContainingText('.pf-c-dropdown__menu-item', namespace)),
+    );
   }
 
   async selectOperatingSystem(operatingSystem: string) {
@@ -282,6 +295,9 @@ export class Wizard {
     const { selectTemplateName } = data;
     await this.selectTemplate(selectTemplateName);
     await this.next(ignoreWarnings);
+    if (await modalTitle.isPresent()) {
+      await click(continueButton);
+    }
   }
 
   async processBootSource(data: VMBuilderData, ignoreWarnings: boolean = false) {
@@ -309,9 +325,17 @@ export class Wizard {
   }
 
   async processReviewAndCreate(data: VMBuilderData) {
-    const { name, startOnCreation } = data;
+    const { name, namespace, startOnCreation, flavor } = data;
+    if (namespace) {
+      await this.selectNamespace(namespace);
+    }
+
     if (name) {
       await this.fillName(name);
+    }
+
+    if (flavor) {
+      await selectItemFromDropdown($('#vm-flavor-select'), dropDownItem(flavor.flavor));
     }
 
     await this.startOnCreation(startOnCreation);
@@ -333,6 +357,9 @@ export class Wizard {
     }
     if ('provider' in data) {
       await this.fillProvider(data.provider);
+    }
+    if ('os' in data) {
+      await this.selectOperatingSystem(data.os);
     }
     if ((await browser.getCurrentUrl()).match(/\?template=.+$/)) {
       // We are creating a VM from template via its action button

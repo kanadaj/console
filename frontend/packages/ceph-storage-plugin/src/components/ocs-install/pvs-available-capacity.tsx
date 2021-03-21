@@ -4,9 +4,9 @@ import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watc
 import { StorageClassResourceKind, K8sResourceKind } from '@console/internal/module/k8s';
 import { humanizeBinaryBytes } from '@console/internal/components/utils/';
 import { getName } from '@console/shared';
-import { pvResource } from '../../constants/resources';
+import { pvResource } from '../../resources';
 import { calcPVsCapacity, getSCAvailablePVs } from '../../selectors';
-import '../modals/add-capacity-modal/_add-capacity-modal.scss';
+import '../modals/add-capacity-modal/add-capacity-modal.scss';
 import './pvs-available-capacity.scss';
 
 export const PVsAvailableCapacity: React.FC<PVAvaialbleCapacityProps> = ({

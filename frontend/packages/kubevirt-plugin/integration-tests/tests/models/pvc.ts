@@ -8,8 +8,9 @@ import {
   pvcStatus,
 } from '@console/ceph-storage-plugin/integration-tests/views/pvc.view';
 import { clickNavLink } from '@console/internal-integration-tests/views/sidenav.view';
+import { listViewAction } from '../../views/actions.view';
 import * as pvcView from '../../views/pvc.view';
-import { OperatingSystem } from '../utils/constants/wizard';
+import { PVC_ACTION } from '../utils/constants/pvc';
 import { PVC_STATUS } from '@console/ceph-storage-plugin/integration-tests/utils/consts';
 import { getTestDataVolume } from '../mocks/mocks';
 import { click } from '@console/shared/src/test-utils/utils';
@@ -20,7 +21,7 @@ import { UIResource } from './uiResource';
 export class PVC<T extends PVCData> extends UIResource {
   protected data: T;
 
-  readonly os: OperatingSystem;
+  readonly os: string;
 
   readonly image: string;
 
@@ -34,23 +35,19 @@ export class PVC<T extends PVCData> extends UIResource {
   async create() {
     const uploadForm = new UploadForm();
     await uploadForm.upload(this.data);
-    // It has to click twice if uploading golden images.
-    if (this.data.os) {
-      await click(crudView.saveChangesBtn);
-    }
     await browser.wait(until.textToBePresentInElement(pvcView.uploadProgress, '100%'));
     await click(pvcView.viewStatusID);
     await browser.wait(until.textToBePresentInElement(pvcStatus, PVC_STATUS.BOUND));
   }
 
   async delete() {
-    await clickNavLink(['Storage', 'Persistent Volume Claims']);
+    await clickNavLink(['Storage', 'PersistentVolumeClaims']);
     await crudView.isLoaded();
     await selectItemFromDropdown(this.namespace, namespaceDropdown);
     await crudView.resourceRowsPresent();
     await crudView.filterForName(this.name);
     await crudView.isLoaded();
-    await crudView.deleteRow('PersistentVolumeClaim')(this.name);
+    await listViewAction(this.name)(PVC_ACTION.Delete, true);
     await crudView.isLoaded();
     await browser.wait(until.stalenessOf(pvcView.pvcName(this.name)));
   }

@@ -2,6 +2,12 @@
   display: grid;
   height: 100%;
 
+  &__empty-state {
+    padding-top: 0;
+    position: absolute;
+    top: 15%;
+  }
+
   .pf-topology-container__with-sidebar .pf-topology-content {
     position: relative;
   }
@@ -79,6 +85,16 @@
 
   &__shortcuts-button {
     margin-right: var(--pf-global--spacer--2xl);
+  }
+
+  &__dropzone {
+    background-color: rgba(0, 102, 204, 0.1) !important;
+    color: var(--pf-global--palette--black-900) !important;
+  }
+
+  &__dropzone-text {
+    top: 0%;
+    padding-top: var(--pf-global--spacer--lg);
   }
 
   .pf-topology-container {

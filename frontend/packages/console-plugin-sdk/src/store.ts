@@ -3,7 +3,6 @@
 import * as _ from 'lodash';
 import { ConsolePluginManifestJSON } from '@console/dynamic-plugin-sdk/src/schema/plugin-manifest';
 import { Extension, LoadedExtension, ActivePlugin } from './typings';
-import { ExtensionRegistry } from './registry';
 
 export const sanitizeExtension = <E extends Extension>(e: E): E => {
   e.flags = e.flags || {};
@@ -34,6 +33,12 @@ export const getGatingFlagNames = (extensions: Extension[]): string[] =>
     ..._.flatMap(extensions.map((e) => e.flags.disallowed)),
   ]);
 
+export const mergeExtensionProperties = <E extends Extension>(e: E, properties: {}): E =>
+  Object.freeze({
+    ...e,
+    properties: Object.assign({}, e.properties, properties),
+  });
+
 /**
  * Provides access to Console plugin data.
  *
@@ -45,9 +50,6 @@ export class PluginStore {
 
   // Extensions contributed by dynamic plugins (loaded from remote hosts at runtime)
   private dynamicPluginExtensions: LoadedExtension[] = [];
-
-  // TODO(vojtech): legacy, remove
-  public readonly registry: ExtensionRegistry;
 
   private readonly dynamicPlugins = new Map<string, DynamicPlugin>();
 
@@ -61,23 +63,10 @@ export class PluginStore {
         ),
       ),
     );
-    this.registry = new ExtensionRegistry(plugins);
-    this.updateDynamicExtensions = _.debounce(this.updateDynamicExtensions, 1000);
   }
 
   public getAllExtensions() {
     return [...this.staticPluginExtensions, ...this.dynamicPluginExtensions];
-  }
-
-  private updateDynamicExtensions() {
-    this.dynamicPluginExtensions = Array.from(this.dynamicPlugins.values()).reduce(
-      (acc, plugin) => (plugin.enabled ? [...acc, ...plugin.processedExtensions] : acc),
-      [],
-    );
-
-    this.listeners.forEach((listener) => {
-      listener();
-    });
   }
 
   public subscribe(listener: VoidFunction): VoidFunction {
@@ -97,40 +86,55 @@ export class PluginStore {
     manifest: ConsolePluginManifestJSON,
     resolvedExtensions: Extension[],
   ) {
-    if (!this.dynamicPlugins.has(pluginID)) {
-      this.dynamicPlugins.set(pluginID, {
-        manifest: Object.freeze(manifest),
-        processedExtensions: resolvedExtensions.map((e, index) =>
-          Object.freeze(augmentExtension(sanitizeExtension(e), pluginID, manifest.name, index)),
-        ),
-        enabled: false,
-      });
-    } else {
+    if (this.dynamicPlugins.has(pluginID)) {
       console.warn(`Attempt to re-add plugin ${pluginID}`);
+      return;
     }
+
+    this.dynamicPlugins.set(pluginID, {
+      manifest: Object.freeze(manifest),
+      processedExtensions: resolvedExtensions.map((e, index) =>
+        Object.freeze(augmentExtension(sanitizeExtension(e), pluginID, manifest.name, index)),
+      ),
+      enabled: false,
+    });
+
+    console.log(`Added plugin ${pluginID}`);
+  }
+
+  private updateExtensionsAndInvokeListeners() {
+    this.dynamicPluginExtensions = Array.from(this.dynamicPlugins.values()).reduce(
+      (acc, plugin) => (plugin.enabled ? [...acc, ...plugin.processedExtensions] : acc),
+      [],
+    );
+
+    this.listeners.forEach((listener) => {
+      listener();
+    });
   }
 
   public setDynamicPluginEnabled(pluginID: string, enabled: boolean) {
-    if (this.dynamicPlugins.has(pluginID)) {
-      const plugin = this.dynamicPlugins.get(pluginID);
-
-      if (plugin.enabled !== enabled) {
-        plugin.enabled = enabled;
-        this.updateDynamicExtensions();
-      }
-    } else {
+    if (!this.dynamicPlugins.has(pluginID)) {
       console.warn(`Attempt to ${enabled ? 'enable' : 'disable'} unknown plugin ${pluginID}`);
+      return;
+    }
+
+    const plugin = this.dynamicPlugins.get(pluginID);
+
+    if (plugin.enabled !== enabled) {
+      plugin.enabled = enabled;
+      this.updateExtensionsAndInvokeListeners();
+      console.log(`Plugin ${pluginID} is now ${enabled ? 'enabled' : 'disabled'}`);
     }
   }
 
   public isDynamicPluginEnabled(pluginID: string): boolean {
-    if (this.dynamicPlugins.has(pluginID)) {
-      const plugin = this.dynamicPlugins.get(pluginID);
-      return plugin.enabled;
+    if (!this.dynamicPlugins.has(pluginID)) {
+      console.warn(`Attempt to get enabled status for unknown plugin ${pluginID}`);
+      return false;
     }
 
-    console.warn(`Attempt to get enabled status for unknown plugin ${pluginID}`);
-    return false;
+    return this.dynamicPlugins.get(pluginID).enabled;
   }
 
   public getDynamicPluginMetadata() {

@@ -5,6 +5,7 @@ import { DeployImageFormData, GitImportFormData, Resources } from '../../import/
 import { AppResources } from '../edit-application-types';
 import { healthChecksProbeInitialData } from '../../health-checks/health-checks-probe-utils';
 import { healthChecksData } from '../../health-checks/__tests__/create-health-checks-probe-data';
+import { serverlessInitialValues } from '../../import/__mocks__/serverless-mock';
 
 export const knativeService: K8sResourceKind = {
   apiVersion: `${ServiceModel.apiGroup}/${ServiceModel.apiVersion}`,
@@ -38,7 +39,6 @@ export const appResources: AppResources = {
           'app.openshift.io/vcs-ref': 'master',
           'app.openshift.io/vcs-uri': 'https://github.com/divyanshiGupta/nationalparks-py',
         },
-        selfLink: '/apis/apps.openshift.io/v1/namespaces/div/deploymentconfigs/nationalparks-py',
         resourceVersion: '329826',
         name: 'nationalparks-py',
         uid: 'c3f2b32d-d5fd-4050-9735-0c95828af6fd',
@@ -180,7 +180,6 @@ export const appResources: AppResources = {
       metadata: {
         name: 'nationalparks-py',
         namespace: 'div',
-        selfLink: '/apis/route.openshift.io/v1/namespaces/div/routes/nationalparks-py',
         uid: 'e9f365ed-5c67-40b2-ab0b-b38544f943d3',
         resourceVersion: '329838',
         creationTimestamp: '2020-01-13T10:33:05Z',
@@ -236,7 +235,6 @@ export const appResources: AppResources = {
       metadata: {
         name: 'nationalparks-py',
         namespace: 'div',
-        selfLink: '/apis/build.openshift.io/v1/namespaces/div/buildconfigs/nationalparks-py',
         uid: '8319b0c9-3674-4eb6-b0bb-3bcfc7211435',
         resourceVersion: '329844',
         creationTimestamp: '2020-01-13T10:33:05Z',
@@ -324,7 +322,6 @@ export const appResources: AppResources = {
       apiVersion: 'tekton.dev/v1beta1',
       kind: 'Pipeline',
       metadata: {
-        selfLink: '/apis/tekton.dev/v1beta1/namespaces/div/pipelines/nationalparks-py',
         resourceVersion: '406718',
         name: 'nationalparks-py',
         uid: '131662ce-62a8-4e4c-8520-a85bc35a31b3',
@@ -453,7 +450,6 @@ export const appResources: AppResources = {
             'app.openshift.io/vcs-ref': 'master',
             'app.openshift.io/vcs-uri': 'https://github.com/divyanshiGupta/nationalparks-py',
           },
-          selfLink: '/apis/image.openshift.io/v1/namespaces/div/imagestreams/nationalparks-py',
           resourceVersion: '676247',
           name: 'nationalparks-py',
           uid: '2bc985ac-f834-45e5-9a86-830edb6bc8bd',
@@ -508,14 +504,7 @@ export const gitImportInitialValues: GitImportFormData = {
     },
   },
   resources: Resources.OpenShift,
-  serverless: {
-    scaling: {
-      minpods: 0,
-      maxpods: '',
-      concurrencytarget: '',
-      concurrencylimit: '',
-    },
-  },
+  serverless: serverlessInitialValues,
   pipeline: { enabled: false },
   deployment: { env: [], triggers: { image: true, config: true }, replicas: 1 },
   labels: {},
@@ -589,14 +578,7 @@ export const externalImageValues: DeployImageFormData = {
     },
   },
   resources: Resources.OpenShift,
-  serverless: {
-    scaling: {
-      minpods: 0,
-      maxpods: '',
-      concurrencytarget: '',
-      concurrencylimit: '',
-    },
-  },
+  serverless: serverlessInitialValues,
   pipeline: { enabled: false },
   deployment: { env: [], triggers: { image: true, config: true }, replicas: 1 },
   labels: {},
@@ -666,14 +648,7 @@ export const internalImageValues: DeployImageFormData = {
     },
   },
   resources: Resources.OpenShift,
-  serverless: {
-    scaling: {
-      minpods: 0,
-      maxpods: '',
-      concurrencytarget: '',
-      concurrencylimit: '',
-    },
-  },
+  serverless: serverlessInitialValues,
   pipeline: { enabled: false },
   deployment: { env: [], triggers: { image: true, config: true }, replicas: 1 },
   labels: {},
@@ -778,7 +753,7 @@ export const knExternalImageValues: DeployImageFormData = {
   route: {
     create: true,
     defaultUnknownPort: 8080,
-    disable: true,
+    disable: false,
     hostname: '',
     path: '',
     secure: false,
@@ -795,7 +770,7 @@ export const knExternalImageValues: DeployImageFormData = {
   },
   searchTerm: 'openshift/hello-openshift',
   allowInsecureRegistry: false,
-  serverless: { scaling: { concurrencylimit: '', concurrencytarget: '', maxpods: '', minpods: 0 } },
+  serverless: serverlessInitialValues,
   healthChecks: healthChecksProbeInitialData,
 };
 

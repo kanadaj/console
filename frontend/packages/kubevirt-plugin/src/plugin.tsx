@@ -1,13 +1,11 @@
 import * as React from 'react';
 import * as _ from 'lodash';
 import { AlertVariant } from '@patternfly/react-core';
-import { VirtualMachineIcon } from '@patternfly/react-icons';
 import {
   Plugin,
   ResourceNSNavItem,
   ResourceListPage,
   ResourceDetailsPage,
-  ModelFeatureFlag,
   YAMLTemplate,
   ModelDefinition,
   RoutePage,
@@ -22,9 +20,6 @@ import {
   PVCAlert,
   PVCStatus,
   PVCDelete,
-  CatalogItemProvider,
-  CatalogItemType,
-  CatalogItemFilter,
 } from '@console/plugin-sdk';
 import { DashboardsStorageCapacityDropdownItem } from '@console/ceph-storage-plugin';
 import { TemplateModel, PodModel, PersistentVolumeClaimModel } from '@console/internal/models';
@@ -46,15 +41,12 @@ import {
 } from './components/cdi-upload-provider/cdi-upload-provider';
 import { killCDIBoundPVC } from './components/cdi-upload-provider/pvc-delete-extension';
 import { isPvcBoundToCDI, isPvcUploading } from './selectors/pvc/selectors';
-import { AddAction } from '../../dev-console/src/extensions/add-actions';
 import './style.scss';
-import { getExecutableCodeRef } from '@console/dynamic-plugin-sdk/src/coderefs/coderef-utils';
 
 type ConsumedExtensions =
   | ResourceNSNavItem
   | ResourceListPage
   | ResourceDetailsPage
-  | ModelFeatureFlag
   | YAMLTemplate
   | ModelDefinition
   | RoutePage
@@ -70,11 +62,7 @@ type ConsumedExtensions =
   | PVCCreateProp
   | PVCAlert
   | PVCStatus
-  | PVCDelete
-  | AddAction
-  | CatalogItemProvider
-  | CatalogItemType
-  | CatalogItemFilter;
+  | PVCDelete;
 
 export const FLAG_KUBEVIRT = 'KUBEVIRT';
 
@@ -83,13 +71,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     type: 'ModelDefinition',
     properties: {
       models: _.values(models),
-    },
-  },
-  {
-    type: 'FeatureFlag/Model',
-    properties: {
-      model: models.VirtualMachineModel,
-      flag: FLAG_KUBEVIRT,
     },
   },
   {
@@ -300,6 +281,32 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
+    type: 'Page/Route',
+    properties: {
+      path: '/virtualization/new-customize-source',
+      loader: () =>
+        import(
+          './components/vm-templates/customize-source/CustomizeSourceForm' /* webpackChunkName: "kubevirt" */
+        ).then((m) => m.default),
+    },
+    flags: {
+      required: [FLAG_KUBEVIRT],
+    },
+  },
+  {
+    type: 'Page/Route',
+    properties: {
+      path: '/virtualization/customize-source',
+      loader: () =>
+        import(
+          './components/vm-templates/customize-source/CustomizeSource' /* webpackChunkName: "kubevirt" */
+        ).then((m) => m.default),
+    },
+    flags: {
+      required: [FLAG_KUBEVIRT],
+    },
+  },
+  {
     type: 'Dashboards/Overview/Health/URL',
     properties: {
       title: 'Virtualization',
@@ -347,7 +354,6 @@ const plugin: Plugin<ConsumedExtensions> = [
         import(
           './components/dashboards-page/overview-dashboard/inventory' /* webpackChunkName: "kubevirt" */
         ).then((m) => m.getVMStatusGroups),
-      useAbbr: true,
     },
     flags: {
       required: [FLAG_KUBEVIRT],
@@ -424,7 +430,6 @@ const plugin: Plugin<ConsumedExtensions> = [
       ],
       model: models.VirtualMachineModel,
       mapper: getVMStatusGroups,
-      useAbbr: true,
     },
     flags: {
       required: [FLAG_KUBEVIRT],
@@ -533,70 +538,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [FLAG_KUBEVIRT],
-    },
-  },
-  {
-    type: 'AddAction',
-    properties: {
-      id: 'dev-catalog-virtualization',
-      url: '/catalog?catalogType=VmTemplate',
-      // t('kubevirt-plugin~Virtual Machines')
-      label: '%kubevirt-plugin~Virtual Machines%',
-      // t('kubevirt-plugin~Create a Virtual Machine from a template')
-      description: '%kubevirt-plugin~Create a Virtual Machine from a template%',
-      icon: <VirtualMachineIcon />,
-    },
-    flags: {
-      required: [FLAG_KUBEVIRT],
-    },
-  },
-  {
-    type: 'Catalog/ItemType',
-    properties: {
-      type: 'VmTemplate',
-      // t('kubevirt-plugin~Virtual Machines')
-      title: '%kubevirt-plugin~Virtual Machines%',
-      // t('kubevirt-plugin~Quickly create a virtual machine from a template.')
-      catalogDescription: '%kubevirt-plugin~Quickly create a virtual machine from a template.%',
-      // t('kubevirt-plugin~**Virtual Machines** are templates for quickly creating a virtual machine.')
-      typeDescription:
-        '%kubevirt-plugin~**Virtual Machines** are templates for quickly creating a virtual machine.%',
-      filters: [
-        {
-          // t('kubevirt-plugin~Template Providers')
-          label: '%kubevirt-plugin~Template Providers%',
-          attribute: 'templateProvider',
-        },
-      ],
-    },
-    flags: {
-      required: [FLAG_KUBEVIRT],
-    },
-  },
-  {
-    type: 'Catalog/ItemProvider',
-    properties: {
-      type: 'VmTemplate',
-      provider: getExecutableCodeRef(() =>
-        import(
-          './components/create-vm/dev-console/use-catalog-vm-templates' /* webpackChunkName: "kubevirt" */
-        ).then((m) => m.default),
-      ),
-    },
-    flags: {
-      required: [FLAG_KUBEVIRT],
-    },
-  },
-
-  {
-    type: 'Catalog/ItemFilter',
-    properties: {
-      type: 'Template',
-      filter: getExecutableCodeRef(() =>
-        import(
-          './components/create-vm/dev-console/dev-catalog-vm-templates-filter' /* webpackChunkName: "kubevirt" */
-        ).then((m) => m.default),
-      ),
     },
   },
 ];

@@ -6,10 +6,6 @@ export const consoleNetworkInterfaceDropdownId = '#nic-dropdown';
 const manualConnectionValues = $$('.manual-connection-pf-value');
 export const rdpIpAddress = manualConnectionValues.first();
 export const rdpPort = manualConnectionValues.last();
-// Templates view
-export const defaultOS = element(
-  by.xpath('//*[contains(text(),"template.kubevirt.io/default-os-variant")]'),
-);
 
 // VM detail view
 export const vmDetailItemId = (namespace, vmName, itemName) =>
@@ -27,8 +23,8 @@ export const vmDetailIP = (namespace, vmName) =>
   $(vmDetailItemId(namespace, vmName, 'ip-addresses'));
 export const vmDetailWorkloadProfile = (namespace, vmName) =>
   $(vmDetailItemId(namespace, vmName, 'workload-profile'));
-export const vmDetailTemplate = (namespace, vmName) =>
-  $(`${vmDetailItemId(namespace, vmName, 'template')}`);
+export const vmDetailTemplate = () => $(`[data-test-id="details-Template"]`);
+export const vmDetailTemplateByTestID = (templateName) => $(`[data-test-id="${templateName}"]`);
 export const vmDetailNamespace = (namespace, vmName) =>
   $(vmDetailItemId(namespace, vmName, 'namespace'));
 export const vmDetailPod = (namespace, vmName) => $(vmDetailItemId(namespace, vmName, 'pod'));
@@ -74,8 +70,7 @@ export const vmDetailActiveUsersListNoUsers = $('#no-active-users-msg');
 export const vmDetailsActiveUsersList = element(
   by.xpath('//*[@aria-label="Users"]//*[@data-key="0-0"]//td'),
 );
-export const vmDetailstatusButton = (namespace, name) =>
-  $(`${vmDetailItemId(namespace, name, 'vm-statuses')} > .pf-c-button.pf-m-link.pf-m-inline`);
+export const vmDetailstatusButton = () => $('[data-test-id="details-Status"]');
 
 export const vmDetailService = (serviceName) => $(`[data-test-id="${serviceName}"]`);
 

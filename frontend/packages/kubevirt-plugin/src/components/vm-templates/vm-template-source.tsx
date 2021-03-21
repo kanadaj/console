@@ -2,7 +2,16 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusCircleIcon, InProgressIcon } from '@patternfly/react-icons';
 import { referenceForModel, TemplateKind } from '@console/internal/module/k8s';
-import { Alert, Button, ButtonVariant, Label, Stack, StackItem } from '@patternfly/react-core';
+import {
+  Alert,
+  Button,
+  ButtonVariant,
+  Label,
+  Stack,
+  StackItem,
+  Level,
+  LevelItem,
+} from '@patternfly/react-core';
 import { NetworkAttachmentDefinitionModel } from '@console/network-attachment-definition-plugin';
 import { ExternalLink, LoadingInline, ResourceLink } from '@console/internal/components/utils';
 import {
@@ -29,6 +38,7 @@ import {
 } from '../../statuses/template/types';
 import { DataVolumeWrapper } from '../../k8s/wrapper/vm/data-volume-wrapper';
 import { BOOT_SOURCE_AVAILABLE, DataVolumeSourceType } from '../../constants';
+import { useCustomizeSourceModal } from '../../hooks/use-customize-source-modal';
 
 import './vm-template-source.scss';
 
@@ -62,14 +72,16 @@ const AddSourceButton: React.FC<AddSourceButtonProps> = ({ template }) => {
   const uploadContextProps = React.useContext(CDIUploadContext);
   return (
     isCommonTemplate(template) && (
-      <Button
-        isInline
-        variant={ButtonVariant.link}
-        onClick={() => addTemplateSourceModal({ template, ...uploadContextProps })}
-      >
-        <PlusCircleIcon className="co-icon-and-text__icon" />
-        {t('kubevirt-plugin~Add source')}
-      </Button>
+      <LevelItem>
+        <Button
+          isInline
+          variant={ButtonVariant.link}
+          onClick={() => addTemplateSourceModal({ template, ...uploadContextProps })}
+        >
+          <PlusCircleIcon className="co-icon-and-text__icon" />
+          {t('kubevirt-plugin~Add source')}
+        </Button>
+      </LevelItem>
     )
   );
 };
@@ -84,15 +96,34 @@ const DeleteSourceButton: React.FC<DeleteSourceButtonProps> = ({ template, sourc
   return (
     isCommonTemplate(template) &&
     (sourceStatus.dataVolume || sourceStatus.pvc) && (
-      <StackItem>
+      <LevelItem>
         <Button
           isInline
           variant={ButtonVariant.link}
           onClick={() => createDeleteSourceModal({ sourceStatus })}
+          data-test="delete-template-source"
         >
           {t('kubevirt-plugin~Delete source')}
         </Button>
-      </StackItem>
+      </LevelItem>
+    )
+  );
+};
+
+const CustomizeSourceButton: React.FC<DeleteSourceButtonProps> = ({ template, sourceStatus }) => {
+  const { t } = useTranslation();
+  const customize = useCustomizeSourceModal();
+  return (
+    !isTemplateSourceError(sourceStatus) &&
+    sourceStatus.source !== SOURCE_TYPE.CONTAINER && (
+      <Button
+        isInline
+        variant={ButtonVariant.link}
+        onClick={() => customize(template)}
+        data-test="customize-template-source"
+      >
+        {t('kubevirt-plugin~Customize source')}
+      </Button>
     )
   );
 };
@@ -224,7 +255,7 @@ export const SourceDescription: React.FC<SourceDescriptionProps> = ({ sourceStat
         case DataVolumeSourceType.S3:
           return <URLSource url={dvWrapper.getURL()} isCDRom={isCDRom} />;
         case DataVolumeSourceType.REGISTRY:
-          return <ContainerSource container={dvWrapper.getURL()} isCDRom={isCDRom} />;
+          return <ContainerSource container={dvWrapper.getContainer()} isCDRom={isCDRom} />;
         case DataVolumeSourceType.PVC:
           return (
             <PVCSource
@@ -261,32 +292,28 @@ export const TemplateSource: React.FC<TemplateSourceProps> = ({
   if (!detailed) {
     if (isTemplateSourceError(sourceStatus)) {
       return (
-        <Label variant="outline" color="red" icon={<RedExclamationCircleIcon />}>
+        <Label variant="outline" color="red" icon={<RedExclamationCircleIcon />} isTruncated>
           {t('kubevirt-plugin~Boot source error')}
         </Label>
       );
     }
     if (sourceStatus) {
       return sourceStatus.isReady ? (
-        <Label variant="outline" color="green" icon={<GreenCheckCircleIcon />}>
-          {
-            // t('kubevirt-plugin~User defined boot source')
-            // t('kubevirt-plugin~Community defined boot source')
-          }
+        <Label variant="outline" color="green" icon={<GreenCheckCircleIcon />} isTruncated>
           {t('kubevirt-plugin~{{provider}} boot source', { provider: sourceStatus.provider })}
         </Label>
       ) : (
-        <Label variant="outline" color="blue" icon={<InProgressIcon />}>
+        <Label variant="outline" color="blue" icon={<InProgressIcon />} isTruncated>
           {t('kubevirt-plugin~Preparing boot source')}
         </Label>
       );
     }
     return isCommonTemplate(template) ? (
-      <Label variant="outline" color="orange" icon={<YellowExclamationTriangleIcon />}>
+      <Label variant="outline" color="orange" icon={<YellowExclamationTriangleIcon />} isTruncated>
         {t('kubevirt-plugin~Boot source required')}
       </Label>
     ) : (
-      <Label variant="outline" color="red" icon={<RedExclamationCircleIcon />}>
+      <Label variant="outline" color="red" icon={<RedExclamationCircleIcon />} isTruncated>
         {t('kubevirt-plugin~Boot source error')}
       </Label>
     );
@@ -312,8 +339,6 @@ export const TemplateSource: React.FC<TemplateSourceProps> = ({
   const { isReady, dataVolume, pod, addedOn, provider } = sourceStatus;
 
   if (isReady) {
-    // t('kubevirt-plugin~Available')
-    // t('kubevirt-plugin~{{provider}} defined')
     return (
       <SuccessStatus
         popoverTitle={
@@ -335,7 +360,10 @@ export const TemplateSource: React.FC<TemplateSourceProps> = ({
           <StackItem>
             <SourceDescription template={template} sourceStatus={sourceStatus} />
           </StackItem>
-          <DeleteSourceButton template={template} sourceStatus={sourceStatus} />
+          <Level>
+            <CustomizeSourceButton template={template} sourceStatus={sourceStatus} />
+            <DeleteSourceButton template={template} sourceStatus={sourceStatus} />
+          </Level>
         </Stack>
       </SuccessStatus>
     );

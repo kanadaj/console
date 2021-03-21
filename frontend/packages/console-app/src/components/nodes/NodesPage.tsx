@@ -269,7 +269,7 @@ const NodesTableRow = connect<NodesRowMapFromStateProps, null, NodesTableRowProp
     const totalCores = metrics?.totalCPU?.[nodeName];
     const cpu =
       Number.isFinite(cores) && Number.isFinite(totalCores)
-        ? `${formatCores(cores)} / ${totalCores} cores`
+        ? `${formatCores(cores)} cores / ${totalCores} cores`
         : '-';
     const usedStrg = metrics?.usedStorage?.[nodeName];
     const totalStrg = metrics?.totalStorage?.[nodeName];
@@ -425,6 +425,7 @@ const NodesTable: React.FC<NodesTableProps &
         activeColumns={selectedColumns}
         columnManagementID={columnManagementID}
         aria-label={t('nodes~Nodes')}
+        showNamespaceOverride
         Header={NodeTableHeader}
         Row={Row}
         virtualize

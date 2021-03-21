@@ -9,6 +9,7 @@ import BrokerListPage from './brokers-list/BrokerListPage';
 import ChannelListPage from './channels-list/ChannelListPage';
 import TriggerListPage from './triggers-list/TriggerListPage';
 import SubscriptionListPage from './subscription-list/SubscriptionListPage';
+import { EventingBrokerModel } from '../../models';
 
 interface EventingListPageProps {
   match: Rmatch<{ ns: string }>;
@@ -20,12 +21,17 @@ const EventingListPage: React.FC<EventingListPageProps> = ({ match }) => {
     params: { ns: namespace },
   } = match;
   const [showTitle, canCreate] = [false, false];
+  const nsSelected = namespace || 'default';
   const menuActions: MenuActions = {
     eventSource: {
       label: t('knative-plugin~Event Source'),
-      onSelection: () => `/catalog/ns/${namespace}?catalogType=EventSource`,
+      onSelection: () => `/catalog/ns/${nsSelected}?catalogType=EventSource`,
     },
-    channels: { label: t('knative-plugin~Channel'), onSelection: () => `/channel/ns/${namespace}` },
+    brokers: { label: t('knative-plugin~Broker'), model: EventingBrokerModel },
+    channels: {
+      label: t('knative-plugin~Channel'),
+      onSelection: () => `/channel/ns/${nsSelected}`,
+    },
   };
   const pages: Page[] = [
     {

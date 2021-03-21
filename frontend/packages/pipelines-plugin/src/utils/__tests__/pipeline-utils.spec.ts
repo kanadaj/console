@@ -8,7 +8,10 @@ import {
 import * as k8s from '@console/internal/module/k8s';
 import { ContainerStatus } from '@console/internal/module/k8s';
 import { SecretAnnotationId } from '../../components/pipelines/const';
+import { DataState, PipelineExampleNames, pipelineTestData } from '../../test-data/pipeline-data';
 import { runStatus } from '../pipeline-augment';
+import { taskRunWithResults } from '../../components/taskruns/__tests__/taskrun-test-data';
+import { PipelineRunModel } from '../../models';
 import {
   getPipelineTasks,
   containerToLogSourceStatus,
@@ -20,11 +23,15 @@ import {
   hasInlineTaskSpec,
   LatestPipelineRunStatus,
   updateServiceAccount,
+  appendPipelineRunStatus,
+  getCellsFromResults,
+  getMatchedPVCs,
 } from '../pipeline-utils';
 import {
   constructPipelineData,
   mockPipelinesJSON,
   mockRunDurationTest,
+  pvcWithPipelineOwnerRef,
 } from './pipeline-test-data';
 import { mockPipelineServiceAccount } from './pipeline-serviceaccount-test-data';
 
@@ -33,10 +40,10 @@ beforeAll(() => {
 });
 
 describe('pipeline-utils ', () => {
-  it('For first pipeline there should be 1 stages of length 2', () => {
+  it('For first pipeline there should be 1 stage of length 3', () => {
     const stages = getPipelineTasks(mockPipelinesJSON[0]);
     expect(stages).toHaveLength(1);
-    expect(stages[0]).toHaveLength(2);
+    expect(stages[0]).toHaveLength(3);
   });
   it('should transform pipelines', () => {
     const stages = getPipelineTasks(mockPipelinesJSON[1]);
@@ -171,8 +178,38 @@ describe('pipeline-utils ', () => {
   });
 
   it('expect pipeline without inline task spec to return false', () => {
-    const hasSpec = hasInlineTaskSpec(mockPipelinesJSON[0].spec.tasks);
+    const hasSpec = hasInlineTaskSpec(mockPipelinesJSON[1].spec.tasks);
     expect(hasSpec).toBe(false);
+  });
+
+  it('expect correct rows and columns for task with results', () => {
+    const { rows, columns } = getCellsFromResults(taskRunWithResults.status.taskResults);
+    expect(columns.length).toBe(2);
+    expect(rows.length).toBe(4);
+    expect(rows[0][0]).toBe('sum');
+    expect(rows[0][1]).toBe('30');
+    expect(rows[1][0]).toBe('difference');
+    expect(rows[1][1]).toBe('10');
+    expect(rows[2][0]).toBe('multiply');
+    expect(rows[2][1]).toBe('200');
+    expect(rows[3][0]).toBe('divide');
+    expect(rows[3][1]).toBe('2');
+  });
+
+  it('should return PVCs correctly matched with name and kind', () => {
+    const matchedPVCs = getMatchedPVCs(pvcWithPipelineOwnerRef, 'pipeline2', PipelineRunModel.kind);
+    expect(matchedPVCs.length).toBe(2);
+    expect(matchedPVCs[0].metadata.name).toBe(pvcWithPipelineOwnerRef[1].metadata.name);
+    expect(matchedPVCs[1].metadata.name).toBe(pvcWithPipelineOwnerRef[3].metadata.name);
+  });
+
+  it('should not match PVCs when ownerRef matches name but not kind', () => {
+    const matchedPVCs = getMatchedPVCs(
+      pvcWithPipelineOwnerRef.slice(4, 6),
+      'pipeline2',
+      PipelineRunModel.kind,
+    );
+    expect(matchedPVCs.length).toBe(0);
   });
 
   it('expect service account to have secret name available only in secrets property', async () => {
@@ -199,5 +236,47 @@ describe('pipeline-utils ', () => {
     expect(serviceAccount.imagePullSecrets.find((s) => s.name === imageSecretName)).toBeDefined();
     expect(serviceAccount.secrets).toHaveLength(2);
     expect(serviceAccount.imagePullSecrets).toHaveLength(2);
+  });
+
+  it('should append Idle status if a taskrun status reason is missing', () => {
+    const { pipeline, pipelineRuns } = pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE];
+    const pipelineRunWithoutStatus = _.cloneDeep(pipelineRuns[DataState.IN_PROGRESS]);
+    _.forIn(pipelineRunWithoutStatus.status.taskRuns, (taskRun, name) => {
+      pipelineRunWithoutStatus.status.taskRuns[name] = _.omit(taskRun, [
+        'status.conditions',
+        'status.startTime',
+        'status.completionTime',
+      ]);
+    });
+    const taskList = appendPipelineRunStatus(pipeline, pipelineRunWithoutStatus);
+    expect(taskList.filter((t) => t.status.reason === runStatus.Idle)).toHaveLength(2);
+  });
+
+  it('should append pipelineRun running status for all the tasks', () => {
+    const { pipeline, pipelineRuns } = pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE];
+    const pipelineRun = pipelineRuns[DataState.IN_PROGRESS];
+    const taskList = appendPipelineRunStatus(pipeline, pipelineRun);
+    expect(taskList.filter((t) => t.status.reason === runStatus.Running)).toHaveLength(2);
+  });
+
+  it('should append status to only pipeline tasks if isFinallyTasks is false', () => {
+    const { pipeline, pipelineRuns } = pipelineTestData[PipelineExampleNames.PIPELINE_WITH_FINALLY];
+    const pipelineRun = pipelineRuns[DataState.SUCCESS];
+    const taskList = appendPipelineRunStatus(pipeline, pipelineRun);
+    expect(taskList).toHaveLength(2);
+  });
+
+  it('should append status to only finally tasks if isFinallyTasks is true', () => {
+    const { pipeline, pipelineRuns } = pipelineTestData[PipelineExampleNames.PIPELINE_WITH_FINALLY];
+    const pipelineRun = pipelineRuns[DataState.SUCCESS];
+    const taskList = appendPipelineRunStatus(pipeline, pipelineRun, true);
+    expect(taskList).toHaveLength(1);
+  });
+
+  it('should return empty array if there are no finally tasks but isFinallyTasks is true', () => {
+    const { pipeline, pipelineRuns } = pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE];
+    const pipelineRun = pipelineRuns[DataState.IN_PROGRESS];
+    const taskList = appendPipelineRunStatus(pipeline, pipelineRun, true);
+    expect(taskList).toHaveLength(0);
   });
 });

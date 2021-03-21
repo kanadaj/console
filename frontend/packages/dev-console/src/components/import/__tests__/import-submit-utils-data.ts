@@ -1,8 +1,10 @@
 import { UNASSIGNED_KEY } from '@console/topology/src/const';
 import { GitImportFormData, Resources } from '../import-types';
 import { healthChecksProbeInitialData } from '../../health-checks/health-checks-probe-utils';
+import { PipelineKind } from '@console/pipelines-plugin/src/types';
+import { serverlessInitialValues } from '../__mocks__/serverless-mock';
 
-export const mockPipelineTemplate = {
+export const mockPipelineTemplate: PipelineKind = {
   apiVersion: 'tekton.dev/v1alpha1',
   kind: 'Pipeline',
   metadata: {
@@ -99,14 +101,7 @@ export const defaultData: GitImportFormData = {
     isRecommending: false,
     couldNotRecommend: false,
   },
-  serverless: {
-    scaling: {
-      minpods: 0,
-      maxpods: '',
-      concurrencytarget: '',
-      concurrencylimit: '',
-    },
-  },
+  serverless: serverlessInitialValues,
   route: {
     create: true,
     targetPort: '',
@@ -187,7 +182,6 @@ export const nodeJsBuilderImage = {
         'openshift.io/image.dockerRepositoryCheck': '2019-11-05T16:52:18Z',
         'samples.operator.openshift.io/version': '4.3.0-0.ci-2019-11-05-141931',
       },
-      selfLink: '/apis/image.openshift.io/v1/namespaces/openshift/imagestreams/nodejs',
       resourceVersion: '13443',
       name: 'nodejs',
       uid: 'a244e124-4a42-4248-bbcf-868b39791164',

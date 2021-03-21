@@ -27,11 +27,14 @@ import {
 } from '@patternfly/react-core';
 import { ChartLineIcon } from '@patternfly/react-icons';
 import { useTranslation } from 'react-i18next';
-import { connect } from 'react-redux';
-import { VictoryPortal } from 'victory';
+// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// @ts-ignore
+import { useDispatch, useSelector } from 'react-redux';
+import { VictoryPortal } from 'victory-core';
+
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 
-import * as UIActions from '../../actions/ui';
+import { queryBrowserDeleteAllSeries, queryBrowserPatchQuery } from '../../actions/ui';
 import { RootState } from '../../redux';
 import { PrometheusLabels, PrometheusResponse, PrometheusResult, PrometheusValue } from '../graphs';
 import { GraphEmpty } from '../graphs/graph-empty';
@@ -47,6 +50,7 @@ import {
 } from '../utils';
 import {
   formatPrometheusDuration,
+  getLocaleDate,
   parsePrometheusDuration,
   twentyFourHourTime,
 } from '../utils/datetime';
@@ -131,7 +135,7 @@ const SpanControls: React.FC<SpanControlsProps> = React.memo(
           type="button"
           variant="tertiary"
         >
-          {t('monitoring~Reset zoom')}
+          {t('public~Reset zoom')}
         </Button>
       </>
     );
@@ -226,7 +230,7 @@ const LegendContainer = ({ children }: { children?: React.ReactNode }) => {
   // The first child should be a <rect> with a `width` prop giving the legend's content width
   const width = children?.[0]?.[0]?.props?.width ?? '100%';
   return (
-    <foreignObject height={75} width="100%" y={230}>
+    <foreignObject height={75} width="100%" y={245}>
       <div className="monitoring-dashboards__legend-wrap">
         <svg width={width}>{children}</svg>
       </div>
@@ -245,11 +249,23 @@ const formatLabels = (labels: PrometheusLabels) => {
 
 type GraphSeries = GraphDataPoint[] | null;
 
+const getXDomain = (endTime, span): AxisDomain => [endTime - span, endTime];
+
 const Graph: React.FC<GraphProps> = React.memo(
-  ({ allSeries, disabledSeries, formatLegendLabel, isStack, span, width, xDomain }) => {
+  ({ allSeries, disabledSeries, formatLegendLabel, isStack, span, width, fixedXDomain }) => {
     const data: GraphSeries[] = [];
     const tooltipSeriesNames: string[] = [];
     const legendData: { name: string }[] = [];
+    const { t } = useTranslation();
+
+    const [xDomain, setXDomain] = React.useState(fixedXDomain || getXDomain(Date.now(), span));
+
+    // Only update X-axis if the time range (fixedXDomain or span) or graph data (allSeries) change
+    React.useEffect(() => {
+      setXDomain(fixedXDomain || getXDomain(Date.now(), span));
+    }, [allSeries, span, fixedXDomain]);
+
+    const domain = { x: xDomain, y: undefined };
 
     _.each(allSeries, (series, i) => {
       _.each(series, ([metric, values]) => {
@@ -265,7 +281,9 @@ const Graph: React.FC<GraphProps> = React.memo(
       });
     });
 
-    const domain = { x: xDomain || [Date.now() - span, Date.now()], y: undefined };
+    if (data.every(_.isEmpty)) {
+      return <GraphEmpty />;
+    }
 
     let yTickFormat = formatValue;
 
@@ -298,18 +316,13 @@ const Graph: React.FC<GraphProps> = React.memo(
         yTickFormat = (v: number) => (v === 0 ? '0' : v.toExponential(1));
       }
     }
-    const xTickFormat = (d) => twentyFourHourTime(d, span < 5 * ONE_MINUTE);
-    let xAxisStyle;
-    if (width < 225) {
-      xAxisStyle = {
-        tickLabels: {
-          angle: 45,
-          fontSize: 10,
-          textAnchor: 'start',
-          verticalAnchor: 'middle',
-        },
-      };
-    }
+
+    const xAxisTickCount = Math.round(width / 100);
+    const xAxisTickShowSeconds = span < xAxisTickCount * ONE_MINUTE;
+    const xAxisTickFormat =
+      span > parsePrometheusDuration('1d')
+        ? (d) => `${getLocaleDate(d, { month: 'short', day: 'numeric' })}\n${twentyFourHourTime(d)}`
+        : (d) => twentyFourHourTime(d, xAxisTickShowSeconds);
 
     const GroupComponent = isStack ? ChartStack : ChartGroup;
     const ChartComponent = isStack ? ChartArea : ChartLine;
@@ -317,6 +330,7 @@ const Graph: React.FC<GraphProps> = React.memo(
     return (
       <Chart
         containerComponent={graphContainer}
+        ariaTitle={t('public~query browser chart')}
         domain={domain}
         domainPadding={{ y: 1 }}
         height={200}
@@ -324,7 +338,7 @@ const Graph: React.FC<GraphProps> = React.memo(
         theme={theme}
         width={width}
       >
-        <ChartAxis style={xAxisStyle} tickCount={5} tickFormat={xTickFormat} />
+        <ChartAxis tickCount={xAxisTickCount} tickFormat={xAxisTickFormat} />
         <ChartAxis
           crossAxis={false}
           dependentAxis
@@ -342,7 +356,17 @@ const Graph: React.FC<GraphProps> = React.memo(
               data: { [isStack ? 'fill' : 'stroke']: color },
               labels: { fill: color, name: tooltipSeriesNames[i] },
             };
-            return <ChartComponent data={values} groupComponent={<g />} key={i} style={style} />;
+            return (
+              // We need to use the `name` prop to prevent an error in VictorySharedEvents when
+              // dynamically removing and then adding back data series
+              <ChartComponent
+                data={values}
+                groupComponent={<g />}
+                key={i}
+                name={`series-${i}`}
+                style={style}
+              />
+            );
           })}
         </GroupComponent>
         {!_.isEmpty(legendData) && (
@@ -420,12 +444,12 @@ const minPollInterval = 10 * 1000;
 const ZoomableGraph: React.FC<ZoomableGraphProps> = ({
   allSeries,
   disabledSeries,
+  fixedXDomain,
   formatLegendLabel,
   isStack,
   onZoom,
   span,
   width,
-  xDomain,
 }) => {
   const [isZooming, setIsZooming] = React.useState(false);
   const [x1, setX1] = React.useState(0);
@@ -461,7 +485,7 @@ const ZoomableGraph: React.FC<ZoomableGraphProps> = ({
     }
 
     const zoomWidth = e.currentTarget.getBoundingClientRect().width;
-    const oldFrom = _.get(xDomain, '[0]', Date.now() - span);
+    const oldFrom = _.get(fixedXDomain, '[0]', Date.now() - span);
     let from = oldFrom + (span * xMin) / zoomWidth;
     let to = oldFrom + (span * xMax) / zoomWidth;
     let newSpan = to - from;
@@ -491,11 +515,11 @@ const ZoomableGraph: React.FC<ZoomableGraphProps> = ({
       <Graph
         allSeries={allSeries}
         disabledSeries={disabledSeries}
+        fixedXDomain={fixedXDomain}
         formatLegendLabel={formatLegendLabel}
         isStack={isStack}
         span={span}
         width={width}
-        xDomain={xDomain}
       />
     </div>
   );
@@ -512,21 +536,30 @@ const getMaxSamplesForSpan = (span) => _.clamp(Math.round(span / minStep), minSa
 const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   defaultSamples,
   defaultTimespan = parsePrometheusDuration('30m'),
-  deleteAllSeries,
   disabledSeries = [],
+  disableZoom,
   filterLabels,
+  fixedEndTime,
   formatLegendLabel,
   GraphLink,
   hideControls,
-  hideGraphs,
   isStack = false,
   namespace,
-  patchQuery,
+  onZoom,
+  pollInterval,
   queries,
   showStackedControl = false,
-  tickInterval,
   timespan,
 }) => {
+  const { t } = useTranslation();
+
+  const hideGraphs = useSelector(({ UI }: RootState) => !!UI.getIn(['monitoring', 'hideGraphs']));
+  const tickInterval = useSelector(
+    ({ UI }: RootState) => pollInterval ?? UI.getIn(['queryBrowser', 'pollInterval']),
+  );
+
+  const dispatch = useDispatch();
+
   // For the default time span, use the first of the suggested span options that is at least as long
   // as defaultTimespan
   const defaultSpanText = spans.find((s) => parsePrometheusDuration(s) >= defaultTimespan);
@@ -540,7 +573,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   const [xDomain, setXDomain] = React.useState<AxisDomain>();
   const [error, setError] = React.useState<PrometheusAPIError>();
   const [isDatasetTooBig, setIsDatasetTooBig] = React.useState(false);
-  const [graphData, setGraphData] = React.useState(null);
+  const [graphData, setGraphData] = React.useState<Series[][]>(null);
   const [samples, setSamples] = React.useState(maxSamplesForSpan);
   const [updating, setUpdating] = React.useState(true);
 
@@ -562,10 +595,17 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
     }
   }, [defaultSamples, timespan]);
 
+  React.useEffect(() => {
+    setGraphData(null);
+    if (fixedEndTime) {
+      setXDomain(getXDomain(fixedEndTime, span));
+    }
+  }, [fixedEndTime, span]);
+
   // Clear any existing series data when the namespace is changed
   React.useEffect(() => {
-    deleteAllSeries();
-  }, [deleteAllSeries, namespace]);
+    dispatch(queryBrowserDeleteAllSeries());
+  }, [dispatch, namespace]);
 
   const tick = () => {
     if (hideGraphs) {
@@ -619,19 +659,20 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
           setSamples(newSamples);
         } else {
           const newGraphData = _.map(newResults, (result: PrometheusResult[]) => {
-            return _.map(result, ({ metric, values }) => {
-              // If filterLabels is specified, ignore all series that don't match
-              return _.some(filterLabels, (v, k) => _.has(metric, k) && metric[k] !== v)
-                ? []
-                : [metric, formatSeriesValues(values, samples, span)];
-            });
+            return _.map(
+              result,
+              ({ metric, values }): Series => {
+                // If filterLabels is specified, ignore all series that don't match
+                return _.some(filterLabels, (v, k) => _.has(metric, k) && metric[k] !== v)
+                  ? []
+                  : [metric, formatSeriesValues(values, samples, span)];
+              },
+            );
           });
           setGraphData(newGraphData);
 
           _.each(newResults, (r, i) =>
-            patchQuery(i, {
-              series: r ? _.map(r, 'metric') : undefined,
-            }),
+            dispatch(queryBrowserPatchQuery(i, { series: r ? _.map(r, 'metric') : undefined })),
           );
           setUpdating(false);
         }
@@ -663,6 +704,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
 
   const onSpanChange = React.useCallback(
     (newSpan: number) => {
+      setGraphData(null);
       setXDomain(undefined);
       setSpan(newSpan);
       setSamples(defaultSamples || getMaxSamplesForSpan(newSpan));
@@ -706,10 +748,12 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
     );
   }
 
-  const onZoom = (from: number, to: number) => {
+  const zoomableGraphOnZoom = (from: number, to: number) => {
+    setGraphData(null);
     setXDomain([from, to]);
     setSpan(to - from);
     setSamples(defaultSamples || getMaxSamplesForSpan(to - from));
+    onZoom?.(from, to);
   };
 
   const isGraphDataEmpty = !graphData || graphData.every((d) => d.length === 0);
@@ -735,7 +779,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
               <Checkbox
                 id="stacked"
                 isChecked={isStacked}
-                label="Stacked"
+                label={t('public~Stacked')}
                 onChange={(v) => setIsStacked(v)}
               />
             )}
@@ -762,26 +806,26 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
             <div ref={containerRef} style={{ width: '100%' }}>
               {width > 0 && (
                 <>
-                  {hideControls ? (
+                  {disableZoom ? (
                     <Graph
                       allSeries={graphData}
                       disabledSeries={disabledSeries}
+                      fixedXDomain={xDomain}
                       formatLegendLabel={formatLegendLabel}
                       isStack={canStack && isStacked}
                       span={span}
                       width={width}
-                      xDomain={xDomain}
                     />
                   ) : (
                     <ZoomableGraph
                       allSeries={graphData}
                       disabledSeries={disabledSeries}
+                      fixedXDomain={xDomain}
                       formatLegendLabel={formatLegendLabel}
                       isStack={canStack && isStacked}
-                      onZoom={onZoom}
+                      onZoom={zoomableGraphOnZoom}
                       span={span}
                       width={width}
-                      xDomain={xDomain}
                     />
                   )}
                 </>
@@ -793,18 +837,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
     </div>
   );
 };
-export const QueryBrowser = withFallback(
-  connect(
-    ({ UI }: RootState, { pollInterval }: { pollInterval?: number }) => ({
-      hideGraphs: !!UI.getIn(['monitoring', 'hideGraphs']),
-      tickInterval: pollInterval ?? UI.getIn(['queryBrowser', 'pollInterval']),
-    }),
-    {
-      deleteAllSeries: UIActions.queryBrowserDeleteAllSeries,
-      patchQuery: UIActions.queryBrowserPatchQuery,
-    },
-  )(QueryBrowser_),
-);
+export const QueryBrowser = withFallback(QueryBrowser_);
 
 type AxisDomain = [number, number];
 
@@ -813,7 +846,7 @@ type GraphDataPoint = {
   y: number;
 };
 
-type Series = [PrometheusLabels, GraphDataPoint[]];
+type Series = [PrometheusLabels, GraphDataPoint[]] | [];
 
 export type QueryObj = {
   disabledSeries?: PrometheusLabels[];
@@ -825,8 +858,6 @@ export type QueryObj = {
 };
 
 export type FormatLegendLabel = (labels: PrometheusLabels, i?: number) => string;
-
-export type PatchQuery = (index: number, patch: QueryObj) => any;
 
 type ErrorProps = {
   error: PrometheusAPIError;
@@ -841,32 +872,33 @@ type GraphEmptyStateProps = {
 type GraphProps = {
   allSeries: Series[][];
   disabledSeries?: PrometheusLabels[][];
+  fixedXDomain?: AxisDomain;
   formatLegendLabel?: FormatLegendLabel;
   isStack?: boolean;
   span: number;
   width: number;
-  xDomain?: AxisDomain;
 };
 
-type ZoomableGraphProps = GraphProps & { onZoom: (from: number, to: number) => void };
+type GraphOnZoom = (from: number, to: number) => void;
+
+type ZoomableGraphProps = GraphProps & { onZoom: GraphOnZoom };
 
 export type QueryBrowserProps = {
   defaultSamples?: number;
   defaultTimespan?: number;
-  deleteAllSeries: () => never;
   disabledSeries?: PrometheusLabels[][];
+  disableZoom?: boolean;
   filterLabels?: PrometheusLabels;
+  fixedEndTime?: number;
   formatLegendLabel?: FormatLegendLabel;
   GraphLink?: React.ComponentType<{}>;
   hideControls?: boolean;
-  hideGraphs: boolean;
   isStack?: boolean;
   namespace?: string;
-  patchQuery: PatchQuery;
+  onZoom?: GraphOnZoom;
   pollInterval?: number;
   queries: string[];
   showStackedControl?: boolean;
-  tickInterval: number;
   timespan?: number;
 };
 

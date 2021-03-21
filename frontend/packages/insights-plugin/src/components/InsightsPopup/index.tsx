@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { ChartDonut, ChartLegend, ChartLabel } from '@patternfly/react-charts';
+import { useTranslation } from 'react-i18next';
 
 import {
   riskIcons,
@@ -7,11 +8,12 @@ import {
   legendColorScale,
   riskSorting,
   mapMetrics,
-  isInitialized,
+  isWaitingOrDisabled as _isWaitingOrDisabled,
+  isError as _isError,
 } from './mappers';
 import { PrometheusHealthPopupProps } from '@console/plugin-sdk';
 import { K8sResourceKind } from '@console/internal/module/k8s';
-import { ExternalLink } from '@console/internal/components/utils';
+import { ExternalLink, openshiftHelpBase } from '@console/internal/components/utils';
 import './style.scss';
 
 const DataComponent: React.FC<DataComponentProps> = ({ x, y, datum }) => {
@@ -20,6 +22,7 @@ const DataComponent: React.FC<DataComponentProps> = ({ x, y, datum }) => {
 };
 
 export const InsightsPopup: React.FC<PrometheusHealthPopupProps> = ({ responses, k8sResult }) => {
+  const { t } = useTranslation();
   const metrics = mapMetrics(responses[0].response);
   const clusterID = (k8sResult as K8sResourceKind)?.data?.spec?.clusterID || '';
   const riskEntries = Object.entries(metrics).sort(
@@ -27,24 +30,35 @@ export const InsightsPopup: React.FC<PrometheusHealthPopupProps> = ({ responses,
   );
   const numberOfIssues = Object.values(metrics).reduce((acc, cur) => acc + cur, 0);
   const hasIssues = riskEntries.length > 0 && numberOfIssues > 0;
-  const isInit = isInitialized(metrics);
+
+  const isWaitingOrDisabled = _isWaitingOrDisabled(metrics);
+  const isError = _isError(metrics);
+
+  const riskKeys = {
+    // t('insights-plugin~low')
+    low: 'insights-plugin~low',
+    // t('insights-plugin~moderate')
+    moderate: 'insights-plugin~moderate',
+    // t('insights-plugin~important')
+    important: 'insights-plugin~important',
+    // t('insights-plugin~critical')
+    critical: 'insights-plugin~critical',
+  };
 
   return (
     <div className="co-insights__box">
-      {!isInit && (
+      {isError && (
         <div className="co-status-popup__section">
-          Insights identifies and prioritizes risks to security, performance, availability, and
-          stability of your clusters.
+          {t('insights-plugin~Temporary unavailable.')}
         </div>
       )}
-      {isInit && (
+      {isWaitingOrDisabled && (
         <div className="co-status-popup__section">
-          Your cluster has been identified, and Insights analyzes your cluster. The results will be
-          displayed shortly.
+          {t('insights-plugin~Disabled or waiting for results.')}
         </div>
       )}
       <div className="co-status-popup__section">
-        {hasIssues && !isInit && (
+        {hasIssues && !isWaitingOrDisabled && !isError && (
           <div>
             <ChartDonut
               data={riskEntries.map(([k, v]) => ({
@@ -53,7 +67,7 @@ export const InsightsPopup: React.FC<PrometheusHealthPopupProps> = ({ responses,
                 y: v,
               }))}
               title={`${numberOfIssues}`}
-              subTitle={`Total ${numberOfIssues === 1 ? 'issue' : 'issues'}`}
+              subTitle={t('insights-plugin~Total issue', { count: numberOfIssues })}
               legendData={Object.entries(metrics).map(([k, v]) => ({ name: `${k}: ${v}` }))}
               legendOrientation="vertical"
               width={304}
@@ -62,12 +76,12 @@ export const InsightsPopup: React.FC<PrometheusHealthPopupProps> = ({ responses,
               constrainToVisibleArea
               legendComponent={
                 <ChartLegend
-                  title="Total Risk"
+                  title={t('insights-plugin~Total Risk')}
                   titleComponent={
                     <ChartLabel dx={13} style={{ fontWeight: 'bold', fontSize: '14px' }} />
                   }
                   data={riskEntries.map(([k, v]) => ({
-                    name: `${v} ${k}`,
+                    name: `${v} ${t(riskKeys[k])}`,
                     id: k,
                   }))}
                   dataComponent={<DataComponent />}
@@ -83,34 +97,23 @@ export const InsightsPopup: React.FC<PrometheusHealthPopupProps> = ({ responses,
             />
           </div>
         )}
-        {(!hasIssues || isInit) && (
-          <div className="co-insights__no-rules">No Insights data to display.</div>
-        )}
       </div>
       <div className="co-status-popup__section">
-        {hasIssues && !isInit && (
+        {hasIssues && !isWaitingOrDisabled && !isError && (
           <>
-            <h6 className="pf-c-title pf-m-md">Fixable issues</h6>
+            <h6 className="pf-c-title pf-m-md">{t('insights-plugin~Fixable issues')}</h6>
             <div>
               <ExternalLink
                 href={`https://cloud.redhat.com/openshift/details/${clusterID}#insights`}
-                text="View all in OpenShift Cluster Manager"
+                text={t('insights-plugin~View all in OpenShift Cluster Manager')}
               />
             </div>
           </>
         )}
-        {isInit && (
-          <div>
-            <ExternalLink
-              href={`https://cloud.redhat.com/openshift/details/${clusterID}#insights`}
-              text="Go to OpenShift Cluster Manager"
-            />
-          </div>
-        )}
-        {!hasIssues && !isInit && (
+        {!hasIssues && (isWaitingOrDisabled || isError) && (
           <ExternalLink
-            href="https://docs.openshift.com/container-platform/latest/support/getting-support.html"
-            text="More about Insights"
+            href={`${openshiftHelpBase}support/remote_health_monitoring/using-insights-to-identify-issues-with-your-cluster.html`}
+            text={t('insights-plugin~More about Insights')}
           />
         )}
       </div>

@@ -5,7 +5,6 @@ import {
   LABEL_CDROM_SOURCE,
   DataVolumeSourceType,
   DiskType,
-  ROOT_DISK_NAME,
   TEMPLATE_PARAM_VM_NAME,
   VolumeType,
   ANNOTATION_SOURCE_PROVIDER,
@@ -24,21 +23,16 @@ import {
   getTemplateOperatingSystems,
   isWindowsTemplate,
 } from '../../../../selectors/vm-template/advanced';
-import { selectVM } from '../../../../selectors/vm-template/basic';
+import { isCommonTemplate, selectVM } from '../../../../selectors/vm-template/basic';
 import { isTemplateSourceError, TemplateSourceStatus } from '../../../../statuses/template/types';
 import { VMSettingsField } from '../../../../components/create-vm-wizard/types';
-import { FormState } from '../../../../components/create-vm/forms/create-vm-form-reducer';
 import { BootSourceState } from '../../../../components/create-vm/forms/boot-source-form-reducer';
 import { DataVolumeWrapper } from '../../../wrapper/vm/data-volume-wrapper';
 import { windowsToolsStorage } from '../../../../components/create-vm-wizard/redux/initial-state/storage-tab-initial-state';
 import { getEmptyInstallStorage } from '../../../../utils/storage';
 import { ignoreCaseSort } from '../../../../utils/sort';
 import { ProvisionSource } from '../../../../constants/vm/provision-source';
-import { getParameterValue } from '../../../../selectors/selectors';
-import {
-  TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER,
-  TEMPLATE_BASE_IMAGE_NAME_PARAMETER,
-} from '../../../../constants/vm';
+import { VMKind } from '../../../../types';
 
 type GetRootDataVolume = (args: {
   name: string;
@@ -98,13 +92,15 @@ export const getRootDataVolume: GetRootDataVolume = ({
   return dataVolume;
 };
 
-export const createVM = async (
+export const prepareVM = async (
   template: TemplateKind,
   sourceStatus: TemplateSourceStatus,
   customSource: BootSourceState,
-  { namespace, name, startVM }: FormState,
+  { namespace, name, startVM }: { namespace: string; name: string; startVM: boolean },
   scConfigMap: ConfigMapKind,
-) => {
+  emptyDiskSize?: string,
+  referenceTemplate = true,
+): Promise<VMKind> => {
   const templateWrapper = new VMTemplateWrapper(template, true);
   templateWrapper
     .setNamespace(namespace)
@@ -118,33 +114,24 @@ export const createVM = async (
       ),
     );
   const processedTemplate = await k8sCreate(ProcessedTemplatesModel, templateWrapper.asResource());
-  const nameParam = getParameterValue(template, TEMPLATE_BASE_IMAGE_NAME_PARAMETER);
-  const namespaceParam = getParameterValue(template, TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER);
   const vmWrapper = new VMWrapper(selectVM(processedTemplate))
     .setNamespace(namespace)
     .setHostname(name);
 
   if (
-    customSource?.dataSource?.value ||
-    (!isTemplateSourceError(sourceStatus) && sourceStatus.pvc)
+    isCommonTemplate(template) &&
+    (customSource?.dataSource?.value || (!isTemplateSourceError(sourceStatus) && sourceStatus.pvc))
   ) {
-    const rootVolume = new VolumeWrapper();
-    rootVolume.init({ name: ROOT_DISK_NAME }).setType(VolumeType.DATA_VOLUME, {
-      name: `${name}-${ROOT_DISK_NAME}`,
-    });
+    const bootDisk = vmWrapper.getBootDisk();
+    vmWrapper.removeStorage(bootDisk.name);
 
-    const rootDisk = new DiskWrapper(
-      vmWrapper.getDisks().find((d) => d.name === ROOT_DISK_NAME) || {
-        name: ROOT_DISK_NAME,
-        disk: {
-          bus: vmWrapper.getDiskByPVC(nameParam) || DiskBus.VIRTIO.getValue(),
-        },
-      },
-      true,
-    ).setBootOrder(1);
+    const rootVolume = new VolumeWrapper()
+      .init({ name: bootDisk.name })
+      .setType(VolumeType.DATA_VOLUME, {
+        name,
+      });
 
-    vmWrapper.removeDiskByPVC(nameParam, namespaceParam);
-
+    const rootDisk = new DiskWrapper(bootDisk).setBootOrder(1);
     let rootDataVolume;
     let isCDRom: boolean;
 
@@ -186,23 +173,24 @@ export const createVM = async (
       rootDisk.setType(DiskType.CDROM, {
         bus: rootDiskBus === DiskBus.VIRTIO ? DiskBus.SATA : rootDiskBus,
       });
-      vmWrapper.prependStorage(getEmptyInstallStorage(scConfigMap, rootDiskBus, name));
+      vmWrapper.prependStorage(
+        getEmptyInstallStorage(scConfigMap, rootDiskBus, name, emptyDiskSize),
+      );
       vmWrapper.addAnotation(ANNOTATION_FIRST_BOOT, `${!startVM}`);
     }
-    vmWrapper.removeStorage(ROOT_DISK_NAME);
 
     vmWrapper.prependStorage({
       disk: rootDisk.asResource(),
       volume: rootVolume.asResource(),
       dataVolume: rootDataVolume.asResource(),
     });
-  }
 
-  if (isWindowsTemplate(template)) {
-    vmWrapper.prependStorage({
-      disk: windowsToolsStorage.disk,
-      volume: windowsToolsStorage.volume,
-    });
+    if (isWindowsTemplate(template)) {
+      vmWrapper.prependStorage({
+        disk: windowsToolsStorage.disk,
+        volume: windowsToolsStorage.volume,
+      });
+    }
   }
 
   const os = ignoreCaseSort(getTemplateOperatingSystems([template]), ['name'])[0];
@@ -218,11 +206,22 @@ export const createVM = async (
     osName: os?.name,
   };
 
-  initializeCommonMetadata(settings, vmWrapper, template);
+  initializeCommonMetadata(settings, vmWrapper, referenceTemplate ? template : undefined);
   initializeCommonVMMetadata(settings, vmWrapper);
 
   const res = vmWrapper.asResource();
   res.spec.running = startVM;
 
-  return k8sCreate(VirtualMachineModel, res);
+  return res;
+};
+
+export const createVM = async (
+  template: TemplateKind,
+  sourceStatus: TemplateSourceStatus,
+  customSource: BootSourceState,
+  opts: { namespace: string; name: string; startVM: boolean },
+  scConfigMap: ConfigMapKind,
+) => {
+  const vm = await prepareVM(template, sourceStatus, customSource, opts, scConfigMap);
+  return k8sCreate(VirtualMachineModel, vm);
 };

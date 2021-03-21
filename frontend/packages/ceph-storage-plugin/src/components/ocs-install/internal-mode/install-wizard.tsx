@@ -12,19 +12,20 @@ import {
   StackItem,
   WizardStep,
 } from '@patternfly/react-core';
-import { history } from '@console/internal/components/utils';
+import { history, resourcePathFromModel } from '@console/internal/components/utils';
 import { setFlag } from '@console/internal/actions/features';
 import { k8sCreate, referenceForModel, K8sResourceKind } from '@console/internal/module/k8s';
 import { getName } from '@console/shared';
+import { ClusterServiceVersionModel } from '@console/operator-lifecycle-manager';
+import { SelectCapacityAndNodes, Configure, ReviewAndCreate } from './install-wizard-steps';
+import { initialState, reducer, InternalClusterState } from './reducer';
+import { taintNodes } from '../../../utils/install';
 import { OCSServiceModel } from '../../../models';
 import { OCS_CONVERGED_FLAG, OCS_INDEPENDENT_FLAG, OCS_FLAG } from '../../../features';
 import { OCS_INTERNAL_CR_NAME, MINIMUM_NODES, CreateStepsSC } from '../../../constants';
-import { StorageClusterKind } from '../../../types';
+import { StorageClusterKind, NetworkType } from '../../../types';
 import { labelNodes, getOCSRequestData, labelOCSNamespace } from '../ocs-request-data';
-import { SelectCapacityAndNodes, Configure, ReviewAndCreate } from './install-wizard-steps';
-import { initialState, reducer, InternalClusterState } from './reducer';
 import { createKmsResources } from '../../kms-config/utils';
-import { NetworkType } from '../types';
 import '../install-wizard/install-wizard.scss';
 
 const makeOCSRequest = (state: InternalClusterState): Promise<StorageClusterKind> => {
@@ -38,6 +39,7 @@ const makeOCSRequest = (state: InternalClusterState): Promise<StorageClusterKind
     clusterNetwork,
     encryption,
     kms,
+    enableTaint,
   } = state;
   const storageCluster: StorageClusterKind = getOCSRequestData(
     storageClass,
@@ -53,11 +55,15 @@ const makeOCSRequest = (state: InternalClusterState): Promise<StorageClusterKind
   if (encryption.advanced && kms.hasHandled) {
     promises.push(...createKmsResources(kms));
   }
+  if (enableTaint) {
+    promises.push(...taintNodes(nodes));
+  }
   return Promise.all(promises).then(() => k8sCreate(OCSServiceModel, storageCluster));
 };
 
 export const CreateInternalCluster: React.FC<CreateInternalClusterProps> = ({ match, mode }) => {
   const { t } = useTranslation();
+  const { appName, ns } = match.params;
   const [state, dispatch] = React.useReducer(reducer, initialState);
   const [showInfoAlert, setShowInfoAlert] = React.useState(true);
   const [inProgress, setInProgress] = React.useState(false);
@@ -77,7 +83,7 @@ export const CreateInternalCluster: React.FC<CreateInternalClusterProps> = ({ ma
     {
       name: t('ceph-storage-plugin~Select capacity and nodes'),
       id: CreateStepsSC.STORAGEANDNODES,
-      component: <SelectCapacityAndNodes state={state} dispatch={dispatch} />,
+      component: <SelectCapacityAndNodes state={state} dispatch={dispatch} mode={mode} />,
       enableNext: !!(state.nodes.length >= MINIMUM_NODES && scName),
     },
     {
@@ -98,7 +104,6 @@ export const CreateInternalCluster: React.FC<CreateInternalClusterProps> = ({ ma
   ];
 
   const createCluster = async () => {
-    const { appName, ns } = match.params;
     try {
       setInProgress(true);
       await makeOCSRequest(state);
@@ -142,8 +147,13 @@ export const CreateInternalCluster: React.FC<CreateInternalClusterProps> = ({ ma
           navAriaLabel={t('ceph-storage-plugin~{{title}} steps', { title })}
           mainAriaLabel={t('ceph-storage-plugin~{{title}} content', { title })}
           steps={steps}
+          cancelButtonText={t('ceph-storage-plugin~Cancel')}
+          nextButtonText={t('ceph-storage-plugin~Next')}
+          backButtonText={t('ceph-storage-plugin~Back')}
+          onClose={() =>
+            history.push(resourcePathFromModel(ClusterServiceVersionModel, appName, ns))
+          }
           onSave={createCluster}
-          onClose={() => history.goBack()}
         />
       </StackItem>
     </Stack>

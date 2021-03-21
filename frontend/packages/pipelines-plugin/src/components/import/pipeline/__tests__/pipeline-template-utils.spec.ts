@@ -1,12 +1,18 @@
 import { k8sCreate, k8sUpdate } from '@console/internal/module/k8s';
 import { GitImportFormData } from '@console/dev-console/src/components/import/import-types';
+import {
+  PIPELINE_RUNTIME_LABEL,
+  PIPELINE_RUNTIME_VERSION_LABEL,
+  PIPELINE_STRATEGY_LABEL,
+} from '../../../../const';
 import { PipelineModel } from '../../../../models';
-import { PIPELINE_RUNTIME_LABEL } from '../../../../const';
+import { PipelineKind } from '../../../../types';
 import {
   createPipelineForImportFlow,
+  isDockerPipeline,
+  pipelineRuntimeOrVersionChanged,
   updatePipelineForImportFlow,
 } from '../pipeline-template-utils';
-import { Pipeline } from '../../../../utils/pipeline-augment';
 
 jest.mock('@console/internal/module/k8s', () => ({
   k8sCreate: jest.fn(),
@@ -24,7 +30,7 @@ beforeEach(() => {
 });
 
 describe('createPipelineForImportFlow', () => {
-  const createFormData = (pipelineTemplate: Pipeline): GitImportFormData => {
+  const createFormData = (pipelineTemplate: PipelineKind): GitImportFormData => {
     const minimalFormData = {
       name: 'an-app',
       project: { name: 'a-project' },
@@ -52,7 +58,12 @@ describe('createPipelineForImportFlow', () => {
   };
 
   it('should create an almost empty pipeline for a template with only task data (empty task)', async () => {
-    const pipelineTemplate: Pipeline = {
+    const pipelineTemplate: PipelineKind = {
+      metadata: {
+        labels: {
+          [PIPELINE_RUNTIME_LABEL]: 'nodejs',
+        },
+      },
       spec: {
         tasks: [],
       },
@@ -67,13 +78,18 @@ describe('createPipelineForImportFlow', () => {
       formData.git.dir,
       formData.pipeline,
       formData.docker.dockerfilePath,
+      '14-ubi8',
     );
 
-    const expectedPipeline: Pipeline = {
+    const expectedPipeline: PipelineKind = {
       metadata: {
         name: 'an-app',
         namespace: 'a-project',
-        labels: { 'app.kubernetes.io/instance': 'an-app' },
+        labels: {
+          'app.kubernetes.io/instance': 'an-app',
+          [PIPELINE_RUNTIME_LABEL]: 'nodejs',
+          [PIPELINE_RUNTIME_VERSION_LABEL]: '14-ubi8',
+        },
       },
       spec: {
         params: undefined,
@@ -88,7 +104,7 @@ describe('createPipelineForImportFlow', () => {
   });
 
   it('should create a pipeline for a template with params, resources, workspaces, tasks (all empty)', async () => {
-    const pipelineTemplate: Pipeline = {
+    const pipelineTemplate: PipelineKind = {
       spec: {
         params: [],
         resources: [],
@@ -107,13 +123,17 @@ describe('createPipelineForImportFlow', () => {
       formData.git.dir,
       formData.pipeline,
       formData.docker.dockerfilePath,
+      '14-ubi8',
     );
 
-    const expectedPipeline: Pipeline = {
+    const expectedPipeline: PipelineKind = {
       metadata: {
         name: 'an-app',
         namespace: 'a-project',
-        labels: { 'app.kubernetes.io/instance': 'an-app' },
+        labels: {
+          'app.kubernetes.io/instance': 'an-app',
+          [PIPELINE_RUNTIME_VERSION_LABEL]: '14-ubi8',
+        },
       },
       spec: {
         params: [],
@@ -131,7 +151,7 @@ describe('createPipelineForImportFlow', () => {
   });
 
   it('should create a pipeline for a template with filled params, resources, workspaces and tasks', async () => {
-    const pipelineTemplate: Pipeline = {
+    const pipelineTemplate: PipelineKind = {
       spec: {
         params: [{ name: 'a-param', default: 'default value', description: 'a description' }],
         resources: [{ type: 'resource-type', name: 'a-resource' }],
@@ -156,13 +176,17 @@ describe('createPipelineForImportFlow', () => {
       formData.git.dir,
       formData.pipeline,
       formData.docker.dockerfilePath,
+      '14-ubi8',
     );
 
-    const expectedPipeline: Pipeline = {
+    const expectedPipeline: PipelineKind = {
       metadata: {
         name: 'an-app',
         namespace: 'a-project',
-        labels: { 'app.kubernetes.io/instance': 'an-app' },
+        labels: {
+          'app.kubernetes.io/instance': 'an-app',
+          [PIPELINE_RUNTIME_VERSION_LABEL]: '14-ubi8',
+        },
       },
       spec: {
         params: [{ name: 'a-param', default: 'default value', description: 'a description' }],
@@ -186,7 +210,7 @@ describe('createPipelineForImportFlow', () => {
   });
 
   it('should fill different pipeline parameters if the template contains known params', async () => {
-    const pipelineTemplate: Pipeline = {
+    const pipelineTemplate: PipelineKind = {
       spec: {
         params: [
           { name: 'APP_NAME' },
@@ -194,6 +218,7 @@ describe('createPipelineForImportFlow', () => {
           { name: 'GIT_REVISION' },
           { name: 'PATH_CONTEXT', default: '.' },
           { name: 'IMAGE_NAME' },
+          { name: 'VERSION' },
         ],
         tasks: [],
       },
@@ -208,13 +233,17 @@ describe('createPipelineForImportFlow', () => {
       formData.git.dir,
       formData.pipeline,
       formData.docker.dockerfilePath,
+      '14-ubi8',
     );
 
-    const expectedPipeline: Pipeline = {
+    const expectedPipeline: PipelineKind = {
       metadata: {
         name: 'an-app',
         namespace: 'a-project',
-        labels: { 'app.kubernetes.io/instance': 'an-app' },
+        labels: {
+          'app.kubernetes.io/instance': 'an-app',
+          [PIPELINE_RUNTIME_VERSION_LABEL]: '14-ubi8',
+        },
       },
       spec: {
         params: [
@@ -226,6 +255,7 @@ describe('createPipelineForImportFlow', () => {
             name: 'IMAGE_NAME',
             default: 'image-registry.openshift-image-registry.svc:5000/a-project/an-app',
           },
+          { name: 'VERSION', default: '14-ubi8' },
         ],
         tasks: [],
       },
@@ -238,7 +268,7 @@ describe('createPipelineForImportFlow', () => {
   });
 
   it('should remove prefix slash of the git directory from the PATH_CONTEXT param', async () => {
-    const pipelineTemplate: Pipeline = {
+    const pipelineTemplate: PipelineKind = {
       spec: {
         params: [
           { name: 'APP_NAME' },
@@ -261,13 +291,17 @@ describe('createPipelineForImportFlow', () => {
       '/anotherpath',
       formData.pipeline,
       'Dockerfile',
+      '14-ubi8',
     );
 
-    const expectedPipeline: Pipeline = {
+    const expectedPipeline: PipelineKind = {
       metadata: {
         name: 'an-app',
         namespace: 'a-project',
-        labels: { 'app.kubernetes.io/instance': 'an-app' },
+        labels: {
+          'app.kubernetes.io/instance': 'an-app',
+          [PIPELINE_RUNTIME_VERSION_LABEL]: '14-ubi8',
+        },
       },
       spec: {
         params: [
@@ -296,17 +330,17 @@ describe('createPipelineForImportFlow', () => {
 });
 
 describe('updatePipelineForImportFlow', () => {
-  const mockTemplate: Pipeline = {
+  const mockTemplate: PipelineKind = {
     metadata: {
       labels: { 'app.kubernetes.io/instance': 'sample' },
     },
     spec: {
       tasks: [],
-      params: [{ type: 'paramtype', name: 'PARAM1' }],
+      params: [{ type: 'string', name: 'PARAM1' }],
     },
   };
 
-  const mockPipeline: Pipeline = {
+  const mockPipeline: PipelineKind = {
     metadata: {
       name: 'test',
       labels: { 'app.kubernetes.io/instance': 'sample' },
@@ -330,6 +364,7 @@ describe('updatePipelineForImportFlow', () => {
     gitRef: '',
     gitDir: '',
     dockerfilePath: '',
+    image: { tag: '10-ubi7' },
   };
 
   it('should dissociate pipeline if template is not available', async () => {
@@ -342,9 +377,10 @@ describe('updatePipelineForImportFlow', () => {
       props.gitRef,
       props.gitDir,
       props.dockerfilePath,
+      props.image.tag,
     );
 
-    const expectedPipeline: Pipeline = {
+    const expectedPipeline: PipelineKind = {
       metadata: {
         name: 'test',
         labels: {},
@@ -370,9 +406,10 @@ describe('updatePipelineForImportFlow', () => {
       props.gitRef,
       props.gitDir,
       props.dockerfilePath,
+      props.image.tag,
     );
 
-    const expectedPipeline: Pipeline = {
+    const expectedPipeline: PipelineKind = {
       metadata: {
         name: 'test',
         labels: { 'app.kubernetes.io/instance': 'sample' },
@@ -380,7 +417,40 @@ describe('updatePipelineForImportFlow', () => {
       },
       spec: {
         tasks: [],
-        params: [{ name: 'PARAM1', type: 'paramtype' }],
+        params: [{ name: 'PARAM1', type: 'string' }],
+      },
+    };
+
+    expect(k8sUpdate).toHaveBeenCalledTimes(1);
+    expect(k8sUpdate).toHaveBeenCalledWith(PipelineModel, expectedPipeline, 'test', 'test');
+  });
+
+  it('should update VERSION params if image tag is changed', async () => {
+    const template = {
+      ...mockTemplate,
+      spec: { tasks: [], params: [{ name: 'VERSION', default: 'latest' }] },
+    };
+    await updatePipelineForImportFlow(
+      mockPipeline,
+      template,
+      props.name,
+      props.namespace,
+      props.gitUrl,
+      props.gitRef,
+      props.gitDir,
+      props.dockerfilePath,
+      '14-ubi8',
+    );
+
+    const expectedPipeline: PipelineKind = {
+      metadata: {
+        name: 'test',
+        labels: { 'app.kubernetes.io/instance': 'sample' },
+        resourceVersion: 'test',
+      },
+      spec: {
+        tasks: [],
+        params: [{ name: 'VERSION', default: '14-ubi8' }],
       },
     };
 
@@ -400,25 +470,98 @@ describe('updatePipelineForImportFlow', () => {
       props.gitRef,
       props.gitDir,
       props.dockerfilePath,
+      props.image.tag,
     );
 
-    const expectedPipeline: Pipeline = {
+    const expectedPipeline: PipelineKind = {
       metadata: {
         name: 'test',
         namespace: 'test',
         labels: {
           [PIPELINE_RUNTIME_LABEL]: 'newImage',
+          [PIPELINE_RUNTIME_VERSION_LABEL]: props.image.tag,
           'app.kubernetes.io/instance': 'test',
         },
         resourceVersion: 'test',
       },
       spec: {
         tasks: [],
-        params: [{ name: 'PARAM1', type: 'paramtype' }],
+        params: [{ name: 'PARAM1', type: 'string' }],
       },
     };
 
     expect(k8sUpdate).toHaveBeenCalledTimes(1);
     expect(k8sUpdate).toHaveBeenCalledWith(PipelineModel, expectedPipeline, 'test', 'test');
+  });
+});
+
+describe('isDockerPipeline', () => {
+  const mockTemplate: PipelineKind = {
+    metadata: {
+      labels: { 'app.kubernetes.io/instance': 'sample' },
+    },
+    spec: {
+      tasks: [],
+      params: [{ type: 'string', name: 'PARAM1' }],
+    },
+  };
+
+  it('should return false for a non docker based pipelines', () => {
+    expect(isDockerPipeline(mockTemplate)).toBe(false);
+  });
+
+  it('should return true for a docker based pipeline template', () => {
+    const template = {
+      ...mockTemplate,
+      metadata: {
+        labels: {
+          ...mockTemplate.metadata.labels,
+          [PIPELINE_STRATEGY_LABEL]: 'docker',
+        },
+      },
+    };
+
+    expect(isDockerPipeline(template)).toBe(true);
+  });
+});
+
+describe('pipelineRuntimeOrVersionChanged', () => {
+  const mockTemplate: PipelineKind = {
+    metadata: {
+      labels: {
+        [PIPELINE_RUNTIME_LABEL]: 'nodejs',
+        [PIPELINE_RUNTIME_VERSION_LABEL]: '10-ubi8',
+      },
+    },
+    spec: {
+      tasks: [],
+      params: [{ type: 'string', name: 'PARAM1' }],
+    },
+  };
+
+  it('should return false if runtime and version is same for two given pipelines', () => {
+    const mockPipeline = {
+      ...mockTemplate,
+      metadata: {
+        labels: {
+          [PIPELINE_RUNTIME_LABEL]: 'nodejs',
+          [PIPELINE_RUNTIME_VERSION_LABEL]: '10-ubi8',
+        },
+      },
+    };
+    expect(pipelineRuntimeOrVersionChanged(mockTemplate, mockPipeline)).toBe(false);
+  });
+
+  it('should return false if runtime or version is different for two given pipelines', () => {
+    const mockPipeline = {
+      ...mockTemplate,
+      metadata: {
+        labels: {
+          [PIPELINE_RUNTIME_LABEL]: 'nodejs',
+          [PIPELINE_RUNTIME_VERSION_LABEL]: '14-ubi8',
+        },
+      },
+    };
+    expect(pipelineRuntimeOrVersionChanged(mockTemplate, mockPipeline)).toBe(true);
   });
 });

@@ -1,39 +1,26 @@
 import { operators } from '../constants/global';
 import { detailsPage } from '../../../../integration-tests-cypress/views/details-page';
-import { modal } from '../../../../integration-tests-cypress/views/modal';
 import { operatorsPO } from '../pageObjects/operators-po';
 import { pageTitle } from '../constants/pageTitle';
 
 export const operatorsPage = {
-  navigateToOperaotorHubPage: () => {
-    cy.get(operatorsPO.nav.link)
-      .contains('Operators')
-      .click();
+  navigateToOperatorHubPage: () => {
+    cy.get(operatorsPO.nav.operators).click();
     cy.get(operatorsPO.nav.operatorHub).click({ force: true });
-    detailsPage.titleShouldContain(pageTitle.operatorHub);
+    detailsPage.titleShouldContain(pageTitle.OperatorHub);
   },
 
-  navigateToInstalloperatorsPage: () => {
-    cy.get(operatorsPO.nav.link)
-      .contains('Operators')
-      .click();
-    cy.get(operatorsPO.nav.link)
-      .contains('Installed Operators')
-      .click();
+  navigateToInstallOperatorsPage: () => {
+    cy.get(operatorsPO.nav.operators).click();
+    cy.get(operatorsPO.nav.installedOperators).click({ force: true });
+    detailsPage.titleShouldContain(pageTitle.InstalledOperators);
   },
 
-  searchOperator: (operatorName: string) => {
-    cy.get(operatorsPO.operatorHub.search)
+  searchOperator: (operatorName: string | operators) => {
+    cy.get(operatorsPO.search)
       .should('be.visible')
       .clear()
       .type(operatorName);
-    cy.get(operatorsPO.operatorHub.numOfItems).should('be.visible');
-  },
-
-  installOperator: () => {
-    cy.get(operatorsPO.installOperators.title).should('have.text', 'Install Operator');
-    cy.byButtonText('Install').click();
-    cy.get('article h1').should('be.visible');
   },
 
   verifySubscriptionPage: (operatorLogo: string) =>
@@ -49,7 +36,7 @@ export const operatorsPage = {
     }).should('be.visible');
   },
 
-  verifyOperatoNotAvailable: (operatorName: string) => {
+  verifyOperatorNotAvailable: (operatorName: string) => {
     cy.get(operatorsPO.installOperators.search)
       .clear()
       .type(operatorName);
@@ -59,41 +46,41 @@ export const operatorsPage = {
     );
   },
 
-  heading: (heading: string) => {
-    return cy.get('h1').contains(heading);
-  },
-
   selectOperator: (opt: operators | string) => {
     switch (opt) {
       case 'OpenShift Pipelines Operator':
-      case operators.pipelineOperator: {
-        cy.byTestID(
-          'openshift-pipelines-operator-midstr-openshift-pipelines-operators-openshift-marketplace',
-        ).click();
+      case operators.PipelinesOperator: {
+        cy.get(operatorsPO.operatorHub.pipelinesOperatorCard).click();
         break;
       }
       case 'OpenShift Serverless Operator':
-      case operators.serverlessOperator: {
-        cy.byTestID('serverless-operator-redhat-operators-openshift-marketplace').click();
+      case operators.ServerlessOperator: {
+        cy.get(operatorsPO.operatorHub.serverlessOperatorCard).click();
         break;
       }
       case 'OpenShift Virtualization':
-      case operators.virtualizationOperator: {
-        cy.byTestID('kubevirt-hyperconverged-redhat-operators-openshift-marketplace').click();
+      case operators.VirtualizationOperator: {
+        cy.get(operatorsPO.operatorHub.virtualizationOperatorCard).click();
         break;
       }
       case 'knative Apache Camel Operator':
-      case operators.knativeCamelOperator: {
-        cy.byTestID('knative-camel-operator-community-operators-openshift-marketplace').click();
-        modal.modalTitleShouldContain('Show Community Operator');
-        cy.byTestID('confirm-action').click();
+      case operators.KnativeCamelOperator: {
+        cy.get(operatorsPO.operatorHub.knativeCamelOperatorCard).click();
         break;
       }
       case 'Eclipse Che':
-      case operators.eclipseCheOperator: {
+      case operators.EclipseCheOperator: {
         cy.byTestID('eclipse-che-community-operators-openshift-marketplace').click();
-        modal.modalTitleShouldContain('Show Community Operator');
-        cy.byTestID('confirm-action').click();
+        break;
+      }
+      case 'GitOps':
+      case operators.GitOpsOperator: {
+        cy.get(operatorsPO.operatorHub.gitOpsOperatorCard).click();
+        break;
+      }
+      case 'Web Terminal':
+      case operators.WebTerminalOperator: {
+        cy.get(operatorsPO.operatorHub.webTerminalOperatorCard).click();
         break;
       }
       default: {
@@ -102,7 +89,7 @@ export const operatorsPage = {
     }
   },
 
-  verifySiedPane: () => cy.get(operatorsPO.alertDialog).should('be.exist'),
+  verifySidePane: () => cy.get(operatorsPO.alertDialog).should('be.exist'),
 
   clickInstallOnSidePane: () => {
     cy.get(operatorsPO.alertDialog).then(($sidePane) => {
@@ -124,10 +111,10 @@ export const operatorsPage = {
     });
   },
 
-  verifyOperatorInNavigationMenu: (menuItem: string) => {
+  verifyOperatorInNavigationMenu: (operatorName: string) => {
     cy.get(operatorsPO.nav.menuItems).should('have.length.greaterThan', 62);
     cy.get(operatorsPO.nav.menuItems)
-      .contains(menuItem)
+      .contains(operatorName)
       .should('be.visible');
   },
 

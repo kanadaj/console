@@ -1,31 +1,5 @@
 import { eventSourcePO } from '../pageObjects/add-flow-po';
-
-export const modal = {
-  clickCancel: () => {
-    cy.byLegacyTestID('modal-cancel-action').click();
-    cy.get('form').should('not.be.visible');
-  },
-  clicKSave: () => {
-    cy.byTestID('confirm-action').click();
-    cy.get('form').should('not.be.visible');
-  },
-  clicKDelete: () => {
-    cy.byTestID('confirm-action').click();
-    cy.get('form').should('not.be.visible');
-  },
-  verifySaveButtonIsDisplayed: () => {
-    cy.byTestID('confirm-action').should('be.visible');
-  },
-  verifySaveButtonIsDisabled: () => {
-    cy.byTestID('confirm-action').should('be.disabled');
-  },
-  verifyCancelButtonIsDisplayed: () => {
-    cy.byLegacyTestID('modal-cancel-action').should('be.visible');
-  },
-  isDisplayed: () => {
-    cy.get('form').should('be.visible');
-  },
-};
+import { modal } from '../../../../integration-tests-cypress/views/modal';
 
 export const editLabels = {
   enterLabel: (labelName: string) =>
@@ -99,16 +73,16 @@ export const deleteApplication = {
       .get('#form-input-resourceName-field')
       .clear()
       .type(appName),
-  clicKDelete: () => {
+  clickDelete: () => {
     cy.byTestID('confirm-action')
       .should('be.enabled')
       .click();
-    cy.get('form').should('not.be.visible');
+    cy.get('form').should('not.exist');
   },
   deleteApp: () => {
     cy.get('p strong').then((ele) => {
       deleteApplication.enterApplication(ele.text());
-      modal.clicKDelete();
+      modal.submit();
     });
   },
 };

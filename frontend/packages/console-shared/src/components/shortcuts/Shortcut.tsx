@@ -15,13 +15,16 @@ interface ShortcutProps {
   keyName?: string;
   rightClick?: boolean;
   shift?: boolean;
+  dragNdrop?: boolean;
 }
 
-const Command: React.FC = ({ children }) => (
+export const ShortcutCommand: React.FC = ({ children }) => (
   <span className="ocs-shortcut__command">
     <kbd>{children}</kbd>
   </span>
 );
+
+export const isMac = window.navigator.platform.includes('Mac');
 
 const Shortcut: React.FC<ShortcutProps> = ({
   children,
@@ -34,40 +37,45 @@ const Shortcut: React.FC<ShortcutProps> = ({
   keyName,
   rightClick,
   shift,
+  dragNdrop,
 }) => {
   const { t } = useTranslation();
-  const isMac = window.navigator.platform.includes('Mac');
   return (
     <tr>
       <td className="ocs-shortcut__cell">
-        {(ctrl || (!isMac && ctrlCmd)) && <Command>Ctrl</Command>}
-        {alt && <Command>{isMac ? '⌥ Opt' : 'Alt'}</Command>}
-        {shift && <Command>Shift</Command>}
-        {isMac && ctrlCmd && <Command>⌘ Cmd</Command>}
+        {(ctrl || (!isMac && ctrlCmd)) && <ShortcutCommand>Ctrl</ShortcutCommand>}
+        {alt && <ShortcutCommand>{isMac ? '⌥ Opt' : 'Alt'}</ShortcutCommand>}
+        {shift && <ShortcutCommand>Shift</ShortcutCommand>}
+        {isMac && ctrlCmd && <ShortcutCommand>⌘ Cmd</ShortcutCommand>}
         {hover && (
-          <Command>
+          <ShortcutCommand>
             <MouseIcon /> {t('console-shared~Hover')}
-          </Command>
+          </ShortcutCommand>
         )}
         {keyName && (
-          <Command>
-            {keyName.length === 1 ? keyName.toUpperCase() : _.startCase(keyName.toLowerCase())}
-          </Command>
+          <ShortcutCommand>
+            {keyName.length === 1 ? keyName.toUpperCase() : _.upperFirst(keyName.toLowerCase())}
+          </ShortcutCommand>
         )}
         {drag && (
-          <Command>
+          <ShortcutCommand>
             <MouseIcon /> {t('console-shared~Drag')}
-          </Command>
+          </ShortcutCommand>
         )}
         {click && (
-          <Command>
+          <ShortcutCommand>
             <MouseIcon /> {t('console-shared~Click')}
-          </Command>
+          </ShortcutCommand>
         )}
         {rightClick && (
-          <Command>
+          <ShortcutCommand>
             <MouseIcon /> {t('console-shared~Right click')}
-          </Command>
+          </ShortcutCommand>
+        )}
+        {dragNdrop && (
+          <ShortcutCommand>
+            <MouseIcon /> {t('console-shared~Drag + Drop')}
+          </ShortcutCommand>
         )}
       </td>
       <td className="ocs-shortcut__cell">{children}</td>

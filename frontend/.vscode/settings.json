@@ -59,10 +59,18 @@
   "files.associations": {
     "**/console-extensions.json": "jsonc"
   },
+  "json.schemas": [
+    {
+      "fileMatch": ["**/console-extensions.json"],
+      "url": "./packages/console-dynamic-plugin-sdk/dist/schema/console-extensions.json"
+    }
+  ],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
-  }
-
+  },
+  "cucumberautocomplete.steps": ["./packages/*/integration-tests/support/step-definitions/*/*.ts"],
+  "cucumberautocomplete.strictGherkinCompletion": true,
+  "editor.quickSuggestions": true
   // TODO support prettier + stylelint
   // "prettier.stylelintIntegration": true,
   // "css.validate": false,

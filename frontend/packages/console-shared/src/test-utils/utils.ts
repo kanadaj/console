@@ -107,7 +107,7 @@ export async function withResources(
 export async function click(elem: any, timeout?: number) {
   const _timeout = resolveTimeout(timeout, config.jasmineNodeOpts.defaultTimeoutInterval);
   await browser.wait(until.elementToBeClickable(elem), _timeout);
-  await browser.executeScript('arguments[0].scrollIntoView();', elem);
+  await browser.executeScript('arguments[0].scrollIntoView()', elem);
   await elem.click();
 }
 

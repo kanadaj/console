@@ -16,6 +16,7 @@ import {
 } from '@console/shared/src/selectors';
 import { getRandomChars } from '@console/shared/src/utils/utils';
 import { pluralize } from './strings';
+import { VM_TEMPLATE_NAME_PARAMETER } from '../constants';
 
 export const getBasicID = <A extends K8sResourceKind = K8sResourceKind>(entity: A) =>
   `${getNamespace(entity)}-${getName(entity)}`;
@@ -32,15 +33,13 @@ export const resolveDataVolumeName = ({
   diskName,
   vmLikeEntityName,
   isTemplate,
-  isPlainDataVolume,
 }: {
   diskName: string;
   vmLikeEntityName: string;
   isTemplate: boolean;
-  isPlainDataVolume: boolean;
 }) => {
-  return isTemplate && !isPlainDataVolume
-    ? joinIDs(vmLikeEntityName, diskName)
+  return isTemplate
+    ? joinIDs(VM_TEMPLATE_NAME_PARAMETER, diskName)
     : generateDataVolumeName(vmLikeEntityName, diskName);
 };
 

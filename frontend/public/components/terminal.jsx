@@ -1,15 +1,13 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Terminal as XTerminal } from 'xterm';
-import * as fit from 'xterm/lib/addons/fit/fit';
-import * as full from 'xterm/lib/addons/fullscreen/fullscreen';
+import { FitAddon } from 'xterm-addon-fit';
+import { withTranslation } from 'react-i18next';
 import { CompressIcon } from '@patternfly/react-icons';
 import { Button } from '@patternfly/react-core';
+import { XtermAddonFullscreen } from '@console/shared';
 
-XTerminal.applyAddon(fit);
-XTerminal.applyAddon(full);
-
-export class Terminal extends React.Component {
+class Terminal_ extends React.Component {
   constructor(props) {
     super(props);
     this.state = { height: 0, width: 0 };
@@ -20,7 +18,11 @@ export class Terminal extends React.Component {
     this.onDataReceived = (data) => this.terminal && this.terminal.write(data);
 
     this.terminal = new XTerminal(Object.assign({}, this.props.options));
-    this.terminal.on('data', this.props.onData);
+    this.fitAddon = new FitAddon();
+    this.fullscreenAddon = new XtermAddonFullscreen();
+    this.terminal.loadAddon(this.fitAddon);
+    this.terminal.loadAddon(this.fullscreenAddon);
+    this.terminal.onData(this.props.onData);
   }
 
   reset() {
@@ -48,7 +50,7 @@ export class Terminal extends React.Component {
   }
 
   setFullscreen(fullscreen) {
-    this.terminal.toggleFullScreen(fullscreen);
+    this.fullscreenAddon.toggleFullScreen(fullscreen);
     this.isFullscreen = fullscreen;
     this.focus();
     this.onResize();
@@ -77,7 +79,7 @@ export class Terminal extends React.Component {
   }
 
   componentWillUnmount() {
-    this.terminal && this.terminal.destroy();
+    this.terminal && this.terminal.dispose();
     window.removeEventListener('resize', this.onResize);
   }
 
@@ -111,13 +113,14 @@ export class Terminal extends React.Component {
         return;
       }
       // tell the terminal to resize itself
-      terminal.fit();
+      this.fitAddon.fit();
       // update the pty
       this.props.onResize(terminal.rows, terminal.cols);
     });
   }
 
   render() {
+    const { t } = this.props;
     return (
       <div ref={this.outerRef} style={this.state} className={this.props.className}>
         <div ref={this.innerRef} className="console">
@@ -128,7 +131,7 @@ export class Terminal extends React.Component {
               variant="link"
             >
               <CompressIcon className="co-icon-space-r" />
-              Collapse
+              {t('public~Collapse')}
             </Button>
           )}
         </div>
@@ -136,6 +139,8 @@ export class Terminal extends React.Component {
     );
   }
 }
+
+export const Terminal = withTranslation('translation', { withRef: true })(Terminal_);
 
 Terminal.propTypes = {
   onData: PropTypes.func.isRequired,

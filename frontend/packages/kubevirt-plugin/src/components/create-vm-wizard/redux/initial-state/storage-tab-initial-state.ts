@@ -25,6 +25,7 @@ import {
 } from '../../../../selectors/config-map/sc-defaults';
 import { toShallowJS, iGetIn } from '../../../../utils/immutable';
 import { generateDataVolumeName } from '../../../../utils';
+import { getEmptyInstallStorage } from '../../../../utils/storage';
 import {
   DUMMY_VM_NAME,
   TEMPLATE_BASE_IMAGE_NAME_PARAMETER,
@@ -48,6 +49,7 @@ import {
 } from '../../../../selectors/immutable/template/combined';
 import { iGetPrameterValue } from '../../../../selectors/immutable/common';
 import { getStorages } from '../../selectors/selectors';
+import { iGetProvisionSourceStorage } from '../../selectors/immutable/storage';
 
 const WINTOOLS_DISK_NAME = 'windows-guest-tools';
 
@@ -255,6 +257,12 @@ export const getNewProvisionSourceStorage = (state: any, id: string): VMWizardSt
     true,
   );
 
+  if (provisionSource === ProvisionSource.PXE) {
+    return {
+      type: VMWizardStorageType.PROVISION_SOURCE_DISK,
+      ...getEmptyInstallStorage(storageClassConfigMap),
+    };
+  }
   if (provisionSource === ProvisionSource.URL) {
     if (source?.url) {
       return getUrlStorage(
@@ -303,6 +311,24 @@ export const getNewProvisionSourceStorage = (state: any, id: string): VMWizardSt
     );
   }
   if (provisionSource === ProvisionSource.DISK && !iUserTemplate) {
+    const iOldSourceStorage = iGetProvisionSourceStorage(state, id);
+    const oldSourceStorage: VMWizardStorage = iOldSourceStorage && iOldSourceStorage.toJSON();
+    const dataVolumeWrapper =
+      oldSourceStorage && oldSourceStorage?.dataVolume
+        ? new DataVolumeWrapper(oldSourceStorage.dataVolume)
+        : undefined;
+    if (dataVolumeWrapper?.getType() === DataVolumeSourceType.PVC) {
+      const diskWrapper = new DiskWrapper(oldSourceStorage.disk);
+      const size = dataVolumeWrapper.getSize();
+      return getPVCStorage(
+        storageClassConfigMap,
+        diskWrapper.getType(),
+        diskWrapper.getDiskBus(),
+        `${size.value}${size.unit}`,
+        dataVolumeWrapper.getPersistentVolumeClaimName(),
+        dataVolumeWrapper.getPersistentVolumeClaimNamespace(),
+      );
+    }
     return getPVCStorage(
       storageClassConfigMap,
       source?.cdRom ? DiskType.CDROM : DiskType.DISK,

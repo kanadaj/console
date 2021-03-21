@@ -50,7 +50,7 @@ if (Cypress.env('BRIDGE_AWS')) {
       modal.submit();
       cy.location('pathname').should(
         'include',
-        `snapshot.storage.k8s.io~v1beta1~VolumeSnapshot/${PVC.metadata.name}-snapshot`,
+        `snapshot.storage.k8s.io~v1~VolumeSnapshot/${PVC.metadata.name}-snapshot`,
       );
       detailsPage.titleShouldContain(PVC.metadata.name);
       resourceStatusShouldContain('Ready', { timeout: 40000 });
@@ -71,7 +71,7 @@ if (Cypress.env('BRIDGE_AWS')) {
     });
 
     it('Lists Snapshot', () => {
-      nav.sidenav.clickNavLink(['Volume Snapshots']);
+      nav.sidenav.clickNavLink(['VolumeSnapshots']);
       listPage.rows.shouldBeLoaded();
       listPage.rows.shouldExist(snapshotName);
       listPage.rows.shouldNotExist(`${snapshotName}dup`);
@@ -98,8 +98,8 @@ if (Cypress.env('BRIDGE_AWS')) {
     });
 
     it('Deletes Snapshot', () => {
-      cy.clickNavLink(['Volume Snapshots']);
-      listPage.rows.clickKebabAction(snapshotName, 'Delete Volume Snapshot');
+      cy.clickNavLink(['VolumeSnapshots']);
+      listPage.rows.clickKebabAction(snapshotName, 'Delete VolumeSnapshot');
       modal.shouldBeOpened();
       modal.submitShouldBeEnabled();
       modal.submit();

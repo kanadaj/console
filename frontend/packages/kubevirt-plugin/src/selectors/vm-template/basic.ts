@@ -14,6 +14,7 @@ import {
   TEMPLATE_PARENT_PROVIDER_ANNOTATION,
   TEMPLATE_PROVIDER_URL,
   TEMPLATE_PARENT_PROVIDER_URL,
+  TEMPLATE_DEPRECATED_ANNOTATION,
 } from '../../constants';
 import { TemplateItem } from '../../types/template';
 
@@ -28,6 +29,9 @@ export const getTemplateName = (template: TemplateKind): string =>
 export const isCommonTemplate = (template: TemplateKind): boolean =>
   template?.metadata?.labels?.[TEMPLATE_TYPE_LABEL] === TEMPLATE_TYPE_BASE;
 
+export const isDeprecatedTemplate = (template: TemplateKind): boolean =>
+  getAnnotation(template, TEMPLATE_DEPRECATED_ANNOTATION) === 'true';
+
 export const getTemplateSupport = (
   template: TemplateKind,
 ): { provider: string; providerURL: string; parent: string; parentURL: string } => {
@@ -41,14 +45,6 @@ export const getTemplateSupport = (
   const isUpstream = window.SERVER_FLAGS.branding === 'okd';
   if (isUpstream) {
     return support;
-  }
-
-  if (
-    !support.provider &&
-    isCommonTemplate(template) &&
-    (template.metadata.name.startsWith('win') || template.metadata.name.startsWith('rhel'))
-  ) {
-    support.provider = 'Full';
   }
 
   support.parent = getAnnotation(template, TEMPLATE_PARENT_SUPPORT_LEVEL);

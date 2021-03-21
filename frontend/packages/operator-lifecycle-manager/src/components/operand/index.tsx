@@ -65,6 +65,7 @@ import { useK8sModel } from '@console/shared/src/hooks/useK8sModel';
 import { useK8sModels } from '@console/shared/src/hooks/useK8sModels';
 import { DescriptorDetailsItem, DescriptorDetailsItemList } from '../descriptors';
 import { useTranslation } from 'react-i18next';
+import { isMainStatusDescriptor } from '../descriptors/utils';
 
 export const getOperandActions = (
   ref: K8sResourceKindReference,
@@ -369,17 +370,20 @@ export const ProvidedAPIsPage = (props: ProvidedAPIsPageProps) => {
         owners(metadata.ownerReferences || [], allResources).length > 0,
     );
 
-  const rowFilters = [
-    {
-      filterGroupName: 'Resource Kind',
-      type: 'clusterserviceversion-resource-kind',
-      reducer: ({ kind }) => kind,
-      items: firehoseResources.map(({ kind }) => ({
-        id: kindForReference(kind),
-        title: kindForReference(kind),
-      })),
-    },
-  ];
+  const rowFilters =
+    firehoseResources.length > 1
+      ? [
+          {
+            filterGroupName: 'Resource Kind',
+            type: 'clusterserviceversion-resource-kind',
+            reducer: ({ kind }) => kind,
+            items: firehoseResources.map(({ kind }) => ({
+              id: kindForReference(kind),
+              title: kindForReference(kind),
+            })),
+          },
+        ]
+      : [];
 
   return firehoseResources.length > 0 ? (
     <MultiListPage
@@ -398,7 +402,7 @@ export const ProvidedAPIsPage = (props: ProvidedAPIsPageProps) => {
             })
       }
       flatten={flatten}
-      rowFilters={firehoseResources.length > 1 ? rowFilters : null}
+      rowFilters={rowFilters}
     />
   ) : (
     <StatusBox loaded EmptyMsg={EmptyMsg} />
@@ -489,7 +493,7 @@ export const OperandDetails = connectToModel(({ crd, csv, kindObj, obj }: Operan
       };
     }
 
-    if (descriptor.path === 'status' || descriptor.displayName === 'Status') {
+    if (isMainStatusDescriptor(descriptor)) {
       return {
         ...acc,
         mainStatusDescriptor: descriptor,

@@ -1,10 +1,12 @@
 import { FlavorConfig, Network, Disk, CloudInitConfig } from './types';
-import { V1Disk } from '../../../src/types/vm/disk/V1Disk';
-import { V1Volume } from '../../../src/types/vm/disk/V1Volume';
-import { V1alpha1DataVolume } from '../../../src/types/vm/disk/V1alpha1DataVolume';
-import { V1PersistentVolumeClaim } from '../../../src/types/vm/disk/V1PersistentVolumeClaim';
+import {
+  V1Disk,
+  V1PersistentVolumeClaim,
+  V1alpha1DataVolume,
+  V1Volume,
+} from '../../../src/types/api';
 import { V1Network, V1NetworkInterface } from '../../../src/types/vm/index';
-import { OperatingSystem, Workload } from '../utils/constants/wizard';
+import { Workload } from '../utils/constants/wizard';
 import { ProvisionSource } from '../utils/constants/enums/provisionSource';
 
 // The following types TestNetwork and TestDisk are currently not user
@@ -28,7 +30,8 @@ export type BaseVMBuilderData = {
   templateNamespace?: string;
   flavor?: FlavorConfig;
   workload?: Workload;
-  os?: OperatingSystem;
+  os?: string;
+  pvcName?: string;
   provisionSource?: ProvisionSource;
   networks?: Network[];
   disks?: Disk[];
@@ -41,7 +44,6 @@ export type VMBuilderData = (BaseVMBuilderData | VMTemplateBuilderData) & {
   startOnCreation?: boolean;
   template?: string;
   pvcSize?: string;
-  pvcName?: string;
   customize?: boolean;
   mountAsCDROM?: boolean;
 };
@@ -68,5 +70,5 @@ export type VMTemplateBuilderData = BaseVMBuilderData & { provider: string };
 export type VMBuilderDataGenerationConfig = {
   flavor?: FlavorConfig[];
   workload?: Workload[];
-  os?: OperatingSystem[];
+  os?: string[];
 };

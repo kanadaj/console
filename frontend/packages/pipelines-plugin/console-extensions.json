@@ -1,4 +1,22 @@
-{
-  "$schema": "../console-dynamic-plugin-sdk/dist/schema/console-extensions.json",
-  "data": []
-}
+[
+  {
+    "type": "dev-console.add/action",
+    "flags": {
+      "required": ["OPENSHIFT_PIPELINE"]
+    },
+    "properties": {
+      "id": "pipeline",
+      "href": "/k8s/ns/:namespace/tekton.dev~v1beta1~Pipeline/~new/builder",
+      "label": "%pipelines-plugin~Pipeline%",
+      "description": "%pipelines-plugin~Create a Tekton Pipeline to automate delivery of your Application%",
+      "icon": { "$codeRef": "icons.pipelineIconSVG" },
+      "accessReview": [
+        {
+          "group": "tekton.dev",
+          "resource": "pipelines",
+          "verb": "create"
+        }
+      ]
+    }
+  }
+]

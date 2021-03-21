@@ -4,18 +4,21 @@ import { getAppLabels, mergeData } from '@console/dev-console/src/utils/resource
 import { getProbesData } from '@console/dev-console/src/components/health-checks/create-health-checks-probe-utils';
 import {
   DeployImageFormData,
+  FileUploadData,
   GitImportFormData,
+  UploadJarFormData,
 } from '@console/dev-console/src/components/import/import-types';
 import { ServiceModel } from '../models';
 
 export const getKnativeServiceDepResource = (
-  formData: GitImportFormData | DeployImageFormData,
+  formData: GitImportFormData | DeployImageFormData | UploadJarFormData,
   imageStreamUrl: string,
   imageStreamName?: string,
   imageStreamTag?: string,
   imageNamespace?: string,
   annotations?: { [name: string]: string },
   originalKnativeService?: K8sResourceKind,
+  fileUpload?: FileUploadData,
 ): K8sResourceKind => {
   const {
     name,
@@ -36,7 +39,14 @@ export const getKnativeServiceDepResource = (
   } = formData;
   const contTargetPort = parseInt(unknownTargetPort, 10) || defaultUnknownPort;
   const imgPullPolicy = imagePolicy ? ImagePullPolicy.Always : ImagePullPolicy.IfNotPresent;
-  const { concurrencylimit, concurrencytarget, minpods, maxpods } = scaling;
+  const {
+    concurrencylimit,
+    concurrencytarget,
+    minpods,
+    maxpods,
+    autoscale: { autoscalewindow, autoscalewindowUnit },
+    concurrencyutilization,
+  } = scaling;
   const {
     cpu: {
       request: cpuRequest,
@@ -71,7 +81,7 @@ export const getKnativeServiceDepResource = (
         ...labels,
         ...(!create && { 'serving.knative.dev/visibility': `cluster-local` }),
       },
-      annotations,
+      annotations: fileUpload ? { ...annotations, isFromJarUpload: 'true' } : annotations,
     },
     spec: {
       template: {
@@ -86,6 +96,12 @@ export const getKnativeServiceDepResource = (
             }),
             ...(minpods && { 'autoscaling.knative.dev/minScale': `${minpods}` }),
             ...(maxpods && { 'autoscaling.knative.dev/maxScale': `${maxpods}` }),
+            ...(autoscalewindow && {
+              'autoscaling.knative.dev/window': `${autoscalewindow}${autoscalewindowUnit}`,
+            }),
+            ...(concurrencyutilization && {
+              'autoscaling.knative.dev/targetUtilizationPercentage': `${concurrencyutilization}`,
+            }),
             ...annotations,
           },
         },
@@ -93,6 +109,7 @@ export const getKnativeServiceDepResource = (
           ...(concurrencylimit && { containerConcurrency: concurrencylimit }),
           containers: [
             {
+              name,
               image: `${imageStreamUrl}`,
               ...(contTargetPort && {
                 ports: [
@@ -102,7 +119,9 @@ export const getKnativeServiceDepResource = (
                 ],
               }),
               imagePullPolicy: imgPullPolicy,
-              env,
+              env: fileUpload?.javaArgs
+                ? [...env, { name: 'JAVA_ARGS', value: fileUpload.javaArgs }]
+                : env,
               resources: {
                 ...((cpuLimit || memoryLimit) && {
                   limits: {

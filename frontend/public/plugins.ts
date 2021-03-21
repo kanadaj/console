@@ -17,26 +17,43 @@ const activePlugins =
     ? (require('@console/active-plugins').default as ActivePlugin[])
     : [];
 
-if (process.env.NODE_ENV !== 'test') {
-  // eslint-disable-next-line no-console
-  console.info(`Active plugins: [${activePlugins.map((p) => p.name).join(', ')}]`);
-}
-
 export const pluginStore = new PluginStore(activePlugins);
-export const registry = pluginStore.registry;
 
 export const initConsolePlugins = _.once((reduxStore: Store<RootState>) => {
   initSubscriptionService(pluginStore, reduxStore);
   registerPluginEntryCallback(pluginStore);
 });
 
+const loadPluginFromURL = async (baseURL: string) => {
+  const manifest = await fetchPluginManifest(baseURL);
+  return await loadDynamicPlugin(baseURL, manifest);
+};
+
 if (process.env.NODE_ENV !== 'production') {
   // Expose Console plugin store for debugging
   window.pluginStore = pluginStore;
 
-  // Expose function to load plugins directly from URLs
-  window.loadPluginFromURL = async (baseURL: string) => {
-    const manifest = await fetchPluginManifest(baseURL);
-    loadDynamicPlugin(baseURL, manifest);
-  };
+  // Expose function to load dynamic plugins directly from URLs
+  window.loadPluginFromURL = loadPluginFromURL;
 }
+
+if (process.env.NODE_ENV !== 'test') {
+  // eslint-disable-next-line no-console
+  console.info(`Static plugins: [${activePlugins.map((p) => p.name).join(', ')}]`);
+  // eslint-disable-next-line no-console
+  console.info(`Dynamic plugins: [${window.SERVER_FLAGS.consolePlugins.join(', ')}]`);
+}
+
+// Load all dynamic plugins which are currently enabled on the cluster
+window.SERVER_FLAGS.consolePlugins.forEach((pluginName) => {
+  const url = `${window.SERVER_FLAGS.basePath}api/plugins/${pluginName}/`;
+
+  loadPluginFromURL(url)
+    .then((pluginID) => {
+      pluginStore.setDynamicPluginEnabled(pluginID, true);
+    })
+    .catch((error) => {
+      // eslint-disable-next-line no-console
+      console.error(`Error while loading plugin from ${url}`, error);
+    });
+});

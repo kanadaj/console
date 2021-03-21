@@ -5,7 +5,7 @@ import { DeviceType } from '../../constants';
 import { getBootableDisks, getInterfaces, getDisks } from './selectors';
 import { asVM } from './vmlike';
 import { VMLikeEntityKind } from '../../types/vmLike';
-import { V1Disk } from '../../types/vm/disk/V1Disk';
+import { V1Disk } from '../../types/api';
 
 export const getBootDeviceIndex = <D extends V1Disk | V1NetworkInterface>(
   devices: D[],
@@ -38,7 +38,7 @@ export const transformDevices = (
   return [...transformedDisks, ...transformedNics];
 };
 
-export const getDevices = (vmLikeEntity: VMLikeEntityKind): BootableDeviceType[] => {
+export const getTransformedDevices = (vmLikeEntity: VMLikeEntityKind): BootableDeviceType[] => {
   const vm = asVM(vmLikeEntity);
   return transformDevices(getDisks(vm), getInterfaces(vm));
 };

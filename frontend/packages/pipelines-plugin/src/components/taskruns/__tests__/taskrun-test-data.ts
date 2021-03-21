@@ -1,4 +1,4 @@
-import { TaskRunKind } from '../../../utils/pipeline-augment';
+import { TaskRunKind } from '../../../types';
 
 export const failedTaskRun: TaskRunKind = {
   kind: 'TaskRun',
@@ -33,3 +33,119 @@ export const successTaskRun: TaskRunKind = {
   },
   spec: {},
 };
+
+export const taskRunWithResults: TaskRunKind = {
+  apiVersion: 'tekton.dev/v1beta1',
+  kind: 'TaskRun',
+  metadata: {
+    name: 'sum-three-pipeline-run-second-add-vbr96',
+  },
+  spec: {
+    params: [
+      {
+        name: 'first',
+        value: '20',
+      },
+      {
+        name: 'second',
+        value: '10',
+      },
+    ],
+    serviceAccountName: 'pipeline',
+    taskRef: {
+      kind: 'Task',
+      name: 'add-task',
+    },
+    timeout: '1h0m0s',
+  },
+  status: {
+    completionTime: '2021-02-09T09:57:03Z',
+    conditions: [
+      {
+        lastTransitionTime: '2021-02-09T09:57:03Z',
+        message: 'All Steps have completed executing',
+        reason: 'Succeeded',
+        status: 'True',
+        type: 'Succeeded',
+      },
+    ],
+    taskResults: [
+      {
+        name: 'sum',
+        value: '30',
+      },
+      {
+        name: 'difference',
+        value: '10',
+      },
+      {
+        name: 'multiply',
+        value: '200',
+      },
+      {
+        name: 'divide',
+        value: '2',
+      },
+    ],
+  },
+};
+
+export const taskRunWithWorkspaces: TaskRunKind[] = [
+  {
+    apiVersion: 'tekton.dev/v1beta1',
+    kind: 'TaskRun',
+    metadata: {
+      name: 'sum-three-pipeline-run-second-add-vbr96',
+    },
+    spec: {
+      params: [
+        {
+          name: 'first',
+          value: '20',
+        },
+        {
+          name: 'second',
+          value: '10',
+        },
+      ],
+      workspaces: [],
+      serviceAccountName: 'pipeline',
+      taskRef: {
+        kind: 'Task',
+        name: 'add-task',
+      },
+      timeout: '1h0m0s',
+    },
+  },
+  {
+    apiVersion: 'tekton.dev/v1beta1',
+    kind: 'TaskRun',
+    metadata: {
+      name: 'sum-three-pipeline-run-second-add-vbr96',
+    },
+    spec: {
+      params: [
+        {
+          name: 'first',
+          value: '20',
+        },
+        {
+          name: 'second',
+          value: '10',
+        },
+      ],
+      workspaces: [
+        { name: 'workspace1', persistentVolumeClaim: { claimName: 'claim1' } },
+        { name: 'workspace2', secret: { secretName: 'secret1' } },
+        { name: 'workspac3', configMap: { name: 'configmap1' } },
+        { name: 'emptyDir' },
+      ],
+      serviceAccountName: 'pipeline',
+      taskRef: {
+        kind: 'Task',
+        name: 'add-task',
+      },
+      timeout: '1h0m0s',
+    },
+  },
+];

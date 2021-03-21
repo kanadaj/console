@@ -6,6 +6,8 @@ import './resources';
 import './i18n';
 import { a11yTestResults } from './a11y';
 
+Cypress.Cookies.debug(true);
+
 Cypress.Cookies.defaults({
   preserve: ['openshift-session-token', 'csrf-token'],
 });
@@ -16,7 +18,7 @@ Cypress.Commands.overwrite('log', (originalFn, message) => {
 });
 
 before(() => {
-  cy.task('readFileIfExists', 'cypress-a11y-report.json').then((a11yReportOrNull) => {
+  cy.task('readFileIfExists', 'cypress-a11y-report.json').then((a11yReportOrNull: string) => {
     if (a11yReportOrNull !== null) {
       try {
         const a11yReport = JSON.parse(a11yReportOrNull);
@@ -63,7 +65,7 @@ const actionOnKind = (action: string, kind: string, humanizeKind: boolean) => {
 
   const humanizedKind = (kind.includes('~') ? kind.split('~')[2] : kind)
     .split(/(?=[A-Z])/)
-    .join(' ');
+    .join('');
 
   return `${action} ${humanizedKind}`;
 };

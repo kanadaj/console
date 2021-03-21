@@ -13,13 +13,10 @@ Given('user is at Import from git page', () => {
 
 When('user enters Git Repo url as {string}', (gitUrl: string) => {
   gitPage.enterGitUrl(gitUrl);
-  gitPage.verifyValidatedMessage();
+  gitPage.verifyValidatedMessage(gitUrl);
   cy.get('body').then(($el) => {
     if ($el.find('[aria-label$="Alert"]').length) {
       cy.log('Builder image detected');
-    } else {
-      gitPage.enterGitUrl(gitUrl);
-      gitPage.verifyBuilderImageDetectedMessage();
     }
   });
 });
@@ -37,11 +34,11 @@ Then('builder image version drop down is displayed', () => {
 });
 
 Then('Application name displays as {string}', (appName: string) => {
-  gitPage.veirfyAppName(appName);
+  gitPage.verifyAppName(appName);
 });
 
 Then('Name displays as {string}', (nodeName: string) => {
-  gitPage.veirfyNodeName(nodeName);
+  gitPage.verifyNodeName(nodeName);
 });
 
 When('user selects resource type as {string}', (resourceType: string) => {
@@ -81,7 +78,7 @@ When('user enters Hostname as {string}', (hostName: string) => {
 });
 
 When('user enters Path as {string}', (path: string) => {
-  gitPage.eneterRoutingPath(path);
+  gitPage.enterRoutingPath(path);
 });
 
 When('user selects default Target Port', () => {

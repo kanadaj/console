@@ -109,79 +109,79 @@ export const menuActions = [
   ...Kebab.factory.common,
 ];
 
-// t('workload~Name')
-// t('workload~Namespace')
-// t('workload~Status')
-// t('workload~Ready')
-// t('workload~Restarts')
-// t('workload~Owner')
-// t('workload~Node')
-// t('workload~Memory')
-// t('workload~CPU')
-// t('workload~Created')
-// t('workload~Labels')
-// t('workload~IP address')
+// t('public~Name')
+// t('public~Namespace')
+// t('public~Status')
+// t('public~Ready')
+// t('public~Restarts')
+// t('public~Owner')
+// t('public~Node')
+// t('public~Memory')
+// t('public~CPU')
+// t('public~Created')
+// t('public~Labels')
+// t('public~IP address')
 
 const podColumnInfo = Object.freeze({
   name: {
     classes: '',
     id: 'name',
-    title: 'workload~Name',
+    title: 'public~Name',
   },
   namespace: {
     classes: '',
     id: 'namespace',
-    title: 'workload~Namespace',
+    title: 'public~Namespace',
   },
   status: {
     classes: '',
     id: 'status',
-    title: 'workload~Status',
+    title: 'public~Status',
   },
   ready: {
     classes: classNames('pf-m-nowrap', 'pf-u-w-10-on-lg', 'pf-u-w-8-on-xl'),
     id: 'ready',
-    title: 'workload~Ready',
+    title: 'public~Ready',
   },
   restarts: {
     classes: classNames('pf-m-nowrap', 'pf-u-w-8-on-2xl'),
     id: 'restarts',
-    title: 'workload~Restarts',
+    title: 'public~Restarts',
   },
   owner: {
     classes: '',
     id: 'owner',
-    title: 'workload~Owner',
+    title: 'public~Owner',
   },
   node: {
     classes: '',
     id: 'node',
-    title: 'workload~Node',
+    title: 'public~Node',
   },
   memory: {
     classes: classNames({ 'pf-u-w-10-on-2xl': showMetrics }),
     id: 'memory',
-    title: 'workload~Memory',
+    title: 'public~Memory',
   },
   cpu: {
     classes: classNames({ 'pf-u-w-10-on-2xl': showMetrics }),
     id: 'cpu',
-    title: 'workload~CPU',
+    title: 'public~CPU',
   },
   created: {
     classes: classNames('pf-u-w-10-on-2xl'),
     id: 'created',
-    title: 'workload~Created',
+    title: 'public~Created',
   },
   labels: {
     classes: '',
     id: 'labels',
-    title: 'workload~Labels',
+    title: 'public~Labels',
   },
   ipaddress: {
     classes: '',
     id: 'ipaddress',
-    title: 'workload~IP address',
+    title: 'public~IP address',
   },
 });
 
@@ -311,6 +311,7 @@ const PodTableRow = connect<PodTableRowPropsFromState, null, PodTableRowProps>(p
     style,
     metrics,
     showNodes,
+    showNamespaceOverride,
   }: PodTableRowProps & PodTableRowPropsFromState) => {
     const [tableColumns, , loaded] = useUserSettingsCompatibility(
       COLUMN_MANAGEMENT_CONFIGMAP_KEY,
@@ -337,6 +338,7 @@ const PodTableRow = connect<PodTableRowPropsFromState, null, PodTableRowProps>(p
           className={classNames(podColumnInfo.namespace.classes, 'co-break-word')}
           columns={columns}
           columnID={podColumnInfo.namespace.id}
+          showNamespaceOverride={showNamespaceOverride}
         >
           <ResourceLink kind="Namespace" name={namespace} />
         </TableData>
@@ -480,13 +482,13 @@ export const PodContainerTable: React.FC<PodContainerTableProps> = ({
       <SectionHeading text={heading} />
       <div className="co-m-table-grid co-m-table-grid--bordered">
         <div className="row co-m-table-grid__head">
-          <div className="col-lg-2 col-md-3 col-sm-4 col-xs-5">{t('workload~Name')}</div>
-          <div className="col-lg-2 col-md-3 col-sm-5 col-xs-7">{t('workload~Image')}</div>
-          <div className="col-lg-2 col-md-2 col-sm-3 hidden-xs">{t('workload~State')}</div>
-          <div className="col-lg-1 col-md-2 hidden-sm hidden-xs">{t('workload~Restarts')}</div>
-          <div className="col-lg-2 col-md-2 hidden-sm hidden-xs">{t('workload~Started')}</div>
-          <div className="col-lg-2 hidden-md hidden-sm hidden-xs">{t('workload~Finished')}</div>
-          <div className="col-lg-1 hidden-md hidden-sm hidden-xs">{t('workload~Exit code')}</div>
+          <div className="col-lg-2 col-md-3 col-sm-4 col-xs-5">{t('public~Name')}</div>
+          <div className="col-lg-2 col-md-3 col-sm-5 col-xs-7">{t('public~Image')}</div>
+          <div className="col-lg-2 col-md-2 col-sm-3 hidden-xs">{t('public~State')}</div>
+          <div className="col-lg-1 col-md-2 hidden-sm hidden-xs">{t('public~Restarts')}</div>
+          <div className="col-lg-2 col-md-2 hidden-sm hidden-xs">{t('public~Started')}</div>
+          <div className="col-lg-2 hidden-md hidden-sm hidden-xs">{t('public~Finished')}</div>
+          <div className="col-lg-1 hidden-md hidden-sm hidden-xs">{t('public~Exit code')}</div>
         </div>
         <div className="co-m-table-grid__body">
           {containers.map((c: any, i: number) => (
@@ -504,33 +506,49 @@ const getNetworkName = (result: PrometheusResult) =>
 
 const PodGraphs = requirePrometheus(({ pod }) => {
   const { t } = useTranslation();
+  const chartTitles = {
+    memory: t('public~Memory usage'),
+    cpu: t('public~CPU usage'),
+    fs: t('public~Filesystem'),
+    networkIn: t('public~Network in'),
+    networkOut: t('public~Network out'),
+  };
   return (
     <>
       <div className="row">
         <div className="col-md-12 col-lg-4">
           <Area
-            title={t('workload~Memory usage')}
+            title={chartTitles.memory}
+            ariaChartLinkLabel={t('public~View {{title}} metrics in query browser', {
+              title: chartTitles.memory,
+            })}
             humanize={humanizeBinaryBytes}
             byteDataType={ByteDataTypes.BinaryBytes}
             namespace={pod.metadata.namespace}
             query={`sum(container_memory_working_set_bytes{pod='${pod.metadata.name}',namespace='${pod.metadata.namespace}',container='',}) BY (pod, namespace)`}
-            limitQuery={`sum(kube_pod_container_resource_limits_memory_bytes{pod='${pod.metadata.name}',namespace='${pod.metadata.namespace}'}) BY (pod, namespace)`}
-            requestedQuery={`sum(kube_pod_container_resource_requests_memory_bytes{pod='${pod.metadata.name}',namespace='${pod.metadata.namespace}'}) BY (pod, namespace)`}
+            limitQuery={`sum(label_replace(label_replace(kube_pod_resource_limit{resource='cpu',exported_pod='${pod.metadata.name}',exported_namespace='${pod.metadata.namespace}'},'pod','$1','exported_pod','(.+)'),'namespace','$1','exported_namespace','(.+)'))`}
+            requestedQuery={`sum(label_replace(label_replace(kube_pod_resource_request{resource='memory',exported_pod='${pod.metadata.name}',exported_namespace='${pod.metadata.namespace}'},'pod','$1','exported_pod','(.+)'),'namespace','$1','exported_namespace','(.+)')) BY (pod, namespace)`}
           />
         </div>
         <div className="col-md-12 col-lg-4">
           <Area
-            title={t('workload~CPU usage')}
+            title={chartTitles.cpu}
+            ariaChartLinkLabel={t('public~View {{title}} metrics in query browser', {
+              title: chartTitles.cpu,
+            })}
             humanize={humanizeCpuCores}
             namespace={pod.metadata.namespace}
             query={`pod:container_cpu_usage:sum{pod='${pod.metadata.name}',namespace='${pod.metadata.namespace}'}`}
-            limitQuery={`sum(kube_pod_container_resource_limits_cpu_cores{pod='${pod.metadata.name}',namespace='${pod.metadata.namespace}'}) BY (pod, namespace)`}
-            requestedQuery={`sum(kube_pod_container_resource_requests_cpu_cores{pod='${pod.metadata.name}',namespace='${pod.metadata.namespace}'}) BY (pod, namespace)`}
+            limitQuery={`sum(label_replace(label_replace(kube_pod_resource_limit{resource='cpu',exported_pod='${pod.metadata.name}',exported_namespace='${pod.metadata.namespace}'},'pod','$1','exported_pod','(.+)'),'namespace','$1','exported_namespace','(.+)'))`}
+            requestedQuery={`sum(label_replace(label_replace(kube_pod_resource_request{resource='cpu',exported_pod='${pod.metadata.name}',exported_namespace='${pod.metadata.namespace}'},'pod','$1','exported_pod','(.+)'),'namespace','$1','exported_namespace','(.+)')) BY (pod, namespace)`}
           />
         </div>
         <div className="col-md-12 col-lg-4">
           <Area
-            title={t('workload~Filesystem')}
+            title={chartTitles.fs}
+            ariaChartLinkLabel={t('public~View {{title}} metrics in query browser', {
+              title: chartTitles.fs,
+            })}
             humanize={humanizeBinaryBytes}
             byteDataType={ByteDataTypes.BinaryBytes}
             namespace={pod.metadata.namespace}
@@ -541,7 +559,10 @@ const PodGraphs = requirePrometheus(({ pod }) => {
       <div className="row">
         <div className="col-md-12 col-lg-4">
           <Stack
-            title={t('workload~Network in')}
+            title={chartTitles.networkIn}
+            ariaChartLinkLabel={t('public~View {{title}} metrics in query browser', {
+              title: chartTitles.networkIn,
+            })}
             humanize={humanizeDecimalBytesPerSec}
             namespace={pod.metadata.namespace}
             query={`(sum(irate(container_network_receive_bytes_total{pod='${pod.metadata.name}', namespace='${pod.metadata.namespace}'}[5m])) by (pod, namespace, interface))`}
@@ -551,7 +572,10 @@ const PodGraphs = requirePrometheus(({ pod }) => {
         </div>
         <div className="col-md-12 col-lg-4">
           <Stack
-            title={t('workload~Network out')}
+            title={chartTitles.networkOut}
+            ariaChartLinkLabel={t('public~View {{title}} metrics in query browser', {
+              title: chartTitles.networkOut,
+            })}
             humanize={humanizeDecimalBytesPerSec}
             namespace={pod.metadata.namespace}
             query={`(sum(irate(container_network_transmit_bytes_total{pod='${pod.metadata.name}', namespace='${pod.metadata.namespace}'}[5m])) by (pod, namespace, interface))`}
@@ -593,7 +617,7 @@ export const PodStatus: React.FC<PodStatusProps> = ({ pod }) => {
     return (
       <PodStatusPopover
         bodyContent={unschedulableCondition.message}
-        headerContent={t('workload~Pod unschedulable')}
+        headerContent={t('public~Pod unschedulable')}
         status={status}
       />
     );
@@ -617,24 +641,24 @@ export const PodDetailsList: React.FC<PodDetailsListProps> = ({ pod }) => {
   const { t } = useTranslation();
   return (
     <dl className="co-m-pane__details">
-      <dt>{t('workload~Status')}</dt>
+      <dt>{t('public~Status')}</dt>
       <dd>
         <PodStatus pod={pod} />
       </dd>
-      <DetailsItem label={t('workload~Restart policy')} obj={pod} path="spec.restartPolicy">
+      <DetailsItem label={t('public~Restart policy')} obj={pod} path="spec.restartPolicy">
         {getRestartPolicyLabel(pod)}
       </DetailsItem>
       <DetailsItem
-        label={t('workload~Active deadline seconds')}
+        label={t('public~Active deadline seconds')}
         obj={pod}
         path="spec.activeDeadlineSeconds"
       >
         {pod.spec.activeDeadlineSeconds
-          ? t('workload~{{count}} second', { count: pod.spec.activeDeadlineSeconds })
-          : t('workload~Not configured')}
+          ? t('public~{{count}} second', { count: pod.spec.activeDeadlineSeconds })
+          : t('public~Not configured')}
       </DetailsItem>
-      <DetailsItem label={t('workload~Pod IP')} obj={pod} path="status.podIP" />
-      <DetailsItem label={t('workload~Node')} obj={pod} path="spec.nodeName" hideEmpty>
+      <DetailsItem label={t('public~Pod IP')} obj={pod} path="status.podIP" />
+      <DetailsItem label={t('public~Node')} obj={pod} path="spec.nodeName" hideEmpty>
         <NodeLink name={pod.spec.nodeName} />
       </DetailsItem>
     </dl>
@@ -679,7 +703,7 @@ const Details: React.FC<PodDetailsProps> = ({ obj: pod }) => {
     <>
       <ScrollToTopOnMount />
       <div className="co-m-pane__body">
-        <SectionHeading text={t('workload~Pod details')} />
+        <SectionHeading text={t('public~Pod details')} />
         <PodGraphs pod={pod} />
         <div className="row">
           <div className="col-sm-6">
@@ -694,7 +718,7 @@ const Details: React.FC<PodDetailsProps> = ({ obj: pod }) => {
         <div className="co-m-pane__body">
           <PodContainerTable
             key="initContainerTable"
-            heading={t('workload~Init containers')}
+            heading={t('public~Init containers')}
             containers={pod.spec.initContainers}
             pod={pod}
           />
@@ -703,16 +727,16 @@ const Details: React.FC<PodDetailsProps> = ({ obj: pod }) => {
       <div className="co-m-pane__body">
         <PodContainerTable
           key="containerTable"
-          heading={t('workload~Containers')}
+          heading={t('public~Containers')}
           containers={pod.spec.containers}
           pod={pod}
         />
       </div>
       <div className="co-m-pane__body">
-        <VolumesTable resource={pod} heading={t('workload~Volumes')} />
+        <VolumesTable resource={pod} heading={t('public~Volumes')} />
       </div>
       <div className="co-m-pane__body">
-        <SectionHeading text={t('workload~Conditions')} />
+        <SectionHeading text={t('public~Conditions')} />
         <Conditions conditions={pod.status.conditions} />
       </div>
     </>
@@ -771,7 +795,7 @@ export const PodsDetailsPage: React.FC<PodDetailsPageProps> = (props) => {
 };
 PodsDetailsPage.displayName = 'PodsDetailsPage';
 
-const getRow = (showNodes) => {
+const getRow = (showNodes, showNamespaceOverride) => {
   return (rowArgs: RowFunctionArgs<PodKind>) => (
     <PodTableRow
       obj={rowArgs.obj}
@@ -779,6 +803,7 @@ const getRow = (showNodes) => {
       rowKey={rowArgs.key}
       style={rowArgs.style}
       showNodes={showNodes}
+      showNamespaceOverride={showNamespaceOverride}
     />
   );
 };
@@ -793,6 +818,7 @@ export const PodList: React.FC<PodListProps> = withUserSettingsCompatibility<
   true,
 )(({ userSettingState: tableColumns, ...props }) => {
   const showNodes = props?.customData?.showNodes;
+  const showNamespaceOverride = props?.customData?.showNamespaceOverride;
   const { t } = useTranslation();
   const selectedColumns: Set<string> =
     tableColumns?.[columnManagementID]?.length > 0
@@ -803,9 +829,10 @@ export const PodList: React.FC<PodListProps> = withUserSettingsCompatibility<
       {...props}
       activeColumns={selectedColumns}
       columnManagementID={columnManagementID}
-      aria-label={t('workload~Pods')}
+      showNamespaceOverride={showNamespaceOverride}
+      aria-label={t('public~Pods')}
       Header={getHeader(showNodes)}
-      Row={getRow(showNodes)}
+      Row={getRow(showNodes, showNamespaceOverride)}
       virtualize
     />
   );
@@ -861,6 +888,7 @@ export const PodsPage = connect<{}, PodPagePropsFromDispatch, PodPageProps>(
         userSettingState: tableColumns,
         ...listProps
       } = props;
+      const { t } = useTranslation();
       /* eslint-disable react-hooks/exhaustive-deps */
       React.useEffect(() => {
         if (showMetrics) {
@@ -899,7 +927,8 @@ export const PodsPage = connect<{}, PodPagePropsFromDispatch, PodPageProps>(
               tableColumns?.[columnManagementID]?.length > 0
                 ? new Set(tableColumns[columnManagementID])
                 : null,
-            type: 'Pod',
+            showNamespaceOverride: props?.customData?.showNamespaceOverride,
+            type: t('public~Pod'),
           }}
         />
       );
@@ -956,6 +985,7 @@ type PodTableRowProps = {
   rowKey: string;
   style: object;
   showNodes?: boolean;
+  showNamespaceOverride?: boolean;
 };
 
 type PodTableRowPropsFromState = {

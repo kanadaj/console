@@ -1,6 +1,4 @@
 import * as _ from 'lodash';
-import * as helmIcon from '@console/internal/imgs/logos/helm.svg';
-import { AddAction } from '@console/dev-console/src/extensions/add-actions';
 import {
   ModelDefinition,
   CustomFeatureFlag,
@@ -13,7 +11,6 @@ import {
   HelmTopologyConsumedExtensions,
   helmTopologyPlugin,
 } from './topology/helm-topology-plugin';
-import { HelmCatalogConsumedExtensions, helmCatalogPlugin } from './catalog/helm-catalog-plugin';
 import { detectHelmChartRepositories } from './utils/helm-detection-utils';
 import { FLAG_OPENSHIFT_HELM } from './const';
 import * as models from './models';
@@ -23,8 +20,6 @@ type ConsumedExtensions =
   | CustomFeatureFlag
   | HrefNavItem
   | RoutePage
-  | AddAction
-  | HelmCatalogConsumedExtensions
   | HelmTopologyConsumedExtensions;
 
 const plugin: Plugin<ConsumedExtensions> = [
@@ -150,22 +145,6 @@ const plugin: Plugin<ConsumedExtensions> = [
       required: [FLAG_OPENSHIFT_HELM],
     },
   },
-  {
-    type: 'AddAction',
-    flags: {
-      required: [FLAG_OPENSHIFT_HELM],
-    },
-    properties: {
-      id: 'helm',
-      url: '/catalog?catalogType=HelmChart',
-      // t('helm-plugin~Helm Chart')
-      label: '%helm-plugin~Helm Chart%',
-      // t('helm-plugin~Browse the catalog to discover and install Helm Charts')
-      description: '%helm-plugin~Browse the catalog to discover and install Helm Charts%',
-      icon: helmIcon,
-    },
-  },
-  ...helmCatalogPlugin,
   ...helmTopologyPlugin,
 ];
 

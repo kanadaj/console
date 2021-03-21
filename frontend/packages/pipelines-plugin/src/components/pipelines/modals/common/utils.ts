@@ -1,22 +1,22 @@
 import * as _ from 'lodash';
 import { getRandomChars } from '@console/shared';
+import { PipelineRunModel } from '../../../../models';
 import {
   PersistentVolumeClaimType,
-  Pipeline,
-  PipelineResource,
-  PipelineRun,
+  PipelineKind,
+  TektonResource,
+  PipelineRunKind,
   PipelineRunInlineResource,
   PipelineRunInlineResourceParam,
   PipelineRunReferenceResource,
   PipelineRunResource,
   PipelineWorkspace,
   VolumeClaimTemplateType,
-} from '../../../../utils/pipeline-augment';
-import { PipelineRunModel } from '../../../../models';
+} from '../../../../types';
 import { getPipelineRunParams, getPipelineRunWorkspaces } from '../../../../utils/pipeline-utils';
+import { TektonResourceLabel, VolumeTypes, preferredNameAnnotation } from '../../const';
 import { CREATE_PIPELINE_RESOURCE, initialResourceFormValues } from './const';
 import { CommonPipelineModalFormikValues, PipelineModalFormResource } from './types';
-import { TektonResourceLabel, VolumeTypes } from '../../const';
 
 /**
  * Migrates a PipelineRun from one version to another to support auto-upgrades with old (and invalid) PipelineRuns.
@@ -24,7 +24,7 @@ import { TektonResourceLabel, VolumeTypes } from '../../const';
  * Note: Each check within this method should be driven by the apiVersion number if the API is properly up-versioned
  * for these breaking changes. (should be done moving from 0.10.x forward)
  */
-export const migratePipelineRun = (pipelineRun: PipelineRun): PipelineRun => {
+export const migratePipelineRun = (pipelineRun: PipelineRunKind): PipelineRunKind => {
   let newPipelineRun = pipelineRun;
 
   const serviceAccountPath = 'spec.serviceAccount';
@@ -43,18 +43,32 @@ export const migratePipelineRun = (pipelineRun: PipelineRun): PipelineRun => {
   return newPipelineRun;
 };
 
+export const getPipelineName = (pipeline?: PipelineKind, latestRun?: PipelineRunKind): string => {
+  if (pipeline) {
+    return pipeline.metadata.name;
+  }
+
+  if (latestRun) {
+    return (
+      latestRun.spec.pipelineRef?.name ??
+      (latestRun.metadata.annotations?.[preferredNameAnnotation] || latestRun.metadata.name)
+    );
+  }
+  return null;
+};
+
 export const getPipelineRunData = (
-  pipeline: Pipeline = null,
-  latestRun?: PipelineRun,
+  pipeline: PipelineKind = null,
+  latestRun?: PipelineRunKind,
   options?: { generateName: boolean },
-): PipelineRun => {
+): PipelineRunKind => {
   if (!pipeline && !latestRun) {
     // eslint-disable-next-line no-console
     console.error('Missing parameters, unable to create new PipelineRun');
     return null;
   }
 
-  const pipelineName = pipeline ? pipeline.metadata.name : latestRun.spec.pipelineRef.name;
+  const pipelineName = getPipelineName(pipeline, latestRun);
 
   const resources = latestRun?.spec.resources;
   const workspaces = latestRun?.spec.workspaces;
@@ -68,6 +82,10 @@ export const getPipelineRunData = (
     {},
     pipeline?.metadata?.annotations,
     latestRun?.metadata?.annotations,
+    !latestRun?.spec.pipelineRef &&
+      !latestRun?.metadata.annotations?.[preferredNameAnnotation] && {
+        [preferredNameAnnotation]: pipelineName,
+      },
   );
   delete annotations['kubectl.kubernetes.io/last-applied-configuration'];
 
@@ -84,15 +102,22 @@ export const getPipelineRunData = (
           }),
       annotations,
       namespace: pipeline ? pipeline.metadata.namespace : latestRun.metadata.namespace,
-      labels: _.merge({}, pipeline?.metadata?.labels, latestRun?.metadata?.labels, {
-        'tekton.dev/pipeline': pipelineName,
-      }),
+      labels: _.merge(
+        {},
+        pipeline?.metadata?.labels,
+        latestRun?.metadata?.labels,
+        (latestRun?.spec.pipelineRef || pipeline) && {
+          'tekton.dev/pipeline': pipelineName,
+        },
+      ),
     },
     spec: {
       ...(latestRun?.spec || {}),
-      pipelineRef: {
-        name: pipelineName,
-      },
+      ...((latestRun?.spec.pipelineRef || pipeline) && {
+        pipelineRef: {
+          name: pipelineName,
+        },
+      }),
       resources,
       ...(params && { params }),
       workspaces,
@@ -127,7 +152,7 @@ export const getDefaultPVC = (claimName: string): PersistentVolumeClaimType => {
   };
 };
 export const convertPipelineToModalData = (
-  pipeline: Pipeline,
+  pipeline: PipelineKind,
   alwaysCreateResources: boolean = false,
   preselectPVC: string = '',
 ): CommonPipelineModalFormikValues => {
@@ -139,7 +164,7 @@ export const convertPipelineToModalData = (
   return {
     namespace,
     parameters: params || [],
-    resources: (resources || []).map((resource: PipelineResource) => ({
+    resources: (resources || []).map((resource: TektonResource) => ({
       name: resource.name,
       selection: alwaysCreateResources ? CREATE_PIPELINE_RESOURCE : null,
       data: {
@@ -184,7 +209,7 @@ const convertResources = (resource: PipelineModalFormResource): PipelineRunResou
 };
 
 export const getPipelineRunFromForm = (
-  pipeline: Pipeline,
+  pipeline: PipelineKind,
   formValues: CommonPipelineModalFormikValues,
   labels?: { [key: string]: string },
   annotations?: { [key: string]: string },
@@ -192,7 +217,7 @@ export const getPipelineRunFromForm = (
 ) => {
   const { parameters, resources, workspaces } = formValues;
 
-  const pipelineRunData: PipelineRun = {
+  const pipelineRunData: PipelineRunKind = {
     metadata: {
       annotations,
       labels,

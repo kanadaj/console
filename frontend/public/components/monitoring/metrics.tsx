@@ -33,10 +33,13 @@ import {
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-import { connect } from 'react-redux';
+// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// @ts-ignore
+import { connect, useDispatch, useSelector } from 'react-redux';
 
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 import { RedExclamationCircleIcon, YellowExclamationTriangleIcon } from '@console/shared';
+
 import * as UIActions from '../../actions/ui';
 import { RootState } from '../../redux';
 import { fuzzyCaseInsensitive } from '../factory/table-filters';
@@ -157,14 +160,14 @@ const MetricsActionsMenu_: React.FC<MetricsActionsMenuProps> = ({
   };
 
   const actionsMenuActions = [
-    { label: t('monitoring~Add query'), callback: addQuery },
+    { label: t('public~Add query'), callback: addQuery },
     {
       label: isAllExpanded
-        ? t('monitoring~Collapse all query tables')
-        : t('monitoring~Expand all query tables'),
+        ? t('public~Collapse all query tables')
+        : t('public~Expand all query tables'),
       callback: () => setAllExpanded(!isAllExpanded),
     },
-    { label: t('monitoring~Delete all queries'), callback: doDelete },
+    { label: t('public~Delete all queries'), callback: doDelete },
   ];
 
   return (
@@ -198,9 +201,11 @@ const headerPrometheusLinkStateToProps = ({ UI }: RootState) => {
 };
 
 const HeaderPrometheusLink_ = ({ url }) => {
+  const { t } = useTranslation();
+
   return url ? (
     <span className="monitoring-header-link">
-      <ExternalLink href={url} text="Prometheus UI" />
+      <ExternalLink href={url} text={t('public~Platform Prometheus UI')} />
     </span>
   ) : null;
 };
@@ -222,7 +227,7 @@ const ToggleGraph_ = ({ hideGraphs, toggle }) => {
       onClick={toggle}
       variant="link"
     >
-      {icon} {hideGraphs ? t('monitoring~Show graph') : t('monitoring~Hide graph')}
+      {icon} {hideGraphs ? t('public~Show graph') : t('public~Hide graph')}
     </Button>
   );
 };
@@ -265,7 +270,7 @@ const MetricsDropdown_: React.FC<MetricsDropdownProps> = ({ insertText, setMetri
     }
   };
 
-  let title: React.ReactNode = t('monitoring~Insert metric at cursor');
+  let title: React.ReactNode = t('public~Insert metric at cursor');
   if (error !== undefined) {
     const message =
       error?.response?.status === 403 ? 'Access restricted.' : 'Failed to load metrics list.';
@@ -496,7 +501,7 @@ const QueryInput_: React.FC<QueryInputProps> = ({
   // Set the default textarea height to the number of lines in the query text
   const rows = _.clamp((text.match(/\n/g) || []).length + 1, 2, 10);
 
-  const placeholder = t('monitoring~Expression (press Shift+Enter for newlines)');
+  const placeholder = t('public~Expression (press Shift+Enter for newlines)');
 
   return (
     <div className="query-browser__query pf-c-dropdown">
@@ -515,7 +520,7 @@ const QueryInput_: React.FC<QueryInputProps> = ({
       />
       <Button
         className="query-browser__clear-icon"
-        aria-label={t('monitoring~Clear query')}
+        aria-label={t('public~Clear query')}
         onClick={onClear}
         type="button"
         variant="plain"
@@ -576,16 +581,14 @@ const QueryKebab_: React.FC<QueryKebabProps> = ({
     <Kebab
       options={[
         {
-          label: isEnabled ? t('monitoring~Disable query') : t('monitoring~Enable query'),
+          label: isEnabled ? t('public~Disable query') : t('public~Enable query'),
           callback: toggleIsEnabled,
         },
         {
-          label: isDisabledSeriesEmpty
-            ? t('monitoring~Hide all series')
-            : t('monitoring~Show all series'),
+          label: isDisabledSeriesEmpty ? t('public~Hide all series') : t('public~Show all series'),
           callback: toggleAllSeries,
         },
-        { label: t('monitoring~Delete query'), callback: doDelete },
+        { label: t('public~Delete query'), callback: doDelete },
       ]}
     />
   );
@@ -717,7 +720,7 @@ const QueryTable_: React.FC<QueryTableProps> = ({
   if (!result || result.length === 0) {
     return (
       <div className="query-browser__table-message">
-        <YellowExclamationTriangleIcon /> {t('monitoring~No datapoints found.')}
+        <YellowExclamationTriangleIcon /> {t('public~No datapoints found.')}
       </div>
     );
   }
@@ -828,7 +831,7 @@ const Query_: React.FC<QueryProps> = ({
   const { t } = useTranslation();
 
   const switchKey = `${id}-${isEnabled}`;
-  const switchLabel = isEnabled ? t('monitoring~Disable query') : t('monitoring~Enable query');
+  const switchLabel = isEnabled ? t('public~Disable query') : t('public~Enable query');
 
   const toggleIsExpanded = () => patchQuery({ isExpanded: !isExpanded });
 
@@ -922,13 +925,13 @@ const QueryBrowserWrapper_: React.FC<QueryBrowserWrapperProps> = ({
         <EmptyState variant={EmptyStateVariant.full}>
           <EmptyStateIcon icon={ChartLineIcon} />
           <Title headingLevel="h2" size="md">
-            {t('monitoring~No query entered')}
+            {t('public~No query entered')}
           </Title>
           <EmptyStateBody>
-            {t('monitoring~Enter a query in the box below to explore metrics for this cluster.')}
+            {t('public~Enter a query in the box below to explore metrics for this cluster.')}
           </EmptyStateBody>
           <Button onClick={insertExampleQuery} variant="primary">
-            {t('monitoring~Insert example query')}
+            {t('public~Insert example query')}
           </Button>
         </EmptyState>
       </div>
@@ -962,7 +965,7 @@ const AddQueryButton_ = ({ addQuery }) => {
       type="button"
       variant="secondary"
     >
-      {t('monitoring~Add query')}
+      {t('public~Add query')}
     </Button>
   );
 };
@@ -973,7 +976,7 @@ const RunQueriesButton_ = ({ runQueries }) => {
 
   return (
     <Button onClick={runQueries} type="submit" variant="primary">
-      {t('monitoring~Run queries')}
+      {t('public~Run queries')}
     </Button>
   );
 };
@@ -992,14 +995,17 @@ const QueriesList = connect(({ UI }: RootState) => ({
   count: UI.getIn(['queryBrowser', 'queries']).size,
 }))(QueriesList_);
 
-const PollIntervalDropdown = connect(
-  ({ UI }: RootState) => ({
-    interval: UI.getIn(['queryBrowser', 'pollInterval']),
-  }),
-  {
-    setInterval: UIActions.queryBrowserSetPollInterval,
-  },
-)(IntervalDropdown);
+const PollIntervalDropdown = () => {
+  const interval = useSelector(({ UI }: RootState) => UI.getIn(['queryBrowser', 'pollInterval']));
+
+  const dispatch = useDispatch();
+  const setInterval = React.useCallback(
+    (v: number) => dispatch(UIActions.queryBrowserSetPollInterval(v)),
+    [dispatch],
+  );
+
+  return <IntervalDropdown interval={interval} setInterval={setInterval} />;
+};
 
 const QueryBrowserPage_: React.FC<QueryBrowserPageProps> = ({ deleteAll }) => {
   const { t } = useTranslation();
@@ -1010,12 +1016,12 @@ const QueryBrowserPage_: React.FC<QueryBrowserPageProps> = ({ deleteAll }) => {
   return (
     <>
       <Helmet>
-        <title>{t('monitoring~Metrics')}</title>
+        <title>{t('public~Metrics')}</title>
       </Helmet>
       <div className="co-m-nav-title">
         <h1 className="co-m-pane__heading">
           <span>
-            {t('monitoring~Metrics')}
+            {t('public~Metrics')}
             <HeaderPrometheusLink />
           </span>
           <div className="co-actions">

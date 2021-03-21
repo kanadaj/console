@@ -44,7 +44,11 @@ export const ImageStreamReducer = (state: ImageStreamState, action: ImageStreamA
   }
 };
 
-const ImageStream: React.FC = () => {
+const ImageStream: React.FC<{ disabled?: boolean; label?: string; required?: boolean }> = ({
+  disabled = false,
+  label,
+  required = false,
+}) => {
   const { t } = useTranslation();
   const {
     values: { imageStream, project, registry, isi },
@@ -57,7 +61,8 @@ const ImageStream: React.FC = () => {
   const imageStreamTagList = getImageStreamTags(selectedImageStream as K8sResourceKind);
   const isNamespaceSelected = imageStream.namespace !== '' && !accessLoading;
   const isStreamsAvailable = isNamespaceSelected && hasImageStreams && !loading;
-  const isTagsAvailable = isStreamsAvailable && !_.isEmpty(imageStreamTagList);
+  const isTagsAvailable =
+    imageStream.tag !== '' || (isStreamsAvailable && !_.isEmpty(imageStreamTagList));
   const isImageStreamSelected = imageStream.image !== '';
   const showCommandLineAlert =
     project.name !== imageStream.namespace &&
@@ -81,17 +86,19 @@ const ImageStream: React.FC = () => {
           fieldId="image-stream-dropdowns"
           validated={validated}
           helperTextInvalid={helperTextInvalid}
+          label={label}
+          required={required}
         >
           <div className="row">
             <div className="col-lg-4 col-md-4 col-sm-4 col-xs-12">
-              <ImageStreamNsDropdown />
+              <ImageStreamNsDropdown disabled={disabled} />
             </div>
             <div className="col-lg-4 col-md-4 col-sm-4 col-xs-12">
-              <ImageStreamDropdown />
+              <ImageStreamDropdown disabled={disabled} />
               <div className="odc-imagestream-separator">/</div>
             </div>
             <div className="col-lg-4 col-md-4 col-sm-4 col-xs-12">
-              <ImageStreamTagDropdown />
+              <ImageStreamTagDropdown disabled={disabled} />
               <div className="odc-imagestream-separator">:</div>
             </div>
           </div>

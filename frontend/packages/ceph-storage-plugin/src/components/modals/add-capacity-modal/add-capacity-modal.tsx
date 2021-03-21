@@ -18,18 +18,17 @@ import {
   NO_PROVISIONER,
   OCS_DEVICE_SET_ARBITER_REPLICA,
   OCS_DEVICE_SET_REPLICA,
-} from '../../../constants';
-import {
   requestedCapacityTooltip,
   storageClassTooltip,
   defaultRequestSize,
-} from '../../../constants/ocs-install';
+} from '../../../constants';
 import { OCSStorageClassDropdown } from '../storage-class-dropdown';
 import { PVsAvailableCapacity } from '../../ocs-install/pvs-available-capacity';
 import { createDeviceSet } from '../../ocs-install/ocs-request-data';
-import { cephCapacityResource } from '../../../constants/resources';
+import { cephCapacityResource } from '../../../resources';
 import { DeviceSet } from '../../../types';
-import './_add-capacity-modal.scss';
+import './add-capacity-modal.scss';
+import { checkArbiterCluster, checkFlexibleScaling } from '../../../utils/common';
 
 const getProvisionedCapacity = (value: number) => (value % 1 ? (value * 3).toFixed(2) : value * 3);
 
@@ -54,8 +53,8 @@ export const AddCapacityModal = (props: AddCapacityModalProps) => {
   const isNoProvionerSC: boolean = storageClass?.provisioner === NO_PROVISIONER;
   const selectedSCName: string = getName(storageClass);
   const deviceSetIndex: number = getCurrentDeviceSetIndex(deviceSets, selectedSCName);
-  const hasFlexibleScaling = ocsConfig?.spec?.flexibleScaling;
-  const isArbiterEnabled: boolean = ocsConfig?.spec?.arbiter?.enable;
+  const hasFlexibleScaling = checkFlexibleScaling(ocsConfig);
+  const isArbiterEnabled: boolean = checkArbiterCluster(ocsConfig);
   const replica = isArbiterEnabled ? OCS_DEVICE_SET_ARBITER_REPLICA : OCS_DEVICE_SET_REPLICA;
   const name = getName(ocsConfig);
 
@@ -90,13 +89,13 @@ export const AddCapacityModal = (props: AddCapacityModalProps) => {
     const osdSize = isNoProvionerSC ? defaultRequestSize.BAREMETAL : osdSizeWithUnit;
     let portable = !isNoProvionerSC;
     let deviceSetReplica = replica;
-    let deviceSetCount = isArbiterEnabled ? 2 : 1;
-    if (hasFlexibleScaling) {
-      portable = false;
-      deviceSetReplica = 1;
-      deviceSetCount = 3;
-    }
+    let deviceSetCount = 1;
+
     if (deviceSetIndex === -1) {
+      if (hasFlexibleScaling) {
+        portable = false;
+        deviceSetReplica = 1;
+      }
       patch.op = 'add';
       patch.path = `/spec/storageDeviceSets/-`;
       patch.value = createDeviceSet(
@@ -107,6 +106,7 @@ export const AddCapacityModal = (props: AddCapacityModalProps) => {
         deviceSetCount,
       );
     } else {
+      if (hasFlexibleScaling) deviceSetCount = 3;
       patch.op = 'replace';
       patch.path = `/spec/storageDeviceSets/${deviceSetIndex}/count`;
       patch.value = deviceSets[deviceSetIndex].count + deviceSetCount;

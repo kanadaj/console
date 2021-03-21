@@ -52,7 +52,6 @@ const ProjectInventoryItem = withDashboardResources(
     resources,
     model,
     mapper,
-    useAbbr,
     additionalResources,
   }: ProjectInventoryItemProps) => {
     React.useEffect(() => {
@@ -101,7 +100,6 @@ const ProjectInventoryItem = withDashboardResources(
         resources={resourceData}
         additionalResources={additionalResourcesData}
         mapper={mapper}
-        useAbbr={useAbbr}
       />
     );
   },
@@ -124,7 +122,7 @@ export const InventoryCard = () => {
   return (
     <DashboardCard data-test-id="inventory-card">
       <DashboardCardHeader>
-        <DashboardCardTitle>{t('namespace~Inventory')}</DashboardCardTitle>
+        <DashboardCardTitle>{t('public~Inventory')}</DashboardCardTitle>
       </DashboardCardHeader>
       <DashboardCardBody>
         <ProjectInventoryItem projectName={projectName} model={DeploymentModel} />
@@ -139,7 +137,6 @@ export const InventoryCard = () => {
           projectName={projectName}
           model={PersistentVolumeClaimModel}
           mapper={getPVCStatusGroups}
-          useAbbr
         />
         <ProjectInventoryItem projectName={projectName} model={ServiceModel} />
         <ProjectInventoryItem projectName={projectName} model={RouteModel} />
@@ -152,7 +149,6 @@ export const InventoryCard = () => {
             model={item.properties.model}
             mapper={item.properties.mapper}
             additionalResources={item.properties.additionalResources}
-            useAbbr={item.properties.useAbbr}
           />
         ))}
         <ProjectInventoryItem
@@ -169,6 +165,5 @@ type ProjectInventoryItemProps = DashboardItemProps & {
   projectName: string;
   model: K8sKind;
   mapper?: StatusGroupMapper;
-  useAbbr?: boolean;
   additionalResources?: FirehoseResource[];
 };

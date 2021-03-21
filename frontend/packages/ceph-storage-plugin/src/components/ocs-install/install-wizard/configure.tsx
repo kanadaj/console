@@ -2,14 +2,14 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormGroup, Checkbox, Radio } from '@patternfly/react-core';
 import { FieldLevelHelp, Firehose } from '@console/internal/components/utils';
-import { TechPreviewBadge, getName, ResourceDropdown, useFlag } from '@console/shared';
+import { getName, ResourceDropdown, useFlag } from '@console/shared';
 import { NetworkAttachmentDefinitionKind } from '@console/network-attachment-definition-plugin/src/types';
 import { NetworkAttachmentDefinitionModel } from '@console/network-attachment-definition-plugin';
 import { referenceForModel } from '@console/internal/module/k8s';
 import { InternalClusterState, InternalClusterAction, ActionType } from '../internal-mode/reducer';
-import { State, Action } from '../attached-devices/create-sc/state';
+import { State, Action } from '../attached-devices-mode/reducer';
 import { KMSConfigure } from '../../kms-config/kms-config';
-import { NetworkType } from '../types';
+import { NetworkType } from '../../../types';
 import { ValidationMessage, ValidationType } from '../../../utils/common-ocs-install-el';
 import { GUARDED_FEATURES } from '../../../features';
 import { setEncryptionDispatch } from '../../kms-config/utils';
@@ -25,7 +25,6 @@ const StorageClassEncryptionLabel: React.FC = () => {
       <span className="ocs-install-encryption__pv-title--padding">
         {t('ceph-storage-plugin~Storage class encryption')}
       </span>
-      <TechPreviewBadge />
       <AdvancedSubscription />
     </div>
   );

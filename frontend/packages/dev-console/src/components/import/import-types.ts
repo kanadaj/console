@@ -1,6 +1,7 @@
 import { ValidatedOptions } from '@patternfly/react-core';
 import { K8sResourceKind, ContainerPort } from '@console/internal/module/k8s';
 import { DeploymentModel, DeploymentConfigModel } from '@console/internal/models';
+import { WatchK8sResultsObject } from '@console/internal/components/utils/k8s-watch-hook';
 import { LazyLoader } from '@console/plugin-sdk';
 import { NameValuePair, NameValueFromPair } from '@console/shared';
 import { ServiceModel } from '@console/knative-plugin/src/models';
@@ -10,7 +11,7 @@ import { HealthCheckProbe } from '../health-checks/health-checks-types';
 
 export interface DeployImageFormProps {
   builderImages?: NormalizedBuilderImages;
-  projects?: FirehoseList;
+  projects?: FirehoseList | WatchK8sResultsObject<K8sResourceKind[]>;
 }
 export type ImageStreamPayload = boolean | K8sResourceKind;
 
@@ -90,16 +91,18 @@ export interface DeployImageFormData {
   healthChecks: HealthChecksData;
 }
 
-export interface GitImportFormData {
+export type FileUploadData = {
+  name: string;
+  value: File | '';
+  javaArgs?: string;
+};
+
+export interface BaseFormData {
   formType?: string;
   name: string;
   project: ProjectData;
   application: ApplicationData;
-  git: GitData;
-  docker: DockerData;
-  devfile?: DevfileData;
   serverless?: ServerlessData;
-  pipeline?: PipelineData;
   image: ImageData;
   runtimeIcon?: string;
   route: RouteData;
@@ -110,6 +113,17 @@ export interface GitImportFormData {
   labels: { [name: string]: string };
   limits: LimitsData;
   healthChecks: HealthChecksData;
+}
+export interface UploadJarFormData extends BaseFormData {
+  fileUpload: FileUploadData;
+}
+
+export interface GitImportFormData extends BaseFormData {
+  pipeline?: PipelineData;
+  resourceTypesNotValid?: Resources[];
+  git: GitData;
+  docker: DockerData;
+  devfile?: DevfileData;
 }
 
 export interface ApplicationData {
@@ -178,10 +192,10 @@ export interface RouteData {
   targetPort: string;
   unknownTargetPort?: string;
   defaultUnknownPort?: number;
-  path: string;
-  hostname: string;
-  secure: boolean;
-  tls: TLSData;
+  path?: string;
+  hostname?: string;
+  secure?: boolean;
+  tls?: TLSData;
 }
 
 export interface TLSData {
@@ -217,10 +231,12 @@ export interface ServerlessData {
 }
 
 export interface ServerlessScaling {
-  minpods: number;
+  minpods: number | '';
   maxpods: number | '';
   concurrencytarget: number | '';
   concurrencylimit: number | '';
+  autoscale: AutoscaleWindowType;
+  concurrencyutilization: number | '';
 }
 
 export enum GitTypes {
@@ -293,6 +309,12 @@ export interface ResourceType {
   limit: number | string;
   limitUnit: string;
   defaultLimitUnit: string;
+}
+
+export interface AutoscaleWindowType {
+  autoscalewindow: number | '';
+  autoscalewindowUnit: string;
+  defaultAutoscalewindowUnit: string;
 }
 
 export enum CPUUnits {
