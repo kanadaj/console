@@ -2,6 +2,8 @@
 
 This is a fork of [Red Hat's Openshift Console](https://quay.io/repository/openshift/origin-console?tab=tags) modified to support as much of it's featureset on upstream Kubernetes as possible. It is not intended to function with Openshift or OKD, and has some hacks to forcefully replace Openshift entities with Kubernetes equivalents such as Namespaces being used as the data source for Openshift's "Projects". 
 
+Docker build available at [Docker Hub](https://hub.docker.com/r/kanadaj/openshift-console-upstream)
+
 The console is a more friendly `kubectl` in the form of a single page webapp. It also integrates with other services like monitoring, chargeback, and OLM. Some things that go on behind the scenes include:
 
 - Proxying the Kubernetes API under `/api/kubernetes`
