@@ -53,7 +53,6 @@ const UpdateStrategy: KebabAction = (kind: K8sKind, deployment: DeploymentKind) 
   },
 });
 
-
 const PauseAction: KebabAction = (kind: K8sKind, obj: DeploymentKind) => ({
   // t('public~Resume rollouts')
   // t('public~Pause rollouts')

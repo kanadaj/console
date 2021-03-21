@@ -118,11 +118,7 @@ const AdminNav = () => {
           name={t('public~Overview')}
           required={[FLAGS.CAN_GET_NS]}
         />
-        <ResourceClusterLink
-          id="projects"
-          resource="projects"
-          name={t('public~Projects')}
-        />
+        <ResourceClusterLink id="projects" resource="projects" name={t('public~Projects')} />
         <HrefLink
           id="search"
           href="/search"

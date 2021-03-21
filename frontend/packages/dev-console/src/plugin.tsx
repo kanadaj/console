@@ -155,7 +155,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         testID: 'project-details-header',
         'data-quickstart-id': 'qs-nav-project',
       },
-    }
+    },
   },
   {
     type: 'Overview/Resource',

@@ -12,8 +12,8 @@ export enum MODES {
 }
 
 export enum OCS_PROVISIONER {
-  BLOCK = 'openshift-storage.rbd.csi.ceph.com',
-  FILE = 'openshift-storage.cephfs.csi.ceph.com',
+  BLOCK = 'rook-ceph.rbd.csi.ceph.com',
+  FILE = 'rook-ceph.cephfs.csi.ceph.com',
 }
 
 export enum CLUSTER_STATUS {
