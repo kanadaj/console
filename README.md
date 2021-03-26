@@ -1,6 +1,10 @@
+![image](https://user-images.githubusercontent.com/3247357/112653495-651a2800-8e46-11eb-82fc-82ae3137c7b2.png)
+
 # OpenShift Console for Kubernetes
 
-This is a fork of [Red Hat's Openshift Console](https://quay.io/repository/openshift/origin-console?tab=tags) modified to support as much of it's featureset on upstream Kubernetes as possible. It is not intended to function with Openshift or OKD, and has some hacks to forcefully replace Openshift entities with Kubernetes equivalents such as Namespaces being used as the data source for Openshift's "Projects". 
+This is a fork of [Red Hat's Openshift Console](https://quay.io/repository/openshift/origin-console?tab=tags) modified to support as much of it's featureset on upstream Kubernetes as possible. It is not intended to function with Openshift or OKD, and has some hacks to forcefully replace Openshift entities with Kubernetes equivalents such as Namespaces being used as the data source for Openshift's "Projects".
+
+Openshift Console (aka Bridge) is, from my experience, miles ahead of any other open source dashboard/UI for Kubernetes. If you are running k8s on a cloud platform, you already get an actionable UI, but the official Kubernetes Dashboard is effectively only usable for monitoring, and most other UIs you can get are terribly lacking or buggy.
 
 Docker build available at [Docker Hub](https://hub.docker.com/r/kanadaj/openshift-console-upstream)
 
