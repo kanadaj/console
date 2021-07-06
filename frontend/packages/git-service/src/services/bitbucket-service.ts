@@ -1,4 +1,5 @@
 import * as ParseBitbucketUrl from 'parse-bitbucket-url';
+import { coFetchJSON } from '@console/internal/co-fetch';
 import {
   GitSource,
   SecretType,
@@ -9,7 +10,6 @@ import {
   RepoStatus,
 } from '../types';
 import { BaseService } from './base-service';
-import { coFetchJSON } from '@console/internal/co-fetch';
 
 export class BitbucketService extends BaseService {
   private readonly metadata: RepoMetadata;
@@ -35,13 +35,13 @@ export class BitbucketService extends BaseService {
   };
 
   getRepoMetadata = (): RepoMetadata => {
-    const { name, owner, host, branch } = ParseBitbucketUrl(this.gitsource.url);
+    const { name, owner, host } = ParseBitbucketUrl(this.gitsource.url);
     const contextDir = this.gitsource.contextDir?.replace(/\/$/, '') || '';
     return {
       repoName: name,
       owner,
       host,
-      defaultBranch: this.gitsource.ref || branch,
+      defaultBranch: this.gitsource.ref || 'HEAD',
       contextDir,
     };
   };

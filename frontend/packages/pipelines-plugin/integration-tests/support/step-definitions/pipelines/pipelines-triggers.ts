@@ -1,23 +1,25 @@
 import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
-import { pipelinesPage, startPipelineInPipelinesPage } from '../../pages/pipelines/pipelines-page';
-import { pipelineBuilderPage } from '../../pages/pipelines/pipelineBuilder-page';
+import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
+import { modal } from '@console/cypress-integration-tests/views/modal';
+import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants';
+import { navigateTo } from '@console/dev-console/integration-tests/support/pages';
+import { pipelineActions } from '../../constants';
+import { pipelinesPO } from '../../page-objects/pipelines-po';
 import {
+  pipelinesPage,
+  startPipelineInPipelinesPage,
+  pipelineBuilderPage,
   pipelineDetailsPage,
   triggerTemplateDetailsPage,
   eventListenerDetailsPage,
   clusterTriggerBindingDetailsPage,
-} from '../../pages/pipelines/pipelineDetails-page';
-import { navigateTo } from '@console/dev-console/integration-tests/support/pages/app';
-import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants/global';
-import { modal } from '../../../../../integration-tests-cypress/views/modal';
-import { detailsPage } from '../../../../../integration-tests-cypress/views/details-page';
-import { pipelinesPO } from '../../page-objects/pipelines-po';
+} from '../../pages';
+import { actionsDropdownMenu } from '../../pages/functions/common';
 
 When(
   'user selects {string} from the kebab menu for {string}',
   (option: string, pipelineName: string) => {
-    pipelinesPage.selectKebabMenu(pipelineName);
-    cy.byTestActionID(option).click();
+    pipelinesPage.selectActionForPipeline(pipelineName, option);
   },
 );
 
@@ -27,12 +29,11 @@ Then('Git provider type field is enabled', () => {
 
 Then('Add button is disabled', () => {
   cy.get(pipelinesPO.addTrigger.add).should('be.disabled');
-  cy.get(pipelinesPO.addTrigger.cancel).click();
+  modal.cancel();
 });
 
 Given('user selected Add Trigger from kebab menu of pipeline {string}', (pipelineName: string) => {
-  pipelinesPage.selectKebabMenu(pipelineName);
-  cy.byTestActionID('Add Trigger').click();
+  pipelinesPage.selectActionForPipeline(pipelineName, pipelineActions.AddTrigger);
 });
 
 When('user clicks on {string} link', (linkName: string) => {
@@ -53,7 +54,7 @@ Then('variables section displayed with message {string}', (text: string) => {
 
 Then('Add button is enabled', () => {
   cy.get(pipelinesPO.addTrigger.add).should('be.enabled');
-  cy.get(pipelinesPO.addTrigger.cancel).click();
+  modal.cancel();
 });
 
 Given('{string} is displayed on pipelines page', (pipelineName: string) => {
@@ -70,6 +71,7 @@ When('user selects the {string} from Git Provider Type field', (gitProviderType:
 
 When('user clicks on Add button present in Add Trigger modal', () => {
   cy.get(pipelinesPO.addTrigger.add).click();
+  modal.shouldBeClosed();
 });
 
 Then('pipelines page is displayed', () => {
@@ -86,8 +88,7 @@ Given('pipeline {string} with trigger in pipelines page', (pipelineName: string)
   pipelineBuilderPage.createPipelineFromBuilderPage(pipelineName);
   cy.byLegacyTestID('breadcrumb-link-0').click();
   pipelinesPage.verifyNameInPipelinesTable(pipelineName);
-  pipelinesPage.selectKebabMenu(pipelineName);
-  cy.byTestActionID('Add Trigger').click();
+  pipelinesPage.selectActionForPipeline(pipelineName, pipelineActions.AddTrigger);
   pipelinesPage.addTrigger();
 });
 
@@ -128,7 +129,7 @@ Then(
 );
 
 Then('Actions dropdown display on the top right corner of the page', () => {
-  triggerTemplateDetailsPage.verifyActionsDropdown();
+  actionsDropdownMenu.verifyActionsMenu();
 });
 
 Given('user is at Trigger Template Details page of pipeline {string}', (pipelineName: string) => {
@@ -178,7 +179,7 @@ Then(
 );
 
 Then('Actions dropdown display on Cluster Trigger Binding page', () => {
-  clusterTriggerBindingDetailsPage.verifyActionsDropdown();
+  actionsDropdownMenu.verifyActionsMenu();
   navigateTo(devNavigationMenu.Pipelines);
 });
 
@@ -201,12 +202,12 @@ Then('modal is displayed with header message {string}', (headerName: string) => 
 });
 
 Then('trigger template dropdown displayed with help text Select Trigger Template', () => {
-  cy.get(pipelinesPO.removeTrigger.triggerTemplate).should('have.text', 'Select Trigger Template');
+  cy.get(pipelinesPO.removeTrigger.triggerTemplate).should('have.text', 'Select TriggerTemplate');
 });
 
 Then('Remove button will be disabled', () => {
   cy.get(pipelinesPO.removeTrigger.remove).should('be.disabled');
-  cy.get(pipelinesPO.removeTrigger.cancel).click();
+  modal.cancel();
 });
 
 Then(

@@ -1,11 +1,11 @@
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import { ServiceModel } from '@console/knative-plugin';
 import { UNASSIGNED_KEY } from '@console/topology/src/const';
+import { healthChecksData } from '../../health-checks/__tests__/create-health-checks-probe-data';
+import { healthChecksProbeInitialData } from '../../health-checks/health-checks-probe-utils';
+import { serverlessInitialValues } from '../../import/__mocks__/serverless-mock';
 import { DeployImageFormData, GitImportFormData, Resources } from '../../import/import-types';
 import { AppResources } from '../edit-application-types';
-import { healthChecksProbeInitialData } from '../../health-checks/health-checks-probe-utils';
-import { healthChecksData } from '../../health-checks/__tests__/create-health-checks-probe-data';
-import { serverlessInitialValues } from '../../import/__mocks__/serverless-mock';
 
 export const knativeService: K8sResourceKind = {
   apiVersion: `${ServiceModel.apiGroup}/${ServiceModel.apiVersion}`,
@@ -249,6 +249,7 @@ export const appResources: AppResources = {
         annotations: {
           'app.openshift.io/vcs-ref': 'master',
           'app.openshift.io/vcs-uri': 'https://github.com/divyanshiGupta/nationalparks-py',
+          jarFileName: 'demo-app.jar',
         },
       },
       spec: {
@@ -385,6 +386,7 @@ export const appResources: AppResources = {
             workspaces: [
               {
                 name: 'output',
+                workspace: 'workspace',
               },
             ],
           },
@@ -408,6 +410,7 @@ export const appResources: AppResources = {
             workspaces: [
               {
                 name: 'source',
+                workspace: 'workspace',
               },
             ],
           },
@@ -507,7 +510,10 @@ export const gitImportInitialValues: GitImportFormData = {
   serverless: serverlessInitialValues,
   pipeline: { enabled: false },
   deployment: { env: [], triggers: { image: true, config: true }, replicas: 1 },
-  labels: {},
+  labels: {
+    'app.kubernetes.io/component': 'nationalparks-py',
+    'app.kubernetes.io/name': 'python',
+  },
   limits: {
     cpu: {
       request: '',
@@ -547,6 +553,9 @@ export const gitImportInitialValues: GitImportFormData = {
   },
   build: {
     env: [],
+    source: {
+      type: 'Git',
+    },
     triggers: { webhook: true, image: true, config: true },
     strategy: 'Source',
   },
@@ -581,7 +590,7 @@ export const externalImageValues: DeployImageFormData = {
   serverless: serverlessInitialValues,
   pipeline: { enabled: false },
   deployment: { env: [], triggers: { image: true, config: true }, replicas: 1 },
-  labels: {},
+  labels: { 'app.kubernetes.io/component': 'nationalparks-py', 'app.kubernetes.io/name': 'python' },
   limits: {
     cpu: {
       request: '',
@@ -651,7 +660,7 @@ export const internalImageValues: DeployImageFormData = {
   serverless: serverlessInitialValues,
   pipeline: { enabled: false },
   deployment: { env: [], triggers: { image: true, config: true }, replicas: 1 },
-  labels: {},
+  labels: { 'app.kubernetes.io/component': 'nationalparks-py', 'app.kubernetes.io/name': 'python' },
   limits: {
     cpu: {
       request: '',

@@ -1,9 +1,11 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { PipelineRunKind } from '../../types';
-import { getRunStatusColor, getTaskStatus, runStatus } from '../../utils/pipeline-augment';
 import HorizontalStackedBars from '../../components/charts/HorizontalStackedBars';
+import { useTaskStatus } from '../../components/pipelineruns/hooks/useTaskStatus';
 import TaskStatusToolTip from '../../components/pipelineruns/status/TaskStatusTooltip';
+import { PipelineRunKind } from '../../types';
+import { getRunStatusColor, runStatus } from '../../utils/pipeline-augment';
+
 import './PipelineBuildDecoratorTooltip.scss';
 
 export interface PipelineBuildDecoratorTooltipProps {
@@ -16,17 +18,17 @@ const PipelineBuildDecoratorTooltip: React.FC<PipelineBuildDecoratorTooltipProps
   status,
 }) => {
   const { t } = useTranslation();
+  const taskStatus = useTaskStatus(pipelineRun);
   if (!pipelineRun || !status) {
     return null;
   }
 
-  const taskStatus = getTaskStatus(pipelineRun);
   const pipelineBars = (
     <HorizontalStackedBars
       height="1em"
       inline
       values={Object.keys(runStatus).map((rStatus) => ({
-        color: getRunStatusColor(runStatus[rStatus], t).pftoken.value,
+        color: getRunStatusColor(runStatus[rStatus]).pftoken.value,
         name: rStatus,
         size: taskStatus[runStatus[rStatus]],
       }))}
@@ -41,7 +43,7 @@ const PipelineBuildDecoratorTooltip: React.FC<PipelineBuildDecoratorTooltipProps
       </div>
       <div className="odc-pipeline-build-decorator-tooltip__status-bars-wrapper">
         <div className="odc-pipeline-build-decorator-tooltip__status-bars-title">
-          {t('pipelines-plugin~Task Status')}
+          {t('pipelines-plugin~Task status')}
         </div>
         <div className="odc-pipeline-build-decorator-tooltip__status-bars">{pipelineBars}</div>
       </div>

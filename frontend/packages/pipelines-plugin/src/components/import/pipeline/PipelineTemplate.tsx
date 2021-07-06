@@ -1,14 +1,14 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import { TFunction } from 'i18next';
+import { Alert, ExpandableSection } from '@patternfly/react-core';
+import { useFormikContext, FormikValues } from 'formik';
+import i18next from 'i18next';
 import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
+import { ReadableResourcesNames } from '@console/dev-console/src/components/import/import-types';
+import { NormalizedBuilderImages } from '@console/dev-console/src/utils/imagestream-utils';
 import { LoadingInline } from '@console/internal/components/utils';
 import { k8sList } from '@console/internal/module/k8s';
-import { useFormikContext, FormikValues } from 'formik';
-import { Alert, ExpandableSection } from '@patternfly/react-core';
 import { CheckboxField } from '@console/shared';
-import { NormalizedBuilderImages } from '@console/dev-console/src/utils/imagestream-utils';
-import { ReadableResourcesNames } from '@console/dev-console/src/components/import/import-types';
 import { CLUSTER_PIPELINE_NS, PIPELINE_RUNTIME_LABEL } from '../../../const';
 import { PipelineModel } from '../../../models';
 import { PipelineKind } from '../../../types';
@@ -21,14 +21,13 @@ const getAlertText = (
   isDockerStrategy: boolean,
   builderImage: string,
   resourceType: string,
-  t: TFunction,
 ): string => {
-  const MISSING_DOCKERFILE_LABEL_TEXT = t(
+  const MISSING_DOCKERFILE_LABEL_TEXT = i18next.t(
     'pipelines-plugin~The pipeline template for Dockerfiles is not available at this time.',
   );
   if (isDockerStrategy) return MISSING_DOCKERFILE_LABEL_TEXT;
 
-  return t(
+  return i18next.t(
     'pipelines-plugin~There are no pipeline templates available for {{builderImage}} and {{resourceType}} combination.',
     { builderImage, resourceType },
   );
@@ -102,12 +101,12 @@ const PipelineTemplate: React.FC<PipelineTemplateProps> = ({ builderImages, exis
   if (noTemplateForRuntime) {
     const builderImageTitle =
       builderImages?.[image.selected]?.title || t('pipelines-plugin~this Builder Image');
-    const resourceName = ReadableResourcesNames[resources];
+    const resourceName = t(ReadableResourcesNames[resources]);
     return (
       <Alert
         isInline
         variant="info"
-        title={getAlertText(isDockerStrategy, builderImageTitle, resourceName, t)}
+        title={getAlertText(isDockerStrategy, builderImageTitle, resourceName)}
       />
     );
   }

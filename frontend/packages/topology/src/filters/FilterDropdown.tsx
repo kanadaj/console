@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Radio,
   Select,
@@ -8,6 +7,7 @@ import {
   SelectVariant,
   Switch,
 } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 import { DisplayFilters, TopologyDisplayFilterType, TopologyViewType } from '../topology-types';
 import { EXPAND_GROUPS_FILTER_ID, SHOW_GROUPS_FILTER_ID } from './const';
 
@@ -82,7 +82,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   const selectContent = (
     <div className="odc-topology-filter-dropdown">
       <div className="odc-topology-filter-dropdown__group">
-        <span className="pf-c-select__menu-group-title">Mode</span>
+        <span className="pf-c-select__menu-group-title">{t('topology~Mode')}</span>
         <div className="odc-topology-filter-dropdown__radio-group">
           <Radio
             className="odc-topology-filter-dropdown__radio"
@@ -105,7 +105,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
       {expandFilters.length ? (
         <div className="odc-topology-filter-dropdown__group">
           <span className="odc-topology-filter-dropdown__expand-groups-switcher">
-            <span className="pf-c-select__menu-group-title">Expand</span>
+            <span className="pf-c-select__menu-group-title">{t('topology~Expand')}</span>
             <Switch
               aria-label={t('topology~Collapse groups')}
               isChecked={groupsExpanded}

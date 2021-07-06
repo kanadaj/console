@@ -1,21 +1,22 @@
 import * as _ from 'lodash';
 import {
+  getAppLabels,
+  getCommonAnnotations,
+} from '@console/dev-console/src/utils/resource-label-utils';
+import { checkAccess, history } from '@console/internal/components/utils';
+import {
   K8sResourceKind,
   referenceForModel,
   referenceFor,
   modelFor,
   K8sKind,
 } from '@console/internal/module/k8s';
-import { checkAccess, history } from '@console/internal/components/utils';
-import { safeYAMLToJS } from '@console/shared/src/utils/yaml';
-import { UNASSIGNED_APPLICATIONS_KEY } from '@console/shared/src/constants';
-import { CREATE_APPLICATION_KEY } from '@console/topology/src/const';
-import {
-  getAppLabels,
-  getCommonAnnotations,
-} from '@console/dev-console/src/utils/resource-label-utils';
 import { Perspective } from '@console/plugin-sdk';
 import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
+import { UNASSIGNED_APPLICATIONS_KEY } from '@console/shared/src/constants';
+import { safeYAMLToJS } from '@console/shared/src/utils/yaml';
+import { CREATE_APPLICATION_KEY } from '@console/topology/src/const';
+import { getEventSourceCatalogProviderData } from '../catalog/event-source-data';
 import {
   EventSources,
   EventSourceFormData,
@@ -23,10 +24,9 @@ import {
   SinkType,
   EventSourceMetaData,
 } from '../components/add/import-types';
-import { getEventSourceIcon } from './get-knative-icon';
-import { getEventSourceCatalogProviderData } from '../catalog/event-source-data';
-import { CamelKameletModel } from '../models';
 import { CAMEL_K_PROVIDER_ANNOTATION } from '../const';
+import { CamelKameletModel } from '../models';
+import { getEventSourceIcon } from './get-knative-icon';
 
 export const isKnownEventSource = (eventSource: string): boolean =>
   Object.keys(EventSources).includes(eventSource);
@@ -318,13 +318,16 @@ export const getEventSourceModelsWithAccess = (
 };
 
 export const getBootstrapServers = (kafkaResources: K8sResourceKind[]) => {
-  const servers = [];
-  _.forEach(kafkaResources, (kafka) => {
-    const listeners = kafka?.status?.listeners;
-    _.map(listeners, (l) => {
-      servers.push(..._.split(l?.bootstrapServers, ','));
-    });
-  });
+  const servers = kafkaResources?.reduce((acc, kafka) => {
+    const listners = [
+      ...(kafka?.status?.listeners
+        ? kafka.status.listeners.map((l) => l?.bootstrapServers?.split(','))?.flat()
+        : []),
+      ...(kafka?.status?.bootstrapServerHost ? [kafka.status.bootstrapServerHost] : []),
+    ];
+    acc.push(...listners);
+    return acc;
+  }, []);
   return servers;
 };
 

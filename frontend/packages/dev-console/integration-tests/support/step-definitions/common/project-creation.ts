@@ -1,7 +1,6 @@
 import { When, Then } from 'cypress-cucumber-preprocessor/steps';
-import { projectNameSpace } from '../../pages/app';
-import { modal } from '../../../../../integration-tests-cypress/views/modal';
-import { topologyPage } from '../../pages/topology/topology-page';
+import { modal } from '@console/cypress-integration-tests/views/modal';
+import { topologyPage, projectNameSpace } from '../../pages';
 
 When('user enters project name as {string} in Create Project modal', (projectName: string) => {
   const d = new Date();
@@ -24,6 +23,5 @@ Then('topology page displays with the empty state', () => {
 
 When('user selects the Create Project option from Projects dropdown on top navigation bar', () => {
   projectNameSpace.selectCreateProjectOption();
-  // Bug: 1890678 is created related to Accesibiity violation - Until bug fix, below line is commented to execute the scripts in CI
-  // cy.testA11y('Create Project Modal');
+  cy.testA11y('Create Project Modal');
 });

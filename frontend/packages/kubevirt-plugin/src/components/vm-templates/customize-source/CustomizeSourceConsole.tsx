@@ -1,28 +1,27 @@
 import * as React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
-import { Prompt } from 'react-router';
 import {
-  Title,
-  Stack,
-  StackItem,
+  Button,
   Divider,
   Popover,
-  Button,
   PopoverProps,
   Split,
   SplitItem,
+  Stack,
+  StackItem,
+  Title,
 } from '@patternfly/react-core';
+import { Trans, useTranslation } from 'react-i18next';
+import { Prompt } from 'react-router';
 import { ResourceLink } from '@console/internal/components/utils';
-
-import { VirtualMachineModel } from '../../../models';
-import VMConsoles from '../../vms/vm-console/VMConsoles';
-import { VMKind, VMIKind } from '../../../types';
-import { VMStatusBundle } from '../../../statuses/vm/types';
+import { TEMPLATE_CUSTOMIZED_ANNOTATION } from '../../../constants';
 import { useRenderVNCConsole } from '../../../hooks/use-render-vnc-console';
-
+import { VirtualMachineModel } from '../../../models';
+import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
+import { VMStatusBundle } from '../../../statuses/vm/types';
+import { VMIKind, VMKind } from '../../../types';
 import cancelCustomizationModal from '../../modals/template-customization/CancelCustomizationModal';
 import finishCustomizationModal from '../../modals/template-customization/FinishCustomizationModal';
-import { TEMPLATE_CUSTOMIZED_ANNOTATION } from '../../../constants';
+import VMConsoles from '../../vms/vm-console/VMConsoles';
 
 import './customize-source.scss';
 
@@ -42,7 +41,7 @@ const VMPopover: React.FC<VMPopoverProps> = ({ vm, children }) => {
           </StackItem>
           <StackItem>
             <ResourceLink
-              kind={VirtualMachineModel.kind}
+              kind={kubevirtReferenceForModel(VirtualMachineModel)}
               name={vm.metadata.name}
               namespace={vm.metadata.namespace}
             />
@@ -105,7 +104,7 @@ const CustomizeSourceConsole: React.FC<CustomizeSourceConsoleProps> = ({
         </StackItem>
         <Divider component="div" />
         <StackItem className="kv-customize-source">
-          <div className="kv-customize-source__console">
+          <div className="kv-customize-source__form-body">
             <VMConsoles
               vm={vm}
               vmStatusBundle={vmStatusBundle}

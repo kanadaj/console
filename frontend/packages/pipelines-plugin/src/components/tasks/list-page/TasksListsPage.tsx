@@ -1,15 +1,16 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { match as Rmatch } from 'react-router-dom';
-import { referenceForModel } from '@console/internal/module/k8s';
-import { TaskModel, ClusterTaskModel, TaskRunModel } from '../../../models';
-import { Page } from '@console/internal/components/utils';
-import { TechPreviewBadge, MenuActions, MultiTabListPage } from '@console/shared';
-import { DefaultPage } from '@console/internal/components/default-resource';
-import TaskRunsListPage from '../../taskruns/list-page/TaskRunsListPage';
 import NamespacedPage, {
   NamespacedPageVariants,
 } from '@console/dev-console/src/components/NamespacedPage';
+import { DefaultPage } from '@console/internal/components/default-resource';
+import { Page } from '@console/internal/components/utils';
+import { referenceForModel } from '@console/internal/module/k8s';
+import { MenuActions, MultiTabListPage } from '@console/shared';
+import { TaskModel, ClusterTaskModel, TaskRunModel } from '../../../models';
+import { usePipelineTechPreviewBadge } from '../../../utils/hooks';
+import TaskRunsListPage from '../../taskruns/list-page/TaskRunsListPage';
 
 interface TasksListsPageProps {
   match: Rmatch<any>;
@@ -20,11 +21,12 @@ const TasksListsPage: React.FC<TasksListsPageProps> = ({ match }) => {
   const {
     params: { ns: namespace },
   } = match;
+  const badge = usePipelineTechPreviewBadge(namespace);
   const [showTitle, canCreate, hideBadge] = [false, false, true];
   const menuActions: MenuActions = {
-    tasks: { label: t('pipelines-plugin~Task'), model: TaskModel },
-    taskRun: { label: t('pipelines-plugin~Task Run'), model: TaskRunModel },
-    clusterTask: { label: t('pipelines-plugin~Cluster Task'), model: ClusterTaskModel },
+    tasks: { model: TaskModel },
+    taskRun: { model: TaskRunModel },
+    clusterTask: { model: ClusterTaskModel },
   };
   const pages: Page[] = [
     {
@@ -40,7 +42,7 @@ const TasksListsPage: React.FC<TasksListsPageProps> = ({ match }) => {
     },
     {
       href: 'task-runs',
-      name: t('pipelines-plugin~Task Runs'),
+      name: t('pipelines-plugin~TaskRuns'),
       component: TaskRunsListPage,
       pageData: {
         hideBadge,
@@ -49,7 +51,7 @@ const TasksListsPage: React.FC<TasksListsPageProps> = ({ match }) => {
     },
     {
       href: 'cluster-tasks',
-      name: t('pipelines-plugin~Cluster Tasks'),
+      name: t('pipelines-plugin~ClusterTasks'),
       component: DefaultPage,
       pageData: {
         kind: referenceForModel(ClusterTaskModel),
@@ -65,7 +67,7 @@ const TasksListsPage: React.FC<TasksListsPageProps> = ({ match }) => {
         pages={pages}
         match={match}
         title={t('pipelines-plugin~Tasks')}
-        badge={<TechPreviewBadge />}
+        badge={badge}
         menuActions={menuActions}
       />
     </NamespacedPage>

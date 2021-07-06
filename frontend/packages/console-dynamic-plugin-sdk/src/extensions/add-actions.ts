@@ -1,12 +1,14 @@
 import * as React from 'react';
-import { Extension } from '@console/plugin-sdk/src/typings/base';
-import { CodeRef, EncodedCodeRef, UpdateExtensionProperties } from '../types';
-import { ExtensionAccessReviewResourceAttributes } from '../utils/common';
+import { Extension, ExtensionDeclaration, CodeRef } from '../types';
+import { AccessReviewResourceAttributes } from './console-types';
 
-namespace ExtensionProperties {
-  export type AddAction = {
+export type AddAction = ExtensionDeclaration<
+  'dev-console.add/action',
+  {
     /** ID used to identify the action. */
     id: string;
+    /** IDs used to identify the action groups the action would belong to. */
+    groupId?: string;
     /** The label of the action */
     label: string;
     /** The description of the action. */
@@ -14,25 +16,32 @@ namespace ExtensionProperties {
     /** The href to navigate to. */
     href: string;
     /** The perspective display icon. */
-    icon?: string | EncodedCodeRef;
-    /** Optional access review to control visibility / enablement of the action. */
-    accessReview?: ExtensionAccessReviewResourceAttributes[];
-  };
-
-  export type AddActionCodeRefs = {
     icon?: CodeRef<React.ReactNode>;
-  };
-}
-
-export type AddAction = Extension<ExtensionProperties.AddAction> & {
-  type: 'dev-console.add/action';
-};
-
-export type ResolvedAddAction = UpdateExtensionProperties<
-  AddAction,
-  ExtensionProperties.AddActionCodeRefs
+    /** Optional access review to control visibility / enablement of the action. */
+    accessReview?: AccessReviewResourceAttributes[];
+  }
 >;
 
-export const isAddAction = (e: Extension): e is ResolvedAddAction => {
+export type AddActionGroup = ExtensionDeclaration<
+  'dev-console.add/action-group',
+  {
+    /** ID used to identify the action group. */
+    id: string;
+    /** The title of the action group */
+    name: string;
+    /** ID of action group before which this group should be placed */
+    insertBefore?: string;
+    /** ID of action group after which this group should be placed */
+    insertAfter?: string;
+  }
+>;
+
+// Type guards
+
+export const isAddAction = (e: Extension): e is AddAction => {
   return e.type === 'dev-console.add/action';
+};
+
+export const isAddActionGroup = (e: Extension): e is AddActionGroup => {
+  return e.type === 'dev-console.add/action-group';
 };

@@ -1,13 +1,13 @@
 import * as _ from 'lodash';
 import { CommonData, VMWizardTab, VMWizardTabState } from '../../types';
-import { getVmSettingsInitialState } from './vm-settings-tab-initial-state';
+import { getAdvancedTabInitialData } from './advanced-tab-initial-state';
+import { getImportProvidersInitialState } from './import-provider-tab-initial-state';
 import { getNetworksInitialState } from './networks-tab-initial-state';
-import { getStorageInitialState } from './storage-tab-initial-state';
 import { getResultInitialState } from './result-tab-initial-state';
 import { getReviewInitialState } from './review-tab-initial-state';
-import { getCloudInitInitialState } from './cloud-init-tab-initial-state';
+import { getStorageInitialState } from './storage-tab-initial-state';
 import { InitialStepStateGetter } from './types';
-import { getImportProvidersInitialState } from './import-provider-tab-initial-state';
+import { getVmSettingsInitialState } from './vm-settings-tab-initial-state';
 
 const tabStateChecks = [
   // Any change here must be reflected in getStepsMetadata in wizard-selectors.ts (fields which cannot be serialized)
@@ -44,7 +44,7 @@ const initialStateGetterResolver: { [key in VMWizardTab]: InitialStepStateGetter
   [VMWizardTab.VM_SETTINGS]: getVmSettingsInitialState,
   [VMWizardTab.NETWORKING]: getNetworksInitialState,
   [VMWizardTab.STORAGE]: getStorageInitialState,
-  [VMWizardTab.ADVANCED_CLOUD_INIT]: getCloudInitInitialState,
+  [VMWizardTab.ADVANCED]: getAdvancedTabInitialData,
   [VMWizardTab.REVIEW]: getReviewInitialState,
   [VMWizardTab.RESULT]: getResultInitialState,
 };

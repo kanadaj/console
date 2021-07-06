@@ -37,6 +37,7 @@ export const ReviewAndCreate: React.FC<ReviewAndCreateProps> = ({
     storageClass,
     networkType,
     publicNetwork,
+    clusterNetwork,
   } = state;
   const { cpu, memory, zones } = getNodeInfo(state.nodes);
   const scName = getName(storageClass);
@@ -47,7 +48,7 @@ export const ReviewAndCreate: React.FC<ReviewAndCreateProps> = ({
   return (
     <>
       <TextContent className="ocs-install-wizard__text-content">
-        <Text component={TextVariants.h2}>{t('ceph-storage-plugin~Review storage cluster')}</Text>
+        <Text component={TextVariants.h2}>{t('ceph-storage-plugin~Review StorageCluster')}</Text>
       </TextContent>
       <dl>
         <ReviewListTitle text={t('ceph-storage-plugin~Capacity and nodes')} />
@@ -62,7 +63,7 @@ export const ReviewAndCreate: React.FC<ReviewAndCreateProps> = ({
           noValue={!scName}
           validation={!scName && !emptyRequiredField && ValidationType.INTERNALSTORAGECLASS}
         >
-          {t('ceph-storage-plugin~Storage Class:')}{' '}
+          {t('ceph-storage-plugin~StorageClass:')}{' '}
           <span className="text-secondary">{scName ?? t('ceph-storage-plugin~None')}</span>
         </ReviewListBody>
         <ReviewListBody noValue={nodes.length < MINIMUM_NODES}>
@@ -121,7 +122,10 @@ export const ReviewAndCreate: React.FC<ReviewAndCreateProps> = ({
         {isMultusSupported && (
           <ReviewListBody
             validation={
-              networkType === NetworkType.MULTUS && !publicNetwork && ValidationType.NETWORK
+              networkType === NetworkType.MULTUS &&
+              !publicNetwork &&
+              !clusterNetwork &&
+              ValidationType.NETWORK
             }
           >
             <p>

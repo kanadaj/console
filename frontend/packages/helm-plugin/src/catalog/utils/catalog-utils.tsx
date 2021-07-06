@@ -1,14 +1,21 @@
 import * as React from 'react';
-import * as _ from 'lodash';
 import { TFunction } from 'i18next';
+import * as _ from 'lodash';
 import { CatalogItem } from '@console/dynamic-plugin-sdk';
-import { toTitleCase } from '@console/shared';
-import { ExternalLink } from '@console/internal/components/utils';
 import { getImageForIconClass } from '@console/internal/components/catalog/catalog-item-icon';
+import { ExternalLink } from '@console/internal/components/utils';
 import { K8sResourceKind } from '@console/internal/module/k8s';
+import { toTitleCase } from '@console/shared';
+import * as certifiedIcon from '../../../icons/certified.svg';
 import { HelmChartEntries, HelmChartMetaData } from '../../types/helm-types';
 import { getChartRepositoryTitle } from '../../utils/helm-utils';
 import HelmReadmeLoader from '../components/HelmReadmeLoader';
+import {
+  CHART_NAME_ANNOTATION,
+  PROVIDER_TYPE,
+  PROVIDER_TYPE_ANNOTATION,
+  PROVIDER_TYPE_KEYS,
+} from './const';
 
 export const normalizeHelmCharts = (
   chartEntries: HelmChartEntries,
@@ -23,13 +30,27 @@ export const normalizeHelmCharts = (
       const chartRepositoryTitle = getChartRepositoryTitle(chartRepositories, chartRepoName);
 
       charts.forEach((chart: HelmChartMetaData) => {
-        const { name, digest, created, version, appVersion, description, keywords } = chart;
+        const { name, created, version, appVersion, description, keywords, annotations } = chart;
 
-        const displayName = `${toTitleCase(name)} v${version}`;
+        const annotatedName = annotations?.[CHART_NAME_ANNOTATION] ?? '';
+        const providerType = annotations?.[PROVIDER_TYPE_ANNOTATION] ?? '';
+        const displayName = annotatedName || `${toTitleCase(name)} v${version}`;
         const imgUrl = chart.icon || getImageForIconClass('icon-helm');
         const chartURL = chart.urls[0];
         const encodedChartURL = encodeURIComponent(chartURL);
         const href = `/catalog/helm-install?chartName=${name}&chartRepoName=${chartRepoName}&chartURL=${encodedChartURL}&preselected-ns=${activeNamespace}`;
+
+        const translatedProviderType = PROVIDER_TYPE_KEYS[providerType]
+          ? t(PROVIDER_TYPE_KEYS[providerType])
+          : _.capitalize(providerType);
+
+        const title =
+          providerType === PROVIDER_TYPE.partner ? (
+            <>
+              <span style={{ verticalAlign: 'middle' }}>{displayName}</span>{' '}
+              <img src={certifiedIcon} alt={t('helm-plugin~Certified')} />
+            </>
+          ) : null;
 
         const maintainers = chart.maintainers?.length > 0 && (
           <>
@@ -77,9 +98,10 @@ export const normalizeHelmCharts = (
         ];
 
         const helmChart = {
-          uid: digest,
+          uid: `${chartRepoName}--${chartURL}`,
           type: 'HelmChart',
           name: displayName,
+          title,
           description,
           provider: chartRepositoryTitle,
           tags: keywords,
@@ -88,6 +110,7 @@ export const normalizeHelmCharts = (
             name,
             chartRepositoryTitle,
             version,
+            providerType: translatedProviderType,
           },
           icon: {
             class: null,

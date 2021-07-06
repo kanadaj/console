@@ -4,8 +4,8 @@ import { SectionHeading, ResourceSummary } from '@console/internal/components/ut
 import { EventListenerModel } from '../../../models';
 import { getResourceModelFromBindingKind } from '../../../utils/pipeline-augment';
 import ResourceLinkList from '../resource-overview/ResourceLinkList';
-import { useTriggerBindingEventListenerNames } from '../utils/triggers';
 import { TriggerBindingKind } from '../resource-types';
+import { useTriggerBindingEventListenerNames } from '../utils/triggers';
 
 export interface TriggerBindingDetailsProps {
   obj: TriggerBindingKind;
@@ -18,7 +18,7 @@ const TriggerBindingDetails: React.FC<TriggerBindingDetailsProps> = ({ obj: trig
     <div className="co-m-pane__body">
       <SectionHeading
         text={t('pipelines-plugin~{{triggerBindingLabel}} details', {
-          triggerBindingLabel: getResourceModelFromBindingKind(triggerBinding.kind).label,
+          triggerBindingLabel: t(getResourceModelFromBindingKind(triggerBinding.kind).labelKey),
         })}
       />
       <div className="row">

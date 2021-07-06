@@ -1,8 +1,8 @@
 import { checkErrors, testName } from '../../support';
+import { projectDropdown } from '../../views/common';
+import { detailsPage } from '../../views/details-page';
 import { submitButton, errorMessage } from '../../views/form';
 import { listPage } from '../../views/list-page';
-import { detailsPage } from '../../views/details-page';
-import { projectDropdown } from '../../views/common';
 import { modal } from '../../views/modal';
 import { nav } from '../../views/nav';
 
@@ -149,7 +149,7 @@ describe('Monitoring: Alerts', () => {
     cy.log('expires the Silence');
     detailsPage.clickPageActionFromDropdown('Expire silence');
     modal.shouldBeOpened();
-    cy.testA11y('Expire silence modal', '#modal-container');
+    cy.testA11y('Expire silence modal');
     modal.submit();
     modal.shouldBeClosed();
     cy.get(errorMessage).should('not.exist');

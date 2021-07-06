@@ -1,5 +1,13 @@
 import * as _ from 'lodash';
-import { formatDuration } from '@console/internal/components/utils/datetime';
+import { errorModal } from '@console/internal/components/modals/error-modal';
+import {
+  LOG_SOURCE_RESTARTING,
+  LOG_SOURCE_WAITING,
+  LOG_SOURCE_RUNNING,
+  LOG_SOURCE_TERMINATED,
+} from '@console/internal/components/utils';
+import { formatPrometheusDuration } from '@console/internal/components/utils/datetime';
+import { ServiceAccountModel } from '@console/internal/models';
 import {
   ContainerStatus,
   k8sUpdate,
@@ -9,29 +17,8 @@ import {
   K8sKind,
   PersistentVolumeClaimKind,
 } from '@console/internal/module/k8s';
-import {
-  LOG_SOURCE_RESTARTING,
-  LOG_SOURCE_WAITING,
-  LOG_SOURCE_RUNNING,
-  LOG_SOURCE_TERMINATED,
-} from '@console/internal/components/utils';
-import { ServiceAccountModel } from '@console/internal/models';
-import { errorModal } from '@console/internal/components/modals/error-modal';
 import { PIPELINE_SERVICE_ACCOUNT, SecretAnnotationId } from '../components/pipelines/const';
 import { PipelineModalFormWorkspace } from '../components/pipelines/modals/common/types';
-import {
-  PipelineRunKind,
-  PipelineRunParam,
-  PipelineTaskRef,
-  PipelineRunWorkspace,
-  PipelineTask,
-  PipelineKind,
-  TaskRunKind,
-  TektonParam,
-  TektonResultsRun,
-} from '../types';
-import { getLatestRun, runStatus } from './pipeline-augment';
-import { pipelineRunFilterReducer, pipelineRunStatus } from './pipeline-filter-reducer';
 import {
   PipelineRunModel,
   TaskRunModel,
@@ -45,17 +32,21 @@ import {
   TaskModel,
   EventListenerModel,
 } from '../models';
-
-interface Resources {
-  inputs?: Resource[];
-  outputs?: Resource[];
-}
-
-interface Resource {
-  name: string;
-  resource?: string;
-  from?: string[];
-}
+import {
+  PipelineRunKind,
+  PipelineRunParam,
+  PipelineRunWorkspace,
+  PipelineTask,
+  PipelineKind,
+  TaskRunKind,
+  TektonParam,
+} from '../types';
+import { getLatestRun, runStatus } from './pipeline-augment';
+import {
+  pipelineRunFilterReducer,
+  pipelineRunStatus,
+  SucceedConditionReason,
+} from './pipeline-filter-reducer';
 
 interface ServiceAccountSecretNames {
   [name: string]: string;
@@ -66,14 +57,6 @@ export type ServiceAccountType = {
   imagePullSecrets: ServiceAccountSecretNames[];
 } & K8sResourceCommon;
 
-export interface PipelineVisualizationTaskItem {
-  name: string;
-  resources?: Resources;
-  params?: object;
-  runAfter?: string[];
-  taskRef?: PipelineTaskRef;
-}
-
 export const TaskStatusClassNameMap = {
   'In Progress': 'is-running',
   Succeeded: 'is-done',
@@ -82,13 +65,12 @@ export const TaskStatusClassNameMap = {
 };
 
 export const conditions = {
-  hasFromDependency: (task: PipelineVisualizationTaskItem): boolean =>
+  hasFromDependency: (task: PipelineTask): boolean =>
     task.resources &&
     task.resources.inputs &&
     task.resources.inputs.length > 0 &&
     !!task.resources.inputs[0].from,
-  hasRunAfterDependency: (task: PipelineVisualizationTaskItem): boolean =>
-    task.runAfter && task.runAfter.length > 0,
+  hasRunAfterDependency: (task: PipelineTask): boolean => task.runAfter && task.runAfter.length > 0,
 };
 
 export enum ListFilterId {
@@ -138,7 +120,13 @@ export const appendPipelineRunStatus = (pipeline, pipelineRun, isFinallyTasks = 
     if (!pipelineRun.status) {
       return task;
     }
-    if (pipelineRun.status && !pipelineRun.status.taskRuns) {
+    if (!pipelineRun?.status?.taskRuns) {
+      if (pipelineRun.spec.status === SucceedConditionReason.PipelineRunCancelled) {
+        return _.merge(task, { status: { reason: runStatus.Cancelled } });
+      }
+      if (pipelineRun.spec.status === SucceedConditionReason.PipelineRunPending) {
+        return _.merge(task, { status: { reason: runStatus.Idle } });
+      }
       return _.merge(task, { status: { reason: runStatus.Failed } });
     }
     const mTask = _.merge(task, {
@@ -149,7 +137,7 @@ export const appendPipelineRunStatus = (pipeline, pipelineRun, isFinallyTasks = 
       const date =
         new Date(mTask.status.completionTime).getTime() -
         new Date(mTask.status.startTime).getTime();
-      mTask.status.duration = formatDuration(date);
+      mTask.status.duration = formatPrometheusDuration(date);
     }
     // append task status
     if (!mTask.status) {
@@ -162,8 +150,6 @@ export const appendPipelineRunStatus = (pipeline, pipelineRun, isFinallyTasks = 
     return mTask;
   });
 };
-export const hasInlineTaskSpec = (tasks: PipelineTask[] = []): boolean =>
-  tasks.some((task) => !!(task.taskSpec && !task.taskRef));
 
 export const getPipelineTasks = (
   pipeline: PipelineKind,
@@ -173,7 +159,7 @@ export const getPipelineTasks = (
     kind: 'PipelineRun',
     spec: {},
   },
-): PipelineVisualizationTaskItem[][] => {
+): PipelineTask[][] => {
   // Each unit in 'out' array is termed as stage | out = [stage1 = [task1], stage2 = [task2,task3], stage3 = [task4]]
   const out = [];
   if (!pipeline.spec?.tasks || _.isEmpty(pipeline.spec.tasks)) {
@@ -397,15 +383,35 @@ type KeyValuePair = {
   key: string;
   value: string;
 };
-export const getSecretAnnotations = (annotation: KeyValuePair) => {
-  const annotations = {};
+
+const getAnnotationKey = (secretType: string, suffix: number) => {
   const annotationPrefix = 'tekton.dev';
-  if (annotation?.key === SecretAnnotationId.Git) {
-    annotations[`${annotationPrefix}/${SecretAnnotationId.Git}-0`] = annotation?.value;
-  } else if (annotation?.key === SecretAnnotationId.Image) {
-    annotations[`${annotationPrefix}/${SecretAnnotationId.Image}-0`] = annotation?.value;
+  if (secretType === SecretAnnotationId.Git) {
+    return `${annotationPrefix}/${SecretAnnotationId.Git}-${suffix}`;
   }
-  return annotations;
+  if (secretType === SecretAnnotationId.Image) {
+    return `${annotationPrefix}/${SecretAnnotationId.Image}-${suffix}`;
+  }
+  return null;
+};
+
+export const getSecretAnnotations = (
+  annotation: KeyValuePair,
+  existingAnnotations: { [key: string]: string } = {},
+) => {
+  let count = 0;
+  let annotationKey = getAnnotationKey(annotation?.key, count);
+  if (!annotationKey) {
+    return existingAnnotations;
+  }
+  while (
+    existingAnnotations[annotationKey] &&
+    existingAnnotations[annotationKey] !== annotation?.value
+  ) {
+    annotationKey = getAnnotationKey(annotation?.key, ++count);
+  }
+
+  return { ...existingAnnotations, [annotationKey]: annotation?.value };
 };
 
 export const pipelinesTab = (kindObj: K8sKind) => {
@@ -433,21 +439,6 @@ export const pipelinesTab = (kindObj: K8sKind) => {
     default:
       return null;
   }
-};
-
-type ResultColumn = [string, string];
-
-export type ResultCells = {
-  rows: ResultColumn[];
-  columns: ResultColumn;
-};
-
-export const getCellsFromResults = (results: TektonResultsRun[]): ResultCells => {
-  // t('pipelines-plugin~Name') t('pipelines-plugin~Value')
-  return {
-    columns: ['pipelines-plugin~Name', 'pipelines-plugin~Value'],
-    rows: results.map((result) => [result.name, result.value]),
-  };
 };
 
 export const getMatchedPVCs = (

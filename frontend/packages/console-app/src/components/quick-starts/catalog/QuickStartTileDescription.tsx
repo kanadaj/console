@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Button,
   Popover,
@@ -9,6 +8,7 @@ import {
   TextVariants,
 } from '@patternfly/react-core';
 import { InfoCircleIcon } from '@patternfly/react-icons';
+import { useTranslation } from 'react-i18next';
 
 import './QuickStartTileDescription.scss';
 
@@ -25,7 +25,7 @@ const QuickStartTileDescription: React.FC<QuickStartTileDescriptionProps> = ({
   const prereqs = prerequisites?.filter((p) => p);
   return (
     <>
-      <Text component={TextVariants.p} className="oc-quick-start-tile-description">
+      <Text component={TextVariants.p} className="co-quick-start-tile-description">
         {description}
       </Text>
       {prereqs?.length > 0 && (
@@ -55,6 +55,7 @@ const QuickStartTileDescription: React.FC<QuickStartTileDescriptionProps> = ({
                 e.preventDefault();
                 e.stopPropagation();
               }}
+              aria-label={t('quickstart~Show prerequisites')}
             >
               <InfoCircleIcon />
             </Button>

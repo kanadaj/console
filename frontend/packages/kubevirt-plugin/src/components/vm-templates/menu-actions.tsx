@@ -1,27 +1,26 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Stack, StackItem } from '@patternfly/react-core';
-import { getNamespace } from '@console/shared';
-import { K8sKind, TemplateKind } from '@console/internal/module/k8s';
+import { useTranslation } from 'react-i18next';
 import { asAccessReview, Kebab, KebabOption } from '@console/internal/components/utils';
-
-import { VMWizardName, VMWizardMode } from '../../constants/vm';
-import { VirtualMachineModel } from '../../models';
-import { getVMWizardCreateLink } from '../../utils/url';
-import { deleteVMTemplateModal } from '../modals/menu-actions-modals/delete-vm-template-modal';
-import { TemplateItem } from '../../types/template';
-import { isCommonTemplate } from '../../selectors/vm-template/basic';
-import { PinnedIcon } from './os-icons';
-import { SupportModalFunction } from '../../hooks/use-support-modal';
+import { K8sKind, TemplateKind } from '@console/internal/module/k8s';
+import { getNamespace } from '@console/shared';
+import { VMWizardMode, VMWizardName } from '../../constants/vm';
 import { CustomizeSourceFunction } from '../../hooks/use-customize-source-modal';
+import { SupportModalFunction } from '../../hooks/use-support-modal';
+import { VirtualMachineModel } from '../../models';
+import { isCommonTemplate } from '../../selectors/vm-template/basic';
 import {
-  TemplateSourceStatus,
   isTemplateSourceError,
   SOURCE_TYPE,
+  TemplateSourceStatus,
 } from '../../statuses/template/types';
-import { createVMAction } from './utils';
 import { VMKind } from '../../types';
+import { TemplateItem } from '../../types/template';
+import { getVMWizardCreateLink } from '../../utils/url';
+import { deleteVMTemplateModal } from '../modals/menu-actions-modals/delete-vm-template-modal';
 import deleteVMTCustomizationModal from '../modals/menu-actions-modals/DeleteVMTCustomizationModal';
+import { RemovePinnedIcon, PinnedIcon } from './os-icons';
+import { createVMAction } from './utils';
 
 type CustomData = {
   togglePin?: (template: TemplateItem) => void;
@@ -38,8 +37,10 @@ type CustomData = {
 type MenuAction = (kind: K8sKind, vmTemplate: TemplateItem, customData?: CustomData) => KebabOption;
 
 const newTemplateFromCommon: MenuAction = (kind, vmTemplate, { namespace }) => ({
-  // t('kubevirt-plugin~Create new Template from')
-  labelKey: 'kubevirt-plugin~Create new Template from',
+  // t('kubevirt-plugin~Create new Template')
+  labelKey: 'kubevirt-plugin~Create new Template',
+  // t('kubevirt-plugin~Create a new customized template based on this template')
+  tooltipKey: 'kubevirt-plugin~Create a new customized template based on this template',
   href: getVMWizardCreateLink({
     namespace: namespace || vmTemplate.variants[0].metadata.namespace,
     wizardName: VMWizardName.WIZARD,
@@ -128,8 +129,8 @@ const PinTemplateLabel: React.FC<{ pinned: boolean }> = ({ pinned }) => {
   const { t } = useTranslation();
   return (
     <>
-      {pinned ? t('kubevirt-plugin~Unfavorite template') : t('kubevirt-plugin~Favorite template')}
-      <PinnedIcon />
+      {pinned ? t('kubevirt-plugin~Remove favorite') : t('kubevirt-plugin~Favorite template')}
+      {pinned ? <RemovePinnedIcon /> : <PinnedIcon />}
     </>
   );
 };

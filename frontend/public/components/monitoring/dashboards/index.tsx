@@ -1,5 +1,5 @@
 import * as _ from 'lodash-es';
-import { Button, Dropdown, DropdownToggle, DropdownItem } from '@patternfly/react-core';
+import { Button, Dropdown, DropdownToggle, DropdownItem, Label } from '@patternfly/react-core';
 import { AngleDownIcon, AngleRightIcon } from '@patternfly/react-icons';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
@@ -31,19 +31,29 @@ import {
 import { ErrorBoundaryFallback } from '../../error';
 import { RootState } from '../../../redux';
 import { getPrometheusURL, PrometheusEndpoint } from '../../graphs/helpers';
-import { ExternalLink, history, LoadingInline, useSafeFetch } from '../../utils';
+import { history, LoadingInline, useSafeFetch } from '../../utils';
 import { formatPrometheusDuration, parsePrometheusDuration } from '../../utils/datetime';
 import IntervalDropdown from '../poll-interval-dropdown';
 import BarChart from './bar-chart';
+import customTimeRangeModal from './custom-time-range-modal';
 import Graph from './graph';
 import SingleStat from './single-stat';
 import Table from './table';
-import { MONITORING_DASHBOARDS_DEFAULT_TIMESPAN, Panel } from './types';
+import {
+  MONITORING_DASHBOARDS_DEFAULT_TIMESPAN,
+  MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY,
+  Panel,
+} from './types';
+import { useBoolean } from '../hooks/useBoolean';
 
 const NUM_SAMPLES = 30;
 
-const evaluateTemplate = (s: string, variables: VariablesMap, timespan: number): string => {
-  if (_.isEmpty(s)) {
+const evaluateTemplate = (
+  template: string,
+  variables: ImmutableMap<string, Variable>,
+  timespan: number,
+): string => {
+  if (_.isEmpty(template)) {
     return undefined;
   }
 
@@ -54,7 +64,7 @@ const evaluateTemplate = (s: string, variables: VariablesMap, timespan: number):
   // require 2 data points each. Otherwise, there could be gaps in the graph.
   const interval: Variable = { value: `${Math.max(intervalMinutes, 5)}m` };
   const allVariables = {
-    ...variables,
+    ...variables.toJS(),
     __interval: interval,
     // eslint-disable-next-line camelcase
     __rate_interval: interval,
@@ -64,7 +74,7 @@ const evaluateTemplate = (s: string, variables: VariablesMap, timespan: number):
     '__auto_interval_[a-z]+': interval,
   };
 
-  let result = s;
+  let result = template;
   _.each(allVariables, (v, k) => {
     const re = new RegExp(`\\$${k}`, 'g');
     if (result.match(re)) {
@@ -72,19 +82,17 @@ const evaluateTemplate = (s: string, variables: VariablesMap, timespan: number):
         result = undefined;
         return false;
       }
-      result = result.replace(re, v.value || '');
+      const replacement =
+        v.value === MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY
+          ? // Build a regex that tests for all options. After escaping regex characters, we also
+            // escape '\' characters so that they are seen as literal '\'s by the PromQL parser.
+            `(${v.options.map((s) => _.escapeRegExp(s).replace(/\\/g, '\\\\')).join('|')})`
+          : v.value || '';
+      result = result.replace(re, replacement);
     }
   });
 
   return result;
-};
-
-const useBoolean = (initialValue: boolean): [boolean, () => void, () => void, () => void] => {
-  const [value, setValue] = React.useState(initialValue);
-  const toggle = React.useCallback(() => setValue((v) => !v), []);
-  const setTrue = React.useCallback(() => setValue(true), []);
-  const setFalse = React.useCallback(() => setValue(false), []);
-  return [value, toggle, setTrue, setFalse];
 };
 
 const VariableDropdown: React.FC<VariableDropdownProps> = ({
@@ -145,13 +153,15 @@ const SingleVariableDropdown: React.FC<SingleVariableDropdownProps> = ({ id, nam
   const timespan = useSelector(({ UI }: RootState) =>
     UI.getIn(['monitoringDashboards', 'timespan']),
   );
-  const { isHidden, options, query, value } = useSelector(({ UI }: RootState) => {
-    const variables = UI.getIn(['monitoringDashboards', 'variables']).toJS();
+  const { includeAll, isHidden, options, query, value } = useSelector(({ UI }: RootState) => {
+    const variables = UI.getIn(['monitoringDashboards', 'variables']);
+    const variable = variables.toJS()[name];
     return {
-      isHidden: variables[name].isHidden,
-      options: variables[name].options,
-      query: evaluateTemplate(variables[name].query, variables, timespan),
-      value: variables[name].value,
+      includeAll: variable.includeAll,
+      isHidden: variable.isHidden,
+      options: variable.options,
+      query: evaluateTemplate(variable.query, variables, timespan),
+      value: variable.value,
     };
   });
 
@@ -202,11 +212,16 @@ const SingleVariableDropdown: React.FC<SingleVariableDropdownProps> = ({ id, nam
     return null;
   }
 
+  const items = includeAll ? { [MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY]: 'All' } : {};
+  _.each(options, (option) => {
+    items[option] = option;
+  });
+
   return (
     <VariableDropdown
       id={id}
       isError={isError}
-      items={_.zipObject(options, options)}
+      items={items}
       label={name}
       onChange={onChange}
       selectedKey={value}
@@ -228,23 +243,90 @@ const AllVariableDropdowns = () => {
   );
 };
 
+const DashboardDropdown = ({ items, onChange, selectedKey }) => {
+  const { t } = useTranslation();
+
+  const [isOpen, toggleIsOpen, , setClosed] = useBoolean(false);
+
+  const tagColors: ('red' | 'purple' | 'blue' | 'green' | 'cyan' | 'orange')[] = [
+    'red',
+    'purple',
+    'blue',
+    'green',
+    'cyan',
+    'orange',
+  ];
+
+  const allTags = _.flatMap(items, 'tags');
+  const uniqueTags = _.uniq(allTags);
+
+  return (
+    <div className="form-group monitoring-dashboards__dropdown-wrap">
+      <label className="monitoring-dashboards__dropdown-title" htmlFor="monitoring-board-dropdown">
+        {t('public~Dashboard')}
+      </label>
+      <Dropdown
+        className="monitoring-dashboards__variable-dropdown"
+        dropdownItems={_.map(items, (item, key) => (
+          <DropdownItem
+            className="monitoring-dashboards__dashboard_dropdown_item"
+            component="button"
+            key={key}
+            onClick={() => onChange(key)}
+          >
+            {item.title}
+            {item.tags.map((tag, i) => (
+              <Label
+                className="monitoring-dashboards__dashboard_dropdown_tag"
+                color={tagColors[_.indexOf(uniqueTags, tag) % tagColors.length]}
+                key={i}
+              >
+                {tag}
+              </Label>
+            ))}
+          </DropdownItem>
+        ))}
+        isOpen={isOpen}
+        onSelect={setClosed}
+        toggle={
+          <DropdownToggle
+            className="monitoring-dashboards__dropdown-button"
+            id="monitoring-board-dropdown"
+            onToggle={toggleIsOpen}
+          >
+            {items[selectedKey]?.title}
+          </DropdownToggle>
+        }
+      />
+    </div>
+  );
+};
+
+const CUSTOM_TIME_RANGE_KEY = 'CUSTOM_TIME_RANGE_KEY';
+
 export const TimespanDropdown = () => {
   const { t } = useTranslation();
 
   const timespan = useSelector(({ UI }: RootState) =>
     UI.getIn(['monitoringDashboards', 'timespan']),
   );
+  const endTime = useSelector(({ UI }: RootState) => UI.getIn(['monitoringDashboards', 'endTime']));
 
   const dispatch = useDispatch();
   const onChange = React.useCallback(
     (v: string) => {
-      dispatch(monitoringDashboardsSetTimespan(parsePrometheusDuration(v)));
-      dispatch(monitoringDashboardsSetEndTime(null));
+      if (v === CUSTOM_TIME_RANGE_KEY) {
+        customTimeRangeModal({});
+      } else {
+        dispatch(monitoringDashboardsSetTimespan(parsePrometheusDuration(v)));
+        dispatch(monitoringDashboardsSetEndTime(null));
+      }
     },
     [dispatch],
   );
 
   const timespanOptions = {
+    [CUSTOM_TIME_RANGE_KEY]: t('public~Custom time range'),
     '5m': t('public~Last {{count}} minute', { count: 5 }),
     '15m': t('public~Last {{count}} minute', { count: 15 }),
     '30m': t('public~Last {{count}} minute', { count: 30 }),
@@ -264,7 +346,7 @@ export const TimespanDropdown = () => {
       items={timespanOptions}
       label={t('public~Time range')}
       onChange={onChange}
-      selectedKey={formatPrometheusDuration(timespan)}
+      selectedKey={endTime ? CUSTOM_TIME_RANGE_KEY : formatPrometheusDuration(timespan)}
     />
   );
 };
@@ -357,7 +439,7 @@ const Card: React.FC<CardProps> = ({ panel }) => {
     UI.getIn(['monitoringDashboards', 'variables']),
   );
 
-  const formatLegendLabel = React.useCallback(
+  const formatSeriesTitle = React.useCallback(
     (labels, i) => {
       const legendFormat = panel.targets?.[i]?.legendFormat;
       const compiled = _.template(legendFormat, legendTemplateOptions);
@@ -382,17 +464,15 @@ const Card: React.FC<CardProps> = ({ panel }) => {
     );
   }
 
-  if (!['grafana-piechart-panel', 'graph', 'singlestat', 'table'].includes(panel.type)) {
+  if (!['gauge', 'grafana-piechart-panel', 'graph', 'singlestat', 'table'].includes(panel.type)) {
     return null;
   }
-
-  const variablesJS: VariablesMap = variables.toJS();
 
   const rawQueries = _.map(panel.targets, 'expr');
   if (!rawQueries.length) {
     return null;
   }
-  const queries = rawQueries.map((expr) => evaluateTemplate(expr, variablesJS, timespan));
+  const queries = rawQueries.map((expr) => evaluateTemplate(expr, variables, timespan));
   const isLoading = _.some(queries, _.isUndefined);
 
   const panelClassModifier = getPanelClassModifier(panel);
@@ -419,13 +499,14 @@ const Card: React.FC<CardProps> = ({ panel }) => {
               )}
               {panel.type === 'graph' && (
                 <Graph
-                  formatLegendLabel={panel.legend?.show ? formatLegendLabel : undefined}
+                  formatSeriesTitle={formatSeriesTitle}
                   isStack={panel.stack}
                   pollInterval={pollInterval}
                   queries={queries}
+                  showLegend={panel.legend?.show}
                 />
               )}
-              {panel.type === 'singlestat' && (
+              {(panel.type === 'singlestat' || panel.type === 'gauge') && (
                 <SingleStat panel={panel} pollInterval={pollInterval} query={queries[0]} />
               )}
               {panel.type === 'table' && (
@@ -481,13 +562,6 @@ const Board: React.FC<BoardProps> = ({ rows }) => (
   </>
 );
 
-const GrafanaLink = () =>
-  _.isEmpty(window.SERVER_FLAGS.grafanaPublicURL) ? null : (
-    <span className="monitoring-header-link">
-      <ExternalLink href={window.SERVER_FLAGS.grafanaPublicURL} text="Grafana UI" />
-    </span>
-  );
-
 const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ match }) => {
   const { t } = useTranslation();
 
@@ -537,9 +611,14 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
       });
   }, [safeFetch, setLoaded, t]);
 
-  const boardItems = React.useMemo(() => _.mapValues(_.mapKeys(boards, 'name'), 'data.title'), [
-    boards,
-  ]);
+  const boardItems = React.useMemo(
+    () =>
+      _.mapValues(_.mapKeys(boards, 'name'), (b) => ({
+        tags: b.data.tags,
+        title: b.data.title,
+      })),
+    [boards],
+  );
 
   const changeBoard = React.useCallback(
     (newBoard: string) => {
@@ -549,12 +628,21 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
         const allVariables = {};
         _.each(data?.templating?.list, (v) => {
           if (v.type === 'query' || v.type === 'interval') {
+            // Look for an option that should be selected by default
+            let value = _.find(v.options, { selected: true })?.value;
+
+            // If no default option was found, default to "All" (if present)
+            if (value === undefined && v.includeAll) {
+              value = MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY;
+            }
+
             allVariables[v.name] = ImmutableMap({
+              includeAll: !!v.includeAll,
               isHidden: v.hide !== 0,
               isLoading: v.type === 'query',
               options: _.map(v.options, 'value'),
               query: v.type === 'query' ? v.query : undefined,
-              value: _.find(v.options, { selected: true })?.value || v.options?.[0]?.value,
+              value: value || v.options?.[0]?.value,
             });
           }
         });
@@ -590,7 +678,7 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
     ? data.rows
     : data?.panels?.reduce((acc, panel) => {
         if (panel.type === 'row' || acc.length === 0) {
-          acc.push(panel);
+          acc.push(_.cloneDeep(panel));
         } else {
           const row = acc[acc.length - 1];
           if (_.isNil(row.panels)) {
@@ -609,9 +697,7 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
       <div className="co-m-nav-title co-m-nav-title--detail">
         <div className="monitoring-dashboards__header">
           <h1 className="co-m-pane__heading">
-            <span>
-              {t('public~Dashboards')} <GrafanaLink />
-            </span>
+            <span>{t('public~Dashboards')}</span>
           </h1>
           <div className="monitoring-dashboards__options">
             <TimespanDropdown />
@@ -620,13 +706,7 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
         </div>
         <div className="monitoring-dashboards__variables">
           {!_.isEmpty(boardItems) && (
-            <VariableDropdown
-              id="monitoring-board-dropdown"
-              items={boardItems}
-              label={t('public~Dashboard')}
-              onChange={changeBoard}
-              selectedKey={board}
-            />
+            <DashboardDropdown items={boardItems} onChange={changeBoard} selectedKey={board} />
           )}
           <AllVariableDropdowns key={board} />
         </div>
@@ -638,6 +718,7 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
 
 type TemplateVariable = {
   hide: number;
+  includeAll: boolean;
   name: string;
   options: { selected: boolean; value: string }[];
   query: string;
@@ -658,6 +739,7 @@ type Board = {
     templating: {
       list: TemplateVariable[];
     };
+    tags: string;
     title: string;
   };
   name: string;
@@ -670,8 +752,6 @@ type Variable = {
   query?: string;
   value?: string;
 };
-
-type VariablesMap = { [key: string]: Variable };
 
 type VariableDropdownProps = {
   id: string;

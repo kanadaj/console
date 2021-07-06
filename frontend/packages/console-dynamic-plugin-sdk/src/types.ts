@@ -1,4 +1,53 @@
-import { Extension } from '@console/plugin-sdk/src/typings/base';
+/**
+ * Console feature flags used to gate extension instances.
+ */
+export type ExtensionFlags = Partial<{
+  required: string[];
+  disallowed: string[];
+}>;
+
+/**
+ * TS type guard to narrow type of the given extension to `E`.
+ */
+export type ExtensionTypeGuard<E extends Extension> = (e: E) => e is E;
+
+/**
+ * Runtime extension interface, exposing additional metadata.
+ */
+export type LoadedExtension<E extends Extension = Extension> = E & {
+  pluginID: string;
+  pluginName: string;
+  uid: string;
+};
+
+/**
+ * An extension of the Console application.
+ *
+ * Each extension is a realization (instance) of an extension `type` using the
+ * parameters provided via the `properties` object.
+ *
+ * The value of extension `type` should be formatted in a way that describes
+ * the broader category as well as any specialization(s), for example:
+ *
+ * - `ModelDefinition`
+ * - `Page/Resource/List`
+ * - `Dashboards/Overview/Utilization/Item`
+ *
+ * Each extension may specify `flags` referencing Console feature flags which
+ * are required and/or disallowed in order to put this extension into effect.
+ */
+export type Extension<P extends {} = any> = {
+  type: string;
+  properties: P;
+  flags?: ExtensionFlags;
+};
+
+/**
+ * Declaration of Console extension type.
+ */
+export type ExtensionDeclaration<T extends string, P extends {}> = Extension<P> & {
+  type: T;
+};
 
 /**
  * Remote (i.e. webpack container) entry module interface.
@@ -65,4 +114,13 @@ export type UpdateExtensionProperties<
   {
     properties: Update<P, U>;
   }
+>;
+
+/**
+ * Update `CodeRef` properties of extension `E` to the referenced object types.
+ *
+ * This also coerces `E` type to `LoadedExtension` interface for runtime consumption.
+ */
+export type ResolvedExtension<E extends Extension<P>, P = ExtensionProperties<E>> = LoadedExtension<
+  UpdateExtensionProperties<E, ResolvedCodeRefProperties<P>, P>
 >;

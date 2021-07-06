@@ -19,19 +19,13 @@ export enum PipelineResourceType {
   storage = 'storage',
 }
 
-export const pipelineResourceTypeSelections = {
-  '': 'Select resource type',
-  [PipelineResourceType.git]: 'Git',
-  [PipelineResourceType.image]: 'Image',
-  [PipelineResourceType.cluster]: 'Cluster',
-  [PipelineResourceType.storage]: 'Storage',
-};
-
 export enum VolumeTypes {
-  EmptyDirectory = 'Empty Directory',
-  ConfigMap = 'Config Map',
-  Secret = 'Secret',
-  PVC = 'PVC',
+  NoWorkspace = 'noWorkspace',
+  EmptyDirectory = 'emptyDirectory',
+  ConfigMap = 'configMap',
+  Secret = 'secret',
+  PVC = 'pvc',
+  VolumeClaimTemplate = 'volumeClaimTemplate',
 }
 
 export enum SecretAnnotationId {
@@ -44,6 +38,7 @@ export const SecretAnnotationType = {
   [SecretAnnotationId.Image]: 'Image Registry',
 };
 
+export const PIPELINE_GA_VERSION = '1.4.0';
 export const PIPELINE_SERVICE_ACCOUNT = 'pipeline';
 export const PIPELINE_RUN_AUTO_START_FAILED = `bridge/pipeline-run-auto-start-failed`;
 

@@ -1,5 +1,5 @@
-import { TemplateKind } from '@console/internal/module/k8s';
 import { Map } from 'immutable';
+import { TemplateKind } from '@console/internal/module/k8s';
 
 enum commonTemplatesValidationRules {
   integer = 'integer',

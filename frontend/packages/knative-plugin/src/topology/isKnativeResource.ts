@@ -1,10 +1,10 @@
-import { K8sResourceKind } from '@console/internal/module/k8s';
 import { Model } from '@patternfly/react-topology';
-import { OdcNodeModel } from '@console/topology/src/topology-types';
 import { DeploymentModel } from '@console/internal/models';
-import { TYPE_EVENT_SOURCE } from './const';
-import { EventingBrokerModel } from '../models';
+import { K8sResourceKind } from '@console/internal/module/k8s';
+import { OdcNodeModel } from '@console/topology/src/topology-types';
 import { CAMEL_SOURCE_INTEGRATION } from '../const';
+import { EventingBrokerModel } from '../models';
+import { TYPE_EVENT_SOURCE, TYPE_EVENT_SOURCE_KAFKA } from './const';
 
 const KNATIVE_CONFIGURATION = 'serving.knative.dev/configuration';
 
@@ -17,7 +17,7 @@ export const isKnativeResource = (resource: K8sResourceKind, model: Model): bool
   }
 
   const eventSources = model.nodes
-    .filter((n) => n.type === TYPE_EVENT_SOURCE)
+    .filter((n) => n.type === TYPE_EVENT_SOURCE || n.type === TYPE_EVENT_SOURCE_KAFKA)
     .map((n) => (n as OdcNodeModel).resource);
 
   const isEventSourceKind = (uid: string): boolean =>

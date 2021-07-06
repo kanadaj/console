@@ -1,20 +1,25 @@
 import { Given, Then, When } from 'cypress-cucumber-preprocessor/steps';
-import { pipelinesPage, startPipelineInPipelinesPage } from '../../pages/pipelines/pipelines-page';
-import { pipelineBuilderPage } from '../../pages/pipelines/pipelineBuilder-page';
-import { modal } from '../../../../../integration-tests-cypress/views/modal';
-import { pipelineRunDetailsPage } from '../../pages/pipelines/pipelineRun-details-page';
-import { navigateTo } from '@console/dev-console/integration-tests/support/pages/app';
-import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants/global';
-import { pipelineBuilderPO, pipelinesPO } from '../../page-objects/pipelines-po';
-import { detailsPage } from '../../../../../integration-tests-cypress/views/details-page';
-import { pageTitle } from '@console/dev-console/integration-tests/support/constants/pageTitle';
+import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
+import { modal } from '@console/cypress-integration-tests/views/modal';
+import {
+  devNavigationMenu,
+  pageTitle,
+} from '@console/dev-console/integration-tests/support/constants';
+import { app, navigateTo } from '@console/dev-console/integration-tests/support/pages';
+import { pipelineActions } from '../../constants';
+import { pipelineBuilderPO, pipelinesPO } from '../../page-objects';
+import {
+  pipelineRunDetailsPage,
+  pipelineBuilderPage,
+  pipelinesPage,
+  startPipelineInPipelinesPage,
+} from '../../pages';
 
 When(
   'user selects {string} option from kebab menu for pipeline {string}',
   (option: string, pipelineName: string) => {
     pipelinesPage.search(pipelineName);
-    pipelinesPage.selectKebabMenu(pipelineName);
-    cy.byTestActionID(option).click();
+    pipelinesPage.selectActionForPipeline(pipelineName, option);
   },
 );
 
@@ -23,8 +28,7 @@ Given('pipeline run is displayed for {string} with resource', (pipelineName: str
   pipelineBuilderPage.createPipelineWithGitResources(pipelineName);
   cy.byLegacyTestID('breadcrumb-link-0').click();
   pipelinesPage.search(pipelineName);
-  pipelinesPage.selectKebabMenu(pipelineName);
-  cy.byTestActionID('Start').click();
+  pipelinesPage.selectActionForPipeline(pipelineName, pipelineActions.Start);
   modal.modalTitleShouldContain('Start Pipeline');
   startPipelineInPipelinesPage.addGitResource('https://github.com/sclorg/nodejs-ex.git');
   startPipelineInPipelinesPage.clickStart();
@@ -34,12 +38,49 @@ Given('pipeline run is displayed for {string} with resource', (pipelineName: str
   cy.get(pipelinesPO.pipelinesTable.pipelineRunIcon).should('be.visible');
 });
 
+Given(
+  'pipeline run is displayed for {string} with workspace {string} of type {string}',
+  (pipelineName: string, workspaceName: string, workspaceType: string) => {
+    pipelinesPage.clickOnCreatePipeline();
+    pipelineBuilderPage.createPipelineWithWorkspaces(pipelineName, workspaceName);
+    cy.byLegacyTestID('breadcrumb-link-0').click();
+    pipelinesPage.search(pipelineName);
+    pipelinesPage.selectActionForPipeline(pipelineName, pipelineActions.Start);
+    modal.modalTitleShouldContain('Start Pipeline');
+    startPipelineInPipelinesPage.selectWorkSpace(workspaceType);
+    startPipelineInPipelinesPage.clickStart();
+    pipelineRunDetailsPage.verifyTitle();
+    navigateTo(devNavigationMenu.Pipelines);
+    pipelinesPage.search(pipelineName);
+    cy.get(pipelinesPO.pipelinesTable.pipelineRunIcon).should('be.visible');
+  },
+);
+
+Given(
+  'pipeline {string} is created with {string} workspace',
+  (pipelineName: string, workspaceName: string) => {
+    pipelinesPage.clickOnCreatePipeline();
+    pipelineBuilderPage.createPipelineWithWorkspaces(pipelineName, 'git-clone', workspaceName);
+    cy.byLegacyTestID('breadcrumb-link-0').click();
+    pipelinesPage.search(pipelineName);
+  },
+);
+
+Given(
+  'pipeline {string} with at least one workspace {string} and no previous Pipeline Runs',
+  (pipelineName: string, workspaceName: string) => {
+    pipelinesPage.clickOnCreatePipeline();
+    pipelineBuilderPage.createPipelineWithWorkspaces(pipelineName, 'git-clone', workspaceName);
+    cy.byLegacyTestID('breadcrumb-link-0').click();
+    pipelinesPage.search(pipelineName);
+  },
+);
+
 When('user adds another task {string} in parallel', (taskName: string) => {
   pipelineBuilderPage.selectParallelTask(taskName);
   pipelineBuilderPage.addResource('git resource');
   pipelineBuilderPage.clickOnTask(taskName);
-  cy.get(pipelineBuilderPO.formView.sidePane.inputResource).click();
-  cy.byTestDropDownMenu('git resource').click();
+  cy.get(pipelineBuilderPO.formView.sidePane.inputResource).select('git resource');
   pipelineBuilderPage.clickCreateButton();
 });
 
@@ -56,4 +97,9 @@ Given('user has installed OpenShift Pipelines operator using cli', () => {
 
 Then('user redirects to Pipelines page', () => {
   detailsPage.titleShouldContain(pageTitle.Pipelines);
+});
+
+Then('user redirects to Pipeline Builder page', () => {
+  pipelineBuilderPage.verifyTitle();
+  app.waitForLoad();
 });

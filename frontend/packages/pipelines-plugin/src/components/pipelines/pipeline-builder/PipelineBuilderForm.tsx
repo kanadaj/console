@@ -1,8 +1,8 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import { FormikProps } from 'formik';
-import { useTranslation } from 'react-i18next';
 import { Stack, StackItem } from '@patternfly/react-core';
+import { FormikProps } from 'formik';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
 import {
   FormFooter,
   SyncedEditorField,
@@ -12,11 +12,12 @@ import {
 } from '@console/shared';
 import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
 import { safeJSToYAML } from '@console/shared/src/utils/yaml';
-import { PipelineKind, TaskKind } from '../../../types';
-import { PipelineVisualizationTaskItem } from '../../../utils/pipeline-utils';
 import { PipelineModel } from '../../../models';
-import { useResourceValidation } from './hooks';
+import { PipelineKind, PipelineTask, TaskKind } from '../../../types';
+import { initialPipelineFormData, STATUS_KEY_NAME_ERROR, UpdateOperationType } from './const';
+import { useExplicitPipelineTaskTouch, useFormikFetchAndSaveTasks } from './hooks';
 import { removeTaskModal } from './modals';
+import PipelineBuilderFormEditor from './PipelineBuilderFormEditor';
 import PipelineBuilderHeader from './PipelineBuilderHeader';
 import Sidebar from './task-sidebar/Sidebar';
 import TaskSidebar from './task-sidebar/TaskSidebar';
@@ -24,14 +25,12 @@ import {
   CleanupResults,
   PipelineBuilderTaskGroup,
   SelectedBuilderTask,
-  UpdateErrors,
-  UpdateOperationUpdateTaskData,
+  UpdateOperationRenameTaskData,
   PipelineBuilderFormikValues,
+  TaskType,
 } from './types';
 import { applyChange } from './update-utils';
 import { convertBuilderFormToPipeline } from './utils';
-import { initialPipelineFormData, UpdateOperationType } from './const';
-import PipelineBuilderFormEditor from './PipelineBuilderFormEditor';
 
 import './PipelineBuilderForm.scss';
 
@@ -45,6 +44,7 @@ const PipelineBuilderForm: React.FC<PipelineBuilderFormProps> = (props) => {
   const [selectedTask, setSelectedTask] = React.useState<SelectedBuilderTask>(null);
   const selectedTaskRef = React.useRef<SelectedBuilderTask>(null);
   selectedTaskRef.current = selectedTask;
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
   const {
     existingPipeline,
@@ -56,39 +56,17 @@ const PipelineBuilderForm: React.FC<PipelineBuilderFormProps> = (props) => {
     errors,
     namespace,
     setFieldValue,
-    setStatus,
-    values,
+    values: { editorType, formData, taskResources },
     validateForm,
   } = props;
+  useFormikFetchAndSaveTasks(namespace, validateForm);
+  useExplicitPipelineTaskTouch();
+
   const statusRef = React.useRef(status);
   statusRef.current = status;
 
-  React.useEffect(() => {
-    if (values.editorType === EditorType.Form) {
-      // Force validation against the new data that was adjusted in the YAML
-      // Formik isn't properly handling the immediate state of the form values during the cycle of the editorType
-      setTimeout(() => validateForm(), 0);
-    }
-  }, [values.editorType, validateForm]);
-
-  const updateErrors: UpdateErrors = React.useCallback(
-    (taskErrors) => {
-      if (taskErrors) {
-        setStatus({
-          ...statusRef.current,
-          tasks: _.omitBy(_.merge({}, statusRef.current?.tasks, taskErrors), (v) => !v),
-        });
-      }
-    },
-    [setStatus],
-  );
-
-  const onTaskSelection = (
-    task: PipelineVisualizationTaskItem,
-    resource: TaskKind,
-    isFinallyTask: boolean,
-  ) => {
-    const builderNodes = isFinallyTask ? values.formData.finallyTasks : values.formData.tasks;
+  const onTaskSelection = (task: PipelineTask, resource: TaskKind, isFinallyTask: boolean) => {
+    const builderNodes = isFinallyTask ? formData.finallyTasks : formData.tasks;
     setSelectedTask({
       isFinallyTask,
       taskIndex: builderNodes.findIndex(({ name }) => name === task.name),
@@ -96,34 +74,28 @@ const PipelineBuilderForm: React.FC<PipelineBuilderFormProps> = (props) => {
     });
   };
 
-  useResourceValidation(
-    values.formData.finallyTasks,
-    values.formData.tasks,
-    values.formData.resources,
-    values.formData.workspaces,
-    updateErrors,
-  );
-
   const updateTasks = (changes: CleanupResults): void => {
-    const { tasks, listTasks, finallyTasks, finallyListTasks, errors: taskErrors } = changes;
+    const { tasks, listTasks, finallyTasks, finallyListTasks } = changes;
 
-    setFieldValue('formData.tasks', tasks);
-    setFieldValue('formData.listTasks', listTasks);
-    setFieldValue('formData.finallyTasks', finallyTasks);
-    setFieldValue('formData.finallyListTasks', finallyListTasks);
-    updateErrors(taskErrors);
+    setFieldValue('formData', {
+      ...formData,
+      tasks,
+      listTasks,
+      finallyTasks,
+      finallyListTasks,
+    });
   };
 
-  const nodeType = selectedTask?.isFinallyTask ? 'finallyTasks' : 'tasks';
-  const selectedId = values.formData[nodeType][selectedTask?.taskIndex]?.name;
+  const nodeType: TaskType = selectedTask?.isFinallyTask ? 'finallyTasks' : 'tasks';
+  const selectedId = formData[nodeType][selectedTask?.taskIndex]?.name;
   const selectedIds = selectedId ? [selectedId] : [];
 
   const taskGroup: PipelineBuilderTaskGroup = {
-    tasks: values.formData.tasks,
-    listTasks: values.formData.listTasks,
+    tasks: formData.tasks,
+    listTasks: formData.listTasks,
     highlightedIds: selectedIds,
-    finallyTasks: values.formData.finallyTasks,
-    finallyListTasks: values.formData.finallyListTasks,
+    finallyTasks: formData.finallyTasks,
+    finallyListTasks: formData.finallyListTasks,
   };
 
   const closeSidebarAndHandleReset = React.useCallback(() => {
@@ -134,9 +106,9 @@ const PipelineBuilderForm: React.FC<PipelineBuilderFormProps> = (props) => {
 
   const formEditor = (
     <PipelineBuilderFormEditor
-      namespace={namespace}
       hasExistingPipeline={!!existingPipeline}
       taskGroup={taskGroup}
+      taskResources={taskResources}
       onTaskSelection={onTaskSelection}
       onUpdateTasks={(updatedTaskGroup, op) => {
         updateTasks(applyChange(updatedTaskGroup, op));
@@ -148,107 +120,105 @@ const PipelineBuilderForm: React.FC<PipelineBuilderFormProps> = (props) => {
     <YAMLEditorField name="yamlData" model={PipelineModel} onSave={handleSubmit} />
   );
 
-  const sanitizeToForm = (newFormData: PipelineKind) => {
-    const formData = {
-      ...newFormData.spec,
-      name: newFormData.metadata?.name,
-      listTasks: values.formData.listTasks,
-      finallyTasks: newFormData.spec.finally,
-      finallyListTasks: values.formData.finallyListTasks,
+  const sanitizeToForm = (yamlPipeline: PipelineKind) => {
+    const { finally: finallyTasks, ...pipelineSpecProperties } = yamlPipeline.spec;
+
+    const newFormData = {
+      ...formData,
+      ...pipelineSpecProperties, // support & keep unknown values as well as whatever they may have changed that we use
+      name: yamlPipeline.metadata?.name,
+      finallyTasks,
     };
-    return _.merge({}, initialPipelineFormData, formData);
+    return _.merge({}, initialPipelineFormData, newFormData);
   };
 
   const sanitizeToYaml = () =>
-    safeJSToYAML(
-      convertBuilderFormToPipeline(values.formData, namespace, existingPipeline),
-      'yamlData',
-      {
-        skipInvalid: true,
-      },
-    );
+    safeJSToYAML(convertBuilderFormToPipeline(formData, namespace, existingPipeline), 'yamlData', {
+      skipInvalid: true,
+    });
 
   return (
     <>
-      <Stack className="odc-pipeline-builder-form">
-        <StackItem>
-          <PipelineBuilderHeader />
-        </StackItem>
-        <FlexForm onSubmit={handleSubmit}>
-          <FormBody flexLayout disablePaneBody className="odc-pipeline-builder-form__grid">
-            <SyncedEditorField
-              name="editorType"
-              formContext={{
-                name: 'formData',
-                editor: formEditor,
-                label: t('pipelines-plugin~Pipeline builder'),
-                sanitizeTo: sanitizeToForm,
-              }}
-              yamlContext={{ name: 'yamlData', editor: yamlEditor, sanitizeTo: sanitizeToYaml }}
+      <div ref={contentRef} className="odc-pipeline-builder-form">
+        <Stack>
+          <StackItem>
+            <PipelineBuilderHeader namespace={namespace} />
+          </StackItem>
+          <FlexForm onSubmit={handleSubmit}>
+            <FormBody flexLayout disablePaneBody className="odc-pipeline-builder-form__grid">
+              <SyncedEditorField
+                name="editorType"
+                formContext={{
+                  name: 'formData',
+                  editor: formEditor,
+                  label: t('pipelines-plugin~Pipeline builder'),
+                  sanitizeTo: sanitizeToForm,
+                }}
+                yamlContext={{ name: 'yamlData', editor: yamlEditor, sanitizeTo: sanitizeToYaml }}
+              />
+            </FormBody>
+            <FormFooter
+              handleReset={closeSidebarAndHandleReset}
+              errorMessage={status?.submitError}
+              isSubmitting={isSubmitting}
+              submitLabel={
+                existingPipeline ? t('pipelines-plugin~Save') : t('pipelines-plugin~Create')
+              }
+              disableSubmit={
+                editorType === EditorType.YAML
+                  ? !dirty
+                  : !dirty ||
+                    !_.isEmpty(errors) ||
+                    !_.isEmpty(status?.tasks) ||
+                    !_.isEmpty(status?.[STATUS_KEY_NAME_ERROR]) ||
+                    formData.tasks.length === 0
+              }
+              resetLabel={t('pipelines-plugin~Cancel')}
+              sticky
             />
-          </FormBody>
-          <FormFooter
-            handleReset={closeSidebarAndHandleReset}
-            errorMessage={status?.submitError}
-            isSubmitting={isSubmitting}
-            submitLabel={
-              existingPipeline ? t('pipelines-plugin~Save') : t('pipelines-plugin~Create')
-            }
-            disableSubmit={
-              values.editorType === EditorType.YAML
-                ? !dirty
-                : !dirty ||
-                  !_.isEmpty(errors) ||
-                  !_.isEmpty(status?.tasks) ||
-                  values.formData.tasks.length === 0
-            }
-            resetLabel={t('pipelines-plugin~Cancel')}
-            sticky
-          />
-        </FlexForm>
-      </Stack>
+          </FlexForm>
+        </Stack>
+      </div>
       <Sidebar
+        closeAreaNode={contentRef.current}
         open={!!selectedTask}
         onRequestClose={() => {
-          if (selectedTask?.taskIndex === selectedTaskRef.current?.taskIndex) {
-            setSelectedTask(null);
-          }
+          const currentSelection: SelectedBuilderTask = selectedTaskRef.current;
+          setTimeout(() => {
+            if (
+              currentSelection?.taskIndex === selectedTaskRef.current?.taskIndex &&
+              currentSelection?.isFinallyTask === selectedTaskRef.current?.isFinallyTask
+            ) {
+              // Clicked on itself or on a non-node
+              setSelectedTask(null);
+            }
+          }, 0); // let the click logic flow through
         }}
       >
         {() => (
-          <div className="pf-c-form">
-            <TaskSidebar
-              // Intentional remount when selection changes
-              key={selectedTask.taskIndex}
-              onClose={() => setSelectedTask(null)}
-              resourceList={values.formData.resources || []}
-              workspaceList={values.formData.workspaces || []}
-              errorMap={status?.tasks || {}}
-              onUpdateTask={(data: UpdateOperationUpdateTaskData) => {
+          <TaskSidebar
+            // Intentional remount when selection changes
+            key={selectedTask.taskIndex}
+            onClose={() => setSelectedTask(null)}
+            resourceList={formData.resources || []}
+            workspaceList={formData.workspaces || []}
+            errorMap={status?.tasks || {}}
+            onRenameTask={(data: UpdateOperationRenameTaskData) => {
+              updateTasks(applyChange(taskGroup, { type: UpdateOperationType.RENAME_TASK, data }));
+            }}
+            onRemoveTask={(taskName: string) => {
+              removeTaskModal(taskName, () => {
+                setSelectedTask(null);
                 updateTasks(
-                  applyChange(taskGroup, { type: UpdateOperationType.UPDATE_TASK, data }),
+                  applyChange(taskGroup, {
+                    type: UpdateOperationType.REMOVE_TASK,
+                    data: { taskName },
+                  }),
                 );
-              }}
-              onRemoveTask={(taskName) => {
-                removeTaskModal(
-                  taskName,
-                  () => {
-                    setSelectedTask(null);
-                    updateTasks(
-                      applyChange(taskGroup, {
-                        type: UpdateOperationType.REMOVE_TASK,
-                        data: { taskName },
-                      }),
-                    );
-                  },
-                  t,
-                );
-              }}
-              isFinallyTask={selectedTask.isFinallyTask}
-              selectedPipelineTaskIndex={selectedTask.taskIndex}
-              taskResource={selectedTask.resource}
-            />
-          </div>
+              });
+            }}
+            selectedData={selectedTask}
+          />
         )}
       </Sidebar>
     </>

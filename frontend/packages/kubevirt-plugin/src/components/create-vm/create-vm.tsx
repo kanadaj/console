@@ -1,8 +1,4 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import * as classNames from 'classnames';
-import { RouteComponentProps } from 'react-router';
-import styles from '@patternfly/react-styles/css/components/Wizard/wizard';
 import {
   Alert,
   AlertActionCloseButton,
@@ -12,33 +8,45 @@ import {
   WizardContextConsumer,
   WizardContextType,
 } from '@patternfly/react-core';
-import { K8sResourceCommon, TemplateKind } from '@console/internal/module/k8s';
-import { ProjectModel } from '@console/internal/models';
-import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import styles from '@patternfly/react-styles/css/components/Wizard/wizard';
+import * as classNames from 'classnames';
+import { isEmpty } from 'lodash';
+import { useTranslation } from 'react-i18next';
+import { RouteComponentProps } from 'react-router';
 import { history, LoadingBox } from '@console/internal/components/utils';
-
-import { ReviewAndCreate } from './tabs/review-create';
-import { SelectTemplate } from './tabs/select-template';
-import { formReducer, FORM_ACTION_TYPE, initFormState } from './forms/create-vm-form-reducer';
-import { DataVolumeSourceType, VMWizardMode, VMWizardName } from '../../constants';
-import { filterTemplates } from '../vm-templates/utils';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { ProjectModel } from '@console/internal/models';
+import { K8sResourceCommon, TemplateKind } from '@console/internal/module/k8s';
+import { DataVolumeSourceType, VMWizardMode, VMWizardName, VolumeType } from '../../constants';
+import { useStorageClassConfigMap } from '../../hooks/storage-class-config-map';
+import { useErrorTranslation } from '../../hooks/use-error-translation';
+import useSSHKeys from '../../hooks/use-ssh-keys';
+import useSSHService from '../../hooks/use-ssh-service';
+import { useSupportModal } from '../../hooks/use-support-modal';
+import useV2VConfigMap from '../../hooks/use-v2v-config-map';
+import { createVM } from '../../k8s/requests/vm/create/simple-create';
+import { DataVolumeWrapper } from '../../k8s/wrapper/vm/data-volume-wrapper';
+import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
+import { VolumeWrapper } from '../../k8s/wrapper/vm/volume-wrapper';
+import { selectVM } from '../../selectors/vm-template/basic';
 import { getTemplateSourceStatus } from '../../statuses/template/template-source-status';
 import { isTemplateSourceError } from '../../statuses/template/types';
-import { SuccessResultsComponent } from '../create-vm-wizard/tabs/result-tab/success-results';
-import { getVMWizardCreateLink, parseVMWizardInitialData } from '../../utils/url';
-import { BootSource } from './tabs/boot-source';
 import { TemplateItem } from '../../types/template';
+import { getVMWizardCreateLink, parseVMWizardInitialData } from '../../utils/url';
+import { SuccessResultsComponent } from '../create-vm-wizard/tabs/result-tab/success-results';
+import { AUTHORIZED_SSH_KEYS } from '../ssh-service/SSHForm/ssh-form-utils';
+import { filterTemplates } from '../vm-templates/utils';
 import {
   BOOT_ACTION_TYPE,
-  BootSourceState,
   bootFormReducer,
+  BootSourceState,
   initBootFormState,
 } from './forms/boot-source-form-reducer';
-import { useSupportModal } from '../../hooks/use-support-modal';
-import { useStorageClassConfigMap } from '../../hooks/storage-class-config-map';
-import { createVM } from '../../k8s/requests/vm/create/simple-create';
-import { useErrorTranslation } from '../../hooks/use-error-translation';
+import { FORM_ACTION_TYPE, formReducer, initFormState } from './forms/create-vm-form-reducer';
 import { useVmTemplatesResources } from './hooks/use-vm-templates-resources';
+import { BootSource } from './tabs/boot-source';
+import { ReviewAndCreate } from './tabs/review-create';
+import { SelectTemplate } from './tabs/select-template';
 
 import '../create-vm-wizard/create-vm-wizard.scss';
 import './create-vm.scss';
@@ -160,11 +168,23 @@ export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
   const [templatePreselectError, setTemplatePreselectError] = React.useState<string>();
   const [selectedTemplate, selectTemplate] = React.useState<TemplateItem>();
   const [bootState, bootDispatch] = React.useReducer(bootFormReducer, initBootFormState);
+  const {
+    enableSSHService,
+    tempSSHKey,
+    isValidSSHKey,
+    createOrUpdateSecret,
+    updateSSHKeyInGlobalNamespaceSecret,
+    restoreDefaultSSHSettings,
+  } = useSSHKeys();
+  const { createOrDeleteSSHService } = useSSHService();
 
   const [projects, projectsLoaded, projectsError] = useK8sWatchResource<K8sResourceCommon[]>({
     kind: ProjectModel.kind,
     isList: true,
   });
+
+  const [V2VConfigMapImages, V2VConfigMapImagesLoaded, V2VConfigMapImagesError] = useV2VConfigMap();
+
   const [scConfigMap, scLoaded, scError] = useStorageClassConfigMap();
   const {
     pods,
@@ -178,8 +198,8 @@ export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
 
   const templates = filterTemplates([...userTemplates, ...baseTemplates]);
 
-  const loaded = resourcesLoaded && projectsLoaded && scLoaded;
-  const loadError = resourcesLoadError || projectsError || scError;
+  const loaded = resourcesLoaded && projectsLoaded && scLoaded && V2VConfigMapImagesLoaded;
+  const loadError = resourcesLoadError || projectsError || scError || V2VConfigMapImagesError;
 
   const sourceStatus =
     selectedTemplate &&
@@ -210,6 +230,32 @@ export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
       }
     }
   }, [loaded, initData, templates, userTemplates, selectedTemplate, t]);
+
+  React.useEffect(() => {
+    const vm = new VMWrapper(selectVM(selectedTemplate?.variants?.[0]));
+    const bootDevice = vm.getBootDevice();
+
+    if (bootDevice?.type === 'disk') {
+      const vol = new VolumeWrapper(
+        vm.getVolumes()?.find((v) => v?.name === bootDevice?.device?.name),
+      );
+      const dv =
+        vol.getType() === VolumeType.DATA_VOLUME &&
+        vm.getDataVolumeTemplates()?.find((d) => d?.metadata?.name === vol?.getDataVolumeName());
+
+      if (dv) {
+        const dvWrapper = new DataVolumeWrapper(dv);
+        const storage = dvWrapper.getSize();
+        bootDispatch({
+          type: BOOT_ACTION_TYPE.SET_SIZE,
+          payload: {
+            value: storage.value,
+            unit: storage.unit,
+          },
+        });
+      }
+    }
+  }, [selectedTemplate]);
 
   let templateIsReady = false;
   let customBootSource = false;
@@ -366,7 +412,7 @@ export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
             {(footerProps) => (
               <Footer
                 {...footerProps}
-                formIsValid={state.isValid}
+                formIsValid={state.isValid && isValidSSHKey}
                 isCreating={isCreating}
                 createError={createError}
                 cleanError={() => setCreateError(undefined)}
@@ -374,7 +420,28 @@ export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
                   resetError();
                   setCreating(true);
                   try {
-                    await createVM(state.template, sourceStatus, bootState, state, scConfigMap);
+                    const vm = await createVM(
+                      state.template,
+                      sourceStatus,
+                      bootState,
+                      state,
+                      scConfigMap,
+                      tempSSHKey,
+                      enableSSHService,
+                      V2VConfigMapImages,
+                    );
+                    if (vm) {
+                      enableSSHService && createOrDeleteSSHService(vm);
+                      if (!isEmpty(tempSSHKey)) {
+                        createOrUpdateSecret(tempSSHKey, vm?.metadata?.namespace, {
+                          secretName: `${AUTHORIZED_SSH_KEYS}-${vm?.metadata?.name}`,
+                          create: true,
+                        });
+                        updateSSHKeyInGlobalNamespaceSecret &&
+                          createOrUpdateSecret(tempSSHKey, vm?.metadata?.namespace);
+                      }
+                      restoreDefaultSSHSettings();
+                    }
                     setCreated(true);
                   } catch (err) {
                     // t('kubevirt-plugin~Error occured while creating VM.')

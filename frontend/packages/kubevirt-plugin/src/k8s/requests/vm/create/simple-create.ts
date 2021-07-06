@@ -1,22 +1,26 @@
+import { isEmpty } from 'lodash';
 import { ConfigMapKind, k8sCreate, TemplateKind } from '@console/internal/module/k8s';
+import { windowsToolsStorage } from '../../../../components/create-vm-wizard/redux/initial-state/storage-tab-initial-state';
+import { VMSettingsField } from '../../../../components/create-vm-wizard/types';
+import { BootSourceState } from '../../../../components/create-vm/forms/boot-source-form-reducer';
+import { AUTHORIZED_SSH_KEYS } from '../../../../components/ssh-service/SSHForm/ssh-form-utils';
 import {
   AccessMode,
   ANNOTATION_FIRST_BOOT,
-  LABEL_CDROM_SOURCE,
-  DataVolumeSourceType,
-  DiskType,
-  TEMPLATE_PARAM_VM_NAME,
-  VolumeType,
   ANNOTATION_SOURCE_PROVIDER,
-  VolumeMode,
+  DataVolumeSourceType,
   DiskBus,
+  DiskType,
+  LABEL_CDROM_SOURCE,
+  TEMPLATE_PARAM_VM_NAME,
+  VolumeMode,
+  VolumeType,
 } from '../../../../constants';
-import { initializeCommonMetadata, initializeCommonVMMetadata } from './common';
-import { DiskWrapper } from '../../../wrapper/vm/disk-wrapper';
-import { VMTemplateWrapper } from '../../../wrapper/vm/vm-template-wrapper';
-import { VMWrapper } from '../../../wrapper/vm/vm-wrapper';
-import { VolumeWrapper } from '../../../wrapper/vm/volume-wrapper';
+import { CLOUDINIT_DISK } from '../../../../constants/vm/constants';
+import { ProvisionSource } from '../../../../constants/vm/provision-source';
+import { winToolsContainerNames } from '../../../../constants/vm/wintools';
 import { VirtualMachineModel } from '../../../../models';
+import { getKubevirtAvailableModel } from '../../../../models/kubevirtReferenceForModel';
 import { ProcessedTemplatesModel } from '../../../../models/models';
 import { getFlavor, getWorkloadProfile } from '../../../../selectors/vm';
 import {
@@ -25,14 +29,15 @@ import {
 } from '../../../../selectors/vm-template/advanced';
 import { isCommonTemplate, selectVM } from '../../../../selectors/vm-template/basic';
 import { isTemplateSourceError, TemplateSourceStatus } from '../../../../statuses/template/types';
-import { VMSettingsField } from '../../../../components/create-vm-wizard/types';
-import { BootSourceState } from '../../../../components/create-vm/forms/boot-source-form-reducer';
-import { DataVolumeWrapper } from '../../../wrapper/vm/data-volume-wrapper';
-import { windowsToolsStorage } from '../../../../components/create-vm-wizard/redux/initial-state/storage-tab-initial-state';
-import { getEmptyInstallStorage } from '../../../../utils/storage';
-import { ignoreCaseSort } from '../../../../utils/sort';
-import { ProvisionSource } from '../../../../constants/vm/provision-source';
 import { VMKind } from '../../../../types';
+import { ignoreCaseSort } from '../../../../utils/sort';
+import { getEmptyInstallStorage } from '../../../../utils/storage';
+import { DataVolumeWrapper } from '../../../wrapper/vm/data-volume-wrapper';
+import { DiskWrapper } from '../../../wrapper/vm/disk-wrapper';
+import { VMTemplateWrapper } from '../../../wrapper/vm/vm-template-wrapper';
+import { VMWrapper } from '../../../wrapper/vm/vm-wrapper';
+import { VolumeWrapper } from '../../../wrapper/vm/volume-wrapper';
+import { initializeCommonMetadata, initializeCommonVMMetadata } from './common';
 
 type GetRootDataVolume = (args: {
   name: string;
@@ -98,6 +103,9 @@ export const prepareVM = async (
   customSource: BootSourceState,
   { namespace, name, startVM }: { namespace: string; name: string; startVM: boolean },
   scConfigMap: ConfigMapKind,
+  sshKey?: string,
+  enableSSHService?: boolean,
+  containerImagesNames?: { [key: string]: string },
   emptyDiskSize?: string,
   referenceTemplate = true,
 ): Promise<VMKind> => {
@@ -187,9 +195,21 @@ export const prepareVM = async (
 
     if (isWindowsTemplate(template)) {
       vmWrapper.prependStorage({
-        disk: windowsToolsStorage.disk,
-        volume: windowsToolsStorage.volume,
+        disk: windowsToolsStorage(winToolsContainerNames(containerImagesNames)).disk,
+        volume: windowsToolsStorage(winToolsContainerNames(containerImagesNames)).volume,
       });
+    } else if (!isEmpty(sshKey) && enableSSHService) {
+      vmWrapper.updateVolume(
+        new VolumeWrapper()
+          .init({ name: CLOUDINIT_DISK })
+          .setType(VolumeType.CLOUD_INIT_CONFIG_DRIVE)
+          .setTypeData(
+            vmWrapper.getVolumes().find(({ name: volumeName }) => volumeName === CLOUDINIT_DISK)
+              ?.cloudInitNoCloud,
+          )
+          .asResource(),
+      );
+      vmWrapper.setSSHKey([`${AUTHORIZED_SSH_KEYS}-${name}`]);
     }
   }
 
@@ -221,7 +241,19 @@ export const createVM = async (
   customSource: BootSourceState,
   opts: { namespace: string; name: string; startVM: boolean },
   scConfigMap: ConfigMapKind,
+  sshKey?: string,
+  enableSSHService?: boolean,
+  containerImages?: { [key: string]: string },
 ) => {
-  const vm = await prepareVM(template, sourceStatus, customSource, opts, scConfigMap);
-  return k8sCreate(VirtualMachineModel, vm);
+  const vm = await prepareVM(
+    template,
+    sourceStatus,
+    customSource,
+    opts,
+    scConfigMap,
+    sshKey,
+    enableSSHService,
+    containerImages,
+  );
+  return k8sCreate(getKubevirtAvailableModel(VirtualMachineModel), vm);
 };

@@ -1,11 +1,8 @@
 import * as dagre from 'dagre';
 import * as _ from 'lodash';
-import { PipelineKind, PipelineRunKind } from '../../../types';
-import {
-  getPipelineTasks,
-  getFinallyTasksWithStatus,
-  PipelineVisualizationTaskItem,
-} from '../../../utils/pipeline-utils';
+import { PipelineKind, PipelineRunKind, PipelineTask } from '../../../types';
+import { getPipelineTasks, getFinallyTasksWithStatus } from '../../../utils/pipeline-utils';
+import { CheckTaskErrorMessage } from '../pipeline-builder/types';
 import {
   NODE_HEIGHT,
   NodeType,
@@ -16,6 +13,9 @@ import {
   DAGRE_VIEWER_PROPS,
   FINALLY_NODE_PADDING,
   FINALLY_NODE_VERTICAL_SPACING,
+  WHEN_EXPRESSION_SPACING,
+  DAGRE_VIEWER_SPACED_PROPS,
+  DAGRE_BUILDER_SPACED_PROPS,
 } from './const';
 import {
   PipelineEdgeModel,
@@ -58,9 +58,17 @@ export const createBuilderNode: NodeCreator<BuilderNodeModelData> = createGeneri
 );
 
 export const createFinallyNode = (height): NodeCreator<FinallyNodeModel> =>
-  createGenericNode(NodeType.FINALLY_NODE, NODE_WIDTH + FINALLY_NODE_PADDING * 2, height);
-export const createBuilderFinallyNode = (height): NodeCreator<BuilderFinallyNodeModel> =>
-  createGenericNode(NodeType.BUILDER_FINALLY_NODE, NODE_WIDTH + FINALLY_NODE_PADDING * 2, height);
+  createGenericNode(
+    NodeType.FINALLY_NODE,
+    NODE_WIDTH + WHEN_EXPRESSION_SPACING + FINALLY_NODE_PADDING * 2,
+    height,
+  );
+
+export const createBuilderFinallyNode = (
+  height: number,
+  width: number,
+): NodeCreator<BuilderFinallyNodeModel> =>
+  createGenericNode(NodeType.BUILDER_FINALLY_NODE, width, height);
 
 export const getNodeCreator = (type: NodeType): NodeCreator<PipelineRunAfterNodeModelData> => {
   switch (type) {
@@ -180,7 +188,7 @@ export const handleParallelToParallelNodes = (
 };
 
 export const tasksToNodes = (
-  taskList: PipelineVisualizationTaskItem[],
+  taskList: PipelineTask[],
   pipeline?: PipelineKind,
   pipelineRun?: PipelineRunKind,
 ): PipelineMixedNodeModel[] => {
@@ -196,15 +204,15 @@ export const tasksToNodes = (
 };
 
 export const tasksToBuilderNodes = (
-  taskList: PipelineVisualizationTaskItem[],
-  onAddNode: (task: PipelineVisualizationTaskItem, direction: AddNodeDirection) => void,
-  onNodeSelection: (task: PipelineVisualizationTaskItem) => void,
-  getError: (taskName: string) => string,
+  taskList: PipelineTask[],
+  onAddNode: (task: PipelineTask, direction: AddNodeDirection) => void,
+  onNodeSelection: (task: PipelineTask) => void,
+  getError: CheckTaskErrorMessage,
   selectedIds: string[],
 ): PipelineMixedNodeModel[] => {
-  return taskList.map((task) => {
+  return taskList.map((task, idx) => {
     return createBuilderNode(task.name, {
-      error: getError(task.name),
+      error: getError(idx),
       task,
       selected: selectedIds.includes(task.name),
       onNodeSelection: () => {
@@ -241,9 +249,14 @@ export const getFinallyTaskHeight = (allTasksLength: number, disableBuilder: boo
   return (
     allTasksLength * NODE_HEIGHT +
     (allTasksLength - 1) * FINALLY_NODE_VERTICAL_SPACING +
-    (!disableBuilder ? NODE_HEIGHT : 0) +
+    (!disableBuilder ? NODE_HEIGHT + FINALLY_NODE_VERTICAL_SPACING : 0) +
     FINALLY_NODE_PADDING * 2
   );
+};
+
+export const getFinallyTaskWidth = (allTasksLength: number): number => {
+  const whenExpressionSpacing = allTasksLength > 0 ? WHEN_EXPRESSION_SPACING : 0;
+  return NODE_WIDTH + FINALLY_NODE_PADDING * 2 + whenExpressionSpacing;
 };
 
 export const getLastRegularTasks = (regularTasks: PipelineMixedNodeModel[]): string[] => {
@@ -294,9 +307,7 @@ export const getTopologyNodesEdges = (
   pipeline: PipelineKind,
   pipelineRun?: PipelineRunKind,
 ): { nodes: PipelineMixedNodeModel[]; edges: PipelineEdgeModel[] } => {
-  const taskList: PipelineVisualizationTaskItem[] = _.flatten(
-    getPipelineTasks(pipeline, pipelineRun),
-  );
+  const taskList: PipelineTask[] = _.flatten(getPipelineTasks(pipeline, pipelineRun));
   const taskNodes: PipelineMixedNodeModel[] = tasksToNodes(taskList, pipeline, pipelineRun);
 
   const nodes: PipelineMixedNodeModel[] = connectFinallyTasksToNodes(
@@ -309,12 +320,26 @@ export const getTopologyNodesEdges = (
   return { nodes, edges };
 };
 
+export const taskHasWhenExpression = (task: PipelineTask): boolean => task?.when?.length > 0;
+
+export const nodesHasWhenExpression = (nodes: PipelineMixedNodeModel[]): boolean =>
+  nodes.some((n) => taskHasWhenExpression(n.data.task));
+
+export const hasWhenExpression = (pipeline: PipelineKind): boolean => {
+  return [...(pipeline?.spec?.tasks || []), ...(pipeline?.spec?.finally || [])].some(
+    taskHasWhenExpression,
+  );
+};
 export const getLayoutData = (layout: PipelineLayout): dagre.GraphLabel => {
   switch (layout) {
     case PipelineLayout.DAGRE_BUILDER:
       return DAGRE_BUILDER_PROPS;
     case PipelineLayout.DAGRE_VIEWER:
       return DAGRE_VIEWER_PROPS;
+    case PipelineLayout.DAGRE_VIEWER_SPACED:
+      return DAGRE_VIEWER_SPACED_PROPS;
+    case PipelineLayout.DAGRE_BUILDER_SPACED:
+      return DAGRE_BUILDER_SPACED_PROPS;
     default:
       return null;
   }

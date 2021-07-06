@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const minimist = require('minimist');
 const { i18nextToPo } = require('i18next-conv');
+const minimist = require('minimist');
 const common = require('./common.js');
 
 function save(target) {
@@ -44,11 +44,6 @@ function consolidateWithExistingTranslations(filePath, fileName, language, packa
       englishFile[matchingKeys[i]] = existingTranslationsFile[matchingKeys[i]];
     }
 
-    const untrackedKeys = existingKeys.filter((k) => englishKeys.indexOf(k) === -1);
-    for (let i = 0; i < untrackedKeys.length; i++) {
-      englishFile[untrackedKeys[i]] = existingTranslationsFile[untrackedKeys[i]];
-    }
-
     fs.writeFileSync(filePath, JSON.stringify(englishFile, null, 2));
   }
 }
@@ -61,57 +56,72 @@ function processFile(fileName, packageDir, language) {
       `./../packages/${packageDir}/locales/en/${fileName}.json`,
     );
 
-    fs.mkdirSync(path.join(__dirname, `./../packages/${packageDir}/locales/tmp`), {
-      recursive: true,
-    });
+    try {
+      if (fs.existsSync(i18nFile)) {
+        fs.mkdirSync(path.join(__dirname, `./../packages/${packageDir}/locales/tmp`), {
+          recursive: true,
+        });
 
-    tmpFile = path.join(__dirname, `./../packages/${packageDir}/locales/tmp/${fileName}.json`);
+        tmpFile = path.join(__dirname, `./../packages/${packageDir}/locales/tmp/${fileName}.json`);
 
-    removeValues(i18nFile, tmpFile);
-    consolidateWithExistingTranslations(tmpFile, fileName, language, packageDir);
+        removeValues(i18nFile, tmpFile);
+        consolidateWithExistingTranslations(tmpFile, fileName, language, packageDir);
 
-    fs.mkdirSync(path.join(__dirname, `./../po-files/${language}`), {
-      recursive: true,
-    });
-    i18nextToPo(language, fs.readFileSync(tmpFile), {
-      language,
-      foldLength: 0,
-      ctxSeparator: '~',
-    })
-      .then(
-        save(
-          path.join(
-            __dirname,
-            `./../po-files/${language}/${path.basename(fileName)}_package=${
-              packageDir.split('/')[0]
-            }.po`,
-          ),
-        ),
-      )
-      .catch((e) => console.error(fileName, e));
+        fs.mkdirSync(path.join(__dirname, `./../po-files/${language}`), {
+          recursive: true,
+        });
+        i18nextToPo(language, fs.readFileSync(tmpFile), {
+          language,
+          foldLength: 0,
+          ctxSeparator: '~',
+        })
+          .then(
+            save(
+              path.join(
+                __dirname,
+                `./../po-files/${language}/${packageDir.split('/')[0]}__${path.basename(
+                  fileName,
+                )}.po`,
+              ),
+            ),
+          )
+          .catch((e) => console.error(fileName, e));
+      }
+    } catch (err) {
+      console.error(err);
+    }
   } else {
     const i18nFile = path.join(__dirname, `./../public/locales/en/${fileName}.json`);
 
-    fs.mkdirSync(path.join(__dirname, './../public/locales/tmp'), { recursive: true });
+    try {
+      if (fs.existsSync(i18nFile)) {
+        fs.mkdirSync(path.join(__dirname, './../public/locales/tmp'), { recursive: true });
 
-    tmpFile = path.join(__dirname, `./../public/locales/tmp/${fileName}.json`);
+        tmpFile = path.join(__dirname, `./../public/locales/tmp/${fileName}.json`);
 
-    removeValues(i18nFile, tmpFile);
-    consolidateWithExistingTranslations(tmpFile, fileName, language);
+        removeValues(i18nFile, tmpFile);
+        consolidateWithExistingTranslations(tmpFile, fileName, language);
 
-    fs.mkdirSync(path.join(__dirname, `./../po-files/${language}`), { recursive: true });
-    i18nextToPo(language, fs.readFileSync(tmpFile), {
-      language,
-      foldLength: 0,
-      ctxSeparator: '~',
-    })
-      .then(
-        save(
-          path.join(__dirname, `./../po-files/${language}/${path.basename(fileName)}.po`),
+        fs.mkdirSync(path.join(__dirname, `./../po-files/${language}`), { recursive: true });
+        i18nextToPo(language, fs.readFileSync(tmpFile), {
           language,
-        ),
-      )
-      .catch((e) => console.error(fileName, e));
+          foldLength: 0,
+          ctxSeparator: '~',
+        })
+          .then(
+            save(
+              path.join(
+                __dirname,
+                `./../po-files/${language}/public__${path.basename(fileName)}.po`,
+              ),
+              language,
+            ),
+          )
+          .catch((e) => console.error(fileName, e));
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
   common.deleteFile(tmpFile);
   console.log(`Processed ${fileName}`);

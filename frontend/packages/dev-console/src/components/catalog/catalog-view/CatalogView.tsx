@@ -1,11 +1,11 @@
 import * as React from 'react';
-import * as _ from 'lodash';
 import * as cx from 'classnames';
+import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { CatalogItem } from '@console/dynamic-plugin-sdk';
 import { isModalOpen } from '@console/internal/components/modals';
 import { useQueryParams } from '@console/shared';
-
+import { setURLParams, updateURLParams, getCatalogTypeCounts } from '../utils/catalog-utils';
 import {
   categorize,
   findActiveCategory,
@@ -13,7 +13,6 @@ import {
   OTHER_CATEGORY,
   NO_GROUPING,
 } from '../utils/category-utils';
-import { setURLParams, updateURLParams, getCatalogTypeCounts } from '../utils/catalog-utils';
 import {
   filterByAttributes,
   filterByCategory,
@@ -22,7 +21,6 @@ import {
   getFilterGroupCounts,
   getFilterSearchParam,
 } from '../utils/filter-utils';
-
 import {
   CatalogCategory,
   CatalogFilterCounts,
@@ -33,24 +31,24 @@ import {
   CatalogType,
   CatalogTypeCounts,
 } from '../utils/types';
-
-import CatalogFilters from './CatalogFilters';
-import CatalogToolbar from './CatalogToolbar';
-import CatalogGrid from './CatalogGrid';
 import CatalogCategories from './CatalogCategories';
 import CatalogEmptyState from './CatalogEmptyState';
+import CatalogFilters from './CatalogFilters';
+import CatalogGrid from './CatalogGrid';
+import CatalogToolbar from './CatalogToolbar';
 import CatalogTypeSelector from './CatalogTypeSelector';
 
 type CatalogViewProps = {
   items: CatalogItem[];
   catalogType: string;
   catalogTypes: CatalogType[];
-  categories: CatalogCategory[];
+  categories?: CatalogCategory[];
   filters: FiltersType;
   filterGroups: string[];
   filterGroupNameMap: CatalogStringMap;
   groupings: CatalogStringMap;
   renderTile: (item: CatalogItem) => React.ReactNode;
+  hideSidebar?: boolean;
 };
 
 const CatalogView: React.FC<CatalogViewProps> = ({
@@ -63,6 +61,7 @@ const CatalogView: React.FC<CatalogViewProps> = ({
   filterGroupNameMap,
   groupings,
   renderTile,
+  hideSidebar,
 }) => {
   const { t } = useTranslation();
   const queryParams = useQueryParams();
@@ -147,7 +146,7 @@ const CatalogView: React.FC<CatalogViewProps> = ({
   const catalogCategories = React.useMemo<CatalogCategory[]>(() => {
     const allCategory = { id: ALL_CATEGORY, label: t('devconsole~All items') };
     const otherCategory = { id: OTHER_CATEGORY, label: t('devconsole~Other') };
-    return [allCategory, ...categories, otherCategory];
+    return [allCategory, ...(categories ?? []), otherCategory];
   }, [categories, t]);
 
   const categorizedIds = React.useMemo(() => categorize(items, catalogCategories), [
@@ -208,7 +207,7 @@ const CatalogView: React.FC<CatalogViewProps> = ({
     [catalogType, catalogTypeCounts, catalogTypes],
   );
 
-  const showSidebar = showCategories || showFilters || showTypeSelector;
+  const showSidebar = !hideSidebar && (showCategories || showFilters || showTypeSelector);
 
   const catalogItems = React.useMemo(() => {
     if (!isGrouped) return filteredItems;

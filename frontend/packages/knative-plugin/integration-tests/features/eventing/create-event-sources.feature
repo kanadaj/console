@@ -3,15 +3,13 @@ Feature: Create event sources
               As a user, I want to create event sources
 
         Background:
-            Given user has installed eventing operator
-              And user is at developer perspective
-              And user has created or selected namespace "aut-create-knative-event-source"
-              And user has created or selected knative service "nodejs-ex-git"
+            Given user has created or selected namespace "aut-knative"
+              And user has created knative service "kn-event"
               And user is at Event Sources page
 
 
         @regression
-        Scenario: Event source details for ApiServerSource event source type : Kn-10-TC02
+        Scenario: Event source details for ApiServerSource event source type: KE-02-TC01
              When user selects event source type "Api Server Source"
               And user selects Create Event Source
              Then page contains Resource, Mode, Service Account Name, Sink, General sections
@@ -22,7 +20,7 @@ Feature: Create event sources
 
 
         @regression
-        Scenario: Event source details for ContainerSource event source type : Kn-10-TC03
+        Scenario: Event source details for ContainerSource event source type: KE-02-TC02
              When user selects event source type "Container Source"
               And user selects Create Event Source
              Then page contains Container, Environmental variables, Sink, General sections
@@ -34,7 +32,7 @@ Feature: Create event sources
 
 
         @regression
-        Scenario: Event source details for CronJobSource event source type : Kn-10-TC04
+        Scenario: Event source details for CronJobSource event source type: KE-02-TC03
              When user selects event source type "Cron Job Source"
               And user selects Create Event Source
              Then page contains CronJobSource, Sink, General sections
@@ -45,7 +43,7 @@ Feature: Create event sources
 
 
         @regression
-        Scenario: Event source details for PingSource event source type : Kn-10-TC05
+        Scenario: Event source details for PingSource event source type: KE-02-TC04
              When user selects event source type "PingSource"
               And user selects Create Event Source
              Then page contains PingSource, Sink, General sections
@@ -56,7 +54,7 @@ Feature: Create event sources
 
 
         @regression
-        Scenario: Event source details for SinkBinding event source type : Kn-10-TC06
+        Scenario: Event source details for SinkBinding event source type: KE-02-TC05
              When user selects event source type "SinkBinding"
               And user selects Create Event Source
              Then page contains Subject, Sink, General sections
@@ -67,7 +65,7 @@ Feature: Create event sources
 
 
         @regression
-        Scenario: Event source details for CamelSource event source type : Kn-10-TC07
+        Scenario: Event source details for CamelSource event source type: KE-02-TC06
              When user selects event source type "CamelSource"
               And user selects Create Event Source
              Then page contains CamelSource section
@@ -75,69 +73,99 @@ Feature: Create event sources
 
 
         @smoke
-        Scenario: Create ApiServerSource event source : Kn-10-TC08
+        Scenario: Create ApiServerSource event source: KE-02-TC07
              When user selects event source type "Api Server Source"
               And user selects Create Event Source
               And user enters Resource APIVERSION as "sources.knative.dev/v1alpha1"
               And user enters Resource KIND as "ApiServerSource"
               And user selects "Resource" mode
               And user selects "default" option from Service Account Name field
-              And user selects an "nodejs-ex-git" option from knative service field
+              And user selects an "kn-event" option from knative service field
               And user enters event source name as "api-service-1"
               And user clicks on Create button
              Then user will be redirected to Topology page
-              And ApiServerSource event source "api-service-1" is created and linked to selected knative service "nodejs-ex-git"
+              And ApiServerSource event source "api-service-1" is created and linked to selected knative service "kn-event"
 
 
-        @regression
-        Scenario: Create ContainerSource event source : Kn-10-TC09
+        @smoke
+        Scenario: Create ContainerSource event source: KE-02-TC08
              When user selects event source type "Container Source"
               And user selects Create Event Source
               And user enters Container Image as "openshift/hello-openshift"
-              And user selects an "nodejs-ex-git" option from knative service field
+              And user selects an "kn-event" option from knative service field
               And user clicks on Create button
              Then user will be redirected to Topology page
-              And ContainerSource event source "container-source" is created and linked to selected knative service "nodejs-ex-git"
+              And ContainerSource event source "container-source" is created and linked to selected knative service "kn-event"
 
 
         @regression
-        Scenario: Create CronJobSource event source : Kn-10-TC10
+        Scenario: Create CronJobSource event source: KE-02-TC09
              When user selects event source type "Cron Job Source"
               And user selects Create Event Source
               And user enters schedule as "*/2 * * * *"
-              And user selects an "nodejs-ex-git" option from knative service field
+              And user selects an "kn-event" option from knative service field
               And user clicks on Create button
              Then user will be redirected to Topology page
-              And CronJobSource event source "cron-job-source" is created and linked to selected knative service "nodejs-ex-git"
+              And CronJobSource event source "cron-job-source" is created and linked to selected knative service "kn-event"
 
 
-        @regression
-        Scenario: Create PingSource event source : Kn-10-TC11
+        @smoke
+        Scenario: Create PingSource event source: KE-02-TC10
              When user selects event source type "Ping Source"
               And user selects Create Event Source
               And user enters schedule as "*/2 * * * *"
-              And user selects an "nodejs-ex-git" option from knative service field
+              And user selects an "kn-event" option from knative service field
               And user clicks on Create button
              Then user will be redirected to Topology page
-              And PingSource event source "ping-source" is created and linked to selected knative service "nodejs-ex-git"
+              And PingSource event source "ping-source" is created and linked to selected knative service "kn-event"
 
 
-        @regression
-        Scenario: Create SinkBinding event source : Kn-10-TC12
+        @smoke
+        Scenario: Create SinkBinding event source linked with knative service: KE-02-TC11
              When user selects event source type "Sink Binding"
               And user selects Create Event Source
               And user enters Subject apiVersion as "batch/v1"
               And user enters Subject Kind as "job"
-              And user selects an "nodejs-ex-git" option from knative service field
+              And user selects an "kn-event" option from knative service field
+              And user enters Name as "event-sink" in General section
               And user clicks on Create button
              Then user will be redirected to Topology page
-              And SinkBinding event source "sink-binding" is created and linked to selected knative service "nodejs-ex-git"
+              And SinkBinding event source "event-sink" is created and linked to selected knative service "kn-event"
+
+
+        @smoke
+        Scenario: Create SinkBinding event source linked with uri: KE-02-TC12
+             When user selects event source type "Sink Binding"
+              And user selects Create Event Source
+              And user enters Subject apiVersion as "batch/v1"
+              And user enters Subject Kind as "job"
+              And user selects "URI" option under Sink section
+              And user enters uri as "http://cluster.example.com/svc"
+              And user enters Name as "event-uri" in General section
+              And user clicks on Create button
+             Then user will be redirected to Topology page
+              And user will see that event source "event-uri" is sinked with uri "http://cluster.example.com/svc"
 
 
         @regression @manual
-        Scenario: Create CamelSource event source : Kn-10-TC13
+        Scenario: Create CamelSource event source: KE-02-TC13
+            Given user has installed Knative Apache Camelk Integration Operator
+              And user has created or selected namespace "aut-knative"
+              And user has created knative service "kn-event"
+              And user is at Event Sources page
              When user selects event source type "Camel Source"
               And user selects Create Event Source
               And user clicks on Create button
              Then user will be redirected to Topology page
-              And CamelSource event source "camel-source" is created and linked to selected knative service "nodejs-ex-git"
+              And CamelSource event source "camel-source" is created and linked to selected knative service "kn-event"
+
+
+        @regression
+        Scenario: Kamelets on Event Sources page: KE-02-TC14
+            Given user has created Knative Serving and Knative Eventing CR
+              And user has installed Red Hat Integration - Camel K Operator
+              And user has created Integration Platform CR
+              And user has created or selected "aut-test-kamelets" namespace
+              And user is at Developer Catalog page
+             When user clicks on Event Sources
+             Then user will see cards of AWS Kinesis Source, AWS SQS Source, Jira Source, Salesforce Source, Slack Source, Telegram Source

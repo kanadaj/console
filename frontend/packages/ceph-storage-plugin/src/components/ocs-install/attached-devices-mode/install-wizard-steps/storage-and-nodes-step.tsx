@@ -17,7 +17,7 @@ import { NodeModel } from '@console/internal/models';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { getName, useFlag } from '@console/shared';
 import {
-  storageClassTooltip,
+  attachedDevicesStorageClassTooltip,
   OCS_DEVICE_SET_REPLICA,
   MINIMUM_NODES,
   attachDevicesWithArbiter,
@@ -86,7 +86,7 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
     enableFlexibleScaling,
   } = state;
 
-  let scNodeNames: string[] = []; // names of the nodes, backing the storage of selected storage class
+  const scNodeNames: React.MutableRefObject<string[]> = React.useRef([]); // names of the nodes, backing the storage of selected storage class
 
   const { cpu, memory, zones } = getNodeInfo(nodes);
   const nodesCount: number = nodes.length;
@@ -102,10 +102,13 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
     isFlexibleScalingSupported && enableFlexibleScaling,
   );
 
-  if (!pvLoadError && pvData.length && pvLoaded) {
-    const pvs: K8sResourceKind[] = getSCAvailablePVs(pvData, scName);
-    scNodeNames = getAssociatedNodes(pvs);
-  }
+  React.useEffect(() => {
+    if (!pvLoadError && pvData.length && pvLoaded) {
+      const pvs: K8sResourceKind[] = getSCAvailablePVs(pvData, scName);
+      scNodeNames.current = getAssociatedNodes(pvs);
+      dispatch({ type: 'setAvailablePvsCount', value: pvs.length });
+    }
+  }, [dispatch, pvData, pvLoaded, pvLoadError, scName]);
 
   React.useEffect(() => {
     const isMinimal: boolean = shouldDeployAsMinimal(cpu, memory, nodesCount);
@@ -132,7 +135,7 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
   const filterSC = ({ resource }): boolean => {
     const noProvSC = filterSCWithNoProv(resource);
     if (hasStretchClusterChecked && noProvSC && !nodesError && nodesData.length && nodesLoaded) {
-      return isArbiterSC(resource, pvData, nodesData);
+      return isArbiterSC(getName(resource), pvData, nodesData);
     }
     return noProvSC;
   };
@@ -154,8 +157,8 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
       )}
       <FormGroup
         fieldId="storage-class-dropdown"
-        label={t('ceph-storage-plugin~Storage Class')}
-        labelIcon={<FieldLevelHelp>{storageClassTooltip(t)}</FieldLevelHelp>}
+        label={t('ceph-storage-plugin~StorageClass')}
+        labelIcon={<FieldLevelHelp>{attachedDevicesStorageClassTooltip(t)}</FieldLevelHelp>}
       >
         <Grid hasGutter>
           <GridItem span={5}>
@@ -167,12 +170,15 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
               noSelection
               hideClassName="ocs-install-wizard__storage-class-label"
             />
-            <PVsAvailableCapacity /* @TODO(refactor): Pv data can be passed directly to this component */
+            <PVsAvailableCapacity
               replica={
                 hasStretchClusterChecked ? OCS_DEVICE_SET_ARBITER_REPLICA : OCS_DEVICE_SET_REPLICA
               }
               data-test-id="ceph-ocs-install-pvs-available-capacity"
               storageClass={storageClass}
+              data={pvData}
+              loaded={pvLoaded}
+              loadError={pvLoadError}
             />
           </GridItem>
           <GridItem span={7} />
@@ -186,7 +192,11 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
       <Grid>
         <GridItem span={11}>
           <SelectNodesText
-            text={hasStretchClusterChecked ? attachDevicesWithArbiter(t) : attachDevices(t)}
+            text={
+              hasStretchClusterChecked
+                ? attachDevicesWithArbiter(t, scName)
+                : attachDevices(t, scName)
+            }
           />
         </GridItem>
         <GridItem span={10} className="ocs-install-wizard__select-nodes">
@@ -196,7 +206,7 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
             ListComponent={AttachedDevicesNodeTable}
             hideLabelFilter
             hideNameLabelFilters
-            customData={{ filteredNodes: scNodeNames, setNodes, nodes }}
+            customData={{ filteredNodes: scNodeNames.current, setNodes, nodes }}
           />
           {!!nodesCount && (
             <SelectNodesDetails cpu={cpu} memory={memory} zones={zones.size} nodes={nodesCount} />

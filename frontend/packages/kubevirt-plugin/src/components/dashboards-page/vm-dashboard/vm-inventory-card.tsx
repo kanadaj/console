@@ -2,30 +2,31 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { DashboardItemProps } from '@console/internal/components/dashboard/with-dashboard-resources';
+import { resourcePath } from '@console/internal/components/utils';
+import {
+  useK8sWatchResource,
+  WatchK8sResource,
+} from '@console/internal/components/utils/k8s-watch-hook';
+import { getName, getNamespace } from '@console/shared';
 import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
 import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
 import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
 import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import { getName, getNamespace } from '@console/shared';
 import InventoryItem from '@console/shared/src/components/dashboard/inventory-card/InventoryItem';
-import { resourcePath } from '@console/internal/components/utils';
 import {
-  WatchK8sResource,
-  useK8sWatchResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
-import { VMDashboardContext } from '../../vms/vm-dashboard-context';
-import { getVMLikeModel } from '../../../selectors/vm/vmlike';
-import { getNetworks, getDisks } from '../../../selectors/vm';
-import { getVMINetworks, getVMIDisks } from '../../../selectors/vmi';
-import {
+  DiskType,
   VM_DETAIL_DISKS_HREF,
   VM_DETAIL_NETWORKS_HREF,
-  DiskType,
   VM_DETAIL_SNAPSHOTS,
 } from '../../../constants';
 import { VirtualMachineSnapshotModel } from '../../../models';
-import { VMSnapshot } from '../../../types';
+import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
 import { getVmSnapshotVmName } from '../../../selectors/snapshot/snapshot';
+import { getDisks, getNetworks } from '../../../selectors/vm';
+import { getVMLikeModel } from '../../../selectors/vm/vmlike';
+import { getVMIDisks, getVMINetworks } from '../../../selectors/vmi';
+import { VMSnapshot } from '../../../types';
+import { VMDashboardContext } from '../../vms/vm-dashboard-context';
 
 export const VMInventoryCard: React.FC<VMInventoryCardProps> = () => {
   const { t } = useTranslation();
@@ -47,7 +48,7 @@ export const VMInventoryCard: React.FC<VMInventoryCardProps> = () => {
   const snapshotResource: WatchK8sResource = React.useMemo(
     () => ({
       isList: true,
-      kind: VirtualMachineSnapshotModel.kind,
+      kind: kubevirtReferenceForModel(VirtualMachineSnapshotModel),
       namespaced: true,
       namespace,
     }),
@@ -58,7 +59,11 @@ export const VMInventoryCard: React.FC<VMInventoryCardProps> = () => {
     snapshotResource,
   );
   const filteredSnapshots = snapshots.filter((snap) => getVmSnapshotVmName(snap) === name);
-  const basePath = resourcePath(getVMLikeModel(vmiLike).kind, name, namespace);
+  const basePath = resourcePath(
+    kubevirtReferenceForModel(getVMLikeModel(vmiLike)),
+    name,
+    namespace,
+  );
   const DisksTitle = React.useCallback(
     ({ children }) => (
       <Link

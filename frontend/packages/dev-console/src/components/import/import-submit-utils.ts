@@ -1,5 +1,9 @@
-import * as _ from 'lodash';
+import * as GitUrlParse from 'git-url-parse';
 import { TFunction } from 'i18next';
+import * as _ from 'lodash';
+import { BuildStrategyType } from '@console/internal/components/build';
+import { SecretType } from '@console/internal/components/secrets/create-secret';
+import { history } from '@console/internal/components/utils';
 import {
   ImageStreamModel,
   BuildConfigModel,
@@ -8,22 +12,32 @@ import {
   ProjectRequestModel,
   SecretModel,
   ServiceModel,
+  ServiceAccountModel,
   RouteModel,
 } from '@console/internal/models';
-import { k8sCreate, K8sResourceKind, k8sUpdate, K8sVerb } from '@console/internal/module/k8s';
+import {
+  k8sCreate,
+  k8sGet,
+  K8sResourceKind,
+  k8sUpdate,
+  K8sVerb,
+} from '@console/internal/module/k8s';
 import { ServiceModel as KnServiceModel } from '@console/knative-plugin';
 import { getKnativeServiceDepResource } from '@console/knative-plugin/src/utils/create-knative-utils';
-import { SecretType } from '@console/internal/components/secrets/create-secret';
-import { history } from '@console/internal/components/utils';
-import { getRandomChars } from '@console/shared/src/utils';
 import {
   createPipelineForImportFlow,
   createPipelineRunForImportFlow,
   updatePipelineForImportFlow,
 } from '@console/pipelines-plugin/src/components/import/pipeline/pipeline-template-utils';
-import { Perspective } from '@console/plugin-sdk';
+import { PIPELINE_SERVICE_ACCOUNT } from '@console/pipelines-plugin/src/components/pipelines/const';
 import { setPipelineNotStarted } from '@console/pipelines-plugin/src/components/pipelines/pipeline-overview/pipeline-overview-utils';
 import { PipelineKind } from '@console/pipelines-plugin/src/types';
+import {
+  updateServiceAccount,
+  getSecretAnnotations,
+} from '@console/pipelines-plugin/src/utils/pipeline-utils';
+import { Perspective } from '@console/plugin-sdk';
+import { getRandomChars, getResourceLimitsData } from '@console/shared/src/utils';
 import {
   getAppLabels,
   getPodLabels,
@@ -34,8 +48,8 @@ import {
   getTemplateLabels,
 } from '../../utils/resource-label-utils';
 import { createService, createRoute, dryRunOpt } from '../../utils/shared-submit-utils';
-import { getProbesData } from '../health-checks/create-health-checks-probe-utils';
 import { AppResources } from '../edit-application/edit-application-types';
+import { getProbesData } from '../health-checks/create-health-checks-probe-utils';
 import {
   GitImportFormData,
   ProjectData,
@@ -68,34 +82,42 @@ export const createProject = (projectData: ProjectData): Promise<K8sResourceKind
 };
 
 export const createOrUpdateImageStream = (
-  formData: GitImportFormData,
+  formData: GitImportFormData | UploadJarFormData,
   imageStreamData: K8sResourceKind,
   dryRun: boolean,
   appResources: AppResources,
   verb: K8sVerb = 'create',
   generatedImageStreamName: string = '',
 ): Promise<K8sResourceKind> => {
-  const imageStreamList = appResources?.imageStream?.data;
-  const imageStreamFilterData = _.orderBy(imageStreamList, ['metadata.resourceVersion'], ['desc']);
-  const originalImageStream = (imageStreamFilterData.length && imageStreamFilterData[0]) || {};
   const {
     name,
     project: { name: namespace },
     application: { name: applicationName },
     labels: userLabels,
-    git: { url: repository, ref },
     image: { tag: selectedTag },
   } = formData;
+  const INSTANCE_LABEL = 'app.kubernetes.io/instance';
+  const repository = (formData as GitImportFormData).git?.url;
+  const ref = (formData as GitImportFormData).git?.ref;
+  const imageStreamList = appResources?.imageStream?.data?.filter(
+    (imgstr) => imgstr.metadata?.labels?.[INSTANCE_LABEL] === name,
+  );
+  const imageStreamFilterData = _.orderBy(imageStreamList, ['metadata.resourceVersion'], ['desc']);
+  const originalImageStream = (imageStreamFilterData.length && imageStreamFilterData[0]) || {};
   const imageStreamName = imageStreamData && imageStreamData.metadata.name;
   const defaultLabels = getAppLabels({ name, applicationName, imageStreamName, selectedTag });
-  const defaultAnnotations = { ...getGitAnnotations(repository, ref), ...getCommonAnnotations() };
+  const defaultAnnotations = {
+    ...(repository && getGitAnnotations(repository, ref)),
+    ...getCommonAnnotations(),
+  };
+  const imgStreamName = generatedImageStreamName || name;
   const newImageStream = {
     apiVersion: 'image.openshift.io/v1',
     kind: 'ImageStream',
     metadata: {
-      name: `${generatedImageStreamName || name}`,
+      name: imgStreamName,
       namespace,
-      labels: { ...defaultLabels, ...userLabels },
+      labels: { ...defaultLabels, ...userLabels, [INSTANCE_LABEL]: imgStreamName },
       annotations: defaultAnnotations,
     },
   };
@@ -191,11 +213,13 @@ export const createOrUpdateBuildConfig = (
     },
   };
 
+  const buildConfigName = verb === 'update' ? originalBuildConfig?.metadata?.name : name;
+
   const newBuildConfig = {
     apiVersion: 'build.openshift.io/v1',
     kind: 'BuildConfig',
     metadata: {
-      name,
+      name: buildConfigName,
       namespace,
       labels: { ...defaultLabels, ...userLabels },
       annotations: defaultAnnotations,
@@ -204,7 +228,7 @@ export const createOrUpdateBuildConfig = (
       output: {
         to: {
           kind: 'ImageStreamTag',
-          name: `${generatedImageStreamName || name}:latest`,
+          name: `${generatedImageStreamName || buildConfigName}:latest`,
         },
       },
       source: {
@@ -303,20 +327,7 @@ export const createOrUpdateDeployment = (
               image: `${name}:latest`,
               ports,
               env,
-              resources: {
-                ...((cpu.limit || memory.limit) && {
-                  limits: {
-                    ...(cpu.limit && { cpu: `${cpu.limit}${cpu.limitUnit}` }),
-                    ...(memory.limit && { memory: `${memory.limit}${memory.limitUnit}` }),
-                  },
-                }),
-                ...((cpu.request || memory.request) && {
-                  requests: {
-                    ...(cpu.request && { cpu: `${cpu.request}${cpu.requestUnit}` }),
-                    ...(memory.request && { memory: `${memory.request}${memory.requestUnit}` }),
-                  },
-                }),
-              },
+              resources: getResourceLimitsData({ cpu, memory }),
               ...getProbesData(healthChecks),
             },
           ],
@@ -379,20 +390,7 @@ export const createOrUpdateDeploymentConfig = (
               image: `${name}:latest`,
               ports,
               env,
-              resources: {
-                ...((cpu.limit || memory.limit) && {
-                  limits: {
-                    ...(cpu.limit && { cpu: `${cpu.limit}${cpu.limitUnit}` }),
-                    ...(memory.limit && { memory: `${memory.limit}${memory.limitUnit}` }),
-                  },
-                }),
-                ...((cpu.request || memory.request) && {
-                  requests: {
-                    ...(cpu.request && { cpu: `${cpu.request}${cpu.requestUnit}` }),
-                    ...(memory.request && { memory: `${memory.request}${memory.requestUnit}` }),
-                  },
-                }),
-              },
+              resources: getResourceLimitsData({ cpu, memory }),
               ...getProbesData(healthChecks),
             },
           ],
@@ -423,14 +421,17 @@ export const createOrUpdateDeploymentConfig = (
 
 export const managePipelineResources = async (
   formData: GitImportFormData,
-  appResources: AppResources,
+  pipelineData: PipelineKind,
 ) => {
+  if (!formData) return;
+
   const { name, git, pipeline, project, docker, image } = formData;
   let managedPipeline: PipelineKind;
+  const pipelineName = pipelineData?.metadata?.name;
 
-  if (!_.isEmpty(appResources?.pipeline?.data)) {
+  if (!_.isEmpty(pipelineData) && pipelineName === name) {
     managedPipeline = await updatePipelineForImportFlow(
-      appResources?.pipeline?.data,
+      pipelineData,
       pipeline.template,
       name,
       project.name,
@@ -451,6 +452,29 @@ export const managePipelineResources = async (
       docker.dockerfilePath,
       image.tag,
     );
+  }
+
+  if (git.secret) {
+    const secret = await k8sGet(SecretModel, git.secret, project.name);
+    const gitUrl = GitUrlParse(git.url);
+    secret.metadata.annotations = getSecretAnnotations(
+      {
+        key: 'git',
+        value:
+          gitUrl.protocol === 'ssh' ? gitUrl.resource : `${gitUrl.protocol}://${gitUrl.resource}`,
+      },
+      secret.metadata.annotations,
+    );
+    await k8sUpdate(SecretModel, secret, project.name);
+
+    const pipelineServiceAccount = await k8sGet(
+      ServiceAccountModel,
+      PIPELINE_SERVICE_ACCOUNT,
+      project.name,
+    );
+    if (_.find(pipelineServiceAccount.secrets, (s) => s.name === git.secret) === undefined) {
+      await updateServiceAccount(git.secret, pipelineServiceAccount, false);
+    }
   }
 
   if (_.has(managedPipeline?.metadata?.labels, 'app.kubernetes.io/instance')) {
@@ -593,7 +617,7 @@ export const createOrUpdateResources = async (
     generatedImageStreamName = `${name}-${getRandomChars()}`;
   }
 
-  if (buildStrategy === 'Devfile') {
+  if (buildStrategy === BuildStrategyType.Devfile) {
     if (verb !== 'create') {
       throw new Error(t('devconsole~Cannot update Devfile resources'));
     }
@@ -612,7 +636,7 @@ export const createOrUpdateResources = async (
 
   if (pipeline.enabled) {
     if (!dryRun) {
-      await managePipelineResources(formData, appResources);
+      await managePipelineResources(formData, appResources?.pipeline?.data);
     }
   } else {
     responses.push(
@@ -690,7 +714,11 @@ export const createOrUpdateResources = async (
     );
   }
 
-  if (!_.isEmpty(ports) || buildStrategy === 'Docker' || buildStrategy === 'Source') {
+  if (
+    !_.isEmpty(ports) ||
+    buildStrategy === BuildStrategyType.Docker ||
+    buildStrategy === BuildStrategyType.Source
+  ) {
     const originalService = _.get(appResources, 'service.data');
     const service = createService(formData, imageStream, originalService);
 

@@ -2,8 +2,8 @@ import * as React from 'react';
 import { useFormikContext } from 'formik';
 import * as fuzzy from 'fuzzysearch';
 import { useTranslation } from 'react-i18next';
-import { ResourceDropdownField } from '@console/shared';
 import { referenceForModel, K8sResourceKind } from '@console/internal/module/k8s';
+import { ResourceDropdownField } from '@console/shared';
 import { ClusterTriggerBindingModel, TriggerBindingModel } from '../../../../models';
 import { TriggerBindingKind } from '../../resource-types';
 import { AddTriggerFormValues } from './types';
@@ -18,7 +18,7 @@ const KEY_DIVIDER = '~';
 
 const TriggerBindingSelector: React.FC<TriggerBindingSelectorProps> = (props) => {
   const { t } = useTranslation();
-  const { description, label = TriggerBindingModel.label, onChange } = props;
+  const { description, label = t(TriggerBindingModel.labelKey), onChange } = props;
   const { values } = useFormikContext<AddTriggerFormValues>();
   const autoCompleteFilter = (strText: string, item: React.ReactElement): boolean =>
     fuzzy(strText, item?.props?.name);

@@ -1,10 +1,8 @@
 import * as _ from 'lodash';
 import {
-  AlertAction,
   ClusterServiceVersionAction,
   DashboardsCard,
   DashboardsOverviewHealthResourceSubsystem,
-  DashboardsOverviewUtilizationItem,
   DashboardsTab,
   HorizontalNavTab,
   ModelDefinition,
@@ -17,8 +15,6 @@ import {
   CustomFeatureFlag,
   StorageClassProvisioner,
   ProjectDashboardInventoryItem,
-  ResourceClusterNavItem,
-  ResourceNSNavItem,
   ResourceListPage,
 } from '@console/plugin-sdk';
 import { ClusterServiceVersionModel } from '@console/operator-lifecycle-manager/src/models';
@@ -39,22 +35,19 @@ import {
   CEPH_FLAG,
   OCS_INDEPENDENT_FLAG,
   OCS_CONVERGED_FLAG,
+  MCG_FLAG,
   OCS_FLAG,
-  NOOBAA_FLAG,
+  detectComponents,
 } from './features';
-import { getAlertActionPath } from './utils/alert-action-path';
-import { OSD_DOWN_ALERT, OSD_DOWN_AND_OUT_ALERT } from './constants';
 import { getObcStatusGroups } from './components/dashboards/object-service/buckets-card/utils';
 
 type ConsumedExtensions =
-  | AlertAction
   | ModelFeatureFlag
   | HorizontalNavTab
   | ModelDefinition
   | DashboardsTab
   | DashboardsCard
   | DashboardsOverviewHealthResourceSubsystem<WatchCephResource>
-  | DashboardsOverviewUtilizationItem
   | RoutePage
   | CustomFeatureFlag
   | ClusterServiceVersionAction
@@ -64,11 +57,12 @@ type ConsumedExtensions =
   | DashboardsOverviewResourceActivity
   | StorageClassProvisioner
   | ProjectDashboardInventoryItem
-  | ResourceClusterNavItem
-  | ResourceNSNavItem
   | ResourceListPage;
 
 const apiObjectRef = referenceForModel(models.OCSServiceModel);
+const blockPoolRef = referenceForModel(models.CephBlockPoolModel);
+
+const OCS_MODEL_FLAG = 'OCS_MODEL';
 
 const plugin: Plugin<ConsumedExtensions> = [
   {
@@ -81,7 +75,7 @@ const plugin: Plugin<ConsumedExtensions> = [
     type: 'FeatureFlag/Model',
     properties: {
       model: models.OCSServiceModel,
-      flag: CEPH_FLAG,
+      flag: OCS_MODEL_FLAG,
     },
   },
   {
@@ -90,7 +84,7 @@ const plugin: Plugin<ConsumedExtensions> = [
       detect: detectOCSSupportedFeatures,
     },
     flags: {
-      required: [CEPH_FLAG],
+      required: [OCS_MODEL_FLAG],
     },
   },
   {
@@ -99,13 +93,22 @@ const plugin: Plugin<ConsumedExtensions> = [
       detect: detectOCS,
     },
     flags: {
-      required: [CEPH_FLAG],
+      required: [OCS_MODEL_FLAG],
     },
   },
   {
     type: 'FeatureFlag/Custom',
     properties: {
       detect: detectRGW,
+    },
+    flags: {
+      required: [MCG_FLAG],
+    },
+  },
+  {
+    type: 'FeatureFlag/Custom',
+    properties: {
+      detect: detectComponents,
     },
     flags: {
       required: [OCS_FLAG],
@@ -121,11 +124,12 @@ const plugin: Plugin<ConsumedExtensions> = [
     type: 'Dashboards/Tab',
     properties: {
       id: 'persistent-storage',
-      // t('ceph-storage-plugin~Persistent Storage')
-      title: '%ceph-storage-plugin~Persistent Storage%',
+      navSection: 'storage',
+      // t('ceph-storage-plugin~Block and File')
+      title: '%ceph-storage-plugin~Block and File%',
     },
     flags: {
-      required: [OCS_CONVERGED_FLAG],
+      required: [OCS_CONVERGED_FLAG, CEPH_FLAG],
       disallowed: [OCS_INDEPENDENT_FLAG],
     },
   },
@@ -281,6 +285,9 @@ const plugin: Plugin<ConsumedExtensions> = [
         },
       },
       healthHandler: getCephHealthState,
+      // t('ceph-storage-plugin~Storage')
+      popupTitle: '%ceph-storage-plugin~Storage%',
+      popupComponent: () => import('./components/storage-popover').then((m) => m.StoragePopover),
     },
     flags: {
       required: [CEPH_FLAG],
@@ -289,6 +296,7 @@ const plugin: Plugin<ConsumedExtensions> = [
   {
     type: 'ClusterServiceVersion/Action',
     properties: {
+      id: 'add-capacity',
       kind: 'StorageCluster',
       // t('ceph-storage-plugin~Add Capacity')
       label: '%ceph-storage-plugin~Add Capacity%',
@@ -309,14 +317,35 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
+    type: 'ClusterServiceVersion/Action',
+    properties: {
+      id: 'edit',
+      kind: models.CephBlockPoolModel.kind,
+      label: '%ceph-storage-plugin~Edit BlockPool%',
+      apiGroup: models.CephBlockPoolModel.apiGroup,
+      callback: (kind, obj) => () => {
+        const props = { kind, blockPoolConfig: obj };
+        import(
+          './components/modals/block-pool-modal/update-block-pool-modal' /* webpackChunkName: "ceph-storage-update-block-pool-modal" */
+        )
+          .then((m) => m.updateBlockPoolModal(props))
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.error('Error loading block Pool Modal', e);
+          });
+      },
+    },
+  },
+  {
     type: 'Dashboards/Tab',
     properties: {
       id: 'independent-dashboard',
-      // t('ceph-storage-plugin~Persistent Storage')
-      title: '%ceph-storage-plugin~Persistent Storage%',
+      navSection: 'storage',
+      // t('ceph-storage-plugin~Block and File')
+      title: '%ceph-storage-plugin~Block and File%',
     },
     flags: {
-      required: [OCS_INDEPENDENT_FLAG],
+      required: [OCS_INDEPENDENT_FLAG, CEPH_FLAG],
     },
   },
   // Left Cards
@@ -443,30 +472,6 @@ const plugin: Plugin<ConsumedExtensions> = [
       required: [OCS_ATTACHED_DEVICES_FLAG, LSO_DEVICE_DISCOVERY],
     },
   },
-  {
-    type: 'AlertAction',
-    properties: {
-      alert: OSD_DOWN_ALERT,
-      // t('ceph-storage-plugin~Troubleshoot')
-      text: '%ceph-storage-plugin~Troubleshoot%',
-      path: getAlertActionPath,
-    },
-    flags: {
-      required: [LSO_DEVICE_DISCOVERY, OCS_ATTACHED_DEVICES_FLAG],
-    },
-  },
-  {
-    type: 'AlertAction',
-    properties: {
-      alert: OSD_DOWN_AND_OUT_ALERT,
-      // t('ceph-storage-plugin~Troubleshoot')
-      text: '%ceph-storage-plugin~Troubleshoot%',
-      path: getAlertActionPath,
-    },
-    flags: {
-      required: [LSO_DEVICE_DISCOVERY, OCS_ATTACHED_DEVICES_FLAG],
-    },
-  },
   // Noobaa Related Plugins
   {
     type: 'Page/Route',
@@ -479,9 +484,6 @@ const plugin: Plugin<ConsumedExtensions> = [
         import('./components/bucket-class/create-bc' /* webpackChunkName: "create-bc" */).then(
           (m) => m.default,
         ),
-    },
-    flags: {
-      required: [NOOBAA_FLAG],
     },
   },
   {
@@ -499,26 +501,33 @@ const plugin: Plugin<ConsumedExtensions> = [
           './components/create-backingstore-page/create-bs-page' /* webpackChunkName: "create-bs" */
         ).then((m) => m.default),
     },
-    flags: {
-      required: [NOOBAA_FLAG],
-    },
   },
   {
-    type: 'FeatureFlag/Model',
+    type: 'Page/Route',
     properties: {
-      model: models.NooBaaSystemModel,
-      flag: NOOBAA_FLAG,
+      exact: true,
+      path: [
+        `/k8s/ns/:ns/${ClusterServiceVersionModel.plural}/:appName/${referenceForModel(
+          models.NooBaaNamespaceStoreModel,
+        )}/~new`,
+        `/k8s/ns/:ns/${referenceForModel(models.NooBaaNamespaceStoreModel)}/~new`,
+      ],
+      loader: () =>
+        import(
+          './components/namespace-store/create-namespace-store' /* webpackChunkName: "create-namespace-store" */
+        ).then((m) => m.default),
     },
   },
   {
     type: 'Dashboards/Tab',
     properties: {
       id: 'object-service',
-      // t('ceph-storage-plugin~Object Service')
-      title: '%ceph-storage-plugin~Object Service%',
+      navSection: 'storage',
+      // t('ceph-storage-plugin~Object')
+      title: '%ceph-storage-plugin~Object%',
     },
     flags: {
-      required: [NOOBAA_FLAG, OCS_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -532,7 +541,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.default),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -546,7 +555,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.DetailsCard),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -560,7 +569,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.default),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -574,7 +583,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.BucketsCard),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -588,7 +597,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.default),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -602,7 +611,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.default),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -616,7 +625,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.default),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -630,22 +639,17 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.ResourceProvidersCard),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
-    type: 'NavItem/ResourceCluster',
+    type: 'Page/Route',
     properties: {
-      id: 'objectbuckets',
-      section: 'storage',
-      componentProps: {
-        // t('ceph-storage-plugin~Object Buckets')
-        name: '%ceph-storage-plugin~Object Buckets%',
-        resource: models.NooBaaObjectBucketModel.plural,
-      },
+      path: `/ocs-dashboards`,
+      loader: () => import('./components/dashboards/ocs-dashboards').then((m) => m.DashboardsPage),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [OCS_FLAG],
     },
   },
   {
@@ -657,6 +661,9 @@ const plugin: Plugin<ConsumedExtensions> = [
           './components/object-bucket-page/object-bucket' /* webpackChunkName: "object-bucket-page" */
         ).then((m) => m.ObjectBucketsPage),
     },
+    flags: {
+      required: [MCG_FLAG],
+    },
   },
   {
     type: 'Page/Resource/Details',
@@ -667,20 +674,8 @@ const plugin: Plugin<ConsumedExtensions> = [
           './components/object-bucket-page/object-bucket' /* webpackChunkName: "object-bucket-page" */
         ).then((m) => m.ObjectBucketDetailsPage),
     },
-  },
-  {
-    type: 'NavItem/ResourceNS',
-    properties: {
-      id: 'objectbucketclaims',
-      section: 'storage',
-      componentProps: {
-        // t('ceph-storage-plugin~Object Bucket Claims')
-        name: '%ceph-storage-plugin~Object Bucket Claims%',
-        resource: models.NooBaaObjectBucketClaimModel.plural,
-      },
-    },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -692,6 +687,9 @@ const plugin: Plugin<ConsumedExtensions> = [
           './components/object-bucket-claim-page/object-bucket-claim' /* webpackChunkName: "object-bucket-claim-page" */
         ).then((m) => m.ObjectBucketClaimsPage),
     },
+    flags: {
+      required: [MCG_FLAG],
+    },
   },
   {
     type: 'Page/Resource/Details',
@@ -701,6 +699,9 @@ const plugin: Plugin<ConsumedExtensions> = [
         import(
           './components/object-bucket-claim-page/object-bucket-claim' /* webpackChunkName: "object-bucket-claim-page" */
         ).then((m) => m.ObjectBucketClaimsDetailsPage),
+    },
+    flags: {
+      required: [MCG_FLAG],
     },
   },
   {
@@ -713,7 +714,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.CreateOBCPage),
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
@@ -723,12 +724,13 @@ const plugin: Plugin<ConsumedExtensions> = [
       mapper: getObcStatusGroups,
     },
     flags: {
-      required: [NOOBAA_FLAG],
+      required: [MCG_FLAG],
     },
   },
   {
     type: 'ClusterServiceVersion/Action',
     properties: {
+      id: 'edit-bucket-class-resources',
       kind: models.NooBaaBucketClassModel.kind,
       // t('ceph-storage-plugin~Edit Bucket Class Resources')
       label: '%ceph-storage-plugin~Edit Bucket Class Resources%',
@@ -738,6 +740,40 @@ const plugin: Plugin<ConsumedExtensions> = [
           .then((m) => m.default({ bucketClass: obj, modalClassName: 'nb-modal' }))
           // eslint-disable-next-line no-console
           .catch((e) => console.error(e)),
+    },
+    flags: {
+      required: [MCG_FLAG],
+    },
+  },
+  {
+    type: 'Page/Route',
+    properties: {
+      exact: true,
+      path: `/k8s/ns/:ns/${ClusterServiceVersionModel.plural}/:appName/${blockPoolRef}/~new`,
+      loader: () =>
+        import(
+          './components/block-pool/create-block-pool' /* webpackChunkName: "create-block-pool" */
+        ).then((m) => m.default),
+    },
+  },
+  {
+    type: 'ClusterServiceVersion/Action',
+    properties: {
+      id: 'delete',
+      kind: models.CephBlockPoolModel.kind,
+      label: '%ceph-storage-plugin~Delete BlockPool%',
+      apiGroup: models.CephBlockPoolModel.apiGroup,
+      callback: (kind, obj) => () => {
+        const props = { kind, blockPoolConfig: obj };
+        import(
+          './components/modals/block-pool-modal/delete-block-pool-modal' /* webpackChunkName: "ceph-storage-delete-block-pool-modal" */
+        )
+          .then((m) => m.deleteBlockPoolModal(props))
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.error('Error loading block Pool Modal', e);
+          });
+      },
     },
   },
 ];

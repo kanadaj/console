@@ -1,35 +1,31 @@
 import * as React from 'react';
 import { shallow } from 'enzyme';
-import { referenceForModel } from '@console/internal/module/k8s';
-import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
+import { SemVer } from 'semver';
+import { ErrorPage404 } from '@console/internal/components/error';
 import { DetailsPage } from '@console/internal/components/factory/';
 import { LoadingBox } from '@console/internal/components/utils';
-import { ErrorPage404 } from '@console/internal/components/error';
-import { pipelineTestData, PipelineExampleNames } from '../../../test-data/pipeline-data';
-import { getPipelineKebabActions } from '../../../utils/pipeline-actions';
-import { PipelineRunKind } from '../../../types';
+import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
+import { referenceForModel } from '@console/internal/module/k8s';
 import { PipelineModel } from '../../../models';
+import { pipelineTestData, PipelineExampleNames } from '../../../test-data/pipeline-data';
+import { PipelineRunKind } from '../../../types';
+import { getPipelineKebabActions } from '../../../utils/pipeline-actions';
 import * as utils from '../../pipelineruns/triggered-by';
 import * as hookUtils from '../hooks';
+import { MetricsQueryPrefix } from '../pipeline-metrics/pipeline-metrics-utils';
 import PipelineDetailsPage from '../PipelineDetailsPage';
+import * as operatorUtils from '../utils/pipeline-operator';
 import * as triggerUtils from '../utils/triggers';
 
 const menuActions = jest.spyOn(utils, 'useMenuActionsWithUserAnnotation');
 const breadCrumbs = jest.spyOn(hookUtils, 'usePipelinesBreadcrumbsFor');
 const templateNames = jest.spyOn(triggerUtils, 'usePipelineTriggerTemplateNames');
 const latestPipelineRun = jest.spyOn(hookUtils, 'useLatestPipelineRun');
+const operatorVersion = jest.spyOn(operatorUtils, 'usePipelineOperatorVersion');
 
 jest.mock('@console/internal/components/utils/k8s-get-hook', () => ({
   useK8sGet: jest.fn(),
 }));
-
-jest.mock('react-i18next', () => {
-  const reactI18next = require.requireActual('react-i18next');
-  return {
-    ...reactI18next,
-    useTranslation: () => ({ t: (key) => key }),
-  };
-});
 
 type PipelineDetailsPageProps = React.ComponentProps<typeof PipelineDetailsPage>;
 const mockData = pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE];
@@ -76,6 +72,32 @@ describe('PipelineDetailsPage:', () => {
     (useK8sGet as jest.Mock).mockReturnValue([[], true, { response: { status: 404 } }]);
     const wrapper = shallow(<PipelineDetailsPage {...PipelineDetailsPageProps} />);
     expect(wrapper.find(ErrorPage404).exists()).toBe(true);
+  });
+
+  it('should have the latest metrics endpoint as default queryPrefix', () => {
+    (useK8sGet as jest.Mock).mockReturnValue([mockData.pipeline, true, null]);
+    const wrapper = shallow(<PipelineDetailsPage {...PipelineDetailsPageProps} />);
+    expect(wrapper.find(DetailsPage).props().customData.queryPrefix).toBe(
+      MetricsQueryPrefix.TEKTON_PIPELINES_CONTROLLER,
+    );
+  });
+
+  it('should use the new metrics endpoint if the pipeline operator is greater than 1.4.0', () => {
+    (useK8sGet as jest.Mock).mockReturnValue([mockData.pipeline, true, null]);
+    ((operatorVersion as unknown) as jest.Mock).mockReturnValue(new SemVer('1.8.0'));
+    const wrapper = shallow(<PipelineDetailsPage {...PipelineDetailsPageProps} />);
+    expect(wrapper.find(DetailsPage).props().customData.queryPrefix).toBe(
+      MetricsQueryPrefix.TEKTON_PIPELINES_CONTROLLER,
+    );
+  });
+
+  it('should use the old metrics endpoint if the pipeline operator is less than 1.4.0', () => {
+    (useK8sGet as jest.Mock).mockReturnValue([mockData.pipeline, true, null]);
+    ((operatorVersion as unknown) as jest.Mock).mockReturnValue(new SemVer('1.2.1'));
+    const wrapper = shallow(<PipelineDetailsPage {...PipelineDetailsPageProps} />);
+    expect(wrapper.find(DetailsPage).props().customData.queryPrefix).toBe(
+      MetricsQueryPrefix.TEKTON,
+    );
   });
 
   it('should not contain Start last run menu item if the pipeline run is not present', () => {

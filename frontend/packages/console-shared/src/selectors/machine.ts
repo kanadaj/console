@@ -1,3 +1,4 @@
+import i18next from 'i18next';
 import {
   MachineAWSPlacement,
   MachineKind,
@@ -6,7 +7,6 @@ import {
   NodeKind,
 } from '@console/internal/module/k8s';
 import { getName } from './common';
-import i18next from 'i18next';
 
 export const getMachineRole = (obj: MachineKind | MachineSetKind | MachineDeploymentKind): string =>
   obj?.metadata?.labels?.['machine.openshift.io/cluster-api-machine-role'];
@@ -34,5 +34,5 @@ export const getMachineAddresses = (machine: MachineKind) => machine?.status?.ad
 
 export const getMachinePhase = (obj: MachineKind): string => {
   const phase = obj?.status?.phase;
-  return phase === 'Running' ? i18next.t('machines~Provisioned as node') : phase;
+  return phase === 'Running' ? i18next.t('console-shared~Provisioned as node') : phase;
 };

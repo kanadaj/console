@@ -1,10 +1,8 @@
 import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
-import { addPage } from '../../pages/add-flow/add-page';
-import { addOptions } from '../../constants/add';
-import { catalogPage } from '../../pages/add-flow/catalog-page';
-import { catalogPO } from '../../pageObjects/add-flow-po';
-import { detailsPage } from '../../../../../integration-tests-cypress/views/details-page';
-import { pageTitle } from '../../constants/pageTitle';
+import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
+import { addOptions, pageTitle } from '../../constants';
+import { catalogPO } from '../../pageObjects';
+import { addPage, catalogPage, gitPage } from '../../pages';
 
 When('user selects From Catalog card from add page', () => {
   addPage.selectCardFromOptions(addOptions.DeveloperCatalog);
@@ -26,7 +24,10 @@ When('user searches and selects {string} card from catalog page', (cardName: str
 
 When('user searches and selects Template card {string} from catalog page', (cardName: string) => {
   catalogPage.search(cardName);
-  detailsPage.titleShouldContain(pageTitle.Templates).should('be.visible');
+  detailsPage
+    .titleShouldContain(pageTitle.Templates)
+    .scrollIntoView()
+    .should('be.visible');
   catalogPage.selectCardInCatalog(cardName);
 });
 
@@ -39,6 +40,10 @@ When(
   },
 );
 
+When('user enters workload name as {string}', (name: string) => {
+  gitPage.enterWorkloadName(name);
+});
+
 When('user clicks Create Application button on side bar', () => {
   cy.get(catalogPO.sidePane.createApplication)
     .scrollIntoView()
@@ -49,7 +54,7 @@ When('user enters Git Repo url in s2i builder image page as {string}', (gitRepoU
   cy.get(catalogPO.s2I.gitRepoUrl).type(gitRepoUrl);
 });
 
-When('user clicks create button on Instantiate Template page with default values', () => {
+When('user clicks create button on Instantiate Template page', () => {
   cy.get(catalogPO.create)
     .scrollIntoView()
     .click();
@@ -97,7 +102,8 @@ When('user selects {string} card from catalog page', (cardName: string) => {
   catalogPage.selectCardInCatalog(cardName);
 });
 
-When('user selects {string} helm chart from catalog page', (helmChartName: string) => {
+When('user searches and selects {string} helm chart from catalog page', (helmChartName: string) => {
+  catalogPage.search(helmChartName);
   catalogPage.selectHelmChartCard(helmChartName);
 });
 

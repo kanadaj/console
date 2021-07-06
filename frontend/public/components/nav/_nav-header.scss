@@ -1,6 +1,6 @@
 .oc-nav-header {
-  border-bottom: 1px solid $color-pf-black;
-  padding: var(--pf-global--spacer--md) var(--pf-global--spacer--sm);
+  border-bottom: 1px solid var(--pf-global--BackgroundColor--dark-200);
+  padding: 0.6rem var(--pf-global--spacer--sm);
 
   @media screen and (min-width: $grid-float-breakpoint) {
     padding-left: var(--pf-global--spacer--md);
@@ -13,6 +13,7 @@
 
   .pf-c-dropdown {
     width: 100%;
+    cursor: pointer;
 
     &.pf-m-expanded .pf-c-dropdown__toggle {
       background-color: var(--pf-global--BackgroundColor--dark-200);

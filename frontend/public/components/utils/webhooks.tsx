@@ -3,7 +3,7 @@ import * as _ from 'lodash-es';
 import { Base64 } from 'js-base64';
 import { PasteIcon } from '@patternfly/react-icons';
 import { Button, AlertVariant } from '@patternfly/react-core';
-import * as classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 
 import { K8sResourceKind, k8sGet } from '../../module/k8s';
 import { ExpandableAlert } from './alerts';
@@ -33,21 +33,22 @@ const getTriggerProperty = (trigger: WebhookTrigger) => trigger.type.toLowerCase
 const getTableColumnClasses = (canGetSecret: boolean) => {
   if (canGetSecret) {
     return [
-      classNames('col-lg-2', 'col-md-4', 'col-sm-4', 'col-xs-6'),
-      classNames('col-lg-6', 'hidden-md', 'hidden-sm', 'hidden-xs', 'co-break-all'),
-      classNames('col-lg-2', 'col-md-4 ', 'col-sm-4', 'hidden-xs'),
-      classNames('col-lg-2', 'col-md-4', 'col-sm-4', 'col-xs-6'),
+      '',
+      'pf-m-hidden pf-m-visible-on-xl pf-u-w-50-on-xl co-break-word',
+      'pf-m-hidden pf-m-visible-on-md',
+      '',
     ];
   }
   return [
-    classNames('col-sm-2'),
-    classNames('col-sm-7', 'co-break-all'),
-    classNames('col-sm-3', 'hidden-xs'),
-    classNames('hidden'),
+    'pf-u-w-16-on-md',
+    'pf-u-w-58-on-xl co-break-word',
+    'pf-m-hidden pf-m-visible-on-md pf-u-w-25-on-md',
+    'pf-m-hidden',
   ];
 };
 
 export const WebhookTriggers: React.FC<WebhookTriggersProps> = (props) => {
+  const { t } = useTranslation();
   const { resource } = props;
   const { name, namespace } = resource.metadata;
   const { triggers } = resource.spec;
@@ -152,7 +153,10 @@ export const WebhookTriggers: React.FC<WebhookTriggersProps> = (props) => {
     );
     if (!_.has(webhookSecret, 'data.WebHookSecretKey')) {
       errorModal({
-        error: `Secret referenced in the ${triggerProperty} webhook trigger does not contain 'WebHookSecretKey' key. Webhook trigger won’t work due to the invalid secret reference`,
+        error: t(
+          'public~Secret referenced in the {{triggerProperty}} webhook trigger does not contain "WebHookSecretKey" key. Webhook trigger won’t work due to the invalid secret reference',
+          { triggerProperty },
+        ),
       });
       return;
     }
@@ -171,7 +175,8 @@ export const WebhookTriggers: React.FC<WebhookTriggersProps> = (props) => {
     return webhookSecret || plainSecret ? (
       <Button variant="link" type="button" onClick={() => copyWebhookToClipboard(trigger)}>
         <PasteIcon />
-        &nbsp;Copy URL with Secret
+        &nbsp;
+        {t('public~Copy URL with Secret')}
       </Button>
     ) : null;
   };
@@ -188,7 +193,7 @@ export const WebhookTriggers: React.FC<WebhookTriggersProps> = (props) => {
           ))}
         />
       )}
-      <SectionHeading text="Webhooks" />
+      <SectionHeading text={t('public~Webhooks')} />
       <div className="co-table-container">
         <table className="table table--layout-fixed">
           <colgroup>
@@ -199,9 +204,9 @@ export const WebhookTriggers: React.FC<WebhookTriggersProps> = (props) => {
           </colgroup>
           <thead>
             <tr>
-              <th className={tableColumnClasses[0]}>Type</th>
-              <th className={tableColumnClasses[1]}>Webhook URL</th>
-              <th className={tableColumnClasses[2]}>Secret</th>
+              <th className={tableColumnClasses[0]}>{t('public~Type')}</th>
+              <th className={tableColumnClasses[1]}>{t('public~Webhook URL')}</th>
+              <th className={tableColumnClasses[2]}>{t('public~Secret')}</th>
               <th className={tableColumnClasses[3]} />
             </tr>
           </thead>

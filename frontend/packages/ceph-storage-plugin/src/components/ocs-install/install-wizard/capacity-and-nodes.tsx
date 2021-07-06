@@ -13,10 +13,10 @@ import {
   Text,
   TextContent,
 } from '@patternfly/react-core';
-import { humanizeBinaryBytes, Dropdown } from '@console/internal/components/utils';
+import { humanizeBinaryBytes, Dropdown, FieldLevelHelp } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { StorageClassResourceKind, NodeKind, K8sResourceKind } from '@console/internal/module/k8s';
-import { useDeepCompareMemoize } from '@console/shared';
+import { TechPreviewBadge, useDeepCompareMemoize, getName } from '@console/shared';
 import { State, Action } from '../attached-devices-mode/reducer';
 import { scResource } from '../../../resources';
 import { arbiterText, MODES } from '../../../constants';
@@ -24,6 +24,20 @@ import { getZone, isArbiterSC } from '../../../utils/install';
 import { AdvancedSubscription } from '../subscription-icon';
 import { ActionType, InternalClusterAction, InternalClusterState } from '../internal-mode/reducer';
 import './_capacity-and-nodes.scss';
+
+const EnableArbiterLabel: React.FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="ocs-enable-arbiter-label">
+      <span className="ocs-enable-arbiter-label__title--padding">
+        {t('ceph-storage-plugin~Enable arbiter')}
+      </span>
+      <TechPreviewBadge />
+      <AdvancedSubscription />
+    </div>
+  );
+};
 
 export const SelectNodesText: React.FC<SelectNodesTextProps> = React.memo(({ text }) => {
   const { t } = useTranslation();
@@ -34,14 +48,15 @@ export const SelectNodesText: React.FC<SelectNodesTextProps> = React.memo(({ tex
       <Text>
         <Trans t={t} ns="ceph-storage-plugin">
           If not labeled, the selected nodes are labeled <Label color="blue">{{ label }}</Label> to
-          make them target hosts for OCS components.
+          make them target hosts for OpenShift Container Storage
+          {/* eslint-disable react/no-unescaped-entities */}'s components.
         </Trans>
       </Text>
     </TextContent>
   );
 });
 
-type SelectNodesTextProps = { text: string };
+type SelectNodesTextProps = { text: JSX.Element };
 
 export const SelectNodesDetails: React.FC<SelectNodesDetailsProps> = React.memo(
   ({ nodes, cpu, zones, memory }) => {
@@ -75,9 +90,22 @@ export const EnableTaintNodes: React.FC<EnableTaintNodesProps> = ({ state, dispa
 
   return (
     <Checkbox
-      label={t('ceph-storage-plugin~Enable taint nodes')}
-      description={t('ceph-storage-plugin~Selected nodes will be dedicated to OCS use only')}
-      className="ocs-install__enable-taint"
+      label={
+        <>
+          {t('ceph-storage-plugin~Mark nodes as dedicated')}{' '}
+          <FieldLevelHelp>
+            <Trans t={t} ns="ceph-storage-plugin">
+              This will taint the nodes with the
+              <code>key: node.ocs.openshift.io/storage</code>, <code>value: true</code>, and{' '}
+              <code>effect: NoSchedule</code>
+            </Trans>
+          </FieldLevelHelp>
+        </>
+      }
+      description={t(
+        'ceph-storage-plugin~Selected nodes will be dedicated to OpenShift Container Storage use only',
+      )}
+      className="ocs-enable-taint"
       id="taint-nodes"
       isChecked={state.enableTaint}
       onChange={() =>
@@ -111,7 +139,8 @@ export const StretchClusterFormGroup: React.FC<StretchClusterFormGroupProps> = (
   const nodesDataMemoized: NodeKind[] = useDeepCompareMemoize(nodesData, true);
 
   const isArbiterDisabled = React.useCallback(
-    (): boolean => !storageClassData?.some((sc) => isArbiterSC(sc, pvData, nodesDataMemoized)),
+    (): boolean =>
+      !storageClassData?.some((sc) => isArbiterSC(getName(sc), pvData, nodesDataMemoized)),
     [nodesDataMemoized, pvData, storageClassData],
   );
 
@@ -134,12 +163,24 @@ export const StretchClusterFormGroup: React.FC<StretchClusterFormGroupProps> = (
   }, [dispatch, stretchClusterChecked, zones]);
 
   return (
-    <FormGroup fieldId="arbiter-cluster" label={t('ceph-storage-plugin~Stretch Cluster')}>
+    <FormGroup
+      fieldId="arbiter-cluster"
+      label={
+        <>
+          {t('ceph-storage-plugin~Stretch Cluster')}
+          <FieldLevelHelp>
+            {t(
+              'ceph-storage-plugin~OpenShift Container Storage deployment in two data centers, with an arbiter node to settle quorum decisions.',
+            )}
+          </FieldLevelHelp>
+        </>
+      }
+    >
       <Checkbox
-        aria-label={t('ceph-storage-plugin~Enable Arbiter')}
+        aria-label={t('ceph-storage-plugin~Enable arbiter')}
         id="arbiter-cluster"
         isChecked={stretchClusterChecked}
-        label={<AdvancedSubscription prefix={t('ceph-storage-plugin~Enable arbiter')} />}
+        label={<EnableArbiterLabel />}
         description={t(
           'ceph-storage-plugin~To support high availability when two data centers can be used, enable arbiter to get the valid quorum between two data centers.',
         )}
@@ -164,7 +205,7 @@ export const StretchClusterFormGroup: React.FC<StretchClusterFormGroupProps> = (
         <Grid hasGutter>
           <GridItem span={5}>
             <FormGroup
-              label={t('ceph-storage-plugin~Select an arbiter zone')}
+              label={t('ceph-storage-plugin~Select arbiter zone')}
               fieldId="arbiter-zone-dropdown"
               className="ceph-ocs-install__select-arbiter-zone"
             >

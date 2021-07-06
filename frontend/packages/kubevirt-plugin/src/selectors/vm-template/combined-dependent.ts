@@ -8,13 +8,13 @@ import {
   TEMPLATE_OS_LABEL,
   TEMPLATE_WORKLOAD_LABEL,
 } from '../../constants/vm';
+import { getLabelValue } from '../selectors';
+import { isCustomFlavor } from '../vm-like/flavor';
 import {
   getTemplateFlavors,
   getTemplatesWithLabels,
   getTemplateWorkloadProfiles,
 } from './advanced';
-import { isCustomFlavor } from '../vm-like/flavor';
-import { getLabelValue } from '../selectors';
 
 const buildLabel = (labelPrefix: string, value: string) => {
   if (!value) {

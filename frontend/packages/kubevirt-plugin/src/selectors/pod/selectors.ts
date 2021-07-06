@@ -1,9 +1,8 @@
 import { get } from 'lodash';
+import { PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
 import { getName, getNamespace, getOwnerReferences, getUID } from '@console/shared/src/selectors';
 import { createBasicLookup } from '@console/shared/src/utils/utils';
-import { PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
-import { VMKind, VMIKind } from '../../types';
-import { VIRT_LAUNCHER_POD_PREFIX } from '../../constants';
+import { VMIKind, VMKind } from '../../types';
 import { getPvcImportPodName, getPvcUploadPodName } from '../pvc/selectors';
 import { getDataVolumeTemplates } from '../vm';
 
@@ -43,22 +42,16 @@ export const isPodSchedulable = (pod: PodKind) => {
 const isPodReady = (pod: PodKind): boolean =>
   pod?.status?.phase === 'Running' && pod?.status?.containerStatuses?.every((s) => s.ready);
 
-export const findVMIPod = (
-  vmi?: VMIKind,
-  pods?: PodKind[],
-  podNamePrefix = VIRT_LAUNCHER_POD_PREFIX,
-) => {
+export const findVMIPod = (vmi?: VMIKind, pods?: PodKind[]) => {
   if (!pods || !vmi) {
     return null;
   }
 
   const vmUID = getUID(vmi);
-  const prefix = `${podNamePrefix}${getName(vmi)}-`;
   const prefixedPods = pods.filter((p) => {
     const podOwnerReferences = getOwnerReferences(p);
     return (
       getNamespace(p) === getNamespace(vmi) &&
-      getName(p).startsWith(prefix) &&
       podOwnerReferences &&
       podOwnerReferences.some((podOwnerReference) => podOwnerReference.uid === vmUID)
     );

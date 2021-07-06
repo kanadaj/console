@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
-import { pipelineParameters, pipelineParametersWithoutDefaults } from './utils-data';
+import { PipelineExampleNames, pipelineTestData } from '../../../../test-data/pipeline-data';
 import { TektonParam } from '../../../../types';
 import { getPipelineTaskLinks, removeEmptyDefaultFromPipelineParams } from '../utils';
-import { PipelineExampleNames, pipelineTestData } from '../../../../test-data/pipeline-data';
+import { pipelineParameters, pipelineParametersWithoutDefaults } from './utils-data';
 
 describe('removeEmptyDefaultFromPipelineParams omits empty default values', () => {
   it('should return pipline parameters by only omitting empty default values', () => {
@@ -68,26 +68,18 @@ describe('getPipelineTaskLinks', () => {
       },
     ],
   };
-  it('should return empty arrays for links if there are no regular tasks with taskRef and no finally tasks', () => {
-    const { taskLinks, finallyTaskLinks } = getPipelineTaskLinks({
-      ...simplePipeline,
-      spec: { ...taskWithoutTaskRef },
-    });
-    expect(taskLinks).toHaveLength(0);
-    expect(finallyTaskLinks).toHaveLength(0);
-  });
   it('should return links for only regular tasks if there are regular tasks with taskRef but no finally tasks', () => {
     const { taskLinks, finallyTaskLinks } = getPipelineTaskLinks(simplePipeline);
     expect(taskLinks).toHaveLength(2);
     expect(finallyTaskLinks).toHaveLength(0);
   });
-  it('should return links for only finally tasks if there are finally tasks but no regular tasks with taskRef', () => {
+  it('should return links for finally tasks if there are finally tasks and no regular tasks with taskRef', () => {
     const pipelineWithoutTaskRef = {
       ...pipelineWithFinally,
       spec: { ...pipelineWithFinally.spec, tasks: taskWithoutTaskRef.tasks },
     };
     const { taskLinks, finallyTaskLinks } = getPipelineTaskLinks(pipelineWithoutTaskRef);
-    expect(taskLinks).toHaveLength(0);
+    expect(taskLinks).toHaveLength(1);
     expect(finallyTaskLinks).toHaveLength(1);
   });
   it('should return links for both regular tasks and finally tasks if both are present', () => {

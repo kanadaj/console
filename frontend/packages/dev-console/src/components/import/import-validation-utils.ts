@@ -1,9 +1,10 @@
-import * as yup from 'yup';
-import * as _ from 'lodash';
 import { TFunction } from 'i18next';
+import * as _ from 'lodash';
+import * as yup from 'yup';
+import { nameValidationSchema, nameRegex } from '@console/shared';
+import { healthChecksProbesValidationSchema } from '../health-checks/health-checks-probe-validation-utils';
 import { GitTypes } from './import-types';
 import {
-  nameValidationSchema,
   projectNameValidationSchema,
   applicationNameValidationSchema,
   deploymentValidationSchema,
@@ -17,13 +18,11 @@ import {
   gitUrlRegex,
   resourcesValidationSchema,
   devfileValidationSchema,
-  nameRegex,
 } from './validation-schema';
-import { healthChecksProbesValidationSchema } from '../health-checks/health-checks-probe-validation-utils';
 
 export const validationSchema = (t: TFunction) =>
   yup.object().shape({
-    name: nameValidationSchema,
+    name: nameValidationSchema(t),
     project: projectNameValidationSchema,
     application: applicationNameValidationSchema,
     image: imageValidationSchema(t),
@@ -65,18 +64,20 @@ export const detectGitType = (url: string): string => {
   return GitTypes.unsure;
 };
 
+export const createComponentName = (nameString: string): string => {
+  if (nameRegex.test(nameString)) {
+    return nameString;
+  }
+  const kebabCaseStr = _.kebabCase(nameString);
+  return nameString.match(/^\d/) || kebabCaseStr.match(/^\d/)
+    ? `ocp-${kebabCaseStr}`
+    : kebabCaseStr;
+};
+
 export const detectGitRepoName = (url: string): string | undefined => {
   if (!gitUrlRegex.test(url)) {
     return undefined;
   }
-
-  return _.kebabCase(url.split('/').pop());
-};
-
-export const createComponentName = (nameString: string): string => {
-  const prefixToValidate = 'ocp-';
-  if (!nameRegex.test(nameString)) {
-    return `${prefixToValidate}${nameString.replace(/[^-a-zA-Z0-9]|(-*)$/g, '').toLowerCase()}`;
-  }
-  return nameString;
+  const name = url.split('/').pop();
+  return createComponentName(name);
 };

@@ -1,14 +1,8 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import { ResourceLink } from '@console/internal/components/utils';
-import { PersistentVolumeClaimModel, ConfigMapModel, SecretModel } from '@console/internal/models';
-import {
-  PipelineRunWorkspace,
-  VolumeTypeConfigMaps,
-  VolumeTypePVC,
-  VolumeTypeSecret,
-} from '../../../types';
-import VolumeClaimTemplatesLink from './VolumeClaimTemplateLink';
+import { PipelineRunWorkspace } from '../../../types';
+import EmptyDirectoriesSection from './EmptyDirectoriesSection';
+import VolumeClaimTemplateSection from './VolumeClaimTemplateSection';
+import WorkspaceResourcesSection from './WorkspaceResourcesSection';
 
 export interface WorkspaceResourceLinkListProps {
   workspaces: PipelineRunWorkspace[];
@@ -23,78 +17,18 @@ const WorkspaceResourceLinkList: React.FC<WorkspaceResourceLinkListProps> = ({
   ownerResourceName,
   ownerResourceKind,
 }) => {
-  const { t } = useTranslation();
-
   if (!workspaces || workspaces.length === 0) return null;
 
-  const hasOnlyVCTemplates = !workspaces.some((workspace) => !workspace.volumeClaimTemplate);
-
-  if (hasOnlyVCTemplates)
-    return (
-      <VolumeClaimTemplatesLink
+  return (
+    <>
+      <WorkspaceResourcesSection namespace={namespace} workspaces={workspaces} />
+      <VolumeClaimTemplateSection
         namespace={namespace}
         ownerResourceName={ownerResourceName}
         ownerResourceKind={ownerResourceKind}
-        showHeader
       />
-    );
-
-  return (
-    <dl>
-      <dt>{t('pipelines-plugin~Workspaces')}</dt>
-      <dd>
-        {workspaces.map((workspace) => {
-          if (workspace.persistentVolumeClaim) {
-            const persistentVolumeClaim = workspace.persistentVolumeClaim as VolumeTypePVC;
-            const displayName = `${persistentVolumeClaim.claimName} (${workspace.name})`;
-            return (
-              <ResourceLink
-                key={workspace.name}
-                name={persistentVolumeClaim.claimName}
-                namespace={namespace}
-                kind={PersistentVolumeClaimModel.kind}
-                displayName={displayName}
-              />
-            );
-          }
-          if (workspace.configMap) {
-            const configMap = workspace.configMap as VolumeTypeConfigMaps;
-            const displayName = `${configMap.name} (${workspace.name})`;
-            return (
-              <ResourceLink
-                key={workspace.name}
-                name={configMap.name}
-                namespace={namespace}
-                kind={ConfigMapModel.kind}
-                displayName={displayName}
-              />
-            );
-          }
-          if (workspace.secret) {
-            const secret = workspace.secret as VolumeTypeSecret;
-            const displayName = `${secret.secretName} (${workspace.name})`;
-            return (
-              <ResourceLink
-                key={workspace.name}
-                name={secret.secretName}
-                kind={SecretModel.kind}
-                namespace={namespace}
-                displayName={displayName}
-              />
-            );
-          }
-          if (!workspace.volumeClaimTemplate) {
-            return <div key={workspace.name}>{workspace.name}</div>;
-          }
-          return null;
-        })}
-        <VolumeClaimTemplatesLink
-          namespace={namespace}
-          ownerResourceName={ownerResourceName}
-          ownerResourceKind={ownerResourceKind}
-        />
-      </dd>
-    </dl>
+      <EmptyDirectoriesSection workspaces={workspaces} />
+    </>
   );
 };
 

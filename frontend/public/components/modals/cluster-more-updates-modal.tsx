@@ -4,8 +4,11 @@ import { ActionGroup, Button } from '@patternfly/react-core';
 
 import {
   ClusterVersionKind,
+  getConditionUpgradeableFalse,
+  getLastCompletedUpdate,
   getReleaseNotesLink,
   getSortedUpdates,
+  isMinorVersionNewer,
   showReleaseNotes,
 } from '../../module/k8s';
 import {
@@ -15,7 +18,11 @@ import {
   ModalTitle,
   createModalLauncher,
 } from '../factory/modal';
-import { ReleaseNotesLink } from '../cluster-settings/cluster-settings';
+import {
+  ClusterNotUpgradeableAlert,
+  UpdateBlockedLabel,
+} from '../cluster-settings/cluster-settings';
+import { ReleaseNotesLink } from '../utils';
 
 export const ClusterMoreUpdatesModal: React.FC<ClusterMoreUpdatesModalProps> = ({ cancel, cv }) => {
   const availableUpdates = getSortedUpdates(cv);
@@ -25,20 +32,26 @@ export const ClusterMoreUpdatesModal: React.FC<ClusterMoreUpdatesModalProps> = (
 
   return (
     <div className="modal-content">
-      <ModalTitle>{t('modal~Other available paths')}</ModalTitle>
+      <ModalTitle>{t('public~Other available paths')}</ModalTitle>
       <ModalBody>
+        {!!getConditionUpgradeableFalse(cv) && <ClusterNotUpgradeableAlert cv={cv} />}
         <table className="table">
           <thead>
             <tr>
-              <th>{t('modal~Version')}</th>
-              {releaseNotes && <th>{t('modal~Release notes')}</th>}
+              <th>{t('public~Version')}</th>
+              {releaseNotes && <th>{t('public~Release notes')}</th>}
             </tr>
           </thead>
           <tbody>
             {moreAvailableUpdates.map((update) => {
               return (
                 <tr key={update.version}>
-                  <td>{update.version}</td>
+                  <td>
+                    {update.version}
+                    {isMinorVersionNewer(getLastCompletedUpdate(cv), update.version) && (
+                      <UpdateBlockedLabel />
+                    )}
+                  </td>
                   {releaseNotes && (
                     <td>
                       {getReleaseNotesLink(update.version) ? (

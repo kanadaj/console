@@ -1,19 +1,20 @@
 import * as React from 'react';
-import classNames from 'classnames';
-import { K8sActivityProps, PrometheusActivityProps, LazyLoader } from '@console/plugin-sdk';
-import { PlayIcon, PauseIcon } from '@patternfly/react-icons';
 import { Accordion } from '@patternfly/react-core';
-import { K8sResourceKind, EventKind } from '@console/internal/module/k8s';
+import { PlayIcon, PauseIcon } from '@patternfly/react-icons';
+import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ErrorLoadingEvents, sortEvents } from '@console/internal/components/events';
-import { Timestamp } from '@console/internal/components/utils/timestamp';
-import { AsyncComponent } from '@console/internal/components/utils/async';
-import { FirehoseResult } from '@console/internal/components/utils/types';
 import { PrometheusResponse } from '@console/internal/components/graphs';
+import { AsyncComponent } from '@console/internal/components/utils/async';
+import { Timestamp } from '@console/internal/components/utils/timestamp';
+import { FirehoseResult } from '@console/internal/components/utils/types';
+import { K8sResourceKind, EventKind } from '@console/internal/module/k8s';
+import { K8sActivityProps, PrometheusActivityProps, LazyLoader } from '@console/plugin-sdk';
 import { DashboardCardButtonLink } from '../dashboard-card/DashboardCardLink';
 import EventItem from './EventItem';
+
 import './activity-card.scss';
-import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 
 export const Activity: React.FC<ActivityProps> = ({ timestamp, children }) => {
   const { t } = useTranslation();
@@ -21,7 +22,7 @@ export const Activity: React.FC<ActivityProps> = ({ timestamp, children }) => {
     <div className="co-activity-item__ongoing" data-test="activity">
       {timestamp && (
         <span className="text-secondary">
-          {t('dashboard~Started')}{' '}
+          {t('console-shared~Started')}{' '}
           <span data-test="timestamp">
             <Timestamp simple timestamp={timestamp.toString()} />
           </span>
@@ -91,7 +92,7 @@ export const RecentEventsBodyContent: React.FC<RecentEventsBodyContentProps> = (
   if (sortedEvents.length === 0) {
     return (
       <Activity>
-        <div className="text-secondary">{t('dashboard~There are no recent events.')}</div>
+        <div className="text-secondary">{t('console-shared~There are no recent events.')}</div>
       </Activity>
     );
   }
@@ -112,7 +113,7 @@ export const RecentEventsBodyContent: React.FC<RecentEventsBodyContentProps> = (
           to={moreLink}
           data-test="events-view-all-link"
         >
-          {t('dashboard~View all events')}
+          {t('console-shared~View all events')}
         </Link>
       )}
     </>
@@ -129,7 +130,7 @@ export const PauseButton: React.FC<PauseButtonProps> = ({ paused, togglePause })
       data-test-id="events-pause-button"
       data-test="events-pause-button"
     >
-      {paused ? t('public~Resume') : t('public~Pause')}
+      {paused ? t('console-shared~Resume') : t('console-shared~Pause')}
     </DashboardCardButtonLink>
   );
 };
@@ -141,7 +142,7 @@ export const RecentEventsBody: React.FC<RecentEventsBodyProps> = (props) => {
   return (
     <>
       <div className="co-activity-card__recent-title" data-test="activity-recent-title">
-        {t('dashboard~Recent events')}
+        {t('console-shared~Recent events')}
         <PauseButton paused={paused} togglePause={togglePause} />
       </div>
       <RecentEventsBodyContent {...props} paused={paused} setPaused={setPaused} />
@@ -165,18 +166,28 @@ export const OngoingActivityBody: React.FC<OngoingActivityBodyProps> = ({
       </div>
     );
   } else {
-    const allActivities = prometheusActivities.map(({ results, loader }, idx) => (
-      // eslint-disable-next-line react/no-array-index-key
-      <Activity key={idx}>
-        <AsyncComponent loader={loader} results={results} />
-      </Activity>
-    ));
+    const allActivities = prometheusActivities.map(
+      ({ results, loader, component: Component }, idx) => (
+        // eslint-disable-next-line react/no-array-index-key
+        <Activity key={idx}>
+          {loader ? (
+            <AsyncComponent loader={loader} results={results} />
+          ) : (
+            <Component results={results} />
+          )}
+        </Activity>
+      ),
+    );
     resourceActivities
       .sort((a, b) => +b.timestamp - +a.timestamp)
-      .forEach(({ resource, timestamp, loader }) =>
+      .forEach(({ resource, timestamp, loader, component: Component }) =>
         allActivities.push(
           <Activity key={resource.metadata.uid} timestamp={timestamp}>
-            <AsyncComponent loader={loader} resource={resource} />
+            {loader ? (
+              <AsyncComponent loader={loader} resource={resource} />
+            ) : (
+              <Component resource={resource} />
+            )}
           </Activity>,
         ),
       );
@@ -184,14 +195,14 @@ export const OngoingActivityBody: React.FC<OngoingActivityBodyProps> = ({
       allActivities
     ) : (
       <Activity>
-        <div className="text-secondary">{t('dashboard~There are no ongoing activities.')}</div>
+        <div className="text-secondary">{t('console-shared~There are no ongoing activities.')}</div>
       </Activity>
     );
   }
   return (
     <>
       <div className="co-activity-card__ongoing-title" data-test="ongoing-title">
-        {t('dashboard~Ongoing')}
+        {t('console-shared~Ongoing')}
       </div>
       <div className="co-activity-card__ongoing-body">{body}</div>
     </>
@@ -218,11 +229,13 @@ type OngoingActivityBodyProps = {
   resourceActivities?: {
     resource: K8sResourceKind;
     timestamp: Date;
-    loader: LazyLoader<K8sActivityProps>;
+    loader?: LazyLoader<K8sActivityProps>;
+    component?: React.ComponentType<K8sActivityProps>;
   }[];
   prometheusActivities?: {
     results: PrometheusResponse[];
-    loader: LazyLoader<PrometheusActivityProps>;
+    loader?: LazyLoader<PrometheusActivityProps>;
+    component?: React.ComponentType<PrometheusActivityProps>;
   }[];
   loaded: boolean;
 };

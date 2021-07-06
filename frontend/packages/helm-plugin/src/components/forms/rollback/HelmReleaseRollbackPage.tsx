@@ -1,15 +1,13 @@
 import * as React from 'react';
-import Helmet from 'react-helmet';
 import { Formik } from 'formik';
-import { RouteComponentProps } from 'react-router';
+import Helmet from 'react-helmet';
 import { useTranslation } from 'react-i18next';
-import { PageBody } from '@console/shared';
-import { coFetchJSON } from '@console/internal/co-fetch';
-import { history, getQueryArgument } from '@console/internal/components/utils';
+import { RouteComponentProps } from 'react-router';
 import NamespacedPage, {
   NamespacedPageVariants,
 } from '@console/dev-console/src/components/NamespacedPage';
-
+import { coFetchJSON } from '@console/internal/co-fetch';
+import { history, getQueryArgument } from '@console/internal/components/utils';
 import { HelmRelease, HelmActionType, HelmActionOrigins } from '../../../types/helm-types';
 import { getHelmActionConfig } from '../../../utils/helm-utils';
 import HelmReleaseRollbackForm from './HelmReleaseRollbackForm';
@@ -59,21 +57,18 @@ const HelmReleaseRollbackPage: React.FC<HelmReleaseRollbackPageProps> = ({ match
   };
 
   const handleSubmit = (values, actions) => {
-    actions.setStatus({ isSubmitting: true });
     const payload = {
       namespace,
       name: releaseName,
       version: values.revision,
     };
 
-    config
+    return config
       .fetch('/api/helm/release', payload, null, -1)
       .then(() => {
-        actions.setStatus({ isSubmitting: false });
         history.push(config.redirectURL);
       })
       .catch((err) => {
-        actions.setSubmitting(false);
         actions.setStatus({ submitError: err.message });
       });
   };
@@ -83,18 +78,16 @@ const HelmReleaseRollbackPage: React.FC<HelmReleaseRollbackPageProps> = ({ match
       <Helmet>
         <title>{config.title}</title>
       </Helmet>
-      <PageBody>
-        <Formik initialValues={initialValues} onSubmit={handleSubmit} onReset={history.goBack}>
-          {(props) => (
-            <HelmReleaseRollbackForm
-              {...props}
-              releaseName={releaseName}
-              releaseHistory={releaseHistory}
-              helmActionConfig={config}
-            />
-          )}
-        </Formik>
-      </PageBody>
+      <Formik initialValues={initialValues} onSubmit={handleSubmit} onReset={history.goBack}>
+        {(props) => (
+          <HelmReleaseRollbackForm
+            {...props}
+            releaseName={releaseName}
+            releaseHistory={releaseHistory}
+            helmActionConfig={config}
+          />
+        )}
+      </Formik>
     </NamespacedPage>
   );
 };

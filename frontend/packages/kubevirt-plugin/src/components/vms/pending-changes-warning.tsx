@@ -1,27 +1,28 @@
 import * as React from 'react';
+import {
+  Breadcrumb,
+  BreadcrumbHeading,
+  BreadcrumbItem,
+  Button,
+  ButtonVariant,
+  List,
+  ListItem,
+} from '@patternfly/react-core';
 import * as _ from 'lodash';
-import { PendingChanges, PendingChangesByTab } from './types';
-import { FirehoseResult, Firehose } from '@console/internal/components/utils';
+import { Firehose, FirehoseResult } from '@console/internal/components/utils';
+import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
+import { VMIWrapper } from '../../k8s/wrapper/vm/vmi-wrapper';
+import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
+import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
+import { asVM } from '../../selectors/vm';
+import { isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
+import { PENDING_CHANGES_WARNING_MESSAGE } from '../../strings/vm/status';
 import { VMIKind, VMKind } from '../../types';
 import { VMLikeEntityKind } from '../../types/vmLike';
 import { getLoadedData } from '../../utils';
-import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
-import { VMIWrapper } from '../../k8s/wrapper/vm/vmi-wrapper';
-import { PendingChangesAlert } from '../Alerts/PendingChangesAlert';
-import {
-  List,
-  ListItem,
-  Button,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbHeading,
-  ButtonVariant,
-} from '@patternfly/react-core';
-import { asVM } from '../../selectors/vm';
-import { VirtualMachineModel, VirtualMachineInstanceModel } from '../../models';
-import { PENDING_CHANGES_WARNING_MESSAGE } from '../../strings/vm/status';
-import { isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
 import { getPendingChanges, hasPendingChanges } from '../../utils/pending-changes';
+import { PendingChangesAlert } from '../Alerts/PendingChangesAlert';
+import { PendingChanges, PendingChangesByTab } from './types';
 
 import './pending-changes-warning.scss';
 
@@ -93,11 +94,10 @@ export const PendingChangesWarning: React.FC<PendingChangesWarningProps> = ({
   vmi: vmiProp,
 }) => {
   const vm: VMKind = asVM(getLoadedData(vmLikeEntity));
-  if (!isVMRunningOrExpectedRunning(vm)) {
+  const vmi = getLoadedData(vmiProp);
+  if (!isVMRunningOrExpectedRunning(vm, vmi)) {
     return <></>;
   }
-
-  const vmi = getLoadedData(vmiProp);
 
   const vmWrapper = new VMWrapper(vm);
   const vmiWrapper = new VMIWrapper(vmi);
@@ -144,13 +144,13 @@ export const PendingChangesWarningFirehose: React.FC<PendingChangeWarningFirehos
 }) => {
   const resources = [
     {
-      kind: VirtualMachineInstanceModel.kind,
+      kind: kubevirtReferenceForModel(VirtualMachineInstanceModel),
       name,
       namespace,
       prop: 'vmi',
     },
     {
-      kind: VirtualMachineModel.kind,
+      kind: kubevirtReferenceForModel(VirtualMachineModel),
       name,
       namespace,
       prop: 'vmLikeEntity',

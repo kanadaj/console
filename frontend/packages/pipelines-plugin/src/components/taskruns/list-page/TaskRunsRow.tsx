@@ -1,14 +1,15 @@
 import * as React from 'react';
 import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
-import { ResourceLink, Timestamp, Kebab, ResourceKebab } from '@console/internal/components/utils';
+import { ResourceLink, Timestamp, ResourceKebab } from '@console/internal/components/utils';
 import { referenceForModel } from '@console/internal/module/k8s';
-import { TaskRunKind } from '../../../types';
-import { getModelReferenceFromTaskKind } from '../../../utils/pipeline-augment';
 import { TaskRunModel, PipelineModel } from '../../../models';
-import { tableColumnClasses } from './taskruns-table';
+import { TaskRunKind } from '../../../types';
+import { getTaskRunKebabActions } from '../../../utils/pipeline-actions';
+import { getModelReferenceFromTaskKind } from '../../../utils/pipeline-augment';
 import { taskRunFilterReducer } from '../../../utils/pipeline-filter-reducer';
 import { TektonResourceLabel } from '../../pipelines/const';
 import TaskRunStatus from '../status/TaskRunStatus';
+import { tableColumnClasses } from './taskruns-table';
 
 const taskRunsReference = referenceForModel(TaskRunModel);
 const pipelineReference = referenceForModel(PipelineModel);
@@ -20,7 +21,6 @@ const TaskRunsRow: RowFunction<TaskRunKind> = ({ obj, index, key, style, ...prop
         kind={taskRunsReference}
         name={obj.metadata.name}
         namespace={obj.metadata.namespace}
-        title={obj.metadata.name}
         data-test-id={obj.metadata.name}
       />
     </TableData>
@@ -66,7 +66,7 @@ const TaskRunsRow: RowFunction<TaskRunKind> = ({ obj, index, key, style, ...prop
       <Timestamp timestamp={obj?.status?.startTime} />
     </TableData>
     <TableData className={tableColumnClasses[7]}>
-      <ResourceKebab actions={Kebab.factory.common} kind={taskRunsReference} resource={obj} />
+      <ResourceKebab actions={getTaskRunKebabActions()} kind={taskRunsReference} resource={obj} />
     </TableData>
   </TableRow>
 );

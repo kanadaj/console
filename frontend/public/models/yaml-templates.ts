@@ -1,9 +1,10 @@
 import { Map as ImmutableMap } from 'immutable';
 
-import { GroupVersionKind, referenceForModel } from '../module/k8s';
+import { GroupVersionKind, referenceForModel, referenceForExtensionModel } from '../module/k8s';
 import * as k8sModels from '../models';
 import * as appModels from '@console/app/src/models/';
-import { YAMLTemplate } from '@console/plugin-sdk';
+import { YAMLTemplate } from '@console/dynamic-plugin-sdk/src/extensions/yaml-templates';
+import { ResolvedExtension } from '@console/dynamic-plugin-sdk';
 
 /**
  * Sample YAML manifests for some of the statically-defined Kubernetes models.
@@ -231,30 +232,19 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: example
-  annotations:
-    image.openshift.io/triggers: |-
-      [
-        {
-          "from": {
-            "kind": "ImageStreamTag",
-            "name": "openshift/hello-openshift:latest"
-          },
-          "fieldPath": "spec.template.spec.containers[0].image"
-        }
-      ]
 spec:
   selector:
     matchLabels:
-      app: hello-openshift
+      app: httpd
   replicas: 3
   template:
     metadata:
       labels:
-        app: hello-openshift
+        app: httpd
     spec:
       containers:
-      - name: hello-openshift
-        image: openshift/hello-openshift
+      - name: httpd
+        image: image-registry.openshift-image-registry.svc:5000/openshift/httpd:latest
         ports:
         - containerPort: 8080
 `,
@@ -353,27 +343,16 @@ metadata:
   name: example
 spec:
   selector:
-    app: hello-openshift
+    app: httpd
   replicas: 3
   template:
     metadata:
       labels:
-        app: hello-openshift
+        app: httpd
     spec:
-      triggers: 
-        image.openshift.io/triggers: |-
-          [
-            {
-              "from": {
-                "kind": "ImageStreamTag",
-                "name": "openshift/hello-openshift:latest"
-              },
-              "fieldPath": "spec.template.spec.containers[0].image"
-            }
-          ]
       containers:
-      - name: hello-openshift
-        image: openshift/hello-openshift
+      - name: httpd
+        image: image-registry.openshift-image-registry.svc:5000/openshift/httpd:latest
         ports:
         - containerPort: 8080
 `,
@@ -428,11 +407,11 @@ kind: Pod
 metadata:
   name: example
   labels:
-    app: hello-openshift
+    app: httpd
 spec:
   containers:
-    - name: hello-openshift
-      image: openshift/hello-openshift
+    - name: httpd
+      image: image-registry.openshift-image-registry.svc:5000/openshift/httpd:latest
       ports:
         - containerPort: 8080
 `,
@@ -622,29 +601,18 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: example
-  annotations:
-    image.openshift.io/triggers: |-
-      [
-        {
-          "from": {
-            "kind": "ImageStreamTag",
-            "name": "openshift/hello-openshift:latest"
-          },
-          "fieldPath": "spec.template.spec.containers[0].image"
-        }
-      ]
 spec:
   selector:
     matchLabels:
-      app: hello-openshift
+      app: httpd
   template:
     metadata:
       labels:
-        app: hello-openshift
+        app: httpd
     spec:
       containers:
-      - name: hello-openshift
-        image: openshift/hello-openshift
+      - name: httpd
+        image: image-registry.openshift-image-registry.svc:5000/openshift/httpd:latest
         ports:
         - containerPort: 8080
 `,
@@ -776,31 +744,20 @@ apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   name: example
-  annotations:
-    image.openshift.io/triggers: |-
-      [
-        {
-          "from": {
-            "kind": "ImageStreamTag",
-            "name": "openshift/hello-openshift:latest"
-          },
-          "fieldPath": "spec.template.spec.containers[0].image"
-        }
-      ]
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: hello-openshift
+      app: httpd
   template:
     metadata:
-      name: hello-openshift
+      name: httpd
       labels:
-        app: hello-openshift
+        app: httpd
     spec:
       containers:
-      - name: hello-openshift
-        image: openshift/hello-openshift
+      - name: httpd
+        image: image-registry.openshift-image-registry.svc:5000/openshift/httpd:latest
         ports:
         - containerPort: 8080
 `,
@@ -828,30 +785,19 @@ apiVersion: v1
 kind: ReplicationController
 metadata:
   name: example
-  annotations:
-    image.openshift.io/triggers: |-
-      [
-        {
-          "from": {
-            "kind": "ImageStreamTag",
-            "name": "openshift/hello-openshift:latest"
-          },
-          "fieldPath": "spec.template.spec.containers[0].image"
-        }
-      ]
 spec:
   replicas: 2
   selector:
-    app: hello-openshift
+    app: httpd
   template:
     metadata:
-      name: hello-openshift
+      name: httpd
       labels:
-        app: hello-openshift
+        app: httpd
     spec:
       containers:
-      - name: hello-openshift
-        image: openshift/hello-openshift
+      - name: httpd
+        image: image-registry.openshift-image-registry.svc:5000/openshift/httpd:latest
         ports:
         - containerPort: 8080
 `,
@@ -1257,36 +1203,36 @@ spec:
   tasks:
     - title: Deploy an existing image from an image registry
       description: |-
-        ### To deploy the **hello-openshift** image, follow these steps:
+        ### To deploy the **httpd-24-centos7** image, follow these steps:
         1. Enter the developer perspective: In the main navigation menu, click the [dropdown menu]{{highlight tour-perspective-dropdown}} and select **Developer**.
         2. In the main navigation menu, click **Add.**
         3. Using the project dropdown menu, select the project you would like to deploy the image in.
         4. Click the **Container Image** tile.
-        5. In the **Image name from external registry** field, enter **openshift/hello-openshift**.
+        5. In the **Image name from external registry** field, enter **quay.io/centos7/httpd-24-centos7**.
         6. Fill in the remaining image deployment details, and then click **Create.**
-        The **Topology** view will load with your **hello-openshift-app** application. The outer rim of the larger circle represents your application, and the small circle represents the deployment.
+        The **Topology** view will load with your **httpd-24-centos7-app** application. The outer rim of the larger circle represents your application, and the small circle represents the deployment.
       review:
         instructions: |-
           #### Verify the image was successfully deployed:
-          Do you see a **hello-openshift** deployment?
+          Do you see a **httpd-24-centos7** deployment?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
-        success: Great work! You deployed an example application using the **openshift/hello-openshift** image.
+        success: Great work! You deployed an example application using the **quay.io/centos7/httpd-24-centos7** image.
         failed: Try the steps again.
     - title: Run the deployed application
       description: |-
-        ### To run the **hello-openshift** deployment application, follow these steps:
-        1. In the **Topology** view, click the **hello-openshift** deployment circle.
+        ### To run the **httpd-24-centos7** deployment application, follow these steps:
+        1. In the **Topology** view, click the **httpd-24-centos7** deployment circle.
         2. In the panel that slides out, click the link in the **Routes** section. This opens the URL and runs the application.
       review:
         instructions: |-
           #### Verify your application is running:
-          In the new tab, do you see **Hello OpenShift!** ?
+          In the new tab, do you see the Apache HTTP server test page?
         failedTaskHelp: This task isn’t verified yet. Try the task again.
       summary:
-        success: Great work! You deployed the **hello-openshift** image.
+        success: Great work! You deployed the **quay.io/centos7/httpd-24-centos7** image.
         failed: Try the steps again.
-  conclusion: Your example **hello-openshift-app** application, using the **hello-openshift** image, is deployed and ready.
+  conclusion: Your example **httpd-24-centos7-app** application, using the **quay.io/centos7/httpd-24-centos7** image, is deployed and ready.
 `,
   )
   .setIn(
@@ -1365,13 +1311,13 @@ spec:
 `,
   );
 
-export const getYAMLTemplates = (extensionTemplates: YAMLTemplate[] = []) =>
+export const getYAMLTemplates = (extensionTemplates: ResolvedExtension<YAMLTemplate>[] = []) =>
   ImmutableMap<GroupVersionKind, ImmutableMap<string, string>>()
     .merge(baseTemplates)
     .withMutations((map) => {
       extensionTemplates.forEach((yt) => {
-        const modelRef = referenceForModel(yt.properties.model);
-        const templateName = yt.properties.templateName || 'default';
+        const modelRef = referenceForExtensionModel(yt.properties.model);
+        const templateName = yt.properties.name || 'default';
 
         if (!baseTemplates.hasIn([modelRef, templateName])) {
           map.setIn([modelRef, templateName], yt.properties.template);

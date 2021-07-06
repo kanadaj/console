@@ -22,14 +22,72 @@ import {
   OwnerReferences,
   Timestamp,
   PodsComponent,
+  RuntimeClass,
 } from './utils';
 import { ResourceEventStream } from './events';
 import { VolumesTable } from './volumes-table';
-import { ReplicaSetModel } from '../models';
+import {
+  DeploymentConfigModel,
+  DeploymentModel,
+  ReplicaSetModel,
+  ReplicationControllerModel,
+} from '../models';
+import { getOwnerNameByKind } from '@console/shared/src';
+import { rollbackModal } from './modals';
 
 const { ModifyCount, AddStorage, common } = Kebab.factory;
 
+const INACTIVE_STATUSES = ['New', 'Pending', 'Running'];
+
+const RollbackAction = (kind, obj) => {
+  if (kind.kind === ReplicationControllerModel.kind) {
+    const deploymentPhase = obj?.metadata?.annotations?.['openshift.io/deployment.phase'];
+    const dcName = getOwnerNameByKind(obj, DeploymentConfigModel);
+    return {
+      // t('public~Rollback')
+      labelKey: 'public~Rollback',
+      // disabled if the DC is not Active
+      isDisabled: INACTIVE_STATUSES.includes(deploymentPhase),
+      // Hidden if RC is active or does not belong to a deployment config
+      hidden: !deploymentPhase || obj?.status?.replicas > 0 || !dcName,
+      callback: () =>
+        rollbackModal({
+          resourceKind: kind,
+          resource: obj,
+        }),
+      accessReview: {
+        group: DeploymentConfigModel.apiGroup,
+        resource: DeploymentConfigModel.plural,
+        name: dcName,
+        namespace: obj?.metadata?.namespace,
+        verb: 'update',
+      },
+    };
+  }
+
+  const deploymentName = getOwnerNameByKind(obj, DeploymentModel);
+  return {
+    // t('public~Rollback')
+    labelKey: 'public~Rollback',
+    // Hidden if RS is active or does not belong to a deployment
+    hidden: obj?.status?.replicas > 0 || !deploymentName,
+    callback: () =>
+      rollbackModal({
+        resourceKind: kind,
+        resource: obj,
+      }),
+    accessReview: {
+      group: DeploymentModel.apiGroup,
+      resource: DeploymentModel.plural,
+      name: deploymentName,
+      namespace: obj?.metadata?.namespace,
+      verb: 'patch',
+    },
+  };
+};
+
 export const replicaSetMenuActions = [
+  RollbackAction,
   ModifyCount,
   AddStorage,
   ...Kebab.getExtensionsActionsForKind(ReplicaSetModel),
@@ -59,7 +117,10 @@ const Details = ({ obj: replicaSet }) => {
             </ResourceSummary>
           </div>
           <div className="col-md-6">
-            <ResourcePodCount resource={replicaSet} />
+            <dl className="co-m-pane__details">
+              <ResourcePodCount resource={replicaSet} />
+              <RuntimeClass obj={replicaSet} />
+            </dl>
           </div>
         </div>
       </div>
@@ -170,22 +231,13 @@ const ReplicaSetsList = (props) => {
     return (
       <TableRow id={obj.metadata.uid} index={index} trKey={key} style={style}>
         <TableData className={tableColumnClasses[0]}>
-          <ResourceLink
-            kind={kind}
-            name={obj.metadata.name}
-            namespace={obj.metadata.namespace}
-            title={obj.metadata.uid}
-          />
+          <ResourceLink kind={kind} name={obj.metadata.name} namespace={obj.metadata.namespace} />
         </TableData>
         <TableData
           className={classNames(tableColumnClasses[1], 'co-break-word')}
           columnID="namespace"
         >
-          <ResourceLink
-            kind="Namespace"
-            name={obj.metadata.namespace}
-            title={obj.metadata.namespace}
-          />
+          <ResourceLink kind="Namespace" name={obj.metadata.namespace} />
         </TableData>
         <TableData className={tableColumnClasses[2]}>
           <Link

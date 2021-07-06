@@ -22,13 +22,12 @@ const ResourceSidebarWrapper = (props) => {
       className="co-p-has-sidebar__sidebar co-p-has-sidebar__sidebar--bordered hidden-sm hidden-xs"
       data-test="resource-sidebar"
     >
-      {/* tabIndex is necessary to restore keyboard scrolling as a result of PatternFly's <Page> having a hard-coded tabIndex.  See https://github.com/patternfly/patternfly-react/issues/4180 */}
-      <div className="co-m-pane__body co-p-has-sidebar__sidebar-body" tabIndex={-1}>
+      <div className="co-m-pane__body co-p-has-sidebar__sidebar-body">
         <Button
           type="button"
           className="co-p-has-sidebar__sidebar-close"
           variant="plain"
-          aria-label={t('sidebar~Close')}
+          aria-label={t('public~Close')}
           onClick={toggleSidebar}
         >
           <CloseIcon />
@@ -86,20 +85,20 @@ export const ResourceSidebar = (props) => {
   let tabs: Tab[] = [];
   if (showSamples) {
     tabs.push({
-      name: t('sidebar~Samples'),
+      name: t('public~Samples'),
       component: ResourceSamples,
     });
   }
   if (showSnippets) {
     tabs.push({
-      name: t('sidebar~Snippets'),
+      name: t('public~Snippets'),
       component: ResourceSnippets,
     });
   }
   if (showSchema) {
     tabs = [
       {
-        name: t('sidebar~Schema'),
+        name: t('public~Schema'),
         component: ResourceSchema,
       },
       ...tabs,

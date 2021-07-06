@@ -1,47 +1,37 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import {
+  Alert,
+  AlertVariant,
+  Checkbox,
+  ExpandableSection,
   Form,
   FormSelect,
   FormSelectOption,
-  TextInput,
-  ExpandableSection,
   SelectOption,
   Stack,
   StackItem,
+  TextInput,
 } from '@patternfly/react-core';
+import { Trans, useTranslation } from 'react-i18next';
+import { ModalBody, ModalComponentProps, ModalTitle } from '@console/internal/components/factory';
 import {
+  ExternalLink,
   FirehoseResult,
   HandlePromiseProps,
   withHandlePromise,
 } from '@console/internal/components/utils';
-import { ModalBody, ModalComponentProps, ModalTitle } from '@console/internal/components/factory';
 import {
   NamespaceModel,
   PersistentVolumeClaimModel,
   StorageClassModel,
 } from '@console/internal/models';
-import { getName, getAnnotations } from '@console/shared/src';
-import { getLoadedData, isLoaded, prefixedID, resolveDataVolumeName } from '../../../utils';
-import { validateDisk } from '../../../utils/validations/vm';
-import { isValidationError } from '../../../utils/validations/common';
-import { FormRow } from '../../form/form-row';
 import {
-  asFormSelectValue,
-  FormSelectPlaceholderOption,
-} from '../../form/form-select-placeholder-option';
-import {
-  getDefaultSCAccessModes,
-  getDefaultSCVolumeMode,
-  getDefaultStorageClass,
-  isConfigMapContainsScModes,
-} from '../../../selectors/config-map/sc-defaults';
-import { DYNAMIC, getDialogUIError, getSequenceName } from '../../../utils/strings';
-import { ModalFooter } from '../modal/modal-footer';
-import { useShowErrorToggler } from '../../../hooks/use-show-error-toggler';
-import { DiskWrapper } from '../../../k8s/wrapper/vm/disk-wrapper';
-import { DataVolumeWrapper } from '../../../k8s/wrapper/vm/data-volume-wrapper';
-import { VolumeWrapper } from '../../../k8s/wrapper/vm/volume-wrapper';
+  ConfigMapKind,
+  PersistentVolumeClaimKind,
+  StorageClassResourceKind,
+} from '@console/internal/module/k8s';
+import { getAnnotations, getName } from '@console/shared/src';
+import { DEFAULT_SC_ANNOTATION } from '../../../constants/sc';
 import {
   AccessMode,
   DataVolumeSourceType,
@@ -50,29 +40,51 @@ import {
   VolumeMode,
   VolumeType,
 } from '../../../constants/vm/storage';
-import { DEFAULT_SC_ANNOTATION } from '../../../constants/sc';
+import { useShowErrorToggler } from '../../../hooks/use-show-error-toggler';
+import { CombinedDisk } from '../../../k8s/wrapper/vm/combined-disk';
+import { DataVolumeWrapper } from '../../../k8s/wrapper/vm/data-volume-wrapper';
+import { DiskWrapper } from '../../../k8s/wrapper/vm/disk-wrapper';
+import { PersistentVolumeClaimWrapper } from '../../../k8s/wrapper/vm/persistent-volume-claim-wrapper';
+import { VolumeWrapper } from '../../../k8s/wrapper/vm/volume-wrapper';
+import {
+  getDefaultSCAccessModes,
+  getDefaultSCVolumeMode,
+  getDefaultStorageClass,
+  isConfigMapContainsScModes,
+} from '../../../selectors/config-map/sc-defaults';
 import { getPvcStorageSize } from '../../../selectors/pvc/selectors';
+import { UIStorageEditConfig } from '../../../types/ui/storage';
+import { getLoadedData, isLoaded, prefixedID, resolveDataVolumeName } from '../../../utils';
+import {
+  DYNAMIC,
+  getDialogUIError,
+  getSequenceName,
+  STORAGE_CLASS_SUPPORTED_RHV_LINK,
+  STORAGE_CLASS_SUPPORTED_VMWARE_LINK,
+  PREALLOCATION_DATA_VOLUME_LINK,
+} from '../../../utils/strings';
+import { isFieldDisabled } from '../../../utils/ui/edit-config';
+import { isValidationError } from '../../../utils/validations/common';
+import { TemplateValidations } from '../../../utils/validations/template/template-validations';
+import { validateDisk } from '../../../utils/validations/vm';
+import { ConfigMapDefaultModesAlert } from '../../Alerts/ConfigMapDefaultModesAlert';
+import { PendingChangesAlert } from '../../Alerts/PendingChangesAlert';
+import { VMImportProvider } from '../../create-vm-wizard/types';
+import { FormPFSelect } from '../../form/form-pf-select';
+import { FormRow } from '../../form/form-row';
+import {
+  asFormSelectValue,
+  FormSelectPlaceholderOption,
+} from '../../form/form-select-placeholder-option';
+import { ContainerSourceHelp } from '../../form/helper/container-source-help';
+import { URLSourceHelp } from '../../form/helper/url-source-help';
 import { K8sResourceSelectRow } from '../../form/k8s-resource-select-row';
 import { SizeUnitFormRow } from '../../form/size-unit-form-row';
-import { CombinedDisk } from '../../../k8s/wrapper/vm/combined-disk';
-import { PersistentVolumeClaimWrapper } from '../../../k8s/wrapper/vm/persistent-volume-claim-wrapper';
 import { BinaryUnit, stringValueUnitSplit } from '../../form/size-unit-utils';
+import { ModalFooter } from '../modal/modal-footer';
 import { StorageUISource } from './storage-ui-source';
-import { TemplateValidations } from '../../../utils/validations/template/template-validations';
-import {
-  ConfigMapKind,
-  StorageClassResourceKind,
-  PersistentVolumeClaimKind,
-} from '@console/internal/module/k8s';
-import { UIStorageEditConfig } from '../../../types/ui/storage';
-import { isFieldDisabled } from '../../../utils/ui/edit-config';
-import { PendingChangesAlert } from '../../Alerts/PendingChangesAlert';
-import { FormPFSelect } from '../../form/form-pf-select';
 
 import './disk-modal.scss';
-import { URLSourceHelp } from '../../form/helper/url-source-help';
-import { ContainerSourceHelp } from '../../form/helper/container-source-help';
-import { ConfigMapDefaultModesAlert } from '../../Alerts/ConfigMapDefaultModesAlert';
 
 export const DiskModal = withHandlePromise((props: DiskModalProps) => {
   const {
@@ -98,6 +110,8 @@ export const DiskModal = withHandlePromise((props: DiskModalProps) => {
     storageClassConfigMap: _storageClassConfigMap,
     editConfig,
     isVMRunning,
+    importProvider,
+    baseImageName,
   } = props;
   const { t } = useTranslation();
   const inProgress = _inProgress || !isLoaded(_storageClassConfigMap);
@@ -172,6 +186,10 @@ export const DiskModal = withHandlePromise((props: DiskModalProps) => {
 
   const [volumeMode, setVolumeMode] = React.useState<VolumeMode>(
     (isEditing && combinedDisk.getVolumeMode()) || null,
+  );
+
+  const [enablePreallocation, setEnablePreallocation] = React.useState<boolean>(
+    dataVolume.getPreallocation(),
   );
 
   React.useEffect(() => {
@@ -256,7 +274,8 @@ export const DiskModal = withHandlePromise((props: DiskModalProps) => {
           source.getDataVolumeSourceType() === DataVolumeSourceType.REGISTRY ? containerImage : url,
       })
       .setVolumeMode(volumeMode || null)
-      .setAccessModes(accessMode ? [accessMode] : null);
+      .setAccessModes(accessMode ? [accessMode] : null)
+      .setPreallocationDisk(enablePreallocation);
   }
 
   let resultPersistentVolumeClaim;
@@ -331,9 +350,6 @@ export const DiskModal = withHandlePromise((props: DiskModalProps) => {
       if (newVolumeMode !== volumeMode) {
         setVolumeMode(newVolumeMode);
       }
-      if (newAccessMode !== accessMode || newVolumeMode !== volumeMode) {
-        setAdvancedDrawerIsOpen(true); // notify the user that the hidden values were changed by force
-      }
     }
   };
 
@@ -374,6 +390,8 @@ export const DiskModal = withHandlePromise((props: DiskModalProps) => {
       setBus(DiskBus.SATA);
     }
   };
+
+  const onTogglePreallocation = () => setEnablePreallocation(!enablePreallocation);
 
   const isStorageClassDataLoading = !isLoaded(storageClasses) || !isLoaded(_storageClassConfigMap);
 
@@ -436,7 +454,7 @@ export const DiskModal = withHandlePromise((props: DiskModalProps) => {
                 value={url}
                 onChange={setURL}
               />
-              <URLSourceHelp />
+              <URLSourceHelp baseImageName={baseImageName} />
             </FormRow>
           )}
           {source.requiresContainerImage() && (
@@ -596,22 +614,64 @@ export const DiskModal = withHandlePromise((props: DiskModalProps) => {
             </FormPFSelect>
           </FormRow>
           {source.requiresStorageClass() && (
-            <K8sResourceSelectRow
-              title={t('kubevirt-plugin~Storage Class')}
-              key="storage-class"
-              id={asId('storage-class')}
-              isDisabled={isDisabled('storageClass') || isStorageClassDataLoading}
-              name={storageClassName}
-              data={storageClasses}
-              model={StorageClassModel}
-              hasPlaceholder
-              onChange={(sc) => onStorageClassNameChanged(sc || '')}
-              getResourceLabel={(sc) =>
-                getAnnotations(sc, {})[DEFAULT_SC_ANNOTATION] === 'true'
-                  ? t('kubevirt-plugin~{{name}} (default)', { name: getName(sc) })
-                  : getName(sc)
-              }
-            />
+            <Stack hasGutter>
+              {importProvider && (
+                <StackItem>
+                  <Alert
+                    variant={AlertVariant.warning}
+                    isInline
+                    title={t('kubevirt-plugin~Supported Storage classes')}
+                  >
+                    <ExternalLink
+                      text={t('kubevirt-plugin~Supported Storage classes for selected provider')}
+                      href={
+                        importProvider === VMImportProvider.OVIRT
+                          ? STORAGE_CLASS_SUPPORTED_RHV_LINK
+                          : STORAGE_CLASS_SUPPORTED_VMWARE_LINK
+                      }
+                    />
+                  </Alert>
+                </StackItem>
+              )}
+              <StackItem>
+                <K8sResourceSelectRow
+                  title={t('kubevirt-plugin~Storage Class')}
+                  key="storage-class"
+                  id={asId('storage-class')}
+                  isDisabled={isDisabled('storageClass') || isStorageClassDataLoading}
+                  name={storageClassName}
+                  data={storageClasses}
+                  model={StorageClassModel}
+                  hasPlaceholder
+                  onChange={(sc) => onStorageClassNameChanged(sc || '')}
+                  getResourceLabel={(sc) =>
+                    getAnnotations(sc, {})[DEFAULT_SC_ANNOTATION] === 'true'
+                      ? t('kubevirt-plugin~{{name}} (default)', { name: getName(sc) })
+                      : getName(sc)
+                  }
+                />
+              </StackItem>
+              <StackItem>
+                <Checkbox
+                  id="cnv668"
+                  description={
+                    <Trans t={t} ns="kubevirt-plugin">
+                      Refer to the{' '}
+                      <ExternalLink
+                        text={t('kubevirt-plugin~Documentation')}
+                        href={PREALLOCATION_DATA_VOLUME_LINK}
+                      />{' '}
+                      or contact your system administrator for more information. Enabling
+                      preallocation is available only for blank disk source.
+                    </Trans>
+                  }
+                  isDisabled={!source.requiresBlankDisk()}
+                  isChecked={enablePreallocation}
+                  label={t('kubevirt-plugin~Enable preallocation')}
+                  onChange={() => onTogglePreallocation()}
+                />
+              </StackItem>
+            </Stack>
           )}
           {source.requiresVolumeModeOrAccessModes() && (
             <ExpandableSection
@@ -751,6 +811,8 @@ export type DiskModalProps = {
   usedDiskNames: Set<string>;
   usedPVCNames: Set<string>;
   editConfig?: UIStorageEditConfig;
+  baseImageName?: string;
   isVMRunning?: boolean;
+  importProvider?: VMImportProvider;
 } & ModalComponentProps &
   HandlePromiseProps;

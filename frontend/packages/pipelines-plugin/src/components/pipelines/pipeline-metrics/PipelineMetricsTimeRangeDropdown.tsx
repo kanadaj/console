@@ -1,7 +1,7 @@
 import * as React from 'react';
+import { Dropdown, DropdownItem, DropdownToggle } from '@patternfly/react-core';
 import { map } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Dropdown, DropdownItem, DropdownToggle } from '@patternfly/react-core';
 import {
   parsePrometheusDuration,
   formatPrometheusDuration,
@@ -24,7 +24,7 @@ const PipelineMetricsTimeRangeDropdown: React.FC<PipelineMetricsTimeRangeDropdow
     setTimespan,
   ]);
   const { t } = useTranslation();
-  const timeRangeOptions = PipelineMetricsTimeRangeOptions(t);
+  const timeRangeOptions = PipelineMetricsTimeRangeOptions();
   return (
     <div className="form-group">
       <label>{t('pipelines-plugin~Time Range')}</label>

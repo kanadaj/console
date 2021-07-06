@@ -1,40 +1,51 @@
+import * as React from 'react';
+import * as _ from 'lodash';
 import {
   ResolvedExtension,
   useResolvedExtensions,
-  ResolvedCatalogItemFilter,
-  ResolvedCatalogItemProvider,
+  CatalogItemFilter,
+  CatalogItemProvider,
   CatalogItemType,
   isCatalogItemFilter,
   isCatalogItemProvider,
   isCatalogItemType,
 } from '@console/dynamic-plugin-sdk';
+import { useExtensions } from '@console/plugin-sdk';
 
 const useCatalogExtensions = (
-  catalogType: string,
+  catalogId: string,
+  catalogType?: string,
 ): [
   ResolvedExtension<CatalogItemType>[],
-  ResolvedExtension<ResolvedCatalogItemProvider>[],
-  ResolvedExtension<ResolvedCatalogItemFilter>[],
+  ResolvedExtension<CatalogItemProvider>[],
+  ResolvedExtension<CatalogItemFilter>[],
   boolean,
 ] => {
-  const [itemTypeExtensions, typesResolved] = useResolvedExtensions<CatalogItemType>(
-    isCatalogItemType,
-  );
-  const [itemProviderExtensions, providersResolved] = useResolvedExtensions<
-    ResolvedCatalogItemProvider
-  >(isCatalogItemProvider);
+  const itemTypeExtensions = useExtensions<CatalogItemType>(isCatalogItemType);
 
-  const [itemFilterExtensions, filtersResolved] = useResolvedExtensions<ResolvedCatalogItemFilter>(
-    isCatalogItemFilter,
+  const [catalogProviderExtensions, providersResolved] = useResolvedExtensions<CatalogItemProvider>(
+    React.useCallback(
+      (e): e is CatalogItemProvider =>
+        isCatalogItemProvider(e) &&
+        _.castArray(e.properties.catalogId).includes(catalogId) &&
+        (!catalogType || e.properties.type === catalogType),
+      [catalogId, catalogType],
+    ),
+  );
+
+  const [itemFilterExtensions, filtersResolved] = useResolvedExtensions<CatalogItemFilter>(
+    React.useCallback(
+      (e): e is CatalogItemFilter =>
+        isCatalogItemFilter(e) &&
+        _.castArray(e.properties.catalogId).includes(catalogId) &&
+        (!catalogType || e.properties.type === catalogType),
+      [catalogId, catalogType],
+    ),
   );
 
   const catalogTypeExtensions = catalogType
     ? itemTypeExtensions.filter((e) => e.properties.type === catalogType)
     : itemTypeExtensions;
-
-  const catalogProviderExtensions = catalogType
-    ? itemProviderExtensions.filter((e) => e.properties.type === catalogType)
-    : itemProviderExtensions;
 
   catalogProviderExtensions.sort((a, b) => {
     const p1 = a.properties.priority ?? 0;
@@ -50,7 +61,7 @@ const useCatalogExtensions = (
     catalogTypeExtensions,
     catalogProviderExtensions,
     catalogFilterExtensions,
-    typesResolved && providersResolved && filtersResolved,
+    providersResolved && filtersResolved,
   ];
 };
 

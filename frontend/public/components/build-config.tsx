@@ -1,5 +1,4 @@
 import * as React from 'react';
-import * as _ from 'lodash-es';
 import * as classNames from 'classnames';
 import { sortable } from '@patternfly/react-table';
 import { useTranslation } from 'react-i18next';
@@ -69,7 +68,7 @@ export const BuildConfigsDetails: React.SFC<BuildConfigsDetailsProps> = ({ obj: 
     <>
       <div className="co-m-pane__body">
         {hasPipeline && <PipelineBuildStrategyAlert obj={buildConfig} />}
-        <SectionHeading text={t('public~Build Config details')} />
+        <SectionHeading text={t('public~BuildConfig details')} />
         <div className="row">
           <div className="col-sm-6">
             <ResourceSummary resource={buildConfig} />
@@ -107,10 +106,10 @@ export const BuildConfigsDetailsPage: React.SFC<BuildConfigsDetailsPageProps> = 
 BuildConfigsDetailsPage.displayName = 'BuildConfigsDetailsPage';
 
 const tableColumnClasses = [
-  classNames('col-sm-3', 'col-xs-6'),
-  classNames('col-sm-3', 'col-xs-6'),
-  classNames('col-sm-3', 'hidden-xs'),
-  classNames('col-sm-3', 'hidden-xs'),
+  '',
+  '',
+  'pf-m-hidden pf-m-visible-on-md',
+  'pf-m-hidden pf-m-visible-on-lg',
   Kebab.columnClass,
 ];
 
@@ -122,7 +121,6 @@ const BuildConfigsTableRow: RowFunction<K8sResourceKind> = ({ obj, index, key, s
           kind={BuildConfigsReference}
           name={obj.metadata.name}
           namespace={obj.metadata.namespace}
-          title={obj.metadata.name}
         />
       </TableData>
       <TableData
@@ -146,14 +144,6 @@ const BuildConfigsTableRow: RowFunction<K8sResourceKind> = ({ obj, index, key, s
 
 const buildStrategy = (buildConfig: K8sResourceKind): BuildStrategyType =>
   buildConfig.spec.strategy.type;
-
-const allStrategies = [
-  BuildStrategyType.Docker,
-  BuildStrategyType.Devfile,
-  BuildStrategyType.JenkinsPipeline,
-  BuildStrategyType.Source,
-  BuildStrategyType.Custom,
-];
 
 export const BuildConfigsList: React.SFC = (props) => {
   const { t } = useTranslation();
@@ -195,7 +185,7 @@ export const BuildConfigsList: React.SFC = (props) => {
   return (
     <Table
       {...props}
-      aria-label={t('public~Build Configs')}
+      aria-label={t('public~BuildConfigs')}
       Header={BuildConfigsTableHeader}
       Row={BuildConfigsTableRow}
       virtualize
@@ -207,21 +197,26 @@ BuildConfigsList.displayName = 'BuildConfigsList';
 
 export const BuildConfigsPage: React.FC<BuildConfigsPageProps> = (props) => {
   const { t } = useTranslation();
+  const allStrategies = [
+    { id: BuildStrategyType.Docker, title: t('public~Docker') },
+    { id: BuildStrategyType.Devfile, title: t('public~Devfile') },
+    { id: BuildStrategyType.JenkinsPipeline, title: t('public~JenkinsPipeline') },
+    { id: BuildStrategyType.Source, title: t('public~Source') },
+    { id: BuildStrategyType.Custom, title: t('public~Custom') },
+  ];
+
   const filters = [
     {
       filterGroupName: t('public~Build strategy'),
       type: 'build-strategy',
       reducer: buildStrategy,
-      items: _.map(allStrategies, (strategy) => ({
-        id: strategy,
-        title: strategy,
-      })),
+      items: allStrategies,
     },
   ];
   return (
     <ListPage
       {...props}
-      title={t('public~Build Configs')}
+      title={t('public~BuildConfigs')}
       kind={BuildConfigsReference}
       ListComponent={BuildConfigsList}
       canCreate={true}

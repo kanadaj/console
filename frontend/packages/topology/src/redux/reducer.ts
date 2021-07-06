@@ -1,8 +1,8 @@
 import { Map } from 'immutable';
-import { TopologyAction, Actions } from './action';
 import { DEFAULT_TOPOLOGY_FILTERS } from '../filters/const';
+import { TopologyAction, Actions } from './action';
 
-export type State = Map<string, any>;
+type State = Map<string, any>;
 
 export default (state: State, action: TopologyAction) => {
   if (!state) {

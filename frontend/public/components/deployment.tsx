@@ -7,6 +7,7 @@ import { RootState } from '@console/internal/redux';
 import { Status, useCsvWatchResource } from '@console/shared';
 import PodRingSet from '@console/shared/src/components/pod/PodRingSet';
 import { AddHealthChecks, EditHealthChecks } from '@console/app/src/actions/modify-health-checks';
+import { EditResourceLimits } from '@console/app/src/actions/edit-resource-limits';
 import {
   AddHorizontalPodAutoScaler,
   DeleteHorizontalPodAutoScaler,
@@ -32,6 +33,7 @@ import {
   SectionHeading,
   togglePaused,
   WorkloadPausedAlert,
+  RuntimeClass,
 } from './utils';
 import { ReplicaSetsPage } from './replicaset';
 import { WorkloadTableRow, WorkloadTableHeader } from './workload-table';
@@ -90,6 +92,7 @@ export const menuActions = [
   AddStorage,
   UpdateStrategy,
   DeleteHorizontalPodAutoScaler,
+  EditResourceLimits,
   ...Kebab.getExtensionsActionsForKind(DeploymentModel),
   EditHealthChecks,
   ...common,
@@ -142,6 +145,7 @@ export const DeploymentDetailsList: React.FC<DeploymentDetailsListProps> = ({ de
           ? t('public~{{count}} second', { count: deployment.spec.minReadySeconds })
           : t('public~Not configured')}
       </DetailsItem>
+      <RuntimeClass obj={deployment} />
     </dl>
   );
 };
@@ -231,12 +235,12 @@ const ReplicaSetsTab: React.FC<ReplicaSetsTabProps> = ({ obj }) => {
   );
 };
 
-const { details, editYaml, pods, envEditor, events } = navFactory;
+const { details, editYaml, pods, envEditor, events, metrics } = navFactory;
 export const DeploymentsDetailsPage: React.FC<DeploymentsDetailsPageProps> = (props) => {
   const ns = useSelector((state: RootState) => getActiveNamespace(state));
 
   const { csvData } = useCsvWatchResource(ns);
-  // t('details-page~ReplicaSets')
+  // t('public~ReplicaSets')
   return (
     <DetailsPage
       {...props}
@@ -244,10 +248,11 @@ export const DeploymentsDetailsPage: React.FC<DeploymentsDetailsPageProps> = (pr
       menuActions={menuActions}
       pages={[
         details(DeploymentDetails),
+        metrics(),
         editYaml(),
         {
           href: 'replicasets',
-          nameKey: 'details-page~ReplicaSets',
+          nameKey: 'public~ReplicaSets',
           component: ReplicaSetsTab,
         },
         pods(),

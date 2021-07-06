@@ -1,6 +1,11 @@
 import * as React from 'react';
 import { match as RouterMatch } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useResolvedExtensions } from '@console/dynamic-plugin-sdk/src/api/useResolvedExtensions';
+import {
+  YAMLTemplate,
+  isYAMLTemplate,
+} from '@console/dynamic-plugin-sdk/src/extensions/yaml-templates';
 import { getYAMLTemplates } from '../models/yaml-templates';
 import { connectToPlural } from '../kinds';
 import { AsyncComponent } from './utils/async';
@@ -14,7 +19,6 @@ import {
 } from '../module/k8s';
 import { ErrorPage404 } from './error';
 import { safeYAMLToJS } from '@console/shared/src/utils/yaml';
-import { useExtensions, isYAMLTemplate, YAMLTemplate } from '@console/plugin-sdk';
 
 export const CreateYAML = connectToPlural((props: CreateYAMLProps) => {
   const {
@@ -27,13 +31,18 @@ export const CreateYAML = connectToPlural((props: CreateYAMLProps) => {
   } = props;
   const { params } = match;
   const { t } = useTranslation();
-  const templateExtensions = useExtensions<YAMLTemplate>(isYAMLTemplate);
+  const [templateExtensions, resolvedTemplates] = useResolvedExtensions<YAMLTemplate>(
+    React.useCallback(
+      (e): e is YAMLTemplate => isYAMLTemplate(e) && e.properties.model.kind === kindObj?.kind,
+      [kindObj],
+    ),
+  );
   const yamlTemplates = React.useMemo(() => getYAMLTemplates(templateExtensions), [
     templateExtensions,
   ]);
 
   if (!kindObj) {
-    if (kindsInFlight) {
+    if (kindsInFlight || !resolvedTemplates) {
       return <LoadingBox />;
     }
     return <ErrorPage404 />;
@@ -55,7 +64,9 @@ export const CreateYAML = connectToPlural((props: CreateYAMLProps) => {
     obj.apiVersion = apiVersionForModel(kindObj);
     obj.spec = obj.spec || {};
   }
-  const header = t('public~Create {{objLabel}}', { objLabel: kindObj.label });
+  const header = t('public~Create {{objLabel}}', {
+    objLabel: kindObj.labelKey ? t(kindObj.labelKey) : kindObj.label,
+  });
 
   // TODO: if someone edits namespace, we'll redirect to old namespace
 

@@ -1,43 +1,44 @@
 import * as React from 'react';
+import { Button, ButtonVariant } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { Trans, useTranslation } from 'react-i18next';
-import { Button, ButtonVariant } from '@patternfly/react-core';
-import { getNamespace, createBasicLookup, getName } from '@console/shared';
 import {
-  withHandlePromise,
-  HandlePromiseProps,
+  createModalLauncher,
+  ModalBody,
+  ModalComponentProps,
+  ModalTitle,
+} from '@console/internal/components/factory';
+import {
   Firehose,
   FirehoseResult,
+  HandlePromiseProps,
+  withHandlePromise,
 } from '@console/internal/components/utils';
-import {
-  ModalComponentProps,
-  createModalLauncher,
-  ModalTitle,
-  ModalBody,
-} from '@console/internal/components/factory';
 import { k8sPatch } from '@console/internal/module/k8s';
+import { createBasicLookup, getName, getNamespace } from '@console/shared';
 import { PatchBuilder } from '@console/shared/src/k8s';
-import { BootableDeviceType, VMIKind } from '../../../types';
-import { VMLikeEntityKind } from '../../../types/vmLike';
-import {
-  getVMLikeModel,
-  getTransformedDevices,
-  getBootableDevices,
-  asVM,
-  isVMRunningOrExpectedRunning,
-  getBootableDevicesInOrder,
-} from '../../../selectors/vm';
-import { getVMLikePatches } from '../../../k8s/patches/vm-template';
-import { BootOrder, deviceKey } from '../../boot-order';
 import { DeviceType } from '../../../constants';
-import { ModalFooter } from '../modal/modal-footer';
-import { ModalPendingChangesAlert } from '../../Alerts/PendingChangesAlert';
-import { VirtualMachineInstanceModel } from '../../../models';
-import { getLoadedData } from '../../../utils';
-import { saveAndRestartModal } from '../save-and-restart-modal/save-and-restart-modal';
-import { isBootOrderChanged } from '../../../selectors/vm-like/next-run-changes';
+import { getVMLikePatches } from '../../../k8s/patches/vm-template';
 import { VMWrapper } from '../../../k8s/wrapper/vm/vm-wrapper';
 import { VMIWrapper } from '../../../k8s/wrapper/vm/vmi-wrapper';
+import { VirtualMachineInstanceModel } from '../../../models';
+import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
+import {
+  asVM,
+  getBootableDevices,
+  getBootableDevicesInOrder,
+  getTransformedDevices,
+  getVMLikeModel,
+  isVMRunningOrExpectedRunning,
+} from '../../../selectors/vm';
+import { isBootOrderChanged } from '../../../selectors/vm-like/next-run-changes';
+import { BootableDeviceType, VMIKind } from '../../../types';
+import { VMLikeEntityKind } from '../../../types/vmLike';
+import { getLoadedData } from '../../../utils';
+import { ModalPendingChangesAlert } from '../../Alerts/PendingChangesAlert';
+import { BootOrder, deviceKey } from '../../boot-order';
+import { ModalFooter } from '../modal/modal-footer';
+import { saveAndRestartModal } from '../save-and-restart-modal/save-and-restart-modal';
 
 const BootOrderModalComponent = withHandlePromise(
   ({
@@ -58,8 +59,8 @@ const BootOrderModalComponent = withHandlePromise(
     const [showUpdatedAlert, setUpdatedAlert] = React.useState<boolean>(false);
     const [showPatchError, setPatchError] = React.useState<boolean>(false);
     const vm = asVM(vmLikeEntity);
-    const isVMRunning = isVMRunningOrExpectedRunning(vm);
     const vmi = getLoadedData(vmiProp);
+    const isVMRunning = isVMRunningOrExpectedRunning(vm, vmi);
 
     const onReload = React.useCallback(() => {
       const updatedDevices = bootableDevices;
@@ -168,7 +169,7 @@ const BootOrderModalComponent = withHandlePromise(
             showUpdatedAlert && t('kubevirt-plugin~Boot order has been updated outside this flow.')
           }
           infoMessage={
-            <Trans t={t} i18nKey="bootOrderModalInfoMessage" ns="kubevirt-plugin">
+            <Trans t={t} ns="kubevirt-plugin">
               Saving these changes will override any boot order previously saved.
               <br />
               To see the updated order{' '}
@@ -196,7 +197,7 @@ const BootOrderModalFirehost = (props) => {
   const resources = [];
 
   resources.push({
-    kind: VirtualMachineInstanceModel.kind,
+    kind: kubevirtReferenceForModel(VirtualMachineInstanceModel),
     namespace: getNamespace(vmLikeEntity),
     name: getName(vmLikeEntity),
     prop: 'vmi',

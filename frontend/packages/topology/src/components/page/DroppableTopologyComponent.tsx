@@ -1,15 +1,15 @@
 import * as React from 'react';
-import { NativeTypes } from 'react-dnd-html5-backend';
-import { DropTarget, DropTargetConnector } from 'react-dnd';
-import { DropTargetMonitor } from 'react-dnd/lib/interfaces';
 import { Model } from '@patternfly/react-topology';
-import withDragDropContext from '@console/internal/components/utils/drag-drop-context';
+import { DropTarget, DropTargetConnector } from 'react-dnd';
+import { NativeTypes } from 'react-dnd-html5-backend';
+import { DropTargetMonitor } from 'react-dnd/lib/interfaces';
 import {
   FileUploadContextType,
   FileUploadContext,
 } from '@console/app/src/components/file-upload/file-upload-context';
-import { ConnectedTopologyView, TopologyViewProps } from './TopologyView';
+import withDragDropContext from '@console/internal/components/utils/drag-drop-context';
 import { TopologyViewType } from '../../topology-types';
+import TopologyView, { TopologyViewProps } from './TopologyView';
 
 const boxTarget = {
   drop(props, monitor) {
@@ -29,7 +29,7 @@ const DroppableTopology = DropTarget(
       canDrop: monitor.canDrop() && props.canDropFile,
     };
   },
-)(ConnectedTopologyView);
+)(TopologyView);
 
 export const DroppableTopologyComponent = withDragDropContext<DroppableTopologyComponentProps>(
   (props) => {

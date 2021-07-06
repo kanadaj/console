@@ -1,53 +1,63 @@
-import { TFunction } from 'i18next';
-import { ErrorDetailsWithLogName, ErrorDetailsWithStaticLog } from '../log-snippet-types';
-import { getPLRLogSnippet } from '../pipelineRunLogSnippet';
 import {
   pipelineTestData,
   PipelineExampleNames,
   DataState,
 } from '../../../../test-data/pipeline-data';
+import { ErrorDetailsWithLogName, ErrorDetailsWithStaticLog } from '../log-snippet-types';
+import { getPLRLogSnippet } from '../pipelineRunLogSnippet';
 
-const PipelineRunMock =
+const pipelineRunMock =
   pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE].pipelineRuns[DataState.SUCCESS];
-const PipelineRunMockFailed =
+const pipelineRunMockFailed =
   pipelineTestData[PipelineExampleNames.BROKEN_MOCK_APP].pipelineRuns[DataState.FAILED1];
-
-const t = (key: TFunction) => key;
+const pipelineRunTimeoutError =
+  pipelineTestData[PipelineExampleNames.BROKEN_MOCK_APP].pipelineRuns[DataState.FAILED2];
 
 describe('PipelineRunLogSnippet test', () => {
   it('should return null for successful PLR', () => {
-    const msg = getPLRLogSnippet(PipelineRunMock, t);
+    const msg = getPLRLogSnippet(pipelineRunMock);
     expect(msg).toEqual(null);
   });
+
+  it('should return null if PLR value is null', () => {
+    const msg = getPLRLogSnippet(null);
+    expect(msg).toEqual(null);
+  });
+
   it('should return a Log message for failed PLR with task container', () => {
     const { title, containerName, podName } = getPLRLogSnippet(
-      PipelineRunMockFailed,
-      t,
+      pipelineRunMockFailed,
     ) as ErrorDetailsWithLogName;
-    expect(title).toEqual(
-      'pipelines-plugin~Failure on task {{taskName}} - check logs for details.',
-    );
+    expect(title).toEqual('Failure on task {{taskName}} - check logs for details.');
     expect(containerName).toEqual('step-build');
     expect(podName).toEqual('broken-app-pipeline-j2nxzm-x-compile-8mq2h-pod-b9gsg');
   });
-  it('should return a static message', () => {
+
+  it('should return a Log message for PLR with PipelineRunTimeout reason', () => {
     const { title, staticMessage } = getPLRLogSnippet(
-      {
-        ...PipelineRunMock,
-        status: {
-          ...PipelineRunMock.status,
-          conditions: [
-            {
-              ...PipelineRunMock.status.conditions[0],
-              status: 'False',
-              message: '',
-            },
-          ],
-        },
-      },
-      t,
+      pipelineRunTimeoutError,
     ) as ErrorDetailsWithStaticLog;
-    expect(title).toEqual('pipelines-plugin~Failure - check logs for details.');
-    expect(staticMessage).toEqual('pipelines-plugin~Unknown failure condition');
+    expect(title).toEqual('Failure - check logs for details.');
+    expect(staticMessage).toEqual(
+      'PipelineRun "fetch-and-print-recipe-test" failed to finish within "5s"',
+    );
+  });
+
+  it('should return a static message', () => {
+    const { title, staticMessage } = getPLRLogSnippet({
+      ...pipelineRunMock,
+      status: {
+        ...pipelineRunMock.status,
+        conditions: [
+          {
+            ...pipelineRunMock.status.conditions[0],
+            status: 'False',
+            message: '',
+          },
+        ],
+      },
+    }) as ErrorDetailsWithStaticLog;
+    expect(title).toEqual('Failure - check logs for details.');
+    expect(staticMessage).toEqual('Unknown failure condition');
   });
 });

@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { shallow, ShallowWrapper } from 'enzyme';
-import { getQuickStartByName } from '../../utils/quick-start-utils';
+import QuickStartMarkdownView from '../../QuickStartMarkdownView';
 import { QuickStartTaskStatus } from '../../utils/quick-start-types';
-import QuickStartTask from '../QuickStartTasks';
+import { getQuickStartByName } from '../../utils/quick-start-utils';
 import TaskHeader from '../QuickStartTaskHeader';
 import QuickStartTaskReview from '../QuickStartTaskReview';
-import QuickStartMarkdownView from '../../QuickStartMarkdownView';
+import QuickStartTask from '../QuickStartTasks';
 
 type QuickStartTaskProps = React.ComponentProps<typeof QuickStartTask>;
 let wrapper: ShallowWrapper<QuickStartTaskProps>;
@@ -35,40 +35,25 @@ describe('QuickStartTasks', () => {
   });
 
   it('should render correct number of tasks based on currentTaskIndex', () => {
-    expect(wrapper.find(TaskHeader).length).toBe(2);
+    expect(wrapper.find(TaskHeader).length).toBe(1);
   });
 
-  it('should render SyncMarkdownView with description or summary according to task status', () => {
+  it('should render SyncMarkdownView with description if a task is active', () => {
     wrapper = shallow(
       <QuickStartTask
         {...props}
         allTaskStatuses={[
           QuickStartTaskStatus.SUCCESS,
           QuickStartTaskStatus.FAILED,
-          QuickStartTaskStatus.INIT,
+          QuickStartTaskStatus.VISITED,
         ]}
         taskNumber={2}
       />,
     );
-
     expect(
       wrapper
         .find(QuickStartMarkdownView)
         .at(0)
-        .props().content,
-    ).toEqual(props.tasks[0].summary.success);
-
-    expect(
-      wrapper
-        .find(QuickStartMarkdownView)
-        .at(1)
-        .props().content,
-    ).toEqual(props.tasks[1].summary.failed);
-
-    expect(
-      wrapper
-        .find(QuickStartMarkdownView)
-        .at(2)
         .props().content,
     ).toEqual(props.tasks[2].description);
   });

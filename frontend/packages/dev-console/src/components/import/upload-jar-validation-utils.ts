@@ -1,8 +1,9 @@
+import { TFunction } from 'i18next';
 import * as _ from 'lodash';
 import * as yup from 'yup';
-import { TFunction } from 'i18next';
+import { nameValidationSchema } from '@console/shared';
+import { healthChecksProbesValidationSchema } from '../health-checks/health-checks-probe-validation-utils';
 import {
-  nameValidationSchema,
   projectNameValidationSchema,
   applicationNameValidationSchema,
   deploymentValidationSchema,
@@ -13,7 +14,6 @@ import {
   buildValidationSchema,
   resourcesValidationSchema,
 } from './validation-schema';
-import { healthChecksProbesValidationSchema } from '../health-checks/health-checks-probe-validation-utils';
 
 export const fileNameRegex = /\.(jar)$/i;
 
@@ -31,7 +31,7 @@ export const fileUploadValidationSchema = (t: TFunction) =>
 
 export const validationSchema = (t: TFunction) =>
   yup.object().shape({
-    name: nameValidationSchema,
+    name: nameValidationSchema(t),
     fileUpload: fileUploadValidationSchema(t),
     project: projectNameValidationSchema,
     application: applicationNameValidationSchema,

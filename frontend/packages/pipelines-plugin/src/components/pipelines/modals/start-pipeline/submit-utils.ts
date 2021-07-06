@@ -1,6 +1,7 @@
 import { k8sCreate, K8sResourceCommon } from '@console/internal/module/k8s';
 import { PipelineRunModel } from '../../../../models';
 import { PipelineKind, PipelineRunKind } from '../../../../types';
+import { VolumeTypes } from '../../const';
 import {
   createPipelineResource,
   createSecretResource,
@@ -25,12 +26,9 @@ export const resourceSubmit = async (
     : createPipelineResource(params, type, namespace);
 };
 
-export const submitStartPipeline = async (
+const processResources = async (
   values: StartPipelineFormValues,
-  pipeline: PipelineKind,
-  labels?: { [key: string]: string },
-  annotations?: { [key: string]: string },
-): Promise<PipelineRunKind> => {
+): Promise<StartPipelineFormValues> => {
   const { namespace, resources } = values;
 
   const toCreateResources: { [index: string]: PipelineModalFormResource } = resources.reduce(
@@ -42,26 +40,46 @@ export const submitStartPipeline = async (
   const createdResources = await Promise.all(
     Object.values(toCreateResources).map((resource) => resourceSubmit(resource, namespace)),
   );
+  if (!createdResources || createdResources.length === 0) return values;
 
+  const indexLookup = Object.keys(toCreateResources);
+  return {
+    ...values,
+    resources: resources.map(
+      (resource, index): PipelineModalFormResource => {
+        if (toCreateResources[index]) {
+          const creationIndex = indexLookup.indexOf(index.toString());
+          return {
+            ...resource,
+            selection: createdResources[creationIndex].metadata.name,
+          };
+        }
+        return resource;
+      },
+    ),
+  };
+};
+
+const processWorkspaces = (values: StartPipelineFormValues): StartPipelineFormValues => {
+  const { workspaces } = values;
+
+  if (!workspaces || workspaces.length === 0) return values;
+
+  return {
+    ...values,
+    workspaces: workspaces.filter((workspace) => workspace.type !== VolumeTypes.NoWorkspace),
+  };
+};
+
+export const submitStartPipeline = async (
+  values: StartPipelineFormValues,
+  pipeline: PipelineKind,
+  labels?: { [key: string]: string },
+  annotations?: { [key: string]: string },
+): Promise<PipelineRunKind> => {
   let formValues = values;
-  if (createdResources.length > 0) {
-    const indexLookup = Object.keys(toCreateResources);
-    formValues = {
-      ...formValues,
-      resources: formValues.resources.map(
-        (resource, index): PipelineModalFormResource => {
-          if (toCreateResources[index]) {
-            const creationIndex = indexLookup.indexOf(index.toString());
-            return {
-              ...resource,
-              selection: createdResources[creationIndex].metadata.name,
-            };
-          }
-          return resource;
-        },
-      ),
-    };
-  }
+  formValues = await processResources(formValues);
+  formValues = processWorkspaces(formValues);
 
   const pipelineRunResource: PipelineRunKind = await k8sCreate(
     PipelineRunModel,

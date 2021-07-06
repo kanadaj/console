@@ -1,16 +1,18 @@
 import * as _ from 'lodash';
 import { BuildStrategyType } from '@console/internal/components/build';
 import { K8sResourceKind } from '@console/internal/module/k8s';
+import { GitImportFormData, Resources } from '../../import/import-types';
 import {
   getResourcesType,
-  getPageHeading,
-  CreateApplicationFlow,
+  getFlowType,
+  ApplicationFlowType,
   getInitialValues,
   getExternalImagelValues,
   getServerlessData,
   getKsvcRouteData,
+  getFileUploadValues,
+  BuildSourceType,
 } from '../edit-application-utils';
-import { GitImportFormData, Resources } from '../../import/import-types';
 import {
   knativeService,
   knAppResources,
@@ -27,8 +29,14 @@ describe('Edit Application Utils', () => {
     expect(getResourcesType(knativeService)).toEqual(Resources.KnativeService);
   });
 
-  it('getPageHeading should return page heading based on the create flow used to create the application', () => {
-    expect(getPageHeading(BuildStrategyType.Source)).toEqual(CreateApplicationFlow.Git);
+  it('getFlowType should return page heading based on the create flow used to create the application', () => {
+    expect(getFlowType(BuildStrategyType.Source)).toEqual(ApplicationFlowType.Git);
+  });
+
+  it('getFlowType should return JarUpload based on the build type of resource', () => {
+    expect(getFlowType(BuildStrategyType.Source, BuildSourceType.Binary)).toEqual(
+      ApplicationFlowType.JarUpload,
+    );
   });
 
   it('getInitialValues should return values based on the resources and the create flow used to create the application', () => {
@@ -44,6 +52,7 @@ describe('Edit Application Utils', () => {
       },
       build: {
         ...gitImportInitialValues.build,
+        source: { type: undefined },
         triggers: { config: false, image: false, webhook: false },
       },
       image: {
@@ -106,6 +115,14 @@ describe('Edit Application Utils', () => {
     expect(
       getInitialValues({ editAppResource, buildConfig, route }, 'nationalparks-py', 'div'),
     ).toEqual(gitImportInitialValuesWithHealthChecksEnabled);
+  });
+
+  it('should get correct data for fileupload values', () => {
+    const { buildConfig, editAppResource } = appResources;
+    expect(getFileUploadValues(editAppResource.data, buildConfig.data)).toEqual({
+      fileUpload: { name: 'demo-app.jar', value: '', javaArgs: '' },
+      runtimeIcon: 'python',
+    });
   });
 
   describe('getServerlessData', () => {
@@ -201,7 +218,7 @@ describe('KSVC Route Data', () => {
       metadata: {
         ...knativeService.metadata,
         labels: {
-          'serving.knative.dev/visibility': 'cluster-local',
+          'networking.knative.dev/visibility': 'cluster-local',
         },
       },
       spec: {

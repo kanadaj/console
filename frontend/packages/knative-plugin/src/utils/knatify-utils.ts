@@ -1,54 +1,68 @@
-import { k8sCreate, K8sResourceKind } from '@console/internal/module/k8s';
-import { UNASSIGNED_KEY } from '@console/topology/src/const';
-import {
-  getHealthChecksData,
-  getProbesData,
-} from '@console/dev-console/src/components/health-checks/create-health-checks-probe-utils';
-import {
-  DeployImageFormData,
-  Resources,
-} from '@console/dev-console/src/components/import/import-types';
-import { ensurePortExists } from '@console/dev-console/src/components/import/deployImage-submit-utils';
 import {
   deployImageInitialValues,
   getDeploymentData,
   getExternalImagelValues,
   getIconInitialValues,
   getKsvcRouteData,
-  getLimitsData,
   getServerlessData,
   getUserLabels,
 } from '@console/dev-console/src/components/edit-application/edit-application-utils';
+import {
+  getHealthChecksData,
+  getProbesData,
+} from '@console/dev-console/src/components/health-checks/create-health-checks-probe-utils';
+import { ensurePortExists } from '@console/dev-console/src/components/import/deployImage-submit-utils';
+import {
+  DeployImageFormData,
+  Resources,
+} from '@console/dev-console/src/components/import/import-types';
 import { RegistryType } from '@console/dev-console/src/utils/imagestream-utils';
+import { k8sCreate, K8sResourceKind } from '@console/internal/module/k8s';
+import { getLimitsDataFromResource } from '@console/shared/src';
+import { UNASSIGNED_KEY } from '@console/topology/src/const';
+import { KNATIVE_MAXSCALE_ANNOTATION, KNATIVE_MINSCALE_ANNOTATION } from '../const';
 import { ServiceModel } from '../models';
 import { getKnativeServiceDepResource } from './create-knative-utils';
 
 const PART_OF = 'app.kubernetes.io/part-of';
 const knatify = 'knatify';
 
-export const getKnatifyWorkloadData = (obj: K8sResourceKind) => {
+export const getKnatifyWorkloadData = (obj: K8sResourceKind, relatedHpa?: K8sResourceKind) => {
   const { metadata, spec } = obj || {};
   const { name = '', namespace = '', labels = {}, annotations = {} } = metadata || {};
   const { metadata: templateMetadata, spec: templateSpec } = spec?.template || {};
   const { image, ports, imagePullPolicy, env, resources } = templateSpec?.containers[0] || {};
+  const { spec: hpaSpec } = relatedHpa ?? {};
 
   const healthChecks = getHealthChecksData(obj, 0);
   const { readinessProbe, livenessProbe } = getProbesData(healthChecks, Resources.KnativeService);
-
+  const appName = `ksvc-${name}`;
   const newKnativeDeployResource: K8sResourceKind = {
     kind: ServiceModel.kind,
     apiVersion: `${ServiceModel.apiGroup}/${ServiceModel.apiVersion}`,
     metadata: {
-      name,
+      name: appName,
       namespace,
-      labels,
+      labels: {
+        ...labels,
+        'app.kubernetes.io/instance': appName,
+        'app.kubernetes.io/component': appName,
+      },
       annotations,
     },
     spec: {
       template: {
         metadata: {
           labels: templateMetadata?.labels ?? {},
-          annotations: templateMetadata?.annotations ?? {},
+          annotations: {
+            ...templateMetadata?.annotations,
+            ...(hpaSpec?.minReplicas && {
+              [KNATIVE_MINSCALE_ANNOTATION]: `${hpaSpec.minReplicas}`,
+            }),
+            ...(hpaSpec?.maxReplicas && {
+              [KNATIVE_MAXSCALE_ANNOTATION]: `${hpaSpec.maxReplicas}`,
+            }),
+          },
         },
         spec: {
           containers: [
@@ -82,22 +96,39 @@ export const getKnatifyWorkloadData = (obj: K8sResourceKind) => {
   return newKnativeDeployResource;
 };
 
-export const knatifyResources = (rawFormData: DeployImageFormData): Promise<K8sResourceKind> => {
+export const knatifyResources = (
+  rawFormData: DeployImageFormData,
+  appName: string,
+): Promise<K8sResourceKind> => {
   const formData = ensurePortExists(rawFormData);
   const {
     isi: { image },
   } = formData;
   const imageStreamUrl: string = image?.dockerImageReference ?? '';
-  const knDeploymentResource = getKnativeServiceDepResource(formData, imageStreamUrl);
+  const knDeploymentRes = getKnativeServiceDepResource(
+    formData,
+    imageStreamUrl,
+    undefined,
+    undefined,
+    undefined,
+    formData.annotations,
+  );
+  const knDeploymentResource = {
+    ...knDeploymentRes,
+    metadata: {
+      ...knDeploymentRes.metadata,
+      labels: {
+        ...knDeploymentRes.metadata.labels,
+        ...(!!appName && { 'app.kubernetes.io/name': appName }),
+      },
+    },
+  };
   return k8sCreate(ServiceModel, knDeploymentResource);
 };
 
-export const getCommonInitialValues = (
-  ksvcResourceData: K8sResourceKind,
-  name: string,
-  namespace: string,
-) => {
+export const getCommonInitialValues = (ksvcResourceData: K8sResourceKind, namespace: string) => {
   const appGroupName = ksvcResourceData?.metadata?.labels?.[PART_OF] ?? '';
+  const name = ksvcResourceData?.metadata?.name ?? '';
   const commonInitialValues = {
     name,
     formType: knatify,
@@ -116,8 +147,9 @@ export const getCommonInitialValues = (
     },
     deployment: getDeploymentData(ksvcResourceData),
     labels: getUserLabels(ksvcResourceData),
-    limits: getLimitsData(ksvcResourceData),
+    limits: getLimitsDataFromResource(ksvcResourceData),
     healthChecks: getHealthChecksData(ksvcResourceData),
+    annotations: ksvcResourceData?.metadata?.annotations ?? {},
   };
   return commonInitialValues;
 };
@@ -159,11 +191,10 @@ const getInternalImageInitialValues = (
 
 export const getInitialValuesKnatify = (
   ksvcResourceData: K8sResourceKind,
-  appName: string,
   namespace: string,
   imageStreams: K8sResourceKind[],
 ): DeployImageFormData => {
-  const commonValues = getCommonInitialValues(ksvcResourceData, appName, namespace);
+  const commonValues = getCommonInitialValues(ksvcResourceData, namespace);
   const iconValues = getIconInitialValues(ksvcResourceData);
   const internalImageValues = getInternalImageInitialValues(
     ksvcResourceData,

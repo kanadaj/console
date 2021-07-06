@@ -1,6 +1,16 @@
 import * as _ from 'lodash';
+import { alertMessageResources } from '@console/internal/components/monitoring/alerting';
+import { Alert, Alerts } from '@console/internal/components/monitoring/types';
+import {
+  ReplicationControllerModel,
+  ReplicaSetModel,
+  StatefulSetModel,
+  JobModel,
+  DeploymentConfigModel,
+} from '@console/internal/models';
 import {
   K8sResourceKind,
+  K8sResourceCommon,
   LabelSelector,
   PodKind,
   CronJobKind,
@@ -10,22 +20,7 @@ import {
   K8sKind,
   JobKind,
 } from '@console/internal/module/k8s';
-import {
-  ReplicationControllerModel,
-  ReplicaSetModel,
-  StatefulSetModel,
-  JobModel,
-} from '@console/internal/models';
 import { getBuildNumber } from '@console/internal/module/k8s/builds';
-import { Alert, Alerts } from '@console/internal/components/monitoring/types';
-import { alertMessageResources } from '@console/internal/components/monitoring/alerting';
-import {
-  BuildConfigOverviewItem,
-  OverviewItemAlerts,
-  PodControllerOverviewItem,
-  OverviewItem,
-  ExtPodKind,
-} from '../types';
 import {
   DEPLOYMENT_REVISION_ANNOTATION,
   DEPLOYMENT_CONFIG_LATEST_VERSION_ANNOTATION,
@@ -36,8 +31,16 @@ import {
   DEPLOYMENT_PHASE,
   AllPodStatus,
 } from '../constants';
-import { isKnativeServing, isIdled } from './pod-utils';
+import {
+  BuildConfigOverviewItem,
+  OverviewItemAlerts,
+  PodControllerOverviewItem,
+  OverviewItem,
+  ExtPodKind,
+  LimitsData,
+} from '../types';
 import { doesHpaMatch } from './hpa-utils';
+import { isKnativeServing, isIdled } from './pod-utils';
 
 export const WORKLOAD_TYPES = [
   'deployments',
@@ -159,22 +162,27 @@ const sortByRevision = (
   return _.toArray(replicators).sort(compare);
 };
 
-const getAnnotation = (obj: K8sResourceKind, annotation: string): string => {
-  return _.get(obj, ['metadata', 'annotations', annotation]);
+const getAnnotation = (obj: K8sResourceCommon, annotation: string): string => {
+  return obj?.metadata?.annotations?.[annotation];
 };
 
-const getDeploymentRevision = (obj: K8sResourceKind): number => {
+export const getDeploymentRevision = (obj: K8sResourceCommon): number => {
   const revision = getAnnotation(obj, DEPLOYMENT_REVISION_ANNOTATION);
   return revision && parseInt(revision, 10);
 };
 
-const getDeploymentConfigVersion = (obj: K8sResourceKind): number => {
+export const getDeploymentConfigVersion = (obj: K8sResourceCommon): number => {
   const version = getAnnotation(obj, DEPLOYMENT_CONFIG_LATEST_VERSION_ANNOTATION);
   return version && parseInt(version, 10);
 };
 
-const getDeploymentConfigName = (obj: K8sResourceKind): string => {
-  return _.get(obj, 'metadata.ownerReferences[0].name', null);
+export const getOwnerNameByKind = (obj: K8sResourceCommon, kind: K8sKind): string => {
+  return obj?.metadata?.ownerReferences?.find(
+    (ref) =>
+      ref.kind === kind.kind &&
+      ((!kind.apiGroup && ref.apiVersion === 'v1') ||
+        ref.apiVersion?.startsWith(`${kind.apiGroup}/`)),
+  )?.name;
 };
 
 export const sortReplicaSetsByRevision = (replicaSets: K8sResourceKind[]): K8sResourceKind[] => {
@@ -271,7 +279,7 @@ const combinePodAlerts = (pods: K8sResourceKind[]): OverviewItemAlerts =>
 export const getReplicationControllerAlerts = (rc: K8sResourceKind): OverviewItemAlerts => {
   const phase = getDeploymentPhase(rc);
   const version = getDeploymentConfigVersion(rc);
-  const name = getDeploymentConfigName(rc);
+  const name = getOwnerNameByKind(rc, DeploymentConfigModel);
   const label = _.isFinite(version) ? `${name} #${version}` : rc.metadata.name;
   const key = `${rc.metadata.uid}--Rollout${phase}`;
   switch (phase) {
@@ -536,6 +544,7 @@ export const getBuildConfigsForResource = (
   if (resource.kind === 'CronJob') {
     return getBuildConfigsForCronJob(resource as CronJobKind, resources);
   }
+  const NAME_LABEL = 'app.kubernetes.io/name';
   const buildConfigs = resources?.buildConfigs?.data;
   const currentNamespace = resource.metadata.namespace;
   const nativeTriggers = resource?.spec?.triggers;
@@ -555,7 +564,8 @@ export const getBuildConfigsForResource = (
         const targetImageName = buildConfig.spec?.output?.to?.name;
         if (
           triggerImageNamespace === targetImageNamespace &&
-          triggerImageName === targetImageName
+          (triggerImageName === targetImageName ||
+            resource.metadata?.labels?.[NAME_LABEL] === buildConfig.metadata?.labels?.[NAME_LABEL])
         ) {
           const builds = getBuildsForResource(buildConfig, resources);
           return [
@@ -708,4 +718,65 @@ export const createOverviewItemsForType = (
     }
     return acc;
   }, []);
+};
+
+export const getResourceLimitsData = (limitsData: LimitsData) => ({
+  ...((limitsData.cpu.limit || limitsData.memory.limit) && {
+    limits: {
+      ...(limitsData.cpu.limit && { cpu: `${limitsData.cpu.limit}${limitsData.cpu.limitUnit}` }),
+      ...(limitsData.memory.limit && {
+        memory: `${limitsData.memory.limit}${limitsData.memory.limitUnit}`,
+      }),
+    },
+  }),
+  ...((limitsData.cpu.request || limitsData.memory.request) && {
+    requests: {
+      ...(limitsData.cpu.request && {
+        cpu: `${limitsData.cpu.request}${limitsData.cpu.requestUnit}`,
+      }),
+      ...(limitsData.memory.request && {
+        memory: `${limitsData.memory.request}${limitsData.memory.requestUnit}`,
+      }),
+    },
+  }),
+});
+
+export const getResourceData = (res: string) => {
+  const resourcesRegEx = /^[0-9]*|[a-zA-Z]*/g;
+  return res.match(resourcesRegEx);
+};
+
+export const getLimitsDataFromResource = (resource: K8sResourceKind) => {
+  const containers = resource?.spec?.template?.spec?.containers ?? [];
+
+  const [cpuLimit, cpuLimitUnit] = getResourceData(containers?.[0]?.resources?.limits?.cpu ?? '');
+  const [memoryLimit, memoryLimitUnit] = getResourceData(
+    containers?.[0]?.resources?.limits?.memory ?? '',
+  );
+  const [cpuRequest, cpuRequestUnit] = getResourceData(
+    containers?.[0]?.resources?.requests?.cpu ?? '',
+  );
+  const [memoryRequest, memoryRequestUnit] = getResourceData(
+    containers?.[0]?.resources?.requests?.memory ?? '',
+  );
+
+  const limitsData = {
+    cpu: {
+      request: cpuRequest,
+      requestUnit: cpuRequestUnit || '',
+      defaultRequestUnit: cpuRequestUnit || '',
+      limit: cpuLimit,
+      limitUnit: cpuLimitUnit || '',
+      defaultLimitUnit: cpuLimitUnit || '',
+    },
+    memory: {
+      request: memoryRequest,
+      requestUnit: memoryRequestUnit || 'Mi',
+      defaultRequestUnit: memoryRequestUnit || 'Mi',
+      limit: memoryLimit,
+      limitUnit: memoryLimitUnit || 'Mi',
+      defaultLimitUnit: memoryLimitUnit || 'Mi',
+    },
+  };
+  return limitsData;
 };

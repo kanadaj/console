@@ -1,14 +1,13 @@
-import * as yup from 'yup';
 import { TFunction } from 'i18next';
-import { isValidUrl } from '@console/shared';
+import * as yup from 'yup';
 import {
-  nameValidationSchema,
   projectNameValidationSchema,
   applicationNameValidationSchema,
 } from '@console/dev-console/src/components/import/validation-schema';
+import { isValidUrl, nameValidationSchema } from '@console/shared';
 import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
-import { EventSources, SinkType } from './import-types';
 import { isDefaultChannel, getChannelKind } from '../../utils/create-channel-utils';
+import { EventSources, SinkType } from './import-types';
 
 export const sinkTypeUriValidation = (t: TFunction) =>
   yup.object().shape({
@@ -177,7 +176,7 @@ export const eventSourceValidationSchema = (t: TFunction) =>
       then: yup.object().shape({
         project: projectNameValidationSchema,
         application: applicationNameValidationSchema,
-        name: nameValidationSchema,
+        name: nameValidationSchema(t),
         sink: sinkServiceSchema(t),
         data: sourceDataSpecSchema(t),
       }),
@@ -190,7 +189,7 @@ export const addChannelValidationSchema = (t: TFunction) =>
     if (isDefaultChannel(getChannelKind(formData.type))) {
       return yup.object().shape({
         application: applicationNameValidationSchema,
-        name: nameValidationSchema,
+        name: nameValidationSchema(t),
         data: sourceDataSpecSchema(t),
         type: yup.string(),
       });

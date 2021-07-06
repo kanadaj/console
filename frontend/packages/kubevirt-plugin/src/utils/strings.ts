@@ -1,10 +1,10 @@
 import { TFunction } from 'i18next';
+import { adjectives, animals, uniqueNamesGenerator } from 'unique-names-generator';
 import { TemplateKind } from '@console/internal/module/k8s';
-import { uniqueNamesGenerator, animals, adjectives } from 'unique-names-generator';
-import { TEMPLATE_BASE_IMAGE_NAME_PARAMETER } from '../constants';
-import { getTemplateName } from '../selectors/vm-template/basic';
 import { alignWithDNS1123 } from '@console/shared/src/utils/validation/validation';
+import { TEMPLATE_BASE_IMAGE_NAME_PARAMETER } from '../constants';
 import { getParameterValue } from '../selectors/selectors';
+import { getTemplateName } from '../selectors/vm-template/basic';
 
 export const COULD_NOT_LOAD_DATA = 'Could not load data';
 
@@ -17,16 +17,31 @@ export const DYNAMIC = 'Dynamic';
 
 export const READY = 'Ready';
 
-export const EXAMPLE_CONTAINER = 'kubevirt/fedora-cloud-container-disk-demo';
+export const CLOUD = 'cloud';
+export const SSH = 'ssh';
+export const SYSPREP = 'sysprep';
+
+export const EXAMPLE_CONTAINER = 'registry.redhat.io/rhel8/rhel-guest-image';
+export const FEDORA_EXAMPLE_CONTAINER = 'quay.io/kubevirt/fedora-cloud-container-disk-demo:latest';
+export const CENTOS_IMAGE_LINK = 'https://cloud.centos.org/centos/';
 export const FEDORA_IMAGE_LINK = 'https://alt.fedoraproject.org/cloud/';
 export const RHEL_IMAGE_LINK =
   'https://access.redhat.com/downloads/content/479/ver=/rhel---8/8.2/x86_64/product-software';
+export const WINDOWS_IMAGE_LINK = 'https://www.microsoft.com/en-us/software-download/windows10ISO';
 export const CLOUD_INIT_MISSING_USERNAME =
   'No username set, see operating system documentation for the default username.';
 export const CLOUD_INIT_DOC_LINK = 'https://cloudinit.readthedocs.io/en/latest/index.html';
 export const STORAGE_CLASS_SUPPORTED_MATRIX_DOC_LINK =
   'https://docs.openshift.com/container-platform/4.6/virt/virtual_machines/virtual_disks/virt-features-for-storage.html';
+export const STORAGE_CLASS_SUPPORTED_RHV_LINK =
+  'https://docs.openshift.com/container-platform/4.7/virt/virtual_machines/importing_vms/virt-importing-rhv-vm.html';
+export const STORAGE_CLASS_SUPPORTED_VMWARE_LINK =
+  'https://docs.openshift.com/container-platform/4.7/virt/virtual_machines/importing_vms/virt-importing-vmware-vm.html';
+export const NODE_PORTS_LINK =
+  'https://docs.openshift.com/container-platform/4.7/networking/configuring_ingress_cluster_traffic/configuring-ingress-cluster-traffic-nodeport.html#nw-using-nodeport_configuring-ingress-cluster-traffic-nodeport';
 
+export const PREALLOCATION_DATA_VOLUME_LINK =
+  'https://docs.openshift.com/container-platform/4.7/virt/virtual_machines/virtual_disks/virt-using-preallocation-for-datavolumes.html';
 export const getDialogUIError = (hasAllRequiredFilled, t: TFunction) =>
   hasAllRequiredFilled
     ? t('kubevirt-plugin~Please correct the invalid fields.')

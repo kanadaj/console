@@ -1,8 +1,7 @@
 import * as React from 'react';
 import { Grid, GridItem, Title } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-
-import { CreateVMFormProps, CreateVMForm } from '../forms/create-vm-form';
+import { CreateVMForm, CreateVMFormProps } from '../forms/create-vm-form';
 
 import './tab.scss';
 

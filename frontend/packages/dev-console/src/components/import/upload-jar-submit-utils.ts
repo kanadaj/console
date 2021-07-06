@@ -1,17 +1,16 @@
 import * as _ from 'lodash';
-import { k8sCreate, K8sResourceKind, k8sUpdate, K8sVerb } from '@console/internal/module/k8s';
+import { coFetch } from '@console/internal/co-fetch';
 import {
   ServiceModel,
   RouteModel,
   BuildConfigModel,
-  ImageStreamModel,
   DeploymentModel,
   DeploymentConfigModel,
 } from '@console/internal/models';
-import { coFetch } from '@console/internal/co-fetch';
-import { getKnativeServiceDepResource } from '@console/knative-plugin/src/utils/create-knative-utils';
+import { k8sCreate, K8sResourceKind, k8sUpdate, K8sVerb } from '@console/internal/module/k8s';
 import { ServiceModel as KnServiceModel } from '@console/knative-plugin';
-import { createProject, createWebhookSecret } from './import-submit-utils';
+import { getKnativeServiceDepResource } from '@console/knative-plugin/src/utils/create-knative-utils';
+import { getRandomChars, NameValuePair, getResourceLimitsData } from '@console/shared';
 import {
   getAppLabels,
   getCommonAnnotations,
@@ -20,10 +19,15 @@ import {
   getTriggerAnnotation,
   mergeData,
 } from '../../utils/resource-label-utils';
-import { Resources, UploadJarFormData } from './import-types';
 import { createRoute, createService, dryRunOpt } from '../../utils/shared-submit-utils';
-import { getProbesData } from '../health-checks/create-health-checks-probe-utils';
 import { AppResources } from '../edit-application/edit-application-types';
+import { getProbesData } from '../health-checks/create-health-checks-probe-utils';
+import {
+  createOrUpdateImageStream,
+  createProject,
+  createWebhookSecret,
+} from './import-submit-utils';
+import { Resources, UploadJarFormData } from './import-types';
 
 export const createOrUpdateDeployment = (
   formData: UploadJarFormData,
@@ -42,7 +46,7 @@ export const createOrUpdateDeployment = (
       replicas,
       triggers: { image: imageChange },
     },
-    fileUpload: { javaArgs },
+    fileUpload: { name: fileName, javaArgs },
     labels: userLabels,
     limits: { cpu, memory },
     healthChecks,
@@ -66,6 +70,17 @@ export const createOrUpdateDeployment = (
   const podLabels = getPodLabels(name);
   const templateLabels = getTemplateLabels(originalDeployment);
 
+  const jArgsIndex = env?.findIndex((e) => e.name === 'JAVA_ARGS');
+  if (jArgsIndex !== -1) {
+    if (javaArgs !== '') {
+      (env[jArgsIndex] as NameValuePair).value = javaArgs;
+    } else {
+      env.splice(jArgsIndex, 1);
+    }
+  } else if (javaArgs !== '') {
+    env.push({ name: 'JAVA_ARGS', value: javaArgs });
+  }
+
   const newDeployment = {
     apiVersion: 'apps/v1',
     kind: 'Deployment',
@@ -73,7 +88,7 @@ export const createOrUpdateDeployment = (
       name,
       namespace,
       labels: { ...defaultLabels, ...userLabels },
-      annotations: { ...annotations, isFromJarUpload: 'true' },
+      annotations: { ...annotations, jarFileName: fileName },
     },
     spec: {
       selector: {
@@ -92,21 +107,8 @@ export const createOrUpdateDeployment = (
               name,
               image: `${name}:latest`,
               ports,
-              env: javaArgs ? [...env, { name: 'JAVA_ARGS', value: javaArgs }] : env,
-              resources: {
-                ...((cpu.limit || memory.limit) && {
-                  limits: {
-                    ...(cpu.limit && { cpu: `${cpu.limit}${cpu.limitUnit}` }),
-                    ...(memory.limit && { memory: `${memory.limit}${memory.limitUnit}` }),
-                  },
-                }),
-                ...((cpu.request || memory.request) && {
-                  requests: {
-                    ...(cpu.request && { cpu: `${cpu.request}${cpu.requestUnit}` }),
-                    ...(memory.request && { memory: `${memory.request}${memory.requestUnit}` }),
-                  },
-                }),
-              },
+              env,
+              resources: getResourceLimitsData({ cpu, memory }),
               ...getProbesData(healthChecks),
             },
           ],
@@ -145,6 +147,17 @@ const createOrUpdateDeploymentConfig = (
   const podLabels = getPodLabels(name);
   const templateLabels = getTemplateLabels(originalDeploymentConfig);
 
+  const jArgsIndex = env?.findIndex((e) => e.name === 'JAVA_ARGS');
+  if (jArgsIndex !== -1) {
+    if (javaArgs !== '') {
+      (env[jArgsIndex] as NameValuePair).value = javaArgs;
+    } else {
+      env.splice(jArgsIndex, 1);
+    }
+  } else if (javaArgs !== '') {
+    env.push({ name: 'JAVA_ARGS', value: javaArgs });
+  }
+
   const newDeploymentConfig = {
     apiVersion: 'apps.openshift.io/v1',
     kind: 'DeploymentConfig',
@@ -152,7 +165,7 @@ const createOrUpdateDeploymentConfig = (
       name,
       namespace,
       labels: { ...defaultLabels, ...userLabels },
-      annotations: { ...getCommonAnnotations(), isFromJarUpload: 'true' },
+      annotations: { ...getCommonAnnotations() },
     },
     spec: {
       selector: podLabels,
@@ -167,21 +180,8 @@ const createOrUpdateDeploymentConfig = (
               name,
               image: `${name}:latest`,
               ports,
-              env: javaArgs ? [...env, { name: 'JAVA_ARGS', value: javaArgs }] : env,
-              resources: {
-                ...((cpu.limit || memory.limit) && {
-                  limits: {
-                    ...(cpu.limit && { cpu: `${cpu.limit}${cpu.limitUnit}` }),
-                    ...(memory.limit && { memory: `${memory.limit}${memory.limitUnit}` }),
-                  },
-                }),
-                ...((cpu.request || memory.request) && {
-                  requests: {
-                    ...(cpu.request && { cpu: `${cpu.request}${cpu.requestUnit}` }),
-                    ...(memory.request && { memory: `${memory.request}${memory.requestUnit}` }),
-                  },
-                }),
-              },
+              env,
+              resources: getResourceLimitsData({ cpu, memory }),
               ...getProbesData(healthChecks),
             },
           ],
@@ -210,42 +210,6 @@ const createOrUpdateDeploymentConfig = (
     : k8sCreate(DeploymentConfigModel, deploymentConfig, dryRun ? dryRunOpt : {});
 };
 
-export const createOrUpdateImageStream = (
-  formData: UploadJarFormData,
-  imageStreamData: K8sResourceKind,
-  dryRun: boolean,
-  imageStreamList: K8sResourceKind[],
-  verb: K8sVerb = 'create',
-  generatedImageStreamName: string = '',
-): Promise<K8sResourceKind> => {
-  const imageStreamFilterData = _.orderBy(imageStreamList, ['metadata.resourceVersion'], ['desc']);
-  const originalImageStream = (imageStreamFilterData.length && imageStreamFilterData[0]) || {};
-  const {
-    name,
-    project: { name: namespace },
-    application: { name: applicationName },
-    labels: userLabels,
-    image: { tag: selectedTag },
-  } = formData;
-  const imageStreamName = imageStreamData && imageStreamData.metadata.name;
-  const defaultLabels = getAppLabels({ name, applicationName, imageStreamName, selectedTag });
-  const defaultAnnotations = { ...getCommonAnnotations() };
-  const newImageStream = {
-    apiVersion: 'image.openshift.io/v1',
-    kind: 'ImageStream',
-    metadata: {
-      name: `${generatedImageStreamName || name}`,
-      namespace,
-      labels: { ...defaultLabels, ...userLabels },
-      annotations: defaultAnnotations,
-    },
-  };
-  const imageStream = mergeData(originalImageStream, newImageStream);
-  return verb === 'update'
-    ? k8sUpdate(ImageStreamModel, imageStream)
-    : k8sCreate(ImageStreamModel, newImageStream, dryRun ? dryRunOpt : {});
-};
-
 export const createOrUpdateBuildConfig = (
   formData: UploadJarFormData,
   imageStream: K8sResourceKind,
@@ -256,6 +220,7 @@ export const createOrUpdateBuildConfig = (
 ): Promise<K8sResourceKind> => {
   const {
     name,
+    fileUpload: { name: jarFileName },
     project: { name: namespace },
     application: { name: applicationName },
     image: { tag: selectedTag },
@@ -267,7 +232,7 @@ export const createOrUpdateBuildConfig = (
   const imageStreamNamespace = imageStream && imageStream.metadata.namespace;
 
   const defaultLabels = getAppLabels({ name, applicationName, imageStreamName, selectedTag });
-  const defaultAnnotations = { ...getCommonAnnotations() };
+  const defaultAnnotations = { ...getCommonAnnotations(), jarFileName };
   const buildStrategyData = {
     sourceStrategy: {
       env,
@@ -279,11 +244,12 @@ export const createOrUpdateBuildConfig = (
     },
   };
 
+  const buildConfigName = verb === 'update' ? originalBuildConfig?.metadata?.name : name;
   const newBuildConfig = {
     apiVersion: 'build.openshift.io/v1',
     kind: 'BuildConfig',
     metadata: {
-      name,
+      name: buildConfigName,
       namespace,
       labels: { ...defaultLabels, ...userLabels },
       annotations: defaultAnnotations,
@@ -388,14 +354,25 @@ export const createOrUpdateJarFile = async (
   createNewProject && (await createProject(formData.project));
 
   const responses: K8sResourceKind[] = [];
-  const generatedImageStreamName: string = '';
+  let generatedImageStreamName: string = '';
+  const imageStreamList = appResImageStream?.data;
+  if (
+    resources === Resources.KnativeService &&
+    imageStreamList &&
+    imageStreamList.length &&
+    verb === 'update' &&
+    fileValue !== ''
+  ) {
+    generatedImageStreamName = `${name}-${getRandomChars()}`;
+  }
 
   const imageStreamResponse = await createOrUpdateImageStream(
     formData,
     imageStream,
     dryRun,
-    appResImageStream?.data,
-    verb,
+    appResources,
+    generatedImageStreamName ? 'create' : verb,
+    generatedImageStreamName,
   );
   responses.push(imageStreamResponse);
 
@@ -410,6 +387,7 @@ export const createOrUpdateJarFile = async (
 
   buildConfigResponse &&
     !dryRun &&
+    fileValue !== '' &&
     instantiateBinaryBuild(namespace, buildConfigResponse, fileName, fileValue as File);
 
   responses.push(buildConfigResponse);
@@ -444,7 +422,6 @@ export const createOrUpdateJarFile = async (
       undefined,
       annotations,
       editAppResource?.data,
-      formData.fileUpload,
     );
     if (verb === 'update') {
       responses.push(await k8sUpdate(KnServiceModel, knDeploymentResource));

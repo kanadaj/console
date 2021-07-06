@@ -1,21 +1,21 @@
 import * as React from 'react';
-import { getName, getNamespace, ProgressStatus } from '@console/shared';
-import { InProgressIcon, ErrorCircleOIcon, BanIcon } from '@patternfly/react-icons';
-import { global_danger_color_100 as dangerColor } from '@patternfly/react-tokens';
 import {
+  Button,
   Popover,
   PopoverPosition,
-  Button,
   Progress,
   ProgressVariant,
+  Spinner,
   Stack,
   StackItem,
-  Spinner,
 } from '@patternfly/react-core';
-import { UPLOAD_STATUS } from './consts';
-import { CDIUploadContext } from './cdi-upload-provider';
-import { killUploadPVC } from '../../k8s/requests/cdi-upload/cdi-upload-requests';
+import { InProgressIcon, ErrorCircleOIcon, BanIcon } from '@patternfly/react-icons';
+import { global_danger_color_100 as dangerColor } from '@patternfly/react-tokens/dist/js/global_danger_color_100';
 import { K8sResourceKind } from '@console/internal/module/k8s';
+import { ProgressStatus } from '@console/shared';
+import { killUploadPVC } from '../../k8s/requests/cdi-upload/cdi-upload-requests';
+import { CDIUploadContext } from './cdi-upload-provider';
+import { UPLOAD_STATUS } from './consts';
 
 export const getProgressVariant = (status: UPLOAD_STATUS) => {
   switch (status) {
@@ -29,16 +29,15 @@ export const getProgressVariant = (status: UPLOAD_STATUS) => {
 };
 
 export const UploadPVCPopover: React.FC<PVCUploadStatusProps> = ({ pvc, title = 'Uploading' }) => {
-  const pvcName = getName(pvc);
-  const namespace = getNamespace(pvc);
-
   const { uploads } = React.useContext(CDIUploadContext);
-  const upload = uploads.find((upl) => upl.pvcName === pvcName && upl.namespace === namespace);
+  const upload = uploads.find(
+    (upl) => upl.pvcName === pvc?.metadata?.name && upl.namespace === pvc?.metadata?.namespace,
+  );
   const [error, setError] = React.useState(upload?.uploadError);
 
   const onCancelClick = () => {
     upload && upload.cancelUpload();
-    killUploadPVC(pvcName, namespace).catch(setError);
+    killUploadPVC(pvc?.metadata?.name, pvc?.metadata?.namespace).catch(setError);
   };
 
   React.useEffect(() => {

@@ -1,6 +1,7 @@
-import * as _ from 'lodash';
 import { JSONSchema6 } from 'json-schema';
+import * as _ from 'lodash';
 import { getSchemaType } from 'react-jsonschema-form/lib/utils';
+import { getSchemaAtPath } from '@console/shared';
 import {
   ARRAY_COMPATIBLE_CAPABILITIES,
   DEPRECATED_CAPABILITIES,
@@ -10,7 +11,23 @@ import {
   REGEXP_CAPTURE_GROUP_SUBGROUP,
   REGEXP_NESTED_ARRAY_PATH,
 } from './const';
-import { Descriptor, SpecCapability, StatusCapability } from './types';
+import { Descriptor, SpecCapability, StatusCapability, CommonCapability } from './types';
+
+export const useCalculatedDescriptorProperties = (descriptorType, descriptor, schema, obj) => {
+  const propertySchema = getSchemaAtPath(schema, `${descriptorType}.${descriptor.path}`);
+  const fullPath = [descriptorType, ..._.toPath(descriptor.path)];
+  const displayName =
+    descriptor.displayName || propertySchema?.title || _.startCase(_.last(fullPath));
+  const description = descriptor?.description || propertySchema?.description || '';
+  const value = _.get(obj, fullPath, descriptor.value);
+  return {
+    description,
+    displayName,
+    fullPath,
+    propertySchema,
+    value,
+  };
+};
 
 // Creates a structure for rendering grouped descriptors on the operand details page.
 export const groupDescriptorDetails = (
@@ -61,8 +78,11 @@ export const groupDescriptorDetails = (
           };
     };
 
-    // Nested arrays are not supported
-    if (REGEXP_NESTED_ARRAY_PATH.test(descriptor.path)) {
+    // Ignore nested arrays and hidden descriptors.
+    if (
+      REGEXP_NESTED_ARRAY_PATH.test(descriptor.path) ||
+      descriptor?.['x-descriptors']?.includes(CommonCapability.hidden)
+    ) {
       return acc;
     }
 

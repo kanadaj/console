@@ -1,6 +1,4 @@
 import { ConfigMapKind } from '@console/internal/module/k8s';
-
-import { generateDataVolumeName } from '.';
 import {
   DataVolumeSourceType,
   DEFAULT_DISK_SIZE,
@@ -17,6 +15,7 @@ import {
   getDefaultSCAccessModes,
   getDefaultSCVolumeMode,
 } from '../selectors/config-map/sc-defaults';
+import { generateDataVolumeName } from '.';
 
 export const getEmptyInstallStorage = (
   scConfigMap: ConfigMapKind,

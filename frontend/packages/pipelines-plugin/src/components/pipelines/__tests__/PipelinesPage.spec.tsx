@@ -1,18 +1,10 @@
 import * as React from 'react';
 import { shallow } from 'enzyme';
-import { referenceForModel } from '@console/internal/module/k8s';
 import CreateProjectListPage from '@console/dev-console/src/components/projects/CreateProjectListPage';
+import { referenceForModel } from '@console/internal/module/k8s';
 import { PipelineModel } from '../../../models';
 import { PipelinesPage } from '../PipelinesPage';
 import PipelinesResourceList from '../PipelinesResourceList';
-
-jest.mock('react-i18next', () => {
-  const reactI18next = require.requireActual('react-i18next');
-  return {
-    ...reactI18next,
-    useTranslation: () => ({ t: (key) => key }),
-  };
-});
 
 describe('Pipeline List', () => {
   it('Should render a PipelineResourcelist', () => {

@@ -1,6 +1,5 @@
 import { TemplateModel } from '@console/internal/models';
-
-import { VirtualMachineModel, VirtualMachineInstanceModel } from '../../../models';
+import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../../models';
 
 export const diskImportKindMapping = {
   [VirtualMachineModel.kind]: VirtualMachineModel,

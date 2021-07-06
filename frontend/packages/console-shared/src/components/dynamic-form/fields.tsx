@@ -1,27 +1,24 @@
-import * as _ from 'lodash';
-import * as classnames from 'classnames';
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
+import { AccordionContent, AccordionItem, AccordionToggle } from '@patternfly/react-core';
+import * as classnames from 'classnames';
 import { JSONSchema6 } from 'json-schema';
-import { getUiOptions, getSchemaType } from 'react-jsonschema-form/lib/utils';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { FieldProps, UiSchema } from 'react-jsonschema-form';
 import SchemaField, {
   SchemaFieldProps,
 } from 'react-jsonschema-form/lib/components/fields/SchemaField';
+import { getUiOptions, getSchemaType } from 'react-jsonschema-form/lib/utils';
+import { ConfigureUpdateStrategy } from '@console/internal/components/modals/configure-update-strategy-modal';
 import { LinkifyExternal, SelectorInput, Dropdown } from '@console/internal/components/utils';
-import { AccordionContent, AccordionItem, AccordionToggle, Switch } from '@patternfly/react-core';
-import { MatchExpressions } from '@console/operator-lifecycle-manager/src/components/descriptors/spec/match-expressions';
-import { ResourceRequirements } from '@console/operator-lifecycle-manager/src/components/descriptors/spec/resource-requirements';
-import {
-  ConfigureUpdateStrategy,
-  UPDATE_STRATEGY_DESCRIPTION,
-} from '@console/internal/components/modals/configure-update-strategy-modal';
 import {
   NodeAffinity,
   PodAffinity,
 } from '@console/operator-lifecycle-manager/src/components/descriptors/spec/affinity';
-import { hasNoFields, useSchemaDescription, useSchemaLabel } from './utils';
+import { MatchExpressions } from '@console/operator-lifecycle-manager/src/components/descriptors/spec/match-expressions';
+import { ResourceRequirements } from '@console/operator-lifecycle-manager/src/components/descriptors/spec/resource-requirements';
 import { JSONSchemaType } from './types';
+import { hasNoFields, useSchemaDescription, useSchemaLabel } from './utils';
 
 const Description = ({ id, description }) =>
   description ? (
@@ -167,7 +164,11 @@ export const UpdateStrategyField: React.FC<FieldProps> = ({
   uiSchema,
 }) => {
   const { t } = useTranslation();
-  const description = useSchemaDescription(schema, uiSchema, UPDATE_STRATEGY_DESCRIPTION);
+  const description = useSchemaDescription(
+    schema,
+    uiSchema,
+    t('public~How should the pods be replaced when a new revision is created?'),
+  );
   return (
     <FormField
       defaultLabel={name || t('console-shared~Update strategy')}
@@ -275,28 +276,6 @@ export const MatchExpressionsField: React.FC<FieldProps> = ({
     </FieldSet>
   );
 };
-export const BooleanField: React.FC<FieldProps> = ({
-  formData,
-  idSchema,
-  name,
-  onChange,
-  uiSchema,
-}) => {
-  const { t } = useTranslation();
-  const { labelOn = t('console-shared~true'), labelOff = t('console-shared~false') } = getUiOptions(
-    uiSchema,
-  );
-  return (
-    <Switch
-      id={idSchema?.$id || name}
-      key={idSchema?.$id || name}
-      isChecked={_.isNil(formData) ? false : formData}
-      onChange={(v) => onChange(v)}
-      label={labelOn as string}
-      labelOff={labelOff as string}
-    />
-  );
-};
 
 export const LabelsField: React.FC<FieldProps> = ({
   formData,
@@ -375,7 +354,6 @@ export const CustomSchemaField: React.FC<SchemaFieldProps> = (props) => {
 export const NullField = () => null;
 
 export default {
-  BooleanField,
   DescriptionField,
   DropdownField,
   LabelsField,

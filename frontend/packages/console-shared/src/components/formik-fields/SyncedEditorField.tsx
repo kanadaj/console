@@ -1,13 +1,14 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import * as _ from 'lodash';
-import { useField, useFormikContext, FormikValues } from 'formik';
 import { Alert, Button, AlertActionCloseButton } from '@patternfly/react-core';
+import cx from 'classnames';
+import { useField, useFormikContext, FormikValues } from 'formik';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
+import { safeYAMLToJS, safeJSToYAML } from '../../utils/yaml';
 import { EditorType } from '../synced-editor/editor-toggle';
 import RadioGroupField from './RadioGroupField';
 
 import './SyncedEditorField.scss';
-import { safeYAMLToJS, safeJSToYAML } from '../../utils/yaml';
 
 type EditorContext = {
   name: string;
@@ -21,12 +22,14 @@ type SyncedEditorFieldProps = {
   name: string;
   formContext: EditorContext;
   yamlContext: EditorContext;
+  noMargin?: boolean;
 };
 
 const SyncedEditorField: React.FC<SyncedEditorFieldProps> = ({
   name,
   formContext,
   yamlContext,
+  noMargin = false,
 }) => {
   const [field] = useField(name);
   const { values, setFieldValue } = useFormikContext<FormikValues>();
@@ -92,7 +95,7 @@ const SyncedEditorField: React.FC<SyncedEditorFieldProps> = ({
 
   return (
     <>
-      <div className="ocs-synced-editor-field__editor-toggle">
+      <div className={cx('ocs-synced-editor-field__editor-toggle', { margin: !noMargin })}>
         <RadioGroupField
           label={t('console-shared~Configure via:')}
           name={name}

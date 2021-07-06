@@ -27,9 +27,11 @@ import {
   withUserSettingsCompatibility,
   COLUMN_MANAGEMENT_CONFIGMAP_KEY,
   COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
-  useActiveNamespace,
   withLastNamespace,
+  LAST_NAMESPACE_NAME_LOCAL_STORAGE_KEY,
+  LAST_NAMESPACE_NAME_USER_SETTINGS_KEY,
   useUserSettingsCompatibility,
+  isModifiedEvent,
 } from '@console/shared';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 
@@ -274,13 +276,7 @@ const namespacesRowStateToProps = ({ UI }) => ({
 });
 
 const NamespacesTableRow = connect(namespacesRowStateToProps)(
-  withTranslation()(({ obj: ns, index, key, style, metrics, t }) => {
-    const [tableColumns, , loaded] = useUserSettingsCompatibility(
-      COLUMN_MANAGEMENT_CONFIGMAP_KEY,
-      COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
-      undefined,
-      true,
-    );
+  withTranslation()(({ obj: ns, index, key, style, metrics, tableColumns, t }) => {
     const name = getName(ns);
     const requester = getRequester(ns);
     const bytes = metrics?.memory?.[name];
@@ -288,13 +284,11 @@ const NamespacesTableRow = connect(namespacesRowStateToProps)(
     const description = getDescription(ns);
     const labels = ns.metadata.labels;
     const columns =
-      loaded && tableColumns?.[NamespacesColumnManagementID]?.length > 0
-        ? new Set(tableColumns[NamespacesColumnManagementID])
-        : getNamespacesSelectedColumns();
+      tableColumns?.length > 0 ? new Set(tableColumns) : getNamespacesSelectedColumns();
     return (
       <TableRow id={ns.metadata.uid} index={index} trKey={key} style={style}>
         <TableData className={namespaceColumnInfo.name.classes}>
-          <ResourceLink kind="Namespace" name={ns.metadata.name} title={ns.metadata.uid} />
+          <ResourceLink kind="Namespace" name={ns.metadata.name} />
         </TableData>
         <TableData
           className={namespaceColumnInfo.displayName.classes}
@@ -372,6 +366,7 @@ const NamespacesRow = (rowArgs) => (
     index={rowArgs.index}
     rowKey={rowArgs.key}
     style={rowArgs.style}
+    tableColumns={rowArgs.customData?.tableColumns}
   />
 );
 
@@ -409,6 +404,7 @@ export const NamespacesList = connect(
         aria-label={t('public~Namespaces')}
         Header={NamespacesTableHeader}
         Row={NamespacesRow}
+        customData={{ tableColumns: tableColumns?.[NamespacesColumnManagementID] }}
         virtualize
       />
     );
@@ -537,25 +533,43 @@ const getProjectSelectedColumns = ({ showMetrics, showActions }) => {
 const ProjectLink = connect(null, {
   filterList: k8sActions.filterList,
 })(({ project, filterList }) => {
-  const [, setActiveNamespace] = useActiveNamespace();
+  const [, setLastNamespace] = useUserSettingsCompatibility(
+    LAST_NAMESPACE_NAME_USER_SETTINGS_KEY,
+    LAST_NAMESPACE_NAME_LOCAL_STORAGE_KEY,
+  );
+  const url = new URL(window.location.href);
+  const params = new URLSearchParams(url.search);
+  const basePath = url.pathname;
+  if (params.has('project-name')) {
+    // clear project-name query param from the url
+    params.delete('project-name');
+  }
+  const newUrl = {
+    search: `?${params.toString()}`,
+    hash: url.hash,
+  };
+  const namespacedPath = UIActions.formatNamespaceRoute(project.metadata.name, basePath, newUrl);
+
+  const handleClick = (e) => {
+    // Don't set last namespace if its modified click (Ctrl+Click).
+    if (isModifiedEvent(e)) {
+      return;
+    }
+    setLastNamespace(project.metadata.name);
+    // update last namespace in session storage (persisted only for current browser tab). Used to remember/restore if
+    // "All Projects" was selected when returning to the list view (typically from details view) via breadcrumb or
+    // sidebar navigation
+    sessionStorage.setItem(LAST_NAMESPACE_NAME_LOCAL_STORAGE_KEY, project.metadata.name);
+    // clear project-name filter when active namespace is changed
+    filterList(referenceForModel(ProjectModel), 'project-name', '');
+  };
+
   return (
     <span className="co-resource-item co-resource-item--truncate">
       <ResourceIcon kind="Project" />
-      <Button
-        isInline
-        title={project.metadata.name}
-        type="button"
-        className="co-resource-item__resource-name"
-        onClick={() => {
-          setActiveNamespace(project.metadata.name);
-          removeQueryArgument('project-name');
-          // clear project-name filter when active namespace is changed
-          filterList(referenceForModel(ProjectModel), 'project-name', '');
-        }}
-        variant="link"
-      >
+      <Link to={namespacedPath} className="co-resource-item__resource-name" onClick={handleClick}>
         {project.metadata.name}
-      </Button>
+      </Link>
     </span>
   );
 });
@@ -568,12 +582,6 @@ const projectRowStateToProps = ({ UI }) => ({
 
 const ProjectTableRow = connect(projectRowStateToProps)(
   withTranslation()(({ obj: project, index, rowKey, style, customData = {}, metrics, t }) => {
-    const [tableColumns, , loaded] = useUserSettingsCompatibility(
-      COLUMN_MANAGEMENT_CONFIGMAP_KEY,
-      COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
-      undefined,
-      true,
-    );
     const name = getName(project);
     const requester = getRequester(project);
     const {
@@ -582,14 +590,15 @@ const ProjectTableRow = connect(projectRowStateToProps)(
       showMetrics,
       showActions,
       isColumnManagementEnabled = true,
+      tableColumns,
     } = customData;
     const bytes = metrics?.memory?.[name];
     const cores = metrics?.cpu?.[name];
     const description = getDescription(project);
     const labels = project.metadata.labels;
     const columns = isColumnManagementEnabled
-      ? loaded && tableColumns?.[projectColumnManagementID]?.length > 0
-        ? new Set(tableColumns[projectColumnManagementID])
+      ? tableColumns?.length > 0
+        ? new Set(tableColumns)
         : getProjectSelectedColumns({ showMetrics, showActions })
       : null;
     return (
@@ -599,11 +608,7 @@ const ProjectTableRow = connect(projectRowStateToProps)(
             <ProjectLinkComponent project={project} />
           ) : (
             <span className="co-resource-item">
-              <ResourceLink
-                kind="Project"
-                name={project.metadata.name}
-                title={project.metadata.uid}
-              />
+              <ResourceLink kind="Project" name={project.metadata.name} />
             </span>
           )}
         </TableData>
@@ -769,7 +774,7 @@ const ProjectList_ = connectToFlags(
         Header={showMetrics ? headerWithMetrics : headerNoMetrics}
         Row={ProjectRow}
         EmptyMsg={data.length > 0 ? ProjectNotFoundMessage : ProjectEmptyMessage}
-        customData={{ showMetrics }}
+        customData={{ showMetrics, tableColumns: tableColumns?.[projectColumnManagementID] }}
         virtualize
       />
     );
@@ -964,10 +969,10 @@ export const NamespaceSummary = ({ ns }) => {
               </dd>
             </>
           )}
-          <dt>{t('public~Network policies')}</dt>
+          <dt>{t('public~NetworkPolicies')}</dt>
           <dd>
             <Link to={`/k8s/ns/${ns.metadata.name}/networkpolicies`}>
-              {t('public~Network policies')}
+              {t('public~NetworkPolicies')}
             </Link>
           </dd>
           {serviceMeshEnabled && (
@@ -1067,7 +1072,7 @@ class NamespaceBarDropdowns_ extends React.Component {
     const { loaded, data } = this.props.namespace;
     const model = getModel(useProjects);
     const allNamespacesTitle =
-      model.label === 'Project' ? t('dropdown~All Projects') : t('dropdown~All Namespaces');
+      model.label === 'Project' ? t('public~All Projects') : t('public~All Namespaces');
     const items = {};
     if (canListNS) {
       items[ALL_NAMESPACES_KEY] = allNamespacesTitle;
@@ -1120,15 +1125,15 @@ class NamespaceBarDropdowns_ extends React.Component {
           canFavorite
           items={items}
           actionItems={defaultActionItem}
-          titlePrefix={model.label === 'Project' ? t('dropdown~Project') : t('dropdown~Namespace')}
+          titlePrefix={model.label === 'Project' ? t('public~Project') : t('public~Namespace')}
           title={title}
           onChange={onChange}
           selectedKey={activeNamespace || ALL_NAMESPACES_KEY}
           autocompleteFilter={autocompleteFilter}
           autocompletePlaceholder={
             model.label === 'Project'
-              ? t('dropdown~Select Project...')
-              : t('dropdown~Select Namespace...')
+              ? t('public~Select Project...')
+              : t('public~Select Namespace...')
           }
           userSettingsPrefix={NAMESPACE_USERSETTINGS_PREFIX}
           storageKey={NAMESPACE_LOCAL_STORAGE_KEY}

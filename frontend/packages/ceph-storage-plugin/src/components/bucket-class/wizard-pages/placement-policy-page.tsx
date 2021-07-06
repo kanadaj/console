@@ -38,12 +38,12 @@ const PlacementPolicyPage: React.FC<PlacementPolicyPageProps> = ({ dispatch, sta
           <ul>
             <li>
               {t(
-                'ceph-storage-plugin~Spread Tier - list of backing stores aggregates the storage of multiple stores.',
+                'ceph-storage-plugin~Spread Tier - list of BackingStores aggregates the storage of multiple stores.',
               )}
             </li>
             <li>
               {t(
-                'ceph-storage-plugin~Mirroring Tier - list of spread-layers async-mirroring to all mirrors with locality optimization (will allocate on the closest region to the source endpoint) mirroring requires at least two backing stores.',
+                'ceph-storage-plugin~Mirroring Tier - list of spread-layers async-mirroring to all mirrors with locality optimization (will allocate on the closest region to the source endpoint). Mirroring requires at least two BackingStores.',
               )}
             </li>
           </ul>
@@ -81,7 +81,7 @@ const PlacementPolicyPage: React.FC<PlacementPolicyPageProps> = ({ dispatch, sta
         />
         <p className="nb-create-bc-step-page-form__element--light-text">
           {t(
-            'ceph-storage-plugin~Full duplication of the data in each chosen resource By default a replica of one copy per location is used. includes failure tolerance in case of resource failure.',
+            'ceph-storage-plugin~Full duplication of the data in each chosen resource. By default a replica of one copy per location is used. Includes failure tolerance in case of resource failure.',
           )}
         </p>
       </Form>
@@ -123,7 +123,7 @@ const PlacementPolicyPage: React.FC<PlacementPolicyPageProps> = ({ dispatch, sta
           />
           <p className="nb-create-bc-step-page-form__element--light-text">
             {t(
-              'ceph-storage-plugin~Spreading the data across the chosen resources does not includes failure tolerance in case of resource failure.',
+              'ceph-storage-plugin~Spreading the data across the chosen resources does not include failure tolerance in case of resource failure.',
             )}
           </p>
           <Radio

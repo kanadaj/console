@@ -1,44 +1,47 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ResourceSummary, NodeLink, ResourceLink } from '@console/internal/components/utils';
-import { K8sKind, PodKind } from '@console/internal/module/k8s';
-import { getLabel, getName, getNamespace, getNodeName } from '@console/shared';
-import { PodModel } from '@console/internal/models';
+import { NodeLink, ResourceLink, ResourceSummary } from '@console/internal/components/utils';
 import { Selector } from '@console/internal/components/utils/selector';
-import { VMKind, VMIKind } from '../../types';
-import { getBasicID, prefixedID } from '../../utils';
-import { descriptionModal, vmFlavorModal } from '../modals';
-import { BootOrderModal } from '../modals/boot-order-modal/boot-order-modal';
-import dedicatedResourcesModal from '../modals/scheduling-modals/dedicated-resources-modal/connected-dedicated-resources-modal';
-import nodeSelectorModal from '../modals/scheduling-modals/node-selector-modal/connected-node-selector-modal';
-import evictionStrategyModal from '../modals/scheduling-modals/eviction-strategy-modal/eviction-strategy-modal';
-import tolerationsModal from '../modals/scheduling-modals/tolerations-modal/connected-tolerations-modal';
-import affinityModal from '../modals/scheduling-modals/affinity-modal/connected-affinity-modal';
-import { getRowsDataFromAffinity } from '../modals/scheduling-modals/affinity-modal/helpers';
-import { vmStatusModal } from '../modals/vm-status-modal/vm-status-modal';
-import { getDescription } from '../../selectors/selectors';
-import { EditButton } from '../edit-button';
-import { VMStatus } from '../vm-status/vm-status';
-import { BootOrderSummary } from '../boot-order';
-import { getOperatingSystemName, getOperatingSystem, getVMLikeModel } from '../../selectors/vm';
-import { getVmiIpAddresses } from '../../selectors/vmi/ip-address';
-import { findVMIPod } from '../../selectors/pod/selectors';
-import { isVMIPaused, getVMINodeName } from '../../selectors/vmi';
-import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
-import { asVMILikeWrapper } from '../../k8s/wrapper/utils/convert';
+import { PodModel } from '@console/internal/models';
+import { K8sKind, PodKind } from '@console/internal/module/k8s';
+import { ServiceKind } from '@console/knative-plugin/src/types';
+import { getLabel, getName, getNamespace, getNodeName } from '@console/shared';
+import { LABEL_USED_TEMPLATE_NAME, LABEL_USED_TEMPLATE_NAMESPACE } from '../../constants';
 import { useGuestAgentInfo } from '../../hooks/use-guest-agent-info';
+import { asVMILikeWrapper } from '../../k8s/wrapper/utils/convert';
 import { GuestAgentInfoWrapper } from '../../k8s/wrapper/vm/guest-agent-info/guest-agent-info-wrapper';
-import { VMStatusBundle } from '../../statuses/vm/types';
-import { isGuestAgentInstalled } from '../dashboards-page/vm-dashboard/vm-alerts';
-import { getGuestAgentFieldNotAvailMsg } from '../../utils/guest-agent-strings';
-import { isFlavorChanged, isBootOrderChanged } from '../../selectors/vm-like/next-run-changes';
 import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
 import { VMIWrapper } from '../../k8s/wrapper/vm/vmi-wrapper';
-import { isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
+import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
+import { findVMIPod } from '../../selectors/pod/selectors';
+import { getDescription } from '../../selectors/selectors';
+import { getOperatingSystem, getOperatingSystemName, getVMLikeModel } from '../../selectors/vm';
+import { isBootOrderChanged, isFlavorChanged } from '../../selectors/vm-like/next-run-changes';
 import { getFlavorData } from '../../selectors/vm/flavor-data';
-import { LABEL_USED_TEMPLATE_NAME, LABEL_USED_TEMPLATE_NAMESPACE } from '../../constants';
-import VMDetailsItemTemplate from './VMDetailsItemTemplate';
+import { isVMIReady, isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
+import { getVMINodeName, isVMIPaused } from '../../selectors/vmi';
+import { getVmiIpAddresses } from '../../selectors/vmi/ip-address';
+import { VMStatusBundle } from '../../statuses/vm/types';
+import { VMIKind, VMKind } from '../../types';
+import { getBasicID, prefixedID } from '../../utils';
+import { getGuestAgentFieldNotAvailMsg } from '../../utils/guest-agent-strings';
+import { isGuestAgentInstalled } from '../../utils/guest-agent-utils';
+import { BootOrderSummary } from '../boot-order';
+import { EditButton } from '../edit-button';
+import { descriptionModal, vmFlavorModal } from '../modals';
+import { BootOrderModal } from '../modals/boot-order-modal/boot-order-modal';
+import affinityModal from '../modals/scheduling-modals/affinity-modal/connected-affinity-modal';
+import { getRowsDataFromAffinity } from '../modals/scheduling-modals/affinity-modal/helpers';
+import dedicatedResourcesModal from '../modals/scheduling-modals/dedicated-resources-modal/connected-dedicated-resources-modal';
+import evictionStrategyModal from '../modals/scheduling-modals/eviction-strategy-modal/eviction-strategy-modal';
+import nodeSelectorModal from '../modals/scheduling-modals/node-selector-modal/connected-node-selector-modal';
+import tolerationsModal from '../modals/scheduling-modals/tolerations-modal/connected-tolerations-modal';
+import { vmStatusModal } from '../modals/vm-status-modal/vm-status-modal';
+import SSHDetailsPage from '../ssh-service/SSHDetailsPage/SSHDetailsPage';
+import { VMStatus } from '../vm-status/vm-status';
 import VMDetailsItem from './VMDetailsItem';
+import VMDetailsItemTemplate from './VMDetailsItemTemplate';
+import VMIP from './VMIP';
 
 export const VMResourceSummary: React.FC<VMResourceSummaryProps> = ({
   vm,
@@ -123,7 +126,7 @@ export const VMDetailsList: React.FC<VMResourceListProps> = ({
   const id = getBasicID(vmiLike);
   const devices = vmiLikeWrapper?.getLabeledDevices() || [];
   const nodeName = getVMINodeName(vmi) || getNodeName(launcherPod);
-  const ipAddrs = getVmiIpAddresses(vmi).join(', ');
+  const ipAddrs = getVmiIpAddresses(vmi);
   const workloadProfile = vmiLikeWrapper?.getWorkloadProfile();
 
   return (
@@ -160,7 +163,7 @@ export const VMDetailsList: React.FC<VMResourceListProps> = ({
         idValue={prefixedID(id, 'boot-order')}
         arePendingChanges={
           isVM &&
-          isVMRunningOrExpectedRunning(vm) &&
+          isVMRunningOrExpectedRunning(vm, vmi) &&
           isBootOrderChanged(new VMWrapper(vm), new VMIWrapper(vmi))
         }
       >
@@ -172,7 +175,7 @@ export const VMDetailsList: React.FC<VMResourceListProps> = ({
         idValue={prefixedID(id, 'ip-addresses')}
         isNotAvail={!launcherPod || !ipAddrs}
       >
-        {launcherPod && ipAddrs}
+        {launcherPod && ipAddrs && <VMIP data={ipAddrs} />}
       </VMDetailsItem>
 
       <VMDetailsItem
@@ -208,6 +211,13 @@ export const VMDetailsList: React.FC<VMResourceListProps> = ({
       >
         {workloadProfile}
       </VMDetailsItem>
+
+      <VMDetailsItem
+        title={t('kubevirt-plugin~User credentials')}
+        idValue={prefixedID(id, 'authorized-ssh-key')}
+      >
+        <SSHDetailsPage vm={vmiLike} isVMIReady={isVMIReady(vmi)} />
+      </VMDetailsItem>
     </dl>
   );
 };
@@ -227,7 +237,7 @@ export const VMSchedulingList: React.FC<VMSchedulingListProps> = ({
     vmiLike &&
     canUpdateVM &&
     kindObj !== VirtualMachineInstanceModel &&
-    !isVMRunningOrExpectedRunning(vm);
+    !isVMRunningOrExpectedRunning(vm, vmi);
 
   const id = getBasicID(vmiLike);
   const flavorText = t(
@@ -307,7 +317,7 @@ export const VMSchedulingList: React.FC<VMSchedulingListProps> = ({
             isNotAvail={!flavorText}
             arePendingChanges={
               isVM &&
-              isVMRunningOrExpectedRunning(vm) &&
+              isVMRunningOrExpectedRunning(vm, vmi) &&
               isFlavorChanged(new VMWrapper(vm), new VMIWrapper(vmi))
             }
           >
@@ -359,6 +369,7 @@ type VMResourceListProps = {
   vmi?: VMIKind;
   canUpdateVM: boolean;
   vmStatusBundle: VMStatusBundle;
+  vmSSHService?: ServiceKind;
 };
 
 type VMSchedulingListProps = {

@@ -1,13 +1,13 @@
 import * as _ from 'lodash';
-import { K8sResourceKind, ImagePullPolicy } from '@console/internal/module/k8s';
-import { getAppLabels, mergeData } from '@console/dev-console/src/utils/resource-label-utils';
 import { getProbesData } from '@console/dev-console/src/components/health-checks/create-health-checks-probe-utils';
 import {
   DeployImageFormData,
-  FileUploadData,
   GitImportFormData,
   UploadJarFormData,
 } from '@console/dev-console/src/components/import/import-types';
+import { getAppLabels, mergeData } from '@console/dev-console/src/utils/resource-label-utils';
+import { K8sResourceKind, ImagePullPolicy } from '@console/internal/module/k8s';
+import { NameValuePair } from 'packages/console-shared/src';
 import { ServiceModel } from '../models';
 
 export const getKnativeServiceDepResource = (
@@ -18,7 +18,6 @@ export const getKnativeServiceDepResource = (
   imageNamespace?: string,
   annotations?: { [name: string]: string },
   originalKnativeService?: K8sResourceKind,
-  fileUpload?: FileUploadData,
 ): K8sResourceKind => {
   const {
     name,
@@ -37,6 +36,7 @@ export const getKnativeServiceDepResource = (
     healthChecks,
     resources,
   } = formData;
+  const { fileUpload } = formData as UploadJarFormData;
   const contTargetPort = parseInt(unknownTargetPort, 10) || defaultUnknownPort;
   const imgPullPolicy = imagePolicy ? ImagePullPolicy.Always : ImagePullPolicy.IfNotPresent;
   const {
@@ -70,6 +70,18 @@ export const getKnativeServiceDepResource = (
     runtimeIcon,
   });
   delete defaultLabel.app;
+  if (fileUpload) {
+    const jArgsIndex = env?.findIndex((e) => e.name === 'JAVA_ARGS');
+    if (jArgsIndex !== -1) {
+      if (fileUpload.javaArgs !== '') {
+        (env[jArgsIndex] as NameValuePair).value = fileUpload.javaArgs;
+      } else {
+        env.splice(jArgsIndex, 1);
+      }
+    } else if (fileUpload.javaArgs !== '') {
+      env.push({ name: 'JAVA_ARGS', value: fileUpload.javaArgs });
+    }
+  }
   const newKnativeDeployResource: K8sResourceKind = {
     kind: ServiceModel.kind,
     apiVersion: `${ServiceModel.apiGroup}/${ServiceModel.apiVersion}`,
@@ -79,9 +91,12 @@ export const getKnativeServiceDepResource = (
       labels: {
         ...defaultLabel,
         ...labels,
-        ...(!create && { 'serving.knative.dev/visibility': `cluster-local` }),
+        ...(!create && { 'networking.knative.dev/visibility': `cluster-local` }),
+        ...((formData as GitImportFormData).pipeline?.enabled && {
+          'app.kubernetes.io/name': name,
+        }),
       },
-      annotations: fileUpload ? { ...annotations, isFromJarUpload: 'true' } : annotations,
+      annotations: fileUpload ? { ...annotations, jarFileName: fileUpload.name } : annotations,
     },
     spec: {
       template: {
@@ -102,7 +117,6 @@ export const getKnativeServiceDepResource = (
             ...(concurrencyutilization && {
               'autoscaling.knative.dev/targetUtilizationPercentage': `${concurrencyutilization}`,
             }),
-            ...annotations,
           },
         },
         spec: {
@@ -119,9 +133,7 @@ export const getKnativeServiceDepResource = (
                 ],
               }),
               imagePullPolicy: imgPullPolicy,
-              env: fileUpload?.javaArgs
-                ? [...env, { name: 'JAVA_ARGS', value: fileUpload.javaArgs }]
-                : env,
+              env,
               resources: {
                 ...((cpuLimit || memoryLimit) && {
                   limits: {

@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as _ from 'lodash-es';
 import * as classNames from 'classnames';
 import { sortable } from '@patternfly/react-table';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   K8sResourceKind,
   K8sResourceKindReference,
@@ -95,16 +95,17 @@ const MetricsTable: React.FC<MetricsTableProps> = ({ obj: hpa }) => {
 
   const objectRow = (metric, current, ns, key, scaleTarget) => {
     const { object } = metric;
+    const name = object.metric.name;
     const type = (
-      <>
-        {object.metric.name} {t('public~on')}
+      <Trans t={t} ns="public">
+        {{ name }} on
         <ResourceLink
           kind={scaleTarget.kind}
           name={scaleTarget.name}
           namespace={ns}
           title={object.metric.name}
         />
-      </>
+      </Trans>
     );
     const currentValue = current?.object?.current.value;
     const targetValue = object.target.value;
@@ -231,12 +232,12 @@ export const HorizontalPodAutoscalersDetailsPage: React.FC<HorizontalPodAutoscal
 HorizontalPodAutoscalersDetailsPage.displayName = 'HorizontalPodAutoscalersDetailsPage';
 
 const tableColumnClasses = [
-  classNames('col-lg-2', 'col-md-3', 'col-sm-4', 'col-xs-6'),
-  classNames('col-lg-2', 'col-md-3', 'col-sm-4', 'col-xs-6'),
-  classNames('col-lg-2', 'col-md-3', 'col-sm-4', 'hidden-xs'),
-  classNames('col-lg-2', 'col-md-3', 'hidden-sm', 'hidden-xs'),
-  classNames('col-lg-2', 'hidden-md', 'hidden-sm', 'hidden-xs'),
-  classNames('col-lg-2', 'hidden-md', 'hidden-sm', 'hidden-xs'),
+  '',
+  '',
+  'pf-m-hidden pf-m-visible-on-md',
+  'pf-m-hidden pf-m-visible-on-lg',
+  'pf-m-hidden pf-m-visible-on-xl',
+  'pf-m-hidden pf-m-visible-on-xl',
   Kebab.columnClass,
 ];
 
@@ -255,18 +256,13 @@ const HorizontalPodAutoscalersTableRow: RowFunction<K8sResourceKind> = ({
           kind={HorizontalPodAutoscalersReference}
           name={obj.metadata.name}
           namespace={obj.metadata.namespace}
-          title={obj.metadata.name}
         />
       </TableData>
       <TableData
         className={classNames(tableColumnClasses[1], 'co-break-word')}
         columnID="namespace"
       >
-        <ResourceLink
-          kind="Namespace"
-          name={obj.metadata.namespace}
-          title={obj.metadata.namespace}
-        />
+        <ResourceLink kind="Namespace" name={obj.metadata.namespace} />
       </TableData>
       <TableData className={tableColumnClasses[2]}>
         <LabelList kind={kind} labels={obj.metadata.labels} />

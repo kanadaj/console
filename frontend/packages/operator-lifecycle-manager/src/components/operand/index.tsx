@@ -1,12 +1,13 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import * as classNames from 'classnames';
-import { match } from 'react-router-dom';
 import { sortable } from '@patternfly/react-table';
+import * as classNames from 'classnames';
 import { JSONSchema6 } from 'json-schema';
-import { Status, SuccessStatus, getBadgeFromType } from '@console/shared';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
+import { match } from 'react-router-dom';
 import { Conditions } from '@console/internal/components/conditions';
 import { ErrorPage404 } from '@console/internal/components/error';
+import { ResourceEventStream } from '@console/internal/components/events';
 import {
   MultiListPage,
   ListPage,
@@ -15,7 +16,9 @@ import {
   TableRow,
   TableData,
   RowFunctionArgs,
+  Flatten,
 } from '@console/internal/components/factory';
+import { deleteModal } from '@console/internal/components/modals';
 import {
   Kebab,
   KebabAction,
@@ -30,6 +33,7 @@ import {
   navFactory,
 } from '@console/internal/components/utils';
 import { connectToModel } from '@console/internal/kinds';
+import { CustomResourceDefinitionModel } from '@console/internal/models';
 import {
   GroupVersionKind,
   K8sKind,
@@ -45,27 +49,26 @@ import {
   nameForModel,
   CustomResourceDefinitionKind,
   definitionFor,
+  K8sResourceCommon,
 } from '@console/internal/module/k8s';
-import { ResourceEventStream } from '@console/internal/components/events';
-import { deleteModal } from '@console/internal/components/modals';
-import { ClusterServiceVersionModel } from '../../models';
-import { ClusterServiceVersionKind } from '../../types';
-import { DescriptorType, StatusCapability, StatusDescriptor } from '../descriptors/types';
-import { Resources } from '../k8s-resource';
-import { providedAPIsForCSV, referenceForProvidedAPI } from '../index';
-import { csvNameFromWindow, OperandLink } from './operand-link';
-import ErrorAlert from '@console/shared/src/components/alerts/error';
 import {
   ClusterServiceVersionAction,
   useExtensions,
   isClusterServiceVersionAction,
 } from '@console/plugin-sdk';
-import { CustomResourceDefinitionModel } from '@console/internal/models';
+import { Status, SuccessStatus, getBadgeFromType } from '@console/shared';
+import ErrorAlert from '@console/shared/src/components/alerts/error';
 import { useK8sModel } from '@console/shared/src/hooks/useK8sModel';
 import { useK8sModels } from '@console/shared/src/hooks/useK8sModels';
+import { ClusterServiceVersionModel } from '../../models';
+import { ClusterServiceVersionKind } from '../../types';
 import { DescriptorDetailsItem, DescriptorDetailsItemList } from '../descriptors';
-import { useTranslation } from 'react-i18next';
+import { DescriptorConditions } from '../descriptors/status/conditions';
+import { DescriptorType, StatusCapability, StatusDescriptor } from '../descriptors/types';
 import { isMainStatusDescriptor } from '../descriptors/utils';
+import { providedAPIsForCSV, referenceForProvidedAPI } from '../index';
+import { Resources } from '../k8s-resource';
+import { csvNameFromWindow, OperandLink } from './operand-link';
 
 export const getOperandActions = (
   ref: K8sResourceKindReference,
@@ -77,13 +80,19 @@ export const getOperandActions = (
       action.properties.kind === kindForReference(ref) &&
       apiGroupForReference(ref) === action.properties.apiGroup,
   );
-  const pluginActions = actions.map((action) => (kind, ocsObj) => ({
-    label: action.properties.label,
-    callback: action.properties.callback(kind, ocsObj),
-  }));
-  return [
-    ...pluginActions,
-    (kind, obj) => {
+  const pluginActions = actions.reduce((acc, action) => {
+    acc[action.properties.id] = (kind, ocsObj) => ({
+      label: action.properties.label,
+      callback: action.properties.callback(kind, ocsObj),
+      hidden:
+        typeof action.properties?.hidden === 'function'
+          ? action.properties?.hidden(kind, ocsObj)
+          : action.properties?.hidden,
+    });
+    return acc;
+  }, {});
+  const defaultActions = {
+    edit: (kind, obj) => {
       const reference = referenceFor(obj);
       const href = kind.namespaced
         ? `/k8s/ns/${obj.metadata.namespace}/${ClusterServiceVersionModel.plural}/${csvName ||
@@ -103,7 +112,7 @@ export const getOperandActions = (
         },
       };
     },
-    (kind, obj) => ({
+    delete: (kind, obj) => ({
       // t('olm~Delete {{item}}')
       labelKey: 'olm~Delete {{item}}',
       labelKind: { item: kind.label },
@@ -124,7 +133,14 @@ export const getOperandActions = (
         verb: 'delete',
       },
     }),
-  ] as KebabAction[];
+  };
+  // In order to keep plugin properties on top
+  const overridenProperties = Object.assign(
+    defaultActions,
+    _.pick(pluginActions, Object.keys(defaultActions)),
+  );
+  const mergedActions = Object.assign({}, pluginActions, overridenProperties);
+  return Object.values(mergedActions) as KebabAction[];
 };
 
 const tableColumnClasses = [
@@ -363,7 +379,7 @@ export const ProvidedAPIsPage = (props: ProvidedAPIsPageProps) => {
 
   const owners = (ownerRefs: OwnerReference[], items: K8sResourceKind[]) =>
     ownerRefs.filter(({ uid }) => items.filter(({ metadata }) => metadata.uid === uid).length > 0);
-  const flatten = (resources: { [kind: string]: { data: K8sResourceKind[] } }) =>
+  const flatten: Flatten<{ [key: string]: K8sResourceCommon[] }> = (resources) =>
     _.flatMap(resources, (resource) => _.map(resource.data, (item) => item)).filter(
       ({ kind, metadata }, i, allResources) =>
         providedAPIs.filter((item) => item.kind === kind).length > 0 ||
@@ -478,9 +494,12 @@ export const OperandDetails = connectToModel(({ crd, csv, kindObj, obj }: Operan
     crd?.spec?.versions?.find((v) => v.name === version)?.schema?.openAPIV3Schema ??
     (definitionFor(kindObj) as JSONSchema6);
 
-  const { podStatuses, mainStatusDescriptor, otherStatusDescriptors } = (
-    statusDescriptors ?? []
-  ).reduce((acc, descriptor) => {
+  const {
+    podStatuses,
+    mainStatusDescriptor,
+    conditionsStatusDescriptors,
+    otherStatusDescriptors,
+  } = (statusDescriptors ?? []).reduce((acc, descriptor) => {
     // exclude Conditions since they are included in their own section
     if (descriptor.path === 'conditions') {
       return acc;
@@ -489,7 +508,7 @@ export const OperandDetails = connectToModel(({ crd, csv, kindObj, obj }: Operan
     if (descriptor['x-descriptors']?.includes(StatusCapability.podStatuses)) {
       return {
         ...acc,
-        podStatuses: [...(acc.PodStatuses ?? []), descriptor],
+        podStatuses: [...(acc.podStatuses ?? []), descriptor],
       };
     }
 
@@ -497,6 +516,13 @@ export const OperandDetails = connectToModel(({ crd, csv, kindObj, obj }: Operan
       return {
         ...acc,
         mainStatusDescriptor: descriptor,
+      };
+    }
+
+    if (descriptor['x-descriptors']?.includes(StatusCapability.conditions)) {
+      return {
+        ...acc,
+        conditionsStatusDescriptors: [...(acc.conditionsStatusDescriptors ?? []), descriptor],
       };
     }
 
@@ -564,11 +590,15 @@ export const OperandDetails = connectToModel(({ crd, csv, kindObj, obj }: Operan
         </div>
       )}
       {_.isArray(status?.conditions) && (
-        <div className="co-m-pane__body">
-          <SectionHeading text="Conditions" />
+        <div className="co-m-pane__body" data-test="status.conditions">
+          <SectionHeading data-test="operand-conditions-heading" text={t('public~Conditions')} />
           <Conditions conditions={status.conditions} />
         </div>
       )}
+      {conditionsStatusDescriptors?.length > 0 &&
+        conditionsStatusDescriptors.map((descriptor) => (
+          <DescriptorConditions descriptor={descriptor} schema={schema} obj={obj} />
+        ))}
     </div>
   );
 });
@@ -587,7 +617,7 @@ export const OperandDetailsPage = (props: OperandDetailsPageProps) => {
     () => getOperandActions(props.match.params.plural, actionExtensions),
     [props.match.params.plural, actionExtensions],
   );
-  return (
+  return model ? (
     <DetailsPage
       match={props.match}
       name={props.match.params.name}
@@ -636,6 +666,8 @@ export const OperandDetailsPage = (props: OperandDetailsPageProps) => {
         navFactory.events(ResourceEventStream),
       ]}
     />
+  ) : (
+    <ErrorPage404 />
   );
 };
 

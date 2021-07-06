@@ -1,10 +1,18 @@
-import { Map as ImmutableMap } from 'immutable';
-import * as _ from 'lodash';
-import YAML from 'js-yaml';
 import { TFunction } from 'i18next';
-
+import { Map as ImmutableMap } from 'immutable';
+import YAML from 'js-yaml';
+import * as _ from 'lodash';
 import { defaultCatalogCategories } from '@console/dev-console/src/components/catalog/utils/default-categories';
-
+import { defaultProjectAccessRoles } from '@console/dev-console/src/components/project-access/project-access-form-utils';
+import { AddAction, isAddAction } from '@console/dynamic-plugin-sdk';
+import { FirehoseResult } from '@console/internal/components/utils';
+import * as denyOtherNamespacesImg from '@console/internal/imgs/network-policy-samples/1-deny-other-namespaces.svg';
+import * as limitCertainAppImg from '@console/internal/imgs/network-policy-samples/2-limit-certain-apps.svg';
+import * as allowIngressImg from '@console/internal/imgs/network-policy-samples/3-allow-ingress.svg';
+import * as defaultDenyAllImg from '@console/internal/imgs/network-policy-samples/4-default-deny-all.svg';
+import * as webAllowExternalImg from '@console/internal/imgs/network-policy-samples/5-web-allow-external.svg';
+import * as webDbAllowAllNsImg from '@console/internal/imgs/network-policy-samples/6-web-db-allow-all-ns.svg';
+import * as webAllowProductionImg from '@console/internal/imgs/network-policy-samples/7-web-allow-production.svg';
 import {
   BuildConfigModel,
   ClusterRoleModel,
@@ -21,15 +29,8 @@ import {
   K8sResourceKind,
   referenceForModel,
 } from '@console/internal/module/k8s';
-
-import * as denyOtherNamespacesImg from '@console/internal/imgs/network-policy-samples/1-deny-other-namespaces.svg';
-import * as limitCertainAppImg from '@console/internal/imgs/network-policy-samples/2-limit-certain-apps.svg';
-import * as allowIngressImg from '@console/internal/imgs/network-policy-samples/3-allow-ingress.svg';
-import * as defaultDenyAllImg from '@console/internal/imgs/network-policy-samples/4-default-deny-all.svg';
-import * as webAllowExternalImg from '@console/internal/imgs/network-policy-samples/5-web-allow-external.svg';
-import * as webDbAllowAllNsImg from '@console/internal/imgs/network-policy-samples/6-web-db-allow-all-ns.svg';
-import * as webAllowProductionImg from '@console/internal/imgs/network-policy-samples/7-web-allow-production.svg';
-import { FirehoseResult } from '@console/internal/components/utils';
+import { LoadedExtension } from '@console/plugin-sdk/src';
+import { subscribeToExtensions } from '@console/plugin-sdk/src/api/pluginSubscriptionService';
 
 export type Sample = {
   highlightText?: string;
@@ -38,7 +39,7 @@ export type Sample = {
   description: string;
   id: string;
   yaml?: string;
-  lazyYaml?: () => string;
+  lazyYaml?: () => Promise<string>;
   snippet?: boolean;
   targetResource: {
     apiVersion: string;
@@ -83,14 +84,6 @@ const defaultSamples = (t: TFunction) =>
             'console-shared~A Dockerfile build performs an image build using a Dockerfile in the source repository or specified in build configuration.',
           ),
           id: 'docker-build',
-          targetResource: getTargetResource(BuildConfigModel),
-        },
-        {
-          title: t('console-shared~Build from Devfile'),
-          description: t(
-            'console-shared~A Devfile build performs an image build using a devfile in the source repository or specified in build configuration.',
-          ),
-          id: 'devfile-build',
           targetResource: getTargetResource(BuildConfigModel),
         },
         {
@@ -290,6 +283,61 @@ const defaultSamples = (t: TFunction) =>
           id: 'devcatalog-categories',
           snippet: true,
           lazyYaml: () => YAML.dump(defaultCatalogCategories),
+          targetResource: getTargetResource(ConsoleOperatorConfigModel),
+        },
+        {
+          title: t('console-shared~Add project access roles'),
+          description: t(
+            'console-shared~Provides a list of default roles which are shown in the Project Access. The roles must be added below customization projectAccess.',
+          ),
+          id: 'projectaccess-roles',
+          snippet: true,
+          lazyYaml: () => YAML.dump(defaultProjectAccessRoles),
+          targetResource: getTargetResource(ConsoleOperatorConfigModel),
+        },
+        {
+          title: t('console-shared~Add page actions'),
+          description: t(
+            'console-shared~Provides a list of all available actions on the Add page in the Developer perspective. The IDs must be added below customization addPage disabledActions to hide these actions.',
+          ),
+          id: 'addpage-actions',
+          snippet: true,
+          lazyYaml: () => {
+            // Similar to useTranslationExt
+            const translateExtension = (key: string) => {
+              if (key.length < 3 || key[0] !== '%' || key[key.length - 1] !== '%') {
+                return key;
+              }
+              return t(key.substr(1, key.length - 2));
+            };
+            return new Promise<string>((resolve) => {
+              // Using subscribeToExtensions here instead of useExtensions hook because
+              // this lazyYaml method is not called in a render flow.
+              // We should probably have a yaml snippets extension later for this.
+              const unsubscribe = subscribeToExtensions<AddAction>(
+                (extensions: LoadedExtension<AddAction>[]) => {
+                  const sortedExtensions = extensions
+                    .slice()
+                    .sort((a, b) => a.properties.id.localeCompare(b.properties.id));
+                  const yaml = sortedExtensions
+                    .map((extension) => {
+                      const { id, label, description } = extension.properties;
+                      const labelComment = translateExtension(label)
+                        .split('\n')
+                        .join('\n  # ');
+                      const descriptionComment = translateExtension(description)
+                        .split('\n')
+                        .join('\n  # ');
+                      return `- # ${labelComment}\n  # ${descriptionComment}\n  ${id}`;
+                    })
+                    .join('\n');
+                  resolve(yaml);
+                  unsubscribe();
+                },
+                isAddAction,
+              );
+            });
+          },
           targetResource: getTargetResource(ConsoleOperatorConfigModel),
         },
       ],

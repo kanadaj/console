@@ -1,29 +1,29 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { match as routerMatch } from 'react-router';
-import { navFactory } from '@console/internal/components/utils/horizontal-nav';
 import { DetailsPage } from '@console/internal/components/factory/details';
+import { navFactory } from '@console/internal/components/utils/horizontal-nav';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { PersistentVolumeClaimModel, PodModel, TemplateModel } from '@console/internal/models';
 import {
   K8sResourceKindReference,
   PersistentVolumeClaimKind,
   PodKind,
   TemplateKind,
 } from '@console/internal/module/k8s/types';
-import { PersistentVolumeClaimModel, PodModel, TemplateModel } from '@console/internal/models';
-import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
-
-import { VMDisksFirehose } from '../vm-disks';
-import { VMNics } from '../vm-nics';
-import { VMTemplateDetails } from './vm-template-details';
-import { menuActionsCreator } from './menu-actions';
-import { useSupportModal } from '../../hooks/use-support-modal';
 import { useBaseImages } from '../../hooks/use-base-images';
+import { useCustomizeSourceModal } from '../../hooks/use-customize-source-modal';
+import { useSupportModal } from '../../hooks/use-support-modal';
 import { DataVolumeModel } from '../../models';
+import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
 import { isCommonTemplate } from '../../selectors/vm-template/basic';
 import { getTemplateSourceStatus } from '../../statuses/template/template-source-status';
 import { V1alpha1DataVolume } from '../../types/api';
-import { useCustomizeSourceModal } from '../../hooks/use-customize-source-modal';
+import { VMDisks } from '../vm-disks/vm-disks';
+import { VMNics } from '../vm-nics';
+import { menuActionsCreator } from './menu-actions';
+import { VMTemplateDetails } from './vm-template-details';
 
 export const breadcrumbsForVMTemplatePage = (t: TFunction, match: VMTemplateMatch) => () => [
   {
@@ -45,7 +45,7 @@ export const VMTemplateDetailsPage: React.FC<VMTemplateDetailsPageProps> = (prop
   const { name } = props.match.params;
   const namespace = props.match.params.ns;
   const [dataVolumes, dvLoaded, dvError] = useK8sWatchResource<V1alpha1DataVolume[]>({
-    kind: DataVolumeModel.kind,
+    kind: kubevirtReferenceForModel(DataVolumeModel),
     isList: true,
     namespace,
   });
@@ -93,7 +93,7 @@ export const VMTemplateDetailsPage: React.FC<VMTemplateDetailsPageProps> = (prop
   const disksPage = {
     href: 'disks',
     name: t('kubevirt-plugin~Disks'),
-    component: VMDisksFirehose,
+    component: VMDisks,
   };
 
   const pages = [navFactory.details(VMTemplateDetails), navFactory.editYaml(), nicsPage, disksPage];
@@ -115,6 +115,8 @@ export const VMTemplateDetailsPage: React.FC<VMTemplateDetailsPageProps> = (prop
         sourceLoadError,
         withCreate: true,
         withCustomizeModal,
+        isCommonTemplate: isCommon,
+        namespace,
       }}
     />
   );

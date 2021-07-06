@@ -7,8 +7,8 @@ import {
   RepoLanguageList,
   RepoStatus,
 } from '../../types';
-import { GithubService } from '../github-service';
 import { DockerFileParser } from '../../utils';
+import { GithubService } from '../github-service';
 
 describe('Github Service', () => {
   const nockBack = nock.back;
@@ -82,6 +82,21 @@ describe('Github Service', () => {
       expect(buildTypes.length).toBeGreaterThanOrEqual(1);
       expect(buildTypes[0].buildType).toBe('golang');
       expect(buildTypes[0].buildType).not.toBe('nodejs');
+      context.assertScopesFinished();
+      nockDone();
+    });
+  });
+
+  it('should not detect golang build type', () => {
+    const gitSource: GitSource = {
+      url: 'https://github.com/jboss-openshift/openshift-quickstarts',
+    };
+
+    const gitService = new GithubService(gitSource);
+
+    return nockBack('files-not-golang.json').then(async ({ nockDone, context }) => {
+      const buildTypes: BuildType[] = await gitService.detectBuildTypes();
+      expect(buildTypes.length).toBe(0);
       context.assertScopesFinished();
       nockDone();
     });

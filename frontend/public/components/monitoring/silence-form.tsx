@@ -8,7 +8,6 @@ import { connect } from 'react-redux';
 
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 import { coFetchJSON } from '../../co-fetch';
-import { silenceState } from '../../reducers/monitoring';
 import { RootState } from '../../redux';
 import { refreshNotificationPollers } from '../notification-drawer';
 import { ButtonBar } from '../utils/button-bar';
@@ -19,7 +18,7 @@ import { ExternalLink, getURLSearchParams } from '../utils/link';
 import { history } from '../utils/router';
 import { StatusBox } from '../utils/status-box';
 import { SilenceStates } from './types';
-import { silenceParamToProps, SilenceResource } from './utils';
+import { silenceParamToProps, SilenceResource, silenceState } from './utils';
 
 const pad = (i: number): string => (i < 10 ? `0${i}` : String(i));
 
@@ -248,7 +247,7 @@ const SilenceForm_: React.FC<SilenceFormProps> = ({ defaults, Info, title }) => 
           <div className="co-m-pane__body-group">
             <SectionHeading text={t('public~Alert labels')} />
             <p className="co-help-text">
-              <Trans i18nKey="silence-matchers-description" ns="public">
+              <Trans t={t} ns="public">
                 Alerts with labels that match these selectors will be silenced instead of firing.
                 Label values can be matched exactly or with a{' '}
                 <ExternalLink

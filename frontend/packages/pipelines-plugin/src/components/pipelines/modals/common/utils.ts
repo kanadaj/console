@@ -2,21 +2,26 @@ import * as _ from 'lodash';
 import { getRandomChars } from '@console/shared';
 import { PipelineRunModel } from '../../../../models';
 import {
-  PersistentVolumeClaimType,
   PipelineKind,
   TektonResource,
   PipelineRunKind,
-  PipelineRunInlineResource,
-  PipelineRunInlineResourceParam,
+  PipelineRunEmbeddedResource,
+  PipelineRunEmbeddedResourceParam,
   PipelineRunReferenceResource,
   PipelineRunResource,
-  PipelineWorkspace,
   VolumeClaimTemplateType,
+  TektonWorkspace,
+  PipelineRunParam,
 } from '../../../../types';
 import { getPipelineRunParams, getPipelineRunWorkspaces } from '../../../../utils/pipeline-utils';
 import { TektonResourceLabel, VolumeTypes, preferredNameAnnotation } from '../../const';
 import { CREATE_PIPELINE_RESOURCE, initialResourceFormValues } from './const';
-import { CommonPipelineModalFormikValues, PipelineModalFormResource } from './types';
+import {
+  CommonPipelineModalFormikValues,
+  PipelineModalFormResource,
+  PipelineModalFormWorkspace,
+  PipelineModalFormWorkspaceStructure,
+} from './types';
 
 /**
  * Migrates a PipelineRun from one version to another to support auto-upgrades with old (and invalid) PipelineRuns.
@@ -144,13 +149,38 @@ export const getDefaultVolumeClaimTemplate = (pipelineName: string): VolumeClaim
     },
   };
 };
-export const getDefaultPVC = (claimName: string): PersistentVolumeClaimType => {
+
+const supportWorkspaceDefaults = (preselectPVC: string) => (
+  workspace: TektonWorkspace,
+): PipelineModalFormWorkspace => {
+  let workspaceSetting: PipelineModalFormWorkspaceStructure = {
+    type: VolumeTypes.EmptyDirectory,
+    data: { emptyDir: {} },
+  };
+
+  if (preselectPVC) {
+    workspaceSetting = {
+      type: VolumeTypes.PVC,
+      data: {
+        persistentVolumeClaim: {
+          claimName: preselectPVC,
+        },
+      },
+    };
+  }
+  if (workspace.optional) {
+    workspaceSetting = {
+      type: VolumeTypes.NoWorkspace,
+      data: {},
+    };
+  }
+
   return {
-    persistentVolumeClaim: {
-      claimName,
-    },
+    ...workspace,
+    ...workspaceSetting,
   };
 };
+
 export const convertPipelineToModalData = (
   pipeline: PipelineKind,
   alwaysCreateResources: boolean = false,
@@ -163,26 +193,25 @@ export const convertPipelineToModalData = (
 
   return {
     namespace,
-    parameters: params || [],
+    parameters: (params || []).map((param) => ({
+      ...param,
+      value: param.default, // setup the default if it exists
+    })),
     resources: (resources || []).map((resource: TektonResource) => ({
       name: resource.name,
-      selection: alwaysCreateResources ? CREATE_PIPELINE_RESOURCE : null,
+      selection: alwaysCreateResources ? CREATE_PIPELINE_RESOURCE : '',
       data: {
         ...initialResourceFormValues[resource.type],
         type: resource.type,
       },
     })),
-    workspaces: (pipeline.spec.workspaces || []).map((workspace: PipelineWorkspace) => ({
-      ...workspace,
-      type: preselectPVC ? VolumeTypes.PVC : 'EmptyDirectory',
-      data: preselectPVC ? getDefaultPVC(preselectPVC) : { emptyDir: {} },
-    })),
+    workspaces: (pipeline.spec.workspaces || []).map(supportWorkspaceDefaults(preselectPVC)),
   };
 };
 
 export const convertMapToNameValueArray = (map: {
   [key: string]: any;
-}): PipelineRunInlineResourceParam[] => {
+}): PipelineRunEmbeddedResourceParam[] => {
   return Object.keys(map).map((name) => {
     const value = map[name];
     return { name, value };
@@ -197,7 +226,7 @@ const convertResources = (resource: PipelineModalFormResource): PipelineRunResou
         params: convertMapToNameValueArray(resource.data.params),
         type: resource.data.type,
       },
-    } as PipelineRunInlineResource;
+    } as PipelineRunEmbeddedResource;
   }
 
   return {
@@ -226,7 +255,7 @@ export const getPipelineRunFromForm = (
       pipelineRef: {
         name: pipeline.metadata.name,
       },
-      params: getPipelineRunParams(parameters),
+      params: parameters.map(({ name, value }): PipelineRunParam => ({ name, value })),
       resources: resources.map(convertResources),
       workspaces: getPipelineRunWorkspaces(workspaces),
     },

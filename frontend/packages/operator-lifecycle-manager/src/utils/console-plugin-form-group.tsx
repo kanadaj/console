@@ -1,9 +1,10 @@
 import * as React from 'react';
-import { Button, Popover } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-
-import { ConsolePluginWarning } from './console-plugin-warning';
-import { ConsolePluginRadioInputs } from './console-plugin-radio-inputs';
+import { FieldLevelHelp } from '@console/internal/components/utils';
+import {
+  ConsolePluginRadioInputs,
+  ConsolePluginWarning,
+} from '@console/shared/src/components/utils';
 import { isCatalogSourceTrusted } from '../utils';
 
 export const ConsolePluginFormGroup: React.FC<ConsolePluginFormGroupProps> = ({
@@ -18,22 +19,12 @@ export const ConsolePluginFormGroup: React.FC<ConsolePluginFormGroupProps> = ({
   return (
     <div className="form-group">
       <fieldset>
-        <Popover
-          headerContent={<div>{t('olm~Console UI extension', { count: csvPluginsCount })}</div>}
-          bodyContent={
-            <div>
-              {t(
-                'olm~This operator provides a custom interface you can include in your console. Make sure you trust this operator before enabling its interface.',
-              )}
-            </div>
-          }
-        >
-          <h5 className="co-required co-form-heading__popover">
-            <Button variant="plain" className="co-form-heading__popover-button">
-              {t('olm~Console UI extension', { count: csvPluginsCount })}
-            </Button>
-          </h5>
-        </Popover>
+        <label className="co-required">{t('olm~Console plugin', { count: csvPluginsCount })}</label>
+        <FieldLevelHelp>
+          {t(
+            'olm~This operator includes a console plugin which provides a custom interface that can be included in the console. The console plugin will prompt for the console to be refreshed once it has been enabled. Make sure you trust this console plugin before enabling.',
+          )}
+        </FieldLevelHelp>
         {csvPlugins.map((plugin) => (
           <fieldset key={plugin}>
             <div>

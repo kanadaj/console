@@ -3,13 +3,9 @@ import { connect } from 'react-redux';
 import * as _ from 'lodash-es';
 import { NavExpandable, NavGroup } from '@patternfly/react-core';
 
-import {
-  withExtensions,
-  NavItem,
-  Perspective,
-  isNavItem,
-  isPerspective,
-} from '@console/plugin-sdk';
+import { withExtensions, Perspective, isPerspective } from '@console/plugin-sdk';
+import { NavItem, isNavItem } from '@console/dynamic-plugin-sdk';
+import { LoadedExtension } from '@console/dynamic-plugin-sdk/src/types';
 import { withActivePerspective } from '@console/shared';
 import { RootState } from '../../redux';
 import { featureReducerName, flagPending, FeatureState } from '../../reducers/features';
@@ -192,7 +188,7 @@ export const NavSection = connect(navSectionStateToProps)(
           const childItems = sortExtensionItems(this.getNavItemExtensions(perspective, title, id));
 
           childItems.forEach((item) => {
-            const pluginChild = this.mapChild(createLink(item as NavItem));
+            const pluginChild = this.mapChild(createLink(item));
             if (pluginChild) {
               mergePluginChild(
                 Children,
@@ -222,7 +218,7 @@ export const NavSection = connect(navSectionStateToProps)(
 
           if (isGrouped) {
             return (
-              <NavGroup className="oc-nav-group" title="" data-quickstart-id={dataQuickStartId}>
+              <NavGroup title="" data-quickstart-id={dataQuickStartId}>
                 {children}
               </NavGroup>
             );
@@ -235,7 +231,7 @@ export const NavSection = connect(navSectionStateToProps)(
               isExpanded={isOpen}
               onExpand={this.toggle}
               data-test="nav"
-              data-quickstart-id={dataQuickStartId}
+              buttonProps={{ 'data-quickstart-id': dataQuickStartId }}
             >
               {children}
             </NavExpandable>
@@ -267,7 +263,7 @@ type NavSectionStateProps = {
 };
 
 type NavSectionExtensionProps = {
-  navItemExtensions: NavItem[];
+  navItemExtensions: LoadedExtension<NavItem>[];
   perspectiveExtensions: Perspective[];
 };
 

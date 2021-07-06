@@ -1,24 +1,17 @@
 import * as _ from 'lodash';
+import { NamespaceRedirect } from '@console/internal/components/utils/namespace-redirect';
 import {
   Plugin,
-  NavSection,
-  ResourceNSNavItem,
   ModelFeatureFlag,
   ModelDefinition,
   OverviewResourceTab,
   ResourceListPage,
   ResourceDetailsPage,
   RoutePage,
-  GlobalConfig,
   KebabActions,
-  YAMLTemplate,
-  HrefNavItem,
   HorizontalNavTab,
   DetailPageBreadCrumbs,
 } from '@console/plugin-sdk';
-import { NamespaceRedirect } from '@console/internal/components/utils/namespace-redirect';
-import * as models from './models';
-import { yamlTemplates } from './yaml-templates';
 import {
   FLAG_KNATIVE_SERVING_CONFIGURATION,
   FLAG_KNATIVE_SERVING,
@@ -30,9 +23,7 @@ import {
   FLAG_KNATIVE_EVENTING_BROKER,
   FLAG_CAMEL_KAMELETS,
 } from './const';
-import { getKebabActionsForKind, getKebabActionsForWorkload } from './utils/kebab-actions';
-import { TopologyConsumedExtensions, topologyPlugin } from './topology/topology-plugin';
-
+import * as models from './models';
 import {
   eventSourceBreadcrumbsProvider,
   channelBreadcrumbsProvider,
@@ -41,19 +32,16 @@ import {
   channelModelsProviderForBreadcrumbs,
   brokerModelProviderForBreadcrumbs,
 } from './providers';
+import { TopologyConsumedExtensions, topologyPlugin } from './topology/topology-plugin';
+import { getKebabActionsForKind, getKebabActionsForWorkload } from './utils/kebab-actions';
 
 type ConsumedExtensions =
-  | NavSection
-  | ResourceNSNavItem
   | ModelFeatureFlag
   | ModelDefinition
-  | GlobalConfig
   | OverviewResourceTab
   | ResourceListPage
   | RoutePage
   | KebabActions
-  | HrefNavItem
-  | YAMLTemplate
   | ResourceDetailsPage
   | TopologyConsumedExtensions
   | HorizontalNavTab
@@ -127,67 +115,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       model: models.CamelKameletModel,
       flag: FLAG_CAMEL_KAMELETS,
-    },
-  },
-  {
-    type: 'GlobalConfig',
-    properties: {
-      kind: 'KnativeServing',
-      model: models.KnativeServingModel,
-      name: 'knative-serving',
-      namespace: 'knative-serving',
-      uid: 'knative-serving',
-    },
-    flags: {
-      required: [FLAG_KNATIVE_SERVING],
-    },
-  },
-  {
-    type: 'Nav/Section',
-    properties: {
-      id: 'serverless',
-      // t('knative-plugin~Serverless')
-      name: '%knative-plugin~Serverless%',
-    },
-  },
-  {
-    type: 'NavItem/Href',
-    properties: {
-      id: 'serverlessserving',
-      perspective: 'admin',
-      section: 'serverless',
-      componentProps: {
-        // t('knative-plugin~Serving')
-        name: '%knative-plugin~Serving%',
-        href: '/serving',
-      },
-    },
-    flags: {
-      required: [
-        FLAG_KNATIVE_SERVING_SERVICE,
-        FLAG_KNATIVE_SERVING_REVISION,
-        FLAG_KNATIVE_SERVING_ROUTE,
-      ],
-    },
-  },
-  {
-    type: 'NavItem/Href',
-    properties: {
-      id: 'serverlesseventing',
-      perspective: 'admin',
-      section: 'serverless',
-      componentProps: {
-        // t('knative-plugin~Eventing')
-        name: '%knative-plugin~Eventing%',
-        href: '/eventing',
-      },
-    },
-    flags: {
-      required: [
-        FLAG_KNATIVE_EVENTING,
-        FLAG_KNATIVE_EVENTING_BROKER,
-        FLAG_KNATIVE_EVENTING_CHANNEL,
-      ],
     },
   },
   {
@@ -335,13 +262,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [FLAG_KNATIVE_EVENTING],
-    },
-  },
-  {
-    type: 'YAMLTemplate',
-    properties: {
-      model: models.ServiceModel,
-      template: yamlTemplates.getIn([models.ServiceModel, 'default']),
     },
   },
   {

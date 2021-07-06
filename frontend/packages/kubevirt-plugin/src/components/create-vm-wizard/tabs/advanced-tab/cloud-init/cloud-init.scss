@@ -1,0 +1,33 @@
+.kubevirt-create-vm-modal__cloud-init-help-link {
+  padding-left: var(--pf-global--spacer--xs);
+}
+
+.kv-cloudinit-advanced-tab-with-editor--form {
+  width: 50%;
+  margin-left: var(--pf-global--spacer--lg);
+}
+
+.kv-cloudinit-advanced-tab-with-editor--main {
+  margin-bottom: var(--pf-global--spacer--lg);
+}
+
+.kv-cloudinit-advanced-tab-with-editor--title_main {
+  display: inline-flex;
+  align-items: center;
+}
+
+.kv-cloudinit-advanced-tab-with-editor--title_radio_buttons {
+  display: inline-flex;
+  margin-left: var(--pf-global--spacer--lg);
+  label {
+    margin-right: var(--pf-global--spacer--lg);
+  }
+}
+
+.kv-cloudint-advanced-tab-with-editor--validation-text .pf-c-form__helper-text.pf-m-success {
+  color: var(--pf-c-form__group-label-help--Color);
+}
+
+.kv-cloudint-advanced-tab-with-editor--ssh-key-row.pf-l-split {
+  margin-bottom: var(--pf-global--spacer--sm);
+}

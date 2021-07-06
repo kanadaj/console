@@ -1,50 +1,35 @@
 import * as _ from 'lodash';
 import { K8sResourceKind, PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
-import { createBasicLookup } from '@console/shared/src/utils/utils';
 import {
+  getDeletetionTimestamp,
   getName,
   getNamespace,
   getOwnerReferences,
-  getDeletetionTimestamp,
 } from '@console/shared/src/selectors/common'; // do not import just from shared - causes cycles
 import { compareOwnerReference } from '@console/shared/src/utils/owner-references';
-import {
-  buildOwnerReference,
-  buildOwnerReferenceForModel,
-  parseNumber,
-  parsePercentage,
-} from '../../utils';
-import {
-  getAnnotationKeySuffix,
-  getStatusConditionOfType,
-  getStatusPhase,
-} from '../../selectors/selectors';
-import {
-  findVMIMigration,
-  getMigrationStatusPhase,
-  isMigrating,
-} from '../../selectors/vmi-migration';
+import { createBasicLookup } from '@console/shared/src/utils/utils';
+import { CONVERSION_PROGRESS_ANNOTATION } from '../../constants/v2v';
+import { VMStatus } from '../../constants/vm/vm-status';
+import { VMIPhase } from '../../constants/vmi/phase';
+import { VirtualMachineImportModel } from '../../models';
 import {
   findVMIPod,
   getPodStatusPhase,
   getPVCNametoImporterPodsMapForVM,
 } from '../../selectors/pod/selectors';
-import { findConversionPod, isVMCreated, isVMExpectedRunning } from '../../selectors/vm';
-import { getPodStatus } from '../pod/pod';
 import {
-  POD_PHASE_PENDING,
-  POD_PHASE_SUCEEDED,
-  POD_STATUS_ALL_ERROR,
-  POD_STATUS_ALL_READY,
-  POD_STATUS_NOT_SCHEDULABLE,
-} from '../pod/constants';
-import { VMIKind, VMKind } from '../../types';
+  getAnnotationKeySuffix,
+  getStatusConditionOfType,
+  getStatusPhase,
+} from '../../selectors/selectors';
+import { findConversionPod, isVMCreated, isVMExpectedRunning } from '../../selectors/vm';
+import {
+  findVMIMigration,
+  getMigrationStatusPhase,
+  isMigrating,
+} from '../../selectors/vmi-migration';
 import { isVMIPaused } from '../../selectors/vmi/basic';
-import { VMImportKind } from '../../types/vm-import/ovirt/vm-import';
-import { VirtualMachineImportModel } from '../../models';
-import { getVMImportStatus } from '../vm-import/vm-import-status';
-import { VMStatus } from '../../constants/vm/vm-status';
-import { VMStatusBundle } from './types';
+import { PAUSED_VM_MODAL_MESSAGE } from '../../strings/vm/messages';
 import {
   IMPORT_CDI_PENDING_MESSAGE,
   IMPORTING_CDI_ERROR_MESSAGE,
@@ -54,10 +39,25 @@ import {
   STARTING_MESSAGE,
   VMI_WAITING_MESSAGE,
 } from '../../strings/vm/status';
-import { CONVERSION_PROGRESS_ANNOTATION } from '../../constants/v2v';
+import { VMIKind, VMKind } from '../../types';
 import { V1alpha1DataVolume } from '../../types/api';
-import { VMIPhase } from '../../constants/vmi/phase';
-import { PAUSED_VM_MODAL_MESSAGE } from '../../strings/vm/messages';
+import { VMImportKind } from '../../types/vm-import/ovirt/vm-import';
+import {
+  buildOwnerReference,
+  buildOwnerReferenceForModel,
+  parseNumber,
+  parsePercentage,
+} from '../../utils';
+import {
+  POD_PHASE_PENDING,
+  POD_PHASE_SUCEEDED,
+  POD_STATUS_ALL_ERROR,
+  POD_STATUS_ALL_READY,
+  POD_STATUS_NOT_SCHEDULABLE,
+} from '../pod/constants';
+import { getPodStatus } from '../pod/pod';
+import { getVMImportStatus } from '../vm-import/vm-import-status';
+import { VMStatusBundle } from './types';
 
 const isPaused = (vmi: VMIKind): VMStatusBundle =>
   isVMIPaused(vmi) ? { status: VMStatus.PAUSED, message: PAUSED_VM_MODAL_MESSAGE } : null;
@@ -226,8 +226,13 @@ const isDeleting = (vm: VMKind, vmi: VMIKind): VMStatusBundle =>
     ? { status: VMStatus.DELETING }
     : null;
 
-const isBeingStopped = (vm: VMKind): VMStatusBundle => {
-  if (vm && !isVMExpectedRunning(vm) && isVMCreated(vm)) {
+const isBeingStopped = (vm: VMKind, vmi: VMIKind): VMStatusBundle => {
+  if (
+    vm &&
+    !isVMExpectedRunning(vm, vmi) &&
+    isVMCreated(vm) &&
+    getStatusPhase<VMIPhase>(vmi) !== VMIPhase.Succeeded
+  ) {
     return {
       status: VMStatus.STOPPING,
     };
@@ -236,8 +241,8 @@ const isBeingStopped = (vm: VMKind): VMStatusBundle => {
   return null;
 };
 
-const isOff = (vm: VMKind): VMStatusBundle => {
-  return vm && !isVMExpectedRunning(vm) ? { status: VMStatus.OFF } : null;
+const isOff = (vm: VMKind, vmi: VMIKind): VMStatusBundle => {
+  return vm && !isVMExpectedRunning(vm, vmi) ? { status: VMStatus.OFF } : null;
 };
 
 const isError = (vm: VMKind, vmi: VMIKind, launcherPod: PodKind): VMStatusBundle => {
@@ -268,8 +273,8 @@ const isRunning = (vmi: VMIKind): VMStatusBundle => {
   return null;
 };
 
-const isStarting = (vm: VMKind, launcherPod: PodKind = null): VMStatusBundle => {
-  if (vm && isVMExpectedRunning(vm) && isVMCreated(vm)) {
+const isStarting = (vm: VMKind, vmi: VMIKind, launcherPod: PodKind = null): VMStatusBundle => {
+  if (vm && isVMCreated(vm) && isVMExpectedRunning(vm, vmi)) {
     // created but not yet ready
     if (launcherPod) {
       const podStatus = getPodStatus(launcherPod);
@@ -288,8 +293,8 @@ const isStarting = (vm: VMKind, launcherPod: PodKind = null): VMStatusBundle => 
   return null;
 };
 
-const isWaitingForVMI = (vm: VMKind): VMStatusBundle => {
-  if (vm && isVMExpectedRunning(vm) && !isVMCreated(vm)) {
+const isWaitingForVMI = (vm: VMKind, vmi: VMIKind): VMStatusBundle => {
+  if (vm && !isVMCreated(vm) && isVMExpectedRunning(vm, vmi)) {
     return { status: VMStatus.VMI_WAITING, message: VMI_WAITING_MESSAGE };
   }
   return null;
@@ -322,12 +327,12 @@ export const getVMStatus = ({
     isBeingImported(vm, pods, pvcs, dataVolumes) ||
     isVMError(vm) ||
     isDeleting(vm, vmi) ||
-    isBeingStopped(vm) ||
-    isOff(vm) ||
+    isBeingStopped(vm, vmi) ||
+    isOff(vm, vmi) ||
     isError(vm, vmi, launcherPod) ||
     isRunning(vmi) ||
-    isStarting(vm, launcherPod) ||
-    isWaitingForVMI(vm) ||
+    isStarting(vm, vmi, launcherPod) ||
+    isWaitingForVMI(vm, vmi) ||
     ([VMIPhase.Scheduling, VMIPhase.Scheduled].includes(getStatusPhase<VMIPhase>(vmi)) && {
       status: VMStatus.STARTING,
       message: STARTING_MESSAGE,

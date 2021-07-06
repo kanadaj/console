@@ -18,11 +18,9 @@ import {
   PageHeaderTools,
   PageHeaderToolsGroup,
   PageHeaderToolsItem,
-  TooltipPosition,
-  Tooltip,
 } from '@patternfly/react-core';
 import { Link } from 'react-router-dom';
-import { FLAGS, YellowExclamationTriangleIcon } from '@console/shared';
+import { FLAGS, YellowExclamationTriangleIcon, ACM_LINK_ID } from '@console/shared';
 import { formatNamespacedRouteForResource } from '@console/shared/src/utils';
 import CloudShellMastheadButton from '@console/app/src/components/cloud-shell/CloudShellMastheadButton';
 import CloudShellMastheadAction from '@console/app/src/components/cloud-shell/CloudShellMastheadAction';
@@ -38,6 +36,7 @@ import * as redhatLogoImg from '../imgs/logos/redhat.svg';
 import { GuidedTourMastheadTrigger } from '@console/app/src/components/tour';
 import { ConsoleLinkModel } from '../models';
 import { languagePreferencesModal } from './modals';
+import { withTelemetry } from '@console/shared/src/hoc';
 
 const SystemStatusButton = ({ statuspageData, className }) => {
   const { t } = useTranslation();
@@ -45,7 +44,7 @@ const SystemStatusButton = ({ statuspageData, className }) => {
     <PageHeaderToolsItem className={className}>
       <a
         className="pf-c-button pf-m-plain"
-        aria-label={t('masthead~System status')}
+        aria-label={t('public~System status')}
         href={statuspageData.page.url}
         target="_blank"
         rel="noopener noreferrer"
@@ -215,7 +214,8 @@ class MastheadToolbarContents_ extends React.Component {
 
   _getAdditionalLinks(links, type) {
     return _.sortBy(
-      _.filter(links, (link) => link.spec.location === type),
+      // ACM link is being moved to the perspective switcher, so do not show in application launcher
+      _.filter(links, (link) => link.spec.location === type && link.metadata.name !== ACM_LINK_ID),
       'spec.text',
     );
   }
@@ -246,7 +246,7 @@ class MastheadToolbarContents_ extends React.Component {
   }
 
   _launchActions = () => {
-    const { clusterID, consoleLinks, t } = this.props;
+    const { clusterID, consoleLinks, t, fireTelemetryEvent } = this.props;
     const launcherItems = this._getAdditionalLinks(consoleLinks?.data, 'ApplicationMenu');
 
     const sections = [];
@@ -256,14 +256,20 @@ class MastheadToolbarContents_ extends React.Component {
       window.SERVER_FLAGS.branding !== 'azure'
     ) {
       sections.push({
-        name: t('masthead~Red Hat applications'),
+        name: t('public~Red Hat applications'),
         isSection: true,
         actions: [
           {
-            label: t('masthead~OpenShift Cluster Manager'),
+            label: t('public~OpenShift Cluster Manager'),
             externalLink: true,
             href: getOCMLink(clusterID),
             image: <img src={redhatLogoImg} alt="" />,
+            callback: () => {
+              fireTelemetryEvent('Launcher Menu Accessed', {
+                id: 'OpenShift Cluster Manager',
+                name: 'OpenShift Cluster Manager',
+              });
+            },
           },
         ],
       });
@@ -286,6 +292,12 @@ class MastheadToolbarContents_ extends React.Component {
           externalLink: true,
           href: _.get(item, 'spec.href'),
           image: <img src={_.get(item, 'spec.applicationMenu.imageURL')} alt="" />,
+          callback: () => {
+            fireTelemetryEvent('Launcher Menu Accessed', {
+              id: item.metadata.name,
+              name: _.get(item, 'spec.text'),
+            });
+          },
         });
       });
     });
@@ -294,7 +306,7 @@ class MastheadToolbarContents_ extends React.Component {
   };
 
   _helpActions(additionalHelpActions) {
-    const { flags, cv, t } = this.props;
+    const { flags, cv, t, fireTelemetryEvent } = this.props;
     const helpActions = [];
     const reportBugLink = cv && cv.data ? getReportBugLink(cv.data) : null;
 
@@ -303,17 +315,29 @@ class MastheadToolbarContents_ extends React.Component {
       isSection: true,
       actions: [
         {
-          component: <Link to="/quickstart">{t('masthead~Quick Starts')}</Link>,
+          component: <Link to="/quickstart">{t('public~Quick Starts')}</Link>,
         },
         {
-          label: t('masthead~Documentation'),
+          label: t('public~Documentation'),
           externalLink: true,
           href: openshiftHelpBase,
+          callback: () => {
+            fireTelemetryEvent('Documentation Clicked');
+          },
         },
         ...(flags[FLAGS.CONSOLE_CLI_DOWNLOAD]
           ? [
               {
-                component: <Link to="/command-line-tools">{t('masthead~Command line tools')}</Link>,
+                component: (
+                  <Link
+                    onClick={() => {
+                      fireTelemetryEvent('CLI Clicked');
+                    }}
+                    to="/command-line-tools"
+                  >
+                    {t('public~Command line tools')}
+                  </Link>
+                ),
               },
             ]
           : []),
@@ -330,7 +354,7 @@ class MastheadToolbarContents_ extends React.Component {
             ]
           : []),
         {
-          label: t('masthead~About'),
+          label: t('public~About'),
           callback: this._onAboutModal,
           component: 'button',
         },
@@ -438,7 +462,7 @@ class MastheadToolbarContents_ extends React.Component {
     const actions = [];
     const userActions = [
       {
-        label: t('masthead~Language preference'),
+        label: t('public~Language preference'),
         callback: () => languagePreferencesModal({}),
         component: 'button',
         dataTest: 'language',
@@ -457,14 +481,14 @@ class MastheadToolbarContents_ extends React.Component {
 
       if (window.SERVER_FLAGS.requestTokenURL) {
         userActions.unshift({
-          label: t('masthead~Copy login command'),
+          label: t('public~Copy login command'),
           href: window.SERVER_FLAGS.requestTokenURL,
           externalLink: true,
         });
       }
 
       userActions.push({
-        label: t('masthead~Log out'),
+        label: t('public~Log out'),
         callback: logout,
         component: 'button',
         dataTest: 'log-out',
@@ -489,7 +513,7 @@ class MastheadToolbarContents_ extends React.Component {
         isSection: true,
         actions: [
           {
-            component: <Link to={this._getImportYAMLPath()}>{t('masthead~Import YAML')}</Link>,
+            component: <Link to={this._getImportYAMLPath()}>{t('public~Import YAML')}</Link>,
           },
           {
             component: <CloudShellMastheadAction />,
@@ -503,7 +527,7 @@ class MastheadToolbarContents_ extends React.Component {
 
       return (
         <ApplicationLauncher
-          aria-label={t('masthead~Utility menu')}
+          aria-label={t('public~Utility menu')}
           className="co-app-launcher"
           onSelect={this._onKebabDropdownSelect}
           onToggle={this._onKebabDropdownToggle}
@@ -528,7 +552,7 @@ class MastheadToolbarContents_ extends React.Component {
 
     return (
       <ApplicationLauncher
-        aria-label={t('masthead~User menu')}
+        aria-label={t('public~User menu')}
         data-test="user-dropdown"
         className="co-app-launcher co-user-menu"
         onSelect={this._onUserDropdownSelect}
@@ -563,6 +587,7 @@ class MastheadToolbarContents_ extends React.Component {
             {!_.isEmpty(launchActions) && (
               <PageHeaderToolsItem>
                 <ApplicationLauncher
+                  aria-label={t('public~Application launcher')}
                   className="co-app-launcher"
                   data-test-id="application-launcher"
                   onSelect={this._onApplicationLauncherDropdownSelect}
@@ -579,9 +604,9 @@ class MastheadToolbarContents_ extends React.Component {
             alertAccess && (
               <PageHeaderToolsItem>
                 <NotificationBadge
-                  aria-label={t('masthead~Notification drawer')}
+                  aria-label={t('public~Notification drawer')}
                   onClick={drawerToggle}
-                  isRead
+                  variant="read"
                   count={notificationAlerts?.data?.length || 0}
                   data-quickstart-id="qs-masthead-notifications"
                 >
@@ -590,21 +615,20 @@ class MastheadToolbarContents_ extends React.Component {
               </PageHeaderToolsItem>
             )}
             <PageHeaderToolsItem>
-              <Tooltip content={t('masthead~Import YAML')} position={TooltipPosition.bottom}>
-                <Link
-                  to={this._getImportYAMLPath()}
-                  className="pf-c-button pf-m-plain"
-                  aria-label={t('masthead~Import YAML')}
-                  data-quickstart-id="qs-masthead-import"
-                >
-                  <PlusCircleIcon className="co-masthead-icon" alt="" />
-                </Link>
-              </Tooltip>
+              <Link
+                to={this._getImportYAMLPath()}
+                className="pf-c-button pf-m-plain"
+                aria-label={t('public~Import YAML')}
+                data-quickstart-id="qs-masthead-import"
+                data-test="import-yaml"
+              >
+                <PlusCircleIcon className="co-masthead-icon" alt="" />
+              </Link>
             </PageHeaderToolsItem>
             <CloudShellMastheadButton />
             <PageHeaderToolsItem>
               <ApplicationLauncher
-                aria-label={t('masthead~Help menu')}
+                aria-label={t('public~Help menu')}
                 className="co-app-launcher"
                 data-test="help-dropdown-toggle"
                 data-tour-id="tour-help-button"
@@ -630,9 +654,9 @@ class MastheadToolbarContents_ extends React.Component {
             alertAccess && notificationAlerts?.data?.length > 0 && (
               <PageHeaderToolsItem className="visible-xs-block">
                 <NotificationBadge
-                  aria-label={t('masthead~Notification drawer')}
+                  aria-label={t('public~Notification drawer')}
                   onClick={drawerToggle}
-                  isRead
+                  variant="read"
                   count={notificationAlerts?.data?.length}
                   data-quickstart-id="qs-masthead-notifications"
                 >
@@ -666,7 +690,9 @@ const mastheadToolbarStateToProps = (state) => ({
   canAccessNS: !!state[featureReducerName].get(FLAGS.CAN_GET_NS),
 });
 
-const MastheadToolbarContentsWithTranslation = withTranslation()(MastheadToolbarContents_);
+const MastheadToolbarContentsWithTranslation = withTranslation()(
+  withTelemetry(MastheadToolbarContents_),
+);
 const MastheadToolbarContents = connect(mastheadToolbarStateToProps, {
   drawerToggle: UIActions.notificationDrawerToggleExpanded,
 })(

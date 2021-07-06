@@ -7,7 +7,11 @@ import { isModelFeatureFlag } from '@console/plugin-sdk/src/typings';
 import {
   subscribeToExtensions,
   extensionDiffListener,
-} from '@console/plugin-sdk/src/api/subscribeToExtensions';
+} from '@console/plugin-sdk/src/api/pluginSubscriptionService';
+import {
+  ModelFeatureFlag as DynamicModelFeatureFlag,
+  isModelFeatureFlag as isDynamicModelFeatureFlag,
+} from '@console/dynamic-plugin-sdk';
 import {
   ChargebackReportModel,
   ClusterAutoscalerModel,
@@ -28,10 +32,6 @@ import { RootState } from '../redux';
 import { ActionType as K8sActionType } from '../actions/k8s';
 import { FeatureAction, ActionType } from '../actions/features';
 import { pluginStore } from '../plugins';
-import {
-  ModelFeatureFlag as DynamicModelFeatureFlag,
-  isModelFeatureFlag as isDynamicModelFeatureFlag,
-} from '@console/dynamic-plugin-sdk/src/extensions/feature-flags';
 
 export const defaults = _.mapValues(FLAGS, (flag) =>
   flag === FLAGS.AUTH_ENABLED ? !window.SERVER_FLAGS.authDisabled : undefined,

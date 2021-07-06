@@ -1,5 +1,13 @@
-import { TFunction } from 'i18next';
 import { saveAs } from 'file-saver';
+import i18next from 'i18next';
+import { coFetchText } from '@console/internal/co-fetch';
+import { errorModal } from '@console/internal/components/modals';
+import {
+  LOG_SOURCE_TERMINATED,
+  LOG_SOURCE_WAITING,
+  LineBuffer,
+} from '@console/internal/components/utils';
+import { PodModel } from '@console/internal/models';
 import {
   PodKind,
   ContainerSpec,
@@ -7,14 +15,6 @@ import {
   resourceURL,
   k8sGet,
 } from '@console/internal/module/k8s';
-import {
-  LOG_SOURCE_TERMINATED,
-  LOG_SOURCE_WAITING,
-  LineBuffer,
-} from '@console/internal/components/utils';
-import { PodModel } from '@console/internal/models';
-import { coFetchText } from '@console/internal/co-fetch';
-import { errorModal } from '@console/internal/components/modals';
 import { PLRTaskRunData, PLRTaskRuns } from '../../../types';
 import { containerToLogSourceStatus } from '../../../utils/pipeline-utils';
 
@@ -51,11 +51,7 @@ export const getRenderContainers = (
   };
 };
 
-const getOrderedStepsFromPod = (
-  name: string,
-  ns: string,
-  t: TFunction,
-): Promise<ContainerStatus[]> => {
+const getOrderedStepsFromPod = (name: string, ns: string): Promise<ContainerStatus[]> => {
   return k8sGet(PodModel, name, ns)
     .then((pod: PodKind) => {
       return getSortedContainerStatus(
@@ -64,7 +60,7 @@ const getOrderedStepsFromPod = (
       );
     })
     .catch((err) => {
-      errorModal({ error: err.message || t('pipelines-plugin~Error downloading logs.') });
+      errorModal({ error: err.message || i18next.t('pipelines-plugin~Error downloading logs.') });
       return [];
     });
 };
@@ -86,13 +82,12 @@ export const getDownloadAllLogsCallback = (
   taskRunFromYaml: PLRTaskRuns,
   namespace: string,
   pipelineRunName: string,
-  t: TFunction,
 ): (() => Promise<Error>) => {
   const getWatchUrls = async (): Promise<StepsWatchUrl> => {
     const stepsList: ContainerStatus[][] = await Promise.all(
       sortedTaskRuns.map((currTask) => {
         const { status } = taskRunFromYaml[currTask] as PLRTaskRunData;
-        return getOrderedStepsFromPod(status?.podName, namespace, t);
+        return getOrderedStepsFromPod(status?.podName, namespace);
       }),
     );
     return sortedTaskRuns.reduce((acc, currTask, i) => {

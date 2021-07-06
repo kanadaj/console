@@ -1,15 +1,15 @@
 import * as URL from 'url';
-import { safeLoad } from 'js-yaml';
-import { saveAs } from 'file-saver';
+import { global_BackgroundColor_200 as globalBackground200 } from '@patternfly/react-tokens/dist/js/global_BackgroundColor_200';
+import { global_BackgroundColor_dark_100 as editorBackground } from '@patternfly/react-tokens/dist/js/global_BackgroundColor_dark_100';
+import { global_Color_light_100 as globalColorLight100 } from '@patternfly/react-tokens/dist/js/global_Color_light_100';
 import {
   MonacoToProtocolConverter,
   ProtocolToMonacoConverter,
 } from 'monaco-languageclient/lib/monaco-converter';
+import * as yaml from 'yaml-ast-parser';
 import { getLanguageService, TextDocument } from 'yaml-language-server';
 import { openAPItoJSONSchema } from '@console/internal/module/k8s/openapi-to-json-schema';
 import { getSwaggerDefinitions } from '@console/internal/module/k8s/swagger';
-import { global_BackgroundColor_dark_100 as editorBackground } from '@patternfly/react-tokens';
-import * as yaml from 'yaml-ast-parser';
 
 window.monaco.editor.defineTheme('console', {
   base: 'vs-dark',
@@ -24,8 +24,8 @@ window.monaco.editor.defineTheme('console', {
   colors: {
     'editor.background': editorBackground.value,
     'editorGutter.background': '#292e34', // no pf token defined
-    'editorLineNumber.activeForeground': '#fff',
-    'editorLineNumber.foreground': '#f0f0f0',
+    'editorLineNumber.activeForeground': globalColorLight100.value,
+    'editorLineNumber.foreground': globalBackground200.value,
   },
 });
 
@@ -193,7 +193,14 @@ export const fold = (editor, model, resetMouseLocation: boolean): void => {
   }
 };
 
-export const enableYAMLValidation = (editor, monaco, p2m, monacoURI, yamlService) => {
+export const enableYAMLValidation = (
+  editor,
+  monaco,
+  p2m,
+  monacoURI,
+  yamlService,
+  alreadyInUse: boolean = false,
+) => {
   const pendingValidationRequests = new Map();
 
   const getModel = () => monaco.editor.getModels()[0];
@@ -224,15 +231,21 @@ export const enableYAMLValidation = (editor, monaco, p2m, monacoURI, yamlService
   };
 
   let initialFoldingTriggered = false;
-
-  getModel().onDidChangeContent(() => {
+  const tryFolding = () => {
     const document = createDocument(getModel());
-
     if (!initialFoldingTriggered && document.getText() !== '') {
       fold(editor, getModel(), true);
       initialFoldingTriggered = true;
     }
+  };
+  if (alreadyInUse) {
+    tryFolding();
+  }
 
+  getModel().onDidChangeContent(() => {
+    tryFolding();
+
+    const document = createDocument(getModel());
     cleanPendingValidation(document);
     pendingValidationRequests.set(
       document.uri,
@@ -244,7 +257,7 @@ export const enableYAMLValidation = (editor, monaco, p2m, monacoURI, yamlService
   });
 };
 
-export const registerYAMLinMonaco = (editor, monaco) => {
+export const registerYAMLinMonaco = (editor, monaco, alreadyInUse: boolean = false) => {
   const LANGUAGE_ID = 'yaml';
 
   const m2p = new MonacoToProtocolConverter();
@@ -254,7 +267,7 @@ export const registerYAMLinMonaco = (editor, monaco) => {
 
   // validation is not a 'registered' feature like the others, it relies on calling the yamlService
   // directly for validation results when content in the editor has changed
-  enableYAMLValidation(editor, monaco, p2m, MONACO_URI, yamlService);
+  enableYAMLValidation(editor, monaco, p2m, MONACO_URI, yamlService, alreadyInUse);
 
   /**
    * This exists because react-monaco-editor passes the same monaco
@@ -275,18 +288,4 @@ export const registerYAMLinMonaco = (editor, monaco) => {
   registerYAMLCompletion(LANGUAGE_ID, monaco, m2p, p2m, yamlService);
   registerYAMLDocumentSymbols(LANGUAGE_ID, monaco, p2m, yamlService);
   registerYAMLHover(LANGUAGE_ID, monaco, m2p, p2m, yamlService);
-};
-
-export const downloadYaml = (data) => {
-  const blob = new Blob([data], { type: 'text/yaml;charset=utf-8' });
-  let filename = 'k8s-object.yaml';
-  try {
-    const obj = safeLoad(data);
-    if (obj.kind) {
-      filename = `${obj.kind.toLowerCase()}-${obj.metadata.name}.yaml`;
-    }
-  } catch (unused) {
-    // unused
-  }
-  saveAs(blob, filename);
 };

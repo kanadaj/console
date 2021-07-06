@@ -1,3 +1,4 @@
+import { TEST_PROVIDER } from '../const';
 import { ProvisionSource } from '../enums/provisionSource';
 
 export const provisionSourceInputs = {
@@ -35,9 +36,7 @@ export const addSource = {
         .clear()
         .type('5');
     }
-    if (provider) {
-      cy.get('#form-ds-provider-input').type(provider);
-    }
+    cy.get('#form-ds-provider-input').type(provider || TEST_PROVIDER);
     if (Cypress.env('STORAGE_CLASS')) {
       cy.byTestID('advanced-section').within(() =>
         cy

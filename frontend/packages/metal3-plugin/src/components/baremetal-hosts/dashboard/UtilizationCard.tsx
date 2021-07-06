@@ -1,27 +1,27 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dropdown } from '@console/internal/components/utils/dropdown';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
-import { PodModel, NamespaceModel } from '@console/internal/models';
-import ConsumerPopover from '@console/shared/src/components/dashboard/utilization-card/TopConsumerPopover';
-import {
-  humanizeBinaryBytes,
-  humanizeCpuCores,
-  humanizeDecimalBytesPerSec,
-} from '@console/internal/components/utils';
-import { getMachineNodeName } from '@console/shared';
-import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import {
   PrometheusUtilizationItem,
   PrometheusMultilineUtilizationItem,
 } from '@console/internal/components/dashboard/dashboards-page/cluster-dashboard/utilization-card';
 import {
+  humanizeBinaryBytes,
+  humanizeCpuCores,
+  humanizeDecimalBytesPerSec,
+} from '@console/internal/components/utils';
+import { Dropdown } from '@console/internal/components/utils/dropdown';
+import { PodModel, NamespaceModel } from '@console/internal/models';
+import { getMachineNodeName } from '@console/shared';
+import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
+import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
+import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
+import {
   useMetricDuration,
   Duration,
 } from '@console/shared/src/components/dashboard/duration-hook';
+import ConsumerPopover from '@console/shared/src/components/dashboard/utilization-card/TopConsumerPopover';
+import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
+import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import { BareMetalHostDashboardContext } from './BareMetalHostDashboardContext';
 import {
   getUtilizationQueries,
@@ -33,7 +33,7 @@ import {
 const UtilizationCard: React.FC = () => {
   const { t } = useTranslation();
   const [timestamps, setTimestamps] = React.useState<Date[]>();
-  const [duration, setDuration] = useMetricDuration();
+  const [duration, setDuration] = useMetricDuration(t);
 
   const { machine } = React.useContext(BareMetalHostDashboardContext);
   const nodeName = getMachineNodeName(machine);
@@ -134,7 +134,12 @@ const UtilizationCard: React.FC = () => {
     <DashboardCard>
       <DashboardCardHeader>
         <DashboardCardTitle>{t('metal3-plugin~Utilization')}</DashboardCardTitle>
-        <Dropdown items={Duration} onChange={setDuration} selectedKey={duration} title={duration} />
+        <Dropdown
+          items={Duration(t)}
+          onChange={setDuration}
+          selectedKey={duration}
+          title={duration}
+        />
       </DashboardCardHeader>
       <UtilizationBody timestamps={timestamps}>
         <PrometheusUtilizationItem

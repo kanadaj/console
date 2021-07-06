@@ -1,16 +1,15 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Checkbox, Stack, StackItem } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 import {
   createModalLauncher,
   ModalBody,
   ModalComponentProps,
   ModalTitle,
 } from '@console/internal/components/factory';
-import { TemplateModel } from '@console/internal/models';
 import { ExternalLink, ResourceLink } from '@console/internal/components/utils';
+import { TemplateModel } from '@console/internal/models';
 import { TemplateKind } from '@console/internal/module/k8s';
-
 import { ModalFooter } from '../modal/modal-footer';
 
 import './finish-customization-modal.scss';

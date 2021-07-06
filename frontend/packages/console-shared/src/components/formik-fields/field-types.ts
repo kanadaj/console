@@ -1,6 +1,7 @@
-import { JSONSchema6 } from 'json-schema';
 import { ValidatedOptions, TextInputTypes, gridItemSpanValueShape } from '@patternfly/react-core';
+import { JSONSchema6 } from 'json-schema';
 import { K8sKind, K8sResourceKind } from '@console/internal/module/k8s';
+import { RowRendererProps } from './multi-column-field/MultiColumnFieldRow';
 
 export interface FieldProps {
   name: string;
@@ -15,6 +16,7 @@ export interface FieldProps {
   className?: string;
   isDisabled?: boolean;
   validated?: ValidatedOptions;
+  dataTest?: string;
 }
 
 export interface BaseInputFieldProps extends FieldProps {
@@ -22,6 +24,7 @@ export interface BaseInputFieldProps extends FieldProps {
   placeholder?: string;
   onChange?: (event) => void;
   onBlur?: (event) => void;
+  autoComplete?: string;
 }
 
 export interface GroupInputProps extends BaseInputFieldProps {
@@ -34,6 +37,8 @@ export interface TextAreaProps extends FieldProps {
   placeholder?: string;
   onChange?: (event) => void;
   onBlur?: (event) => void;
+  rows?: number;
+  resizeOrientation?: 'vertical' | 'horizontal' | 'both';
 }
 
 export enum GroupTextType {
@@ -61,6 +66,19 @@ export interface DropdownFieldProps extends FieldProps {
   onChange?: (value: string) => void;
 }
 
+export type FormSelectFieldOption<T = any> = {
+  label: string;
+  value: T;
+  isPlaceholder?: boolean;
+  isDisabled?: boolean;
+};
+
+export type FormSelectFieldProps = FieldProps & {
+  isDisabled?: boolean;
+  options: FormSelectFieldOption[];
+  onChange?: (selectedValue: any) => void;
+};
+
 export interface EnvironmentFieldProps extends FieldProps {
   obj?: K8sResourceKind;
   envPath: string[];
@@ -77,11 +95,13 @@ export interface ResourceLimitFieldProps extends FieldProps {
 export interface MultiColumnFieldProps extends FieldProps {
   addLabel?: string;
   toolTip?: string;
-  emptyValues: { [name: string]: string };
+  emptyValues: { [name: string]: string | boolean | string[] };
   emptyMessage?: string;
   headers: ({ name: string; required: boolean } | string)[];
-  children: React.ReactNode;
+  complexFields?: boolean[];
+  children?: React.ReactNode;
   spans?: gridItemSpanValueShape[];
+  rowRenderer?: (row: RowRendererProps) => React.ReactNode;
 }
 
 export interface YAMLEditorFieldProps extends FieldProps {

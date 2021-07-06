@@ -1,6 +1,19 @@
+import * as React from 'react';
 import { JSONSchema6 } from 'json-schema';
 import * as _ from 'lodash';
-import * as React from 'react';
+import { Helmet } from 'react-helmet';
+import { useTranslation } from 'react-i18next';
+import { connect } from 'react-redux';
+import { match as RouterMatch } from 'react-router';
+import {
+  PageHeading,
+  StatusBox,
+  FirehoseResult,
+  BreadCrumbs,
+  resourcePathFromModel,
+} from '@console/internal/components/utils';
+import { Firehose } from '@console/internal/components/utils/firehose';
+import { CustomResourceDefinitionModel } from '@console/internal/models';
 import {
   K8sKind,
   K8sResourceKind,
@@ -11,40 +24,26 @@ import {
   CustomResourceDefinitionKind,
   definitionFor,
 } from '@console/internal/module/k8s';
-import { CustomResourceDefinitionModel } from '@console/internal/models';
-import {
-  PageHeading,
-  StatusBox,
-  FirehoseResult,
-  BreadCrumbs,
-  resourcePathFromModel,
-} from '@console/internal/components/utils';
-import { Firehose } from '@console/internal/components/utils/firehose';
 import { RootState } from '@console/internal/redux';
-import { SyncedEditor } from '@console/shared/src/components/synced-editor';
-import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
-import { getBadgeFromType } from '@console/shared/src/components/badges';
 import { useActivePerspective } from '@console/shared';
-import { connect } from 'react-redux';
-import { Helmet } from 'react-helmet';
-import { match as RouterMatch } from 'react-router';
-import { ClusterServiceVersionModel } from '../../models';
-import { ClusterServiceVersionKind, ProvidedAPI } from '../../types';
-import { OperandForm } from './operand-form';
-import { OperandYAML } from './operand-yaml';
-import { exampleForModel, providedAPIForModel } from '..';
-import { FORM_HELP_TEXT, YAML_HELP_TEXT, DEFAULT_K8S_SCHEMA } from './const';
+import { getBadgeFromType } from '@console/shared/src/components/badges';
 import {
   getSchemaErrors,
   hasNoFields,
   prune,
 } from '@console/shared/src/components/dynamic-form/utils';
-
+import { SyncedEditor } from '@console/shared/src/components/synced-editor';
+import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
+import { exampleForModel, providedAPIForModel } from '..';
+import { ClusterServiceVersionModel } from '../../models';
+import { ClusterServiceVersionKind, ProvidedAPI } from '../../types';
+import { DEFAULT_K8S_SCHEMA } from './const';
 // eslint-disable-next-line @typescript-eslint/camelcase
 import { DEPRECATED_CreateOperandForm } from './DEPRECATED_operand-form';
+import { OperandForm } from './operand-form';
+import { OperandYAML } from './operand-yaml';
 
 import './create-operand.scss';
-import { useTranslation } from 'react-i18next';
 
 export const CreateOperand: React.FC<CreateOperandProps> = ({
   clusterServiceVersion,
@@ -56,10 +55,15 @@ export const CreateOperand: React.FC<CreateOperandProps> = ({
   model,
 }) => {
   const { t } = useTranslation();
+
+  const formHelpText = t(
+    'olm~Create by completing the form. Default values may be provided by the Operator authors.',
+  );
+
   const { data: csv } = clusterServiceVersion;
   const { data: crd } = customResourceDefinition;
   const [activePerspective] = useActivePerspective();
-  const [helpText, setHelpText] = React.useState(FORM_HELP_TEXT);
+  const [helpText, setHelpText] = React.useState(formHelpText);
   const next =
     activePerspective === 'dev'
       ? '/topology'
@@ -103,9 +107,18 @@ export const CreateOperand: React.FC<CreateOperandProps> = ({
 
   const pruneFunc = React.useCallback((data) => prune(data, sample), [sample]);
 
-  const onChangeEditorType = React.useCallback((newMethod) => {
-    setHelpText(newMethod === EditorType.Form ? FORM_HELP_TEXT : YAML_HELP_TEXT);
-  }, []);
+  const onChangeEditorType = React.useCallback(
+    (newMethod) => {
+      setHelpText(
+        newMethod === EditorType.Form
+          ? formHelpText
+          : t(
+              'olm~Create by manually entering YAML or JSON definitions, or by dragging and dropping a file into the editor.',
+            ),
+      );
+    },
+    [formHelpText, t],
+  );
 
   return (
     <StatusBox loaded={loaded} loadError={loadError} data={clusterServiceVersion}>

@@ -1,20 +1,18 @@
 import * as _ from 'lodash';
+import { referenceForModel } from '@console/internal/module/k8s';
 import {
   Plugin,
   ModelDefinition,
   ModelFeatureFlag,
-  HrefNavItem,
-  ResourceNSNavItem,
   ResourceListPage,
   ResourceDetailsPage,
   RoutePage,
   DashboardsOverviewHealthOperator,
 } from '@console/plugin-sdk';
-import { referenceForModel } from '@console/internal/module/k8s';
 import { FLAGS } from '@console/shared/src/constants';
-import * as models from './models';
-import { Flags } from './const';
 import { getClusterServiceVersionsWithStatuses } from './components/dashboard/utils';
+import { Flags } from './const';
+import * as models from './models';
 import { ClusterServiceVersionKind } from './types';
 
 import './style.scss';
@@ -22,8 +20,6 @@ import './style.scss';
 type ConsumedExtensions =
   | ModelDefinition
   | ModelFeatureFlag
-  | HrefNavItem
-  | ResourceNSNavItem
   | ResourceListPage
   | ResourceDetailsPage
   | RoutePage
@@ -41,37 +37,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       model: models.ClusterServiceVersionModel,
       flag: Flags.OPERATOR_LIFECYCLE_MANAGER,
-    },
-  },
-  {
-    type: 'NavItem/Href',
-    properties: {
-      id: 'operatorhub',
-      section: 'operators',
-      componentProps: {
-        // t('olm~OperatorHub')
-        name: '%olm~OperatorHub%',
-        href: '/operatorhub',
-      },
-    },
-    flags: {
-      required: [FLAGS.CAN_LIST_PACKAGE_MANIFEST, FLAGS.CAN_LIST_OPERATOR_GROUP],
-    },
-  },
-  {
-    type: 'NavItem/ResourceNS',
-    properties: {
-      id: 'operators',
-      section: 'operators',
-      componentProps: {
-        // t('olm~Installed Operators')
-        name: '%olm~Installed Operators%',
-        resource: referenceForModel(models.ClusterServiceVersionModel),
-        startsWith: [
-          models.ClusterServiceVersionModel.apiGroup,
-          models.ClusterServiceVersionModel.plural,
-        ],
-      },
     },
   },
   {

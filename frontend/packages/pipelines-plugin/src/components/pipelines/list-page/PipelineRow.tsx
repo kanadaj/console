@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
 import { ResourceLink, Timestamp } from '@console/internal/components/utils';
 import { referenceForModel } from '@console/internal/module/k8s';
@@ -19,11 +18,10 @@ type PipelineStatusProps = {
 };
 
 const PipelineStatus: React.FC<PipelineStatusProps> = ({ obj }) => {
-  const { t } = useTranslation();
   return (
     <PipelineRunStatus
       status={pipelineFilterReducer(obj)}
-      title={pipelineFilterReducer(obj, t)}
+      title={pipelineFilterReducer(obj)}
       pipelineRun={obj.latestRun}
     />
   );
@@ -43,7 +41,6 @@ const PipelineRow: RowFunction<PipelineWithLatest> = ({ obj, index, key, style }
           kind={pipelineReference}
           name={obj.metadata.name}
           namespace={obj.metadata.namespace}
-          title={obj.metadata.name}
         />
       </TableData>
       <TableData className={tableColumnClasses[1]} columnID="namespace">

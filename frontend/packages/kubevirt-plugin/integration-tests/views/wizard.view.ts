@@ -1,4 +1,4 @@
-import { $, $$, element, by, browser } from 'protractor';
+import { $, $$, browser, by, element } from 'protractor';
 import { waitForNone } from '@console/internal-integration-tests/protractor.conf';
 import { actionForLabel } from '@console/internal-integration-tests/views/crud.view';
 import { click } from '@console/shared/src/test-utils/utils';
@@ -28,7 +28,7 @@ export const footerError = $('div[aria-label="Danger Alert"]');
 export const footerErrorDescroption = footerError.$('.pf-c-alert__description');
 export const bootError = $('#image-source-type-dropdown-helper');
 export const errorHelper = $('.pf-c-form__helper-text.pf-m-error');
-export const vmNameHelper = $('#vm-name-helper');
+export const invalidMessageContainer = $('.kubevirt-fort-row__invalid-message-container');
 
 // Basic Settings tab
 export const templateSelect = $('#template-dropdown');
@@ -63,6 +63,7 @@ export const diskWarning = (resourceName) =>
   $(`[data-id="${resourceName}"]`).$('.kv-validation-cell__cell--warning');
 
 // Advanced -- Cloud-init
+export const cloud = $('#cloud');
 export const cloudInitFormCheckbox = $('#cloud-init-edit-mode-first-option');
 export const cloudInitCustomScriptCheckbox = $('#cloud-init-edit-mode-second-option');
 export const customCloudInitScriptTextArea = $('#cloudinit-custom-custom-script');

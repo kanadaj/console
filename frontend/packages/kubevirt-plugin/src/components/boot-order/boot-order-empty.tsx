@@ -1,11 +1,11 @@
 import * as React from 'react';
 import {
+  Alert,
   Button,
   EmptyState,
   EmptyStateBody,
   EmptyStateVariant,
   Title,
-  Alert,
 } from '@patternfly/react-core';
 
 // Display and empty with a Call to add new source if no sources are defined.

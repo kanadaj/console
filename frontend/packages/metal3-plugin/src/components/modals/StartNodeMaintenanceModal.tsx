@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
 import { Alert, FormGroup, Stack, StackItem, TextInput } from '@patternfly/react-core';
-import { withHandlePromise, HandlePromiseProps } from '@console/internal/components/utils';
+import { Trans, useTranslation } from 'react-i18next';
+import { CephClusterModel } from '@console/ceph-storage-plugin/src/models';
 import {
   ModalTitle,
   ModalBody,
@@ -9,11 +9,11 @@ import {
   createModalLauncher,
   ModalComponentProps,
 } from '@console/internal/components/factory';
-import { referenceForModel, K8sResourceKind } from '@console/internal/module/k8s';
-import { CephClusterModel } from '@console/ceph-storage-plugin/src/models';
-import { startNodeMaintenance } from '../../k8s/requests/node-maintenance';
+import { withHandlePromise, HandlePromiseProps } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { referenceForModel, K8sResourceKind } from '@console/internal/module/k8s';
 import { useMaintenanceCapability } from '../../hooks/useMaintenanceCapability';
+import { startNodeMaintenance } from '../../k8s/requests/node-maintenance';
 
 const cephClusterResource = {
   kind: referenceForModel(CephClusterModel),
@@ -41,7 +41,7 @@ const StartNodeMaintenanceModal = withHandlePromise<StartNodeMaintenanceModalPro
 
   const [cephClusters, loaded] = useK8sWatchResource<K8sResourceKind[]>(cephClusterResource);
   const cephCluster = cephClusters?.[0];
-  const cephClusterHealthy = !cephCluster || cephCluster?.status?.health === 'OK';
+  const cephClusterHealthy = cephCluster?.status?.ceph?.health === 'HEALTH_OK';
 
   const action = t('metal3-plugin~Start Maintenance');
   return (
@@ -70,7 +70,7 @@ const StartNodeMaintenanceModal = withHandlePromise<StartNodeMaintenanceModalPro
               />
             </FormGroup>
           </StackItem>
-          {!cephClusterHealthy && (
+          {!!cephCluster && !cephClusterHealthy && (
             <StackItem>
               <Alert
                 variant="warning"

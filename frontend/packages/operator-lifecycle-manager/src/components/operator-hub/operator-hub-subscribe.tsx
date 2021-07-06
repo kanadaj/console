@@ -1,12 +1,14 @@
 import * as React from 'react';
+import { ActionGroup, Alert, Button, Checkbox } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { Helmet } from 'react-helmet';
-import { match } from 'react-router';
 import { Trans, useTranslation } from 'react-i18next';
-import { ActionGroup, Alert, Button, Checkbox, Popover } from '@patternfly/react-core';
+import { match } from 'react-router';
+import { RadioGroup, RadioInput } from '@console/internal/components/radio';
 import {
   Dropdown,
   ExternalLink,
+  FieldLevelHelp,
   Firehose,
   history,
   NsDropdown,
@@ -17,6 +19,14 @@ import {
   ResourceIcon,
   ResourceName,
 } from '@console/internal/components/utils';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { useAccessReview } from '@console/internal/components/utils/rbac';
+import {
+  ConsoleOperatorConfigModel,
+  NamespaceModel,
+  RoleBindingModel,
+  RoleModel,
+} from '@console/internal/models';
 import {
   K8sResourceCommon,
   apiVersionForModel,
@@ -30,18 +40,10 @@ import {
   referenceFor,
   referenceForModel,
 } from '@console/internal/module/k8s';
-import { RadioGroup, RadioInput } from '@console/internal/components/radio';
 import { fromRequirements } from '@console/internal/module/k8s/selector';
-import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
-import { useAccessReview } from '@console/internal/components/utils/rbac';
 import { CONSOLE_OPERATOR_CONFIG_NAME } from '@console/shared/src/constants';
+import { parseJSONAnnotation } from '@console/shared/src/utils/annotations';
 import { SubscriptionModel, OperatorGroupModel, PackageManifestModel } from '../../models';
-import {
-  ConsoleOperatorConfigModel,
-  NamespaceModel,
-  RoleBindingModel,
-  RoleModel,
-} from '@console/internal/models';
 import {
   OperatorGroupKind,
   PackageManifestKind,
@@ -49,6 +51,9 @@ import {
   InstallPlanApproval,
   InstallModeType,
 } from '../../types';
+import { getClusterServiceVersionPlugins, isCatalogSourceTrusted } from '../../utils';
+import { ConsolePluginFormGroup } from '../../utils/console-plugin-form-group';
+import { CRDCard } from '../clusterserviceversion';
 import {
   ClusterServiceVersionLogo,
   defaultChannelNameFor,
@@ -60,11 +65,7 @@ import {
   supportedInstallModesFor,
 } from '../index';
 import { installedFor, supports, providedAPIsForOperatorGroup, isGlobal } from '../operator-group';
-import { CRDCard } from '../clusterserviceversion';
 import { OperatorInstallStatusPage } from '../operator-install-page';
-import { parseJSONAnnotation } from '@console/shared/src/utils/annotations';
-import { getClusterServiceVersionPlugins, isCatalogSourceTrusted } from '../../utils';
-import { ConsolePluginFormGroup } from '../../utils/console-plugin-form-group';
 
 export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> = (props) => {
   const [targetNamespace, setTargetNamespace] = React.useState(null);
@@ -451,7 +452,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
           className="co-alert"
           variant="danger"
           title={t(
-            "olm~A Subscription for this Operator already exists in Namespace '{{namespace}}'",
+            'olm~A Subscription for this Operator already exists in Namespace "{{namespace}}"',
             {
               namespace: selectedTargetNamespace,
             },
@@ -529,8 +530,8 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
               title={t('olm~Namespace monitoring')}
             >
               <Trans ns="olm">
-                Please note that installing non Red Hat operators into openshift namespaces and
-                enabling monitoring voids user support. Enabling cluster monitoring for non Red Hat
+                Please note that installing non-Red Hat operators into OpenShift namespaces and
+                enabling monitoring voids user support. Enabling cluster monitoring for non-Red Hat
                 operators can lead to malicious metrics data overriding existing cluster metrics.
                 For more information, see the{' '}
                 <ExternalLink
@@ -661,18 +662,10 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
             <>
               <div className="form-group">
                 <fieldset>
-                  <Popover
-                    headerContent={<div>{t('olm~Update channel')}</div>}
-                    bodyContent={
-                      <div>{t('olm~The channel to track and receive the updates from.')}</div>
-                    }
-                  >
-                    <h5 className="co-required co-form-heading__popover">
-                      <Button variant="plain" className="co-form-heading__popover-button">
-                        {t('olm~Update channel')}
-                      </Button>
-                    </h5>
-                  </Popover>
+                  <label className="co-required">{t('olm~Update channel')}</label>
+                  <FieldLevelHelp>
+                    {t('olm~The channel to track and receive the updates from.')}
+                  </FieldLevelHelp>
                   <RadioGroup
                     currentValue={selectedUpdateChannel}
                     items={channels.map((ch) => ({ value: ch.name, title: ch.name }))}
@@ -685,7 +678,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
               </div>
               <div className="form-group">
                 <fieldset>
-                  <h5 className="co-required">{t('olm~Installation mode')}</h5>
+                  <label className="co-required">{t('olm~Installation mode')}</label>
                   <RadioInput
                     onChange={(e) => {
                       setInstallMode(e.target.value);
@@ -725,8 +718,10 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
                   </RadioInput>
                 </fieldset>
               </div>
-              <div className="form-group">
-                <h5 className="co-required">{t('olm~Installed Namespace')}</h5>
+              <div className="form-group form-group--doubled-bottom-margin">
+                <label className="co-required" htmlFor="dropdown-selectbox">
+                  {t('olm~Installed Namespace')}
+                </label>
                 {selectedInstallMode === InstallModeType.InstallModeTypeAllNamespaces &&
                   globalNamespaceInstallMode}
                 {(selectedInstallMode === InstallModeType.InstallModeTypeOwnNamespace ||
@@ -735,20 +730,10 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
               </div>
               <div className="form-group">
                 <fieldset>
-                  <Popover
-                    headerContent={<div>{t('olm~Approval strategy')}</div>}
-                    bodyContent={
-                      <div>
-                        {t('olm~The strategy to determine either manual or automatic updates.')}
-                      </div>
-                    }
-                  >
-                    <h5 className="co-required co-form-heading__popover">
-                      <Button variant="plain" className="co-form-heading__popover-button">
-                        {t('olm~Approval strategy')}
-                      </Button>
-                    </h5>
-                  </Popover>
+                  <label className="co-required">{t('olm~Update approval')}</label>
+                  <FieldLevelHelp>
+                    {t('olm~The strategy to determine either manual or automatic updates.')}
+                  </FieldLevelHelp>
                   <RadioGroup
                     currentValue={selectedApproval}
                     items={[

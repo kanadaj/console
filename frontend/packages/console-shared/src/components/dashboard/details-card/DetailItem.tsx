@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import * as classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 
 export const DetailItem: React.FC<DetailItemProps> = React.memo(
   ({ title, isLoading = false, children, error = false, valueClassName, errorMessage }) => {
@@ -10,7 +10,7 @@ export const DetailItem: React.FC<DetailItemProps> = React.memo(
 
     if (error) {
       status = (
-        <span className="text-secondary">{errorMessage || t('dashboard~Not available')}</span>
+        <span className="text-secondary">{errorMessage || t('console-shared~Not available')}</span>
       );
     } else if (isLoading) {
       status = <div className="skeleton-text" />;

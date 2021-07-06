@@ -1,8 +1,9 @@
 import * as _ from 'lodash';
-import { K8sResourceKind, PodKind, referenceForModel } from '@console/internal/module/k8s';
 import { FirehoseResource } from '@console/internal/components/utils';
-import { KNATIVE_SERVING_LABEL } from '../const';
 import { WatchK8sResources } from '@console/internal/components/utils/k8s-watch-hook';
+import { K8sResourceKind, PodKind, referenceForModel } from '@console/internal/module/k8s';
+import { KafkaConnectionModel } from '@console/rhoas-plugin/src/models';
+import { KNATIVE_SERVING_LABEL } from '../const';
 import {
   ServiceModel,
   RevisionModel,
@@ -16,6 +17,11 @@ import {
   CamelIntegrationModel,
   CamelKameletBindingModel,
 } from '../models';
+import { Traffic } from '../types';
+import {
+  getDynamicEventSourcesWatchers,
+  getDynamicEventingChannelWatchers,
+} from './fetch-dynamic-eventsources-utils';
 
 export type KnativeItem = {
   revisions?: K8sResourceKind[];
@@ -271,11 +277,17 @@ export const knativeCamelIntegrationsResourceWatchers = (
   };
 };
 
-export const strimziResourcesWatcher = (): WatchK8sResources<any> => {
+export const strimziResourcesWatcher = (namespace: string): WatchK8sResources<any> => {
   const strimziResources = {
     [KafkaModel.plural]: {
       isList: true,
       kind: referenceForModel(KafkaModel),
+      optional: true,
+    },
+    [KafkaConnectionModel.plural]: {
+      isList: true,
+      kind: referenceForModel(KafkaConnectionModel),
+      namespace,
       optional: true,
     },
     [KafkaTopicModel.plural]: {
@@ -297,5 +309,43 @@ export const knativeCamelKameletBindingResourceWatchers = (
       namespace,
       optional: true,
     },
+  };
+};
+
+export const getTrafficByRevision = (revName: string, service: K8sResourceKind) => {
+  if (!service.status?.traffic?.length) {
+    return {};
+  }
+  const trafficPercent = service.status.traffic
+    .filter((t: Traffic) => t.revisionName === revName)
+    .reduce(
+      (acc, tr: Traffic) => {
+        acc.percent += tr.percent ? tr.percent : 0;
+        if (tr.url) {
+          acc.urls.push(tr.url);
+        }
+        return acc;
+      },
+      { urls: [], percent: 0 },
+    );
+  return {
+    ...trafficPercent,
+    percent: trafficPercent.percent ? `${trafficPercent.percent}%` : null,
+  };
+};
+
+export const getKnativeResources = (namespace: string) => {
+  return {
+    ...knativeServingResourcesRevisionWatchers(namespace),
+    ...knativeServingResourcesConfigurationsWatchers(namespace),
+    ...knativeServingResourcesRoutesWatchers(namespace),
+    ...knativeServingResourcesServicesWatchers(namespace),
+    ...knativeEventingResourcesSubscriptionWatchers(namespace),
+    ...getDynamicEventSourcesWatchers(namespace),
+    ...getDynamicEventingChannelWatchers(namespace),
+    ...knativeEventingBrokerResourceWatchers(namespace),
+    ...knativeEventingTriggerResourceWatchers(namespace),
+    ...knativeCamelIntegrationsResourceWatchers(namespace),
+    ...knativeCamelKameletBindingResourceWatchers(namespace),
   };
 };

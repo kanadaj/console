@@ -1,17 +1,9 @@
 import * as React from 'react';
 import { shallow } from 'enzyme';
 import { cloneDeep } from 'lodash';
-import { MultiStreamLogs } from '../MultiStreamLogs';
 import Logs from '../Logs';
+import { MultiStreamLogs } from '../MultiStreamLogs';
 import { podData } from './logs-test-data';
-
-jest.mock('react-i18next', () => {
-  const reactI18next = require.requireActual('react-i18next');
-  return {
-    ...reactI18next,
-    useTranslation: () => ({ t: (key) => key }),
-  };
-});
 
 describe('MultiStreamLogs', () => {
   let props: React.ComponentProps<typeof MultiStreamLogs>;

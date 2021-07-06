@@ -1,9 +1,11 @@
 import { ExtensionSCProvisionerProp } from '@console/plugin-sdk';
 import {
+  CephFsNameComponent,
   PoolResourceComponent,
   StorageClassEncryption,
   StorageClassEncryptionKMSID,
 } from '../components/ocs-storage-class-form/ocs-storage-class-form';
+import { ThickProvision } from '../components/ocs-storage-class-form/ocs-thick-provisioner';
 import { CEPH_STORAGE_NAMESPACE } from '../constants';
 
 export const StorageClassFormProvisoners: ExtensionSCProvisionerProp = Object.freeze({
@@ -89,6 +91,11 @@ export const StorageClassFormProvisoners: ExtensionSCProvisionerProp = Object.fr
           hintText: 'A unique ID matching KMS ConfigMap',
           Component: StorageClassEncryptionKMSID,
         },
+        thickProvision: {
+          name: 'Enable Thick Provisioning',
+          Component: ThickProvision,
+          hintText: 'Volumes will allocate the requested capacity upon volume creation.',
+        },
       },
     },
     'rook-ceph.cephfs.csi.ceph.com': {
@@ -105,8 +112,8 @@ export const StorageClassFormProvisoners: ExtensionSCProvisionerProp = Object.fr
         fsName: {
           name: 'Filesystem Name',
           hintText: 'CephFS filesystem name into which the volume shall be created',
-          value: 'ocs-storagecluster-cephfilesystem',
-          visible: () => false,
+          required: true,
+          Component: CephFsNameComponent,
         },
         'csi.storage.k8s.io/provisioner-secret-name': {
           name: 'Provisioner Secret Name',

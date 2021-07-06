@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import * as _ from 'lodash';
 import { Text } from '@patternfly/react-core';
-import * as classNames from 'classnames';
 import { sortable, IRow } from '@patternfly/react-table';
+import * as classNames from 'classnames';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { Table } from '@console/internal/components/factory';
 import {
   ResourceLink,
@@ -68,13 +68,13 @@ const getRows: NodesTableRowsFunction = (
         title: roles.join(', ') ?? '-',
       },
       {
-        title: getZone(node) ?? '-',
-      },
-      {
         title: `${humanizeCpuCores(cpuSpec).string || '-'}`,
       },
       {
         title: humanizeBinaryBytes(convertToBaseValue(memSpec)).string ?? '-',
+      },
+      {
+        title: getZone(node) ?? '-',
       },
     ];
     return {
@@ -124,15 +124,15 @@ export const NodesTable: React.FC<NodesTableProps> = (props) => {
       props: { className: tableColumnClasses[1] },
     },
     {
-      title: t('lso-plugin~Zone'),
+      title: t('lso-plugin~CPU'),
       props: { className: tableColumnClasses[2] },
     },
     {
-      title: t('lso-plugin~CPU'),
+      title: t('lso-plugin~Memory'),
       props: { className: tableColumnClasses[3] },
     },
     {
-      title: t('lso-plugin~Memory'),
+      title: t('lso-plugin~Zone'),
       props: { className: tableColumnClasses[4] },
     },
   ];

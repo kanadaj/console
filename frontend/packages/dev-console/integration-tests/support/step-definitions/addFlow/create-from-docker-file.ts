@@ -1,7 +1,6 @@
 import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
-import { gitPage } from '../../pages/add-flow/git-page';
-import { addOptions } from '../../constants/add';
-import { addPage } from '../../pages/add-flow/add-page';
+import { addOptions } from '../../constants';
+import { gitPage, addPage, devFilePage } from '../../pages';
 
 Given('user is on Import from Docker file page', () => {
   addPage.selectCardFromOptions(addOptions.DockerFile);
@@ -9,7 +8,7 @@ Given('user is on Import from Docker file page', () => {
 
 When('user enters docker git url as {string}', (gitUrl: string) => {
   gitPage.enterGitUrl(gitUrl);
-  gitPage.verifyValidatedMessage();
+  devFilePage.verifyValidatedMessage();
 });
 
 When('user selects {string} radio button in Resource type section', (resourceType: string) => {
@@ -31,3 +30,7 @@ Then(
     gitPage.clickCancel();
   },
 );
+
+When('user enters Name as {string} in Docker file page', (name: string) => {
+  gitPage.enterComponentName(name);
+});

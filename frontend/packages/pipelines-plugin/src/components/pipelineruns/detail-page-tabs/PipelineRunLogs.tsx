@@ -1,17 +1,17 @@
 import * as React from 'react';
-import { withTranslation } from 'react-i18next';
+import { Nav, NavItem, NavList } from '@patternfly/react-core';
 import { TFunction } from 'i18next';
 import * as _ from 'lodash';
+import { withTranslation } from 'react-i18next';
 import { RouteComponentProps } from 'react-router';
 import { Link } from 'react-router-dom';
-import { Nav, NavItem, NavList } from '@patternfly/react-core';
 import { Firehose, resourcePathFromModel } from '@console/internal/components/utils';
 import { PipelineRunModel } from '../../../models';
 import { PipelineRunKind } from '../../../types';
 import { pipelineRunFilterReducer } from '../../../utils/pipeline-filter-reducer';
 import { ColoredStatusIcon } from '../../pipelines/detail-page-tabs/pipeline-details/StatusIcon';
-import LogsWrapperComponent from '../logs/LogsWrapperComponent';
 import { getDownloadAllLogsCallback } from '../logs/logs-utils';
+import LogsWrapperComponent from '../logs/LogsWrapperComponent';
 import './PipelineRunLogs.scss';
 
 interface PipelineRunLogsProps {
@@ -94,7 +94,6 @@ class PipelineRunLogsWithTranslation extends React.Component<
             taskRunFromYaml,
             obj.metadata?.namespace,
             obj.metadata?.name,
-            t,
           )
         : undefined;
     const podName = taskRunFromYaml[activeItem]?.status?.podName;

@@ -9,7 +9,9 @@ export enum addOptions {
   HelmChart = 'Helm Chart',
   Pipeline = 'Pipeline',
   EventSource = 'Event Source',
-  DevFile = 'Import from Devfile',
+  DevFile = 'From Devfile',
+  Channel = 'Channel',
+  UploadJARFile = 'Upload JAR file',
 }
 
 export enum buildConfigOptions {
@@ -43,6 +45,8 @@ export enum catalogCards {
   apacheHTTPServer = 'Apache HTTP Server',
   nginxHTTPServer = 'Nginx HTTP server and a reverse proxy',
   jenkins = 'Jenkins',
+  knativeKafka = 'Knative Kafka',
+  helmNodejs = 'Nodejs Ex K v0.2.1',
 }
 
 export enum catalogTypes {
@@ -51,6 +55,8 @@ export enum catalogTypes {
   BuilderImage = 'Builder Image',
   Template = 'Template',
   ServiceClass = 'Service Class',
+  ManagedServices = 'Managed Services',
+  EventSources = 'Event Sources',
 }
 
 export enum builderImages {
@@ -64,4 +70,11 @@ export enum builderImages {
   Python = 'Python',
   Java = 'Java',
   NodeJs = 'Node.js',
+}
+
+export enum eventSourceCards {
+  ApiServerSource = 'Api Server Source',
+  ContainerSource = 'Container Source',
+  PingSource = 'Ping Source',
+  SinkBinding = 'Sink Binding',
 }

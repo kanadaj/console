@@ -2,20 +2,32 @@ import * as React from 'react';
 import { shallow } from 'enzyme';
 import { Formik } from 'formik';
 import { LoadingBox, StatusBox } from '@console/internal/components/utils';
+import { defaultAccessRoles } from '../project-access-form-utils';
 import ProjectAccess from '../ProjectAccess';
 
 type ProjectAccessProps = React.ComponentProps<typeof ProjectAccess>;
 let projectAccessProps: ProjectAccessProps;
 
+jest.mock('react-i18next', () => {
+  const reactI18next = require.requireActual('react-i18next');
+  return {
+    ...reactI18next,
+    useTranslation: () => ({ t: (key) => key.split('~')[1] }),
+  };
+});
+
 describe('Project Access', () => {
   beforeEach(() => {
     projectAccessProps = {
-      formName: 'project access',
       namespace: 'abc',
       roleBindings: {
         data: [],
         loaded: false,
         loadError: {},
+      },
+      roles: {
+        data: defaultAccessRoles,
+        loaded: true,
       },
     };
   });

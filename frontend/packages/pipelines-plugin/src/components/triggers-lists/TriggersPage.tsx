@@ -1,13 +1,13 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { match as Rmatch } from 'react-router-dom';
-import { referenceForModel } from '@console/internal/module/k8s';
-import { Page } from '@console/internal/components/utils';
-import { TechPreviewBadge, MultiTabListPage } from '@console/shared';
-import { DefaultPage } from '@console/internal/components/default-resource';
 import NamespacedPage, {
   NamespacedPageVariants,
 } from '@console/dev-console/src/components/NamespacedPage';
+import { DefaultPage } from '@console/internal/components/default-resource';
+import { Page } from '@console/internal/components/utils';
+import { referenceForModel } from '@console/internal/module/k8s';
+import { TechPreviewBadge, MultiTabListPage } from '@console/shared';
 import {
   EventListenerModel,
   TriggerTemplateModel,
@@ -26,18 +26,15 @@ const TriggersPage: React.FC<TriggersPageProps> = ({ match }) => {
   } = match;
   const [showTitle, canCreate] = [false, false];
   const menuActions = {
-    eventListener: { label: t('pipelines-plugin~Event Listener'), model: EventListenerModel },
-    triggerTemplate: { label: t('pipelines-plugin~Trigger Template'), model: TriggerTemplateModel },
-    triggerBinding: { label: t('pipelines-plugin~Trigger Binding'), model: TriggerBindingModel },
-    culsterTriggerBinding: {
-      label: t('pipelines-plugin~Cluster Trigger Binding'),
-      model: ClusterTriggerBindingModel,
-    },
+    eventListener: { model: EventListenerModel },
+    triggerTemplate: { model: TriggerTemplateModel },
+    triggerBinding: { model: TriggerBindingModel },
+    clusterTriggerBinding: { model: ClusterTriggerBindingModel },
   };
   const pages: Page[] = [
     {
       href: '',
-      name: t('pipelines-plugin~Event Listeners'),
+      name: t('pipelines-plugin~EventListeners'),
       component: DefaultPage,
       pageData: {
         kind: referenceForModel(EventListenerModel),
@@ -48,7 +45,7 @@ const TriggersPage: React.FC<TriggersPageProps> = ({ match }) => {
     },
     {
       href: 'trigger-templates',
-      name: t('pipelines-plugin~Trigger Templates'),
+      name: t('pipelines-plugin~TriggerTemplates'),
       component: DefaultPage,
       pageData: {
         kind: referenceForModel(TriggerTemplateModel),
@@ -59,7 +56,7 @@ const TriggersPage: React.FC<TriggersPageProps> = ({ match }) => {
     },
     {
       href: 'trigger-bindings',
-      name: t('pipelines-plugin~Trigger Bindings'),
+      name: t('pipelines-plugin~TriggerBindings'),
       component: DefaultPage,
       pageData: {
         kind: referenceForModel(TriggerBindingModel),
@@ -70,7 +67,7 @@ const TriggersPage: React.FC<TriggersPageProps> = ({ match }) => {
     },
     {
       href: 'cluster-trigger-bindings',
-      name: t('pipelines-plugin~Cluster Trigger Bindings'),
+      name: t('pipelines-plugin~ClusterTriggerBindings'),
       component: DefaultPage,
       pageData: {
         kind: referenceForModel(ClusterTriggerBindingModel),

@@ -1,10 +1,14 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { match as RouteMatch } from 'react-router';
-import { ListKind, referenceForModel } from '@console/internal/module/k8s';
-import { BreadCrumbs } from '@console/internal/components/utils';
+import {
+  ListKind,
+  referenceForModel,
+  StorageClassResourceKind,
+} from '@console/internal/module/k8s';
+import { history, BreadCrumbs } from '@console/internal/components/utils';
 import { RadioGroup } from '@console/internal/components/radio';
-import { InfrastructureModel } from '@console/internal/models';
+import { InfrastructureModel, StorageClassModel } from '@console/internal/models';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
 import { useDeepCompareMemoize } from '@console/shared';
@@ -18,12 +22,20 @@ import CreateExternalCluster from './external-mode/install';
 import { CreateInternalCluster } from './internal-mode/install-wizard';
 import { CreateAttachedDevicesCluster } from './attached-devices-mode/install';
 import ExistingClusterModal from './existing-cluster-modal';
-import { CEPH_STORAGE_NAMESPACE, MODES } from '../../constants';
+import { CEPH_STORAGE_NAMESPACE, MODES, CreateStepsSC } from '../../constants';
 import { StorageClusterKind } from '../../types';
 import { OCSServiceModel } from '../../models';
 import './install-page.scss';
+import { filterSCWithNoProv } from '../../utils/install';
 
-const INDEP_MODE_SUPPORTED_PLATFORMS = ['BareMetal', 'None', 'VSphere', 'OpenStack', 'oVirt'];
+const INDEP_MODE_SUPPORTED_PLATFORMS = [
+  'BareMetal',
+  'None',
+  'VSphere',
+  'OpenStack',
+  'oVirt',
+  'IBMCloud',
+];
 
 const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
   const {
@@ -42,7 +54,6 @@ const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
     null,
   );
   const [downloadFile, setDownloadFile] = React.useState(null);
-  const [mode, setMode] = React.useState(MODES.INTERNAL);
   const [clusterServiceVersion, setClusterServiceVersion] = React.useState(null);
   const [csv, csvLoaded, csvError] = useK8sWatchResource<ClusterServiceVersionKind>(csvResource);
   const [infra, infraLoaded, infraError] = useK8sGet<any>(InfrastructureModel, 'cluster');
@@ -53,6 +64,8 @@ const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
   );
 
   const memoizedCSV = useDeepCompareMemoize(csv, true);
+  const [sc] = useK8sGet<ListKind<StorageClassResourceKind>>(StorageClassModel);
+  const hasNoProvSC = sc?.items?.some(filterSCWithNoProv);
 
   React.useEffect(() => {
     if (csvLoaded && !csvError) {
@@ -74,12 +87,52 @@ const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
     }
   }, [infra, infraLoaded, infraError]);
 
+  const getMode = () => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const modeParam = parseInt(searchParams.get('mode'), 10) || 1;
+    const sanitizedMode =
+      modeParam && modeParam <= (!isIndepModeSupportedPlatform ? 2 : 3) && modeParam >= 1
+        ? modeParam
+        : 1;
+    return sanitizedMode;
+  };
+
+  const getParamString = (step: number, mode: number) => {
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set('step', step.toString());
+    searchParams.set('mode', mode.toString());
+    return searchParams.toString();
+  };
+
+  const getAnchor = (step: number, mode: number) => `~new?${getParamString(step, mode)}`;
+
+  const getStep = (maxSteps: number = 5) => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const step = parseInt(searchParams.get('step'), 10) || 1;
+    const sanitizedStep = step <= maxSteps && step >= 1 ? step : 1;
+    return sanitizedStep;
+  };
+
+  const getIndex = (searchSpace: any, search: string, offset: number = 0) => {
+    const index = Object.values(searchSpace).findIndex((el) => el === search);
+    return index - offset + 1;
+  };
+
   const handleModeChange = (event: React.FormEvent<HTMLInputElement>) => {
     const { value } = event.currentTarget;
-    setMode(value as MODES);
+    const modeIndex = getIndex(MODES, value);
+    // Set the currently active step in the wizard to "Storage and Nodes"
+    // when the currently active mode is set to "Internal - Attached Devices"
+    // and a "no-provisioner" storage class exists.
+    if (modeIndex === 2 && hasNoProvSC) {
+      history.push(getAnchor(3, 2));
+    } else {
+      history.push(getAnchor(getIndex(CreateStepsSC, CreateStepsSC.DISCOVER), modeIndex));
+    }
   };
 
   const disableClusterCreation: boolean = storageCluster?.items?.length > 0;
+  const persistMode = Object.values(MODES)[getMode() - 1];
 
   return (
     <>
@@ -93,7 +146,7 @@ const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
                   path: url.replace('/~new', ''),
                 },
                 {
-                  name: t('ceph-storage-plugin~Create Storage Cluster'),
+                  name: t('ceph-storage-plugin~Create StorageCluster'),
                   path: url,
                 },
               ]}
@@ -101,19 +154,19 @@ const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
           )}
         </div>
         <h1 className="co-create-operand__header-text">
-          {t('ceph-storage-plugin~Create Storage Cluster')}
+          {t('ceph-storage-plugin~Create StorageCluster')}
         </h1>
         <p className="help-block">
           {t(
-            'ceph-storage-plugin~OCS runs as a cloud-native service for optimal integration with applications in need of storage and handles the scenes such as provisioning and management.',
+            'ceph-storage-plugin~OpenShift Container Storage runs as a cloud-native service for optimal integration with applications in need of storage and handles the scenes such as provisioning and management.',
           )}
         </p>
       </div>
 
       <div className="ceph-install__mode-toggle">
         <RadioGroup
-          label="Select Mode:"
-          currentValue={mode}
+          label={t('ceph-storage-plugin~Select mode:')}
+          currentValue={persistMode}
           inline
           items={[
             {
@@ -133,16 +186,26 @@ const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
           onChange={handleModeChange}
         />
       </div>
-      {mode === MODES.INTERNAL && <CreateInternalCluster match={match} mode={mode} />}
-      {mode === MODES.EXTERNAL && (
+      {persistMode === MODES.INTERNAL && (
+        <CreateInternalCluster
+          navUtils={{ getStep, getParamString, getIndex, getAnchor }}
+          match={match}
+          mode={persistMode}
+        />
+      )}
+      {persistMode === MODES.EXTERNAL && (
         <CreateExternalCluster
           match={match}
           minRequiredKeys={independentReqdKeys}
           downloadFile={downloadFile}
         />
       )}
-      {mode === MODES.ATTACHED_DEVICES && (
-        <CreateAttachedDevicesCluster match={match} mode={mode} />
+      {persistMode === MODES.ATTACHED_DEVICES && (
+        <CreateAttachedDevicesCluster
+          navUtils={{ getStep, getParamString, getIndex, getAnchor }}
+          match={match}
+          mode={persistMode}
+        />
       )}
       {disableClusterCreation && (
         <ExistingClusterModal match={match} storageCluster={storageCluster} />

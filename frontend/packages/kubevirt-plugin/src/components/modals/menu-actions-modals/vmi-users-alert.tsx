@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
 import { Alert, Button } from '@patternfly/react-core';
+import { Trans, useTranslation } from 'react-i18next';
 import { history } from '@console/internal/components/utils';
 import { getName, getNamespace } from '@console/shared/src/selectors/common';
 import { useGuestAgentInfo } from '../../../hooks/use-guest-agent-info';
@@ -36,12 +36,7 @@ export const VMIUsersAlert: React.FC<VMIUsersAlertProps> = ({
   };
 
   const alertBody = (
-    <Trans
-      t={t}
-      i18nKey="Guest agent logged in users alert"
-      ns="kubevirt-plugin"
-      count={userListLength}
-    >
+    <Trans t={t} ns="kubevirt-plugin" count={userListLength}>
       <Button variant="link" isInline onClick={onLinkClick}>
         {{ count: userListLength }} User
       </Button>{' '}

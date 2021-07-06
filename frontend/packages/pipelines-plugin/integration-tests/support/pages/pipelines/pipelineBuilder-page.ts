@@ -1,26 +1,54 @@
 import { pageTitle } from '@console/dev-console/integration-tests/support/constants/pageTitle';
-import { pipelineBuilderText } from '../../constants/static-text/pipeline-text';
+import { createForm } from '@console/dev-console/integration-tests/support/pages';
+import { pipelineBuilderText } from '../../constants';
 import { pipelineBuilderPO, pipelineDetailsPO, pipelinesPO } from '../../page-objects/pipelines-po';
 import { pipelineDetailsPage } from './pipelineDetails-page';
 
 export const pipelineBuilderSidePane = {
   verifyDialog: () => cy.get(pipelineBuilderPO.formView.sidePane.dialog).should('be.visible'),
+
   selectInputResource: (resourceName: string) => {
-    pipelineBuilderSidePane.verifyDialog();
-    cy.get(pipelineBuilderPO.formView.sidePane.inputResource).click();
-    cy.byTestDropDownMenu(resourceName).click();
+    cy.get(pipelineBuilderPO.formView.sidePane.dialog).within(() => {
+      cy.get(pipelineBuilderPO.formView.sidePane.inputResource).select(resourceName);
+    });
   },
+
   removeTask: () => {
+    cy.get(pipelineBuilderPO.formView.sidePane.dialog).within(() => {
+      cy.selectByDropDownText(pipelineBuilderPO.formView.sidePane.actions, 'Remove Task');
+    });
+  },
+
+  enterParameterUrl: (url: string = 'https://github.com/sclorg/golang-ex.git') => {
     pipelineBuilderSidePane.verifyDialog();
-    cy.get(pipelineBuilderPO.formView.sidePane.actions).click();
-    cy.byTestActionID('Remove Task').click();
+    cy.get(pipelineBuilderPO.formView.sidePane.parameterUrlHelper).should(
+      'contain.text',
+      pipelineBuilderText.formView.sidePane.ParameterUrlHelper,
+    );
+    cy.get(pipelineBuilderPO.formView.sidePane.parameterUrl).type(url);
+  },
+
+  enterRevision: (revision: string) => {
+    pipelineBuilderSidePane.verifyDialog();
+    cy.get(pipelineBuilderPO.formView.sidePane.parameterRevisionHelper).should(
+      'contain.text',
+      pipelineBuilderText.formView.sidePane.ParamterRevisionHelper,
+    );
+    cy.get(pipelineBuilderPO.formView.sidePane.parameterRevision).type(revision);
+  },
+
+  selectWorkspace: (workspaceName: string) => {
+    pipelineBuilderSidePane.verifyDialog();
+    cy.get(pipelineBuilderPO.formView.sidePane.workspaces)
+      .scrollIntoView()
+      .select(workspaceName);
   },
 };
 
 export const pipelineBuilderPage = {
   verifyTitle: () => {
     cy.get(pipelineBuilderPO.title).should('have.text', pageTitle.PipelineBuilder);
-    cy.testA11y('Pipeline Builder page');
+    cy.testA11y(pageTitle.PipelineBuilder);
   },
   verifyDefaultPipelineName: (pipelineName: string = pipelineBuilderText.pipelineName) =>
     cy.get(pipelineBuilderPO.formView.name).should('have.value', pipelineName),
@@ -30,14 +58,15 @@ export const pipelineBuilderPage = {
       .type(pipelineName);
   },
   selectTask: (taskName: string = 'kn') => {
+    cy.get('body').then(($body) => {
+      if ($body.text().includes('Unable to locate any tasks.')) {
+        cy.reload();
+      }
+    });
     cy.get(pipelineBuilderPO.formView.taskDropdown).click();
     cy.byTestActionID(taskName).click({ force: true });
   },
-  clickOnTask: (taskName: string) =>
-    cy
-      .get(pipelineBuilderPO.formView.task)
-      .contains(taskName)
-      .click({ force: true }),
+  clickOnTask: (taskName: string) => cy.get(`[data-id="${taskName}"] text`).click({ force: true }),
   selectParallelTask: (taskName: string) => {
     cy.mouseHover(pipelineBuilderPO.formView.task);
     cy.get(pipelineBuilderPO.formView.plusTaskIcon)
@@ -54,6 +83,10 @@ export const pipelineBuilderPage = {
     cy.get(pipelineBuilderPO.formView.seriesTask).click();
     cy.byTestActionID(taskName).click();
   },
+  clickOnAddWorkSpace: () => {
+    cy.byButtonText('Add workspace').click();
+  },
+  clickOnAddResource: () => {},
   addParameters: (
     paramName: string,
     description: string = 'description',
@@ -69,21 +102,33 @@ export const pipelineBuilderPage = {
       .eq(1)
       .click();
     cy.get(pipelineBuilderPO.formView.addResources.name).type(resourceName);
-    cy.selectByDropDownText(pipelineBuilderPO.formView.addResources.resourceType, resourceType);
+    cy.get(pipelineBuilderPO.formView.addResources.resourceType).select(resourceType);
   },
   verifySection: () => {
     cy.get(pipelineBuilderPO.formView.sectionTitle).as('sectionTitle');
     cy.get('@sectionTitle')
       .eq(0)
-      .should('have.text', pipelineBuilderText.formView.Tasks);
+      .should('contain.text', pipelineBuilderText.formView.Tasks);
     cy.get('@sectionTitle')
       .eq(1)
-      .should('have.text', pipelineBuilderText.formView.Parameters);
+      .should('contain.text', pipelineBuilderText.formView.Parameters);
     cy.get('@sectionTitle')
       .eq(2)
-      .should('have.text', pipelineBuilderText.formView.Resources);
+      .should('contain.text', pipelineBuilderText.formView.Resources);
+    cy.get('@sectionTitle')
+      .eq(3)
+      .should('contain.text', pipelineBuilderText.formView.Workspaces);
   },
-  clickCreateButton: () => cy.get(pipelineBuilderPO.create).click(),
+  clickCreateButton: () => {
+    cy.get(pipelineBuilderPO.create).click();
+    cy.get('body').then(($body) => {
+      if ($body.find('[aria-label="Danger Alert"]').length) {
+        cy.log($body.find('[aria-label="Danger Alert"]').text());
+        createForm.clickCancel();
+      }
+    });
+  },
+  clickSaveButton: () => cy.get(pipelineBuilderPO.create).click(),
   clickYaml: () => {
     cy.get(pipelinesPO.createPipeline).click();
     cy.get(pipelineBuilderPO.configureVia.yamlView).click();
@@ -103,14 +148,6 @@ export const pipelineBuilderPage = {
   },
   createPipelineFromYamlPage: () => {
     pipelineBuilderPage.clickYaml();
-    // Modal is removed - so commented the below code
-    // cy.get(pipelineBuilderPO.switchToYamlEditorAlert.alertDialog).should('be.visible');
-    // cy.get(pipelineBuilderPO.switchToYamlEditorAlert.title).should(
-    //   'contain.text',
-    //   'Switch to YAML Editor?',
-    // );
-    // cy.get(pipelineBuilderPO.switchToYamlEditorAlert.continue).click();
-    // cy.get(pipelineBuilderPO.yamlCreatePipeline.helpText).should('contain.text', 'YAML or JSON');
     cy.get(pipelineBuilderPO.create).click();
   },
   createPipelineWithGitResources: (
@@ -126,25 +163,55 @@ export const pipelineBuilderPage = {
     pipelineBuilderPage.clickCreateButton();
     pipelineDetailsPage.verifyTitle(pipelineName);
   },
+
+  createPipelineWithWorkspaces: (
+    pipelineName: string = 'git-pipeline',
+    taskName: string = 'git-clone',
+    workspaceName: string = 'git',
+  ) => {
+    pipelineBuilderPage.enterPipelineName(pipelineName);
+    pipelineBuilderPage.selectTask(taskName);
+    pipelineBuilderPage.clickOnAddWorkSpace();
+    pipelineBuilderPage.addWorkspace(workspaceName);
+    pipelineBuilderPage.clickOnTask(taskName);
+    pipelineBuilderSidePane.enterParameterUrl('https://github.com/sclorg/nodejs-ex.git');
+    pipelineBuilderSidePane.selectWorkspace(workspaceName);
+    pipelineBuilderPage.clickCreateButton();
+    pipelineDetailsPage.verifyTitle(pipelineName);
+  },
+
   selectSampleInYamlView: (yamlSample: string) => {
-    switch (yamlSample) {
-      case 's2i-build-and-deploy-pipeline-using-workspace':
-        cy.get(pipelineBuilderPO.yamlCreatePipeline.samples.s2iPipelineWithWorkspace).click();
-        break;
-      case 'docker-build-and-deploy-pipeline-using-pipeline-resource':
-        cy.get(pipelineBuilderPO.yamlCreatePipeline.samples.dockerPipelineWithResource).click();
-        break;
-      case 'docker-build-and-deploy-pipeline':
-        cy.get(pipelineBuilderPO.yamlCreatePipeline.samples.dockerBuildAndDeployPipeline).click();
-        break;
-      case 'simple-pipeline':
-        cy.get(pipelineBuilderPO.yamlCreatePipeline.samples.simplePipeline).click();
-        break;
-      case 's2i-build-and-deploy-pipeline-using-pipeline-resource':
-        cy.get(pipelineBuilderPO.yamlCreatePipeline.samples.s2iPipelineWithResource).click();
-        break;
-      default:
-        break;
+    cy.get(pipelineBuilderPO.yamlCreatePipeline.samples.sidebar).within(() => {
+      cy.get('li.co-resource-sidebar-item')
+        .contains(yamlSample)
+        .parent()
+        .find('button')
+        .contains('Try it')
+        .click();
+    });
+  },
+
+  selectOptionalWorkspace: (optional: boolean = false) => {
+    if (optional === true) {
+      cy.get(pipelineBuilderPO.formView.addWorkspaces.optionalWorkspace).check();
+      cy.log(`workspace is selected as optional`);
     }
+  },
+
+  addWorkspace: (workSpaceName: string, optional?: boolean) => {
+    cy.get(pipelineBuilderPO.formView.addWorkspaces.name)
+      .scrollIntoView()
+      .clear()
+      .type(workSpaceName);
+    pipelineBuilderPage.selectOptionalWorkspace(optional);
+  },
+  addFinallyNode: () => {
+    cy.get(pipelineBuilderPO.formView.addFinallyNode).click({ force: true });
+  },
+  clickFinallyTaskList: () =>
+    cy.get(pipelineBuilderPO.formView.finallyTaskList).click({ force: true }),
+  selectFinallyTask: (taskName: string) => {
+    cy.get(pipelineBuilderPO.formView.finallyTaskList).click({ force: true });
+    cy.byTestActionID(taskName).click({ force: true });
   },
 };

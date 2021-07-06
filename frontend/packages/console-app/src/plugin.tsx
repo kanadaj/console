@@ -1,7 +1,17 @@
 import * as React from 'react';
-import * as _ from 'lodash';
 import { CogsIcon } from '@patternfly/react-icons';
-import { FLAGS } from '@console/shared/src/constants';
+import * as _ from 'lodash';
+import {
+  ClusterVersionModel,
+  NodeModel,
+  PodModel,
+  StorageClassModel,
+  PersistentVolumeClaimModel,
+  VolumeSnapshotContentModel,
+  ClusterOperatorModel,
+  ConsoleOperatorConfigModel,
+} from '@console/internal/models';
+import { referenceForModel, ClusterOperator } from '@console/internal/module/k8s';
 import {
   Plugin,
   Perspective,
@@ -12,51 +22,29 @@ import {
   DashboardsOverviewHealthPrometheusSubsystem,
   DashboardsOverviewInventoryItem,
   DashboardsOverviewHealthOperator,
-  ReduxReducer,
   ResourceDetailsPage,
   ResourceListPage,
-  ResourceClusterNavItem,
   ResourceTabPage,
-  ContextProvider,
 } from '@console/plugin-sdk';
-import {
-  ClusterVersionModel,
-  NodeModel,
-  PodModel,
-  StorageClassModel,
-  PersistentVolumeClaimModel,
-  VolumeSnapshotContentModel,
-  ClusterOperatorModel,
-} from '@console/internal/models';
-import { referenceForModel, ClusterOperator } from '@console/internal/module/k8s';
+import { FLAGS } from '@console/shared/src/constants';
 import '@console/internal/i18n.js';
+import {
+  getClusterUpdateTimestamp,
+  isClusterUpdateActivity,
+} from './components/dashboards-page/activity';
 import {
   fetchK8sHealth,
   getK8sHealthState,
   getControlPlaneHealth,
   getClusterOperatorHealthStatus,
 } from './components/dashboards-page/status';
+import * as models from './models';
 import {
   API_SERVERS_UP,
   API_SERVER_REQUESTS_SUCCESS,
   CONTROLLER_MANAGERS_UP,
   SCHEDULERS_UP,
 } from './queries';
-import {
-  getClusterUpdateTimestamp,
-  isClusterUpdateActivity,
-} from './components/dashboards-page/activity';
-import reducer from './redux/reducer';
-import * as models from './models';
-import { TourContext, useTourValuesForContext } from './components/tour/tour-context';
-import {
-  QuickStartContext,
-  useValuesForQuickStartContext,
-} from './components/quick-starts/utils/quick-start-context';
-import {
-  FileUploadContext,
-  useValuesFileUploadContext,
-} from './components/file-upload/file-upload-context';
 
 type ConsumedExtensions =
   | Perspective
@@ -67,12 +55,9 @@ type ConsumedExtensions =
   | DashboardsOverviewHealthPrometheusSubsystem
   | DashboardsOverviewInventoryItem
   | DashboardsOverviewHealthOperator<ClusterOperator>
-  | ReduxReducer
   | ResourceListPage
   | ResourceDetailsPage
-  | ResourceClusterNavItem
-  | ResourceTabPage
-  | ContextProvider;
+  | ResourceTabPage;
 
 const plugin: Plugin<ConsumedExtensions> = [
   {
@@ -223,28 +208,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
-    type: 'ReduxReducer',
-    properties: {
-      namespace: 'console',
-      reducer,
-    },
-  },
-  {
-    type: 'NavItem/ResourceCluster',
-    properties: {
-      id: 'volumesnapshots',
-      section: 'storage',
-      componentProps: {
-        // t('console-app~VolumeSnapshotContents')
-        name: '%console-app~VolumeSnapshotContents%',
-        resource: referenceForModel(VolumeSnapshotContentModel),
-      },
-    },
-    flags: {
-      required: [FLAGS.CAN_LIST_VSC],
-    },
-  },
-  {
     type: 'Page/Resource/List',
     properties: {
       model: VolumeSnapshotContentModel,
@@ -275,7 +238,8 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       href: 'volumesnapshots',
       model: PersistentVolumeClaimModel,
-      name: 'Volume Snapshots',
+      // t('console-app~VolumeSnapshots')
+      name: '%console-app~VolumeSnapshots%',
       loader: () =>
         import(
           './components/volume-snapshot/volume-snapshot' /* webpackChunkName: "volume-snapshot-page" */
@@ -283,24 +247,15 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
-    type: 'ContextProvider',
+    type: 'Page/Resource/Details',
     properties: {
-      Provider: TourContext.Provider,
-      useValueHook: useTourValuesForContext,
-    },
-  },
-  {
-    type: 'ContextProvider',
-    properties: {
-      Provider: QuickStartContext.Provider,
-      useValueHook: useValuesForQuickStartContext,
-    },
-  },
-  {
-    type: 'ContextProvider',
-    properties: {
-      Provider: FileUploadContext.Provider,
-      useValueHook: useValuesFileUploadContext,
+      model: ConsoleOperatorConfigModel,
+      loader: async () =>
+        (
+          await import(
+            './components/console-operator/ConsoleOperatorConfig' /* webpackChunkName: "console-operator-config" */
+          )
+        ).ConsoleOperatorConfigDetailsPage,
     },
   },
 ];

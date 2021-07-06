@@ -1,14 +1,11 @@
 import * as React from 'react';
-import * as classnames from 'classnames';
-import { Trans, useTranslation } from 'react-i18next';
-import * as fuzzy from 'fuzzysearch';
-import { PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
 import { CatalogTile } from '@patternfly/react-catalog-view-extension';
 import {
   Alert,
   AlertVariant,
   Button,
   ButtonVariant,
+  Divider,
   InputGroup,
   SelectOption,
   SelectVariant,
@@ -25,33 +22,35 @@ import {
   ToolbarItem,
 } from '@patternfly/react-core';
 import { SearchIcon } from '@patternfly/react-icons';
-import { FLAGS, VirtualizedGrid } from '@console/shared';
-import { StatusBox, ResourceName, humanizeBinaryBytes } from '@console/internal/components/utils';
-import { useFlag } from '@console/shared/src/hooks/flag';
+import * as classnames from 'classnames';
+import * as fuzzy from 'fuzzysearch';
+import { Trans, useTranslation } from 'react-i18next';
+import { createProjectModal } from '@console/internal/components/modals';
+import { humanizeBinaryBytes, ResourceName, StatusBox } from '@console/internal/components/utils';
 import { ProjectModel } from '@console/internal/models';
-
+import { PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
+import { FLAGS, VirtualizedGrid } from '@console/shared';
+import { useFlag } from '@console/shared/src/hooks/flag';
+import { BOOT_SOURCE_AVAILABLE, BOOT_SOURCE_REQUIRED } from '../../../constants';
+import { usePinnedTemplates } from '../../../hooks/use-pinned-templates';
+import {
+  getTemplateOperatingSystems,
+  getTemplateSizeRequirementInBytes,
+} from '../../../selectors/vm-template/advanced';
 import {
   getTemplateName,
   getTemplateProvider,
   getTemplateProviderType,
   templateProviders,
 } from '../../../selectors/vm-template/basic';
-import { getTemplateOSIcon, PinnedIcon } from '../../vm-templates/os-icons';
-import { VMTemplateLabel } from '../../vm-templates/label';
-import { V1alpha1DataVolume } from '../../../types/api';
 import { getTemplateSourceStatus } from '../../../statuses/template/template-source-status';
-import { TemplateSource } from '../../vm-templates/vm-template-source';
-import { getWorkloadProfile } from '../../../selectors/vm';
-import {
-  getTemplateFlavorData,
-  getTemplateOperatingSystems,
-  getTemplateSizeRequirementInBytes,
-} from '../../../selectors/vm-template/advanced';
-import { TemplateItem } from '../../../types/template';
 import { isTemplateSourceError, TemplateSourceStatus } from '../../../statuses/template/types';
-import { usePinnedTemplates } from '../../../hooks/use-pinned-templates';
-import { BOOT_SOURCE_AVAILABLE, BOOT_SOURCE_REQUIRED } from '../../../constants';
+import { V1alpha1DataVolume } from '../../../types/api';
+import { TemplateItem } from '../../../types/template';
 import { FormPFSelect } from '../../form/form-pf-select';
+import { getTemplateOSIcon, PinnedIcon } from '../../vm-templates/os-icons';
+import { TemplateSource } from '../../vm-templates/vm-template-source';
+import { VMTemplateCommnunityLabel } from '../../vm-templates/VMTemplateCommnunityLabel';
 import VMTemplateSupport from '../../vm-templates/VMTemplateSupport';
 import { useVmTemplatesFilters } from '../hooks/use-vm-templates-filters';
 
@@ -76,7 +75,6 @@ export const TemplateTile: React.FC<TemplateTileProps> = ({
   const [template] = templateItem.variants;
 
   const osName = getTemplateOperatingSystems(templateItem.variants)?.[0]?.name;
-  const workloadProfile = getWorkloadProfile(template) || t('kubevirt-plugin~Not available');
   const provider = getTemplateProvider(t, template, true);
   const storage = getTemplateSizeRequirementInBytes(template, sourceStatus);
   const storageLable = storage
@@ -90,10 +88,7 @@ export const TemplateTile: React.FC<TemplateTileProps> = ({
         'pf-m-selectable pf-m-selected': isSelected,
       })}
       icon={<img src={getTemplateOSIcon(template)} alt="" />}
-      badges={[
-        isPinned && <PinnedIcon />,
-        <VMTemplateLabel template={template} className="kv-select-template__support-label" />,
-      ]}
+      badges={[<VMTemplateCommnunityLabel template={template} />, isPinned && <PinnedIcon />]}
       title={
         <Stack>
           <StackItem>
@@ -114,17 +109,6 @@ export const TemplateTile: React.FC<TemplateTileProps> = ({
             <StackItem>
               <b>{t('kubevirt-plugin~Project ')}</b>
               {template.metadata.namespace}
-            </StackItem>
-            <StackItem>
-              <b>{t('kubevirt-plugin~Type ')}</b>
-              {workloadProfile}
-            </StackItem>
-            <StackItem>
-              <b>{t('kubevirt-plugin~Flavor ')}</b>
-              {t(
-                'kubevirt-plugin~{{flavor}}: {{count}} CPU | {{memory}} Memory',
-                getTemplateFlavorData(template),
-              )}
             </StackItem>
             <StackItem>
               <b>{t('kubevirt-plugin~Storage ')}</b>
@@ -218,10 +202,18 @@ export const SelectTemplate: React.FC<SelectTemplateProps> = ({
             fuzzy(textFilterLowerCase, os.id.toLowerCase()),
         )
       : true;
-    const providerFilter =
-      filters.provider?.length > 0
-        ? filters.provider.includes(getTemplateProviderType(item.template))
-        : true;
+
+    const type = item?.template ? getTemplateProviderType(item.template) : undefined;
+    let providerFilter = true;
+    // checking if any template provider has clicked
+    if (filters.provider?.length > 0) {
+      if (type) {
+        providerFilter = filters.provider.includes(type);
+      }
+      if (templateProviders(t).length === filters.provider.length) {
+        providerFilter = true;
+      }
+    }
 
     let bootSourceFilter = true;
     if (filters.bootSource?.length > 0) {
@@ -236,6 +228,7 @@ export const SelectTemplate: React.FC<SelectTemplateProps> = ({
   });
 
   const canListNs = useFlag(FLAGS.CAN_LIST_NS);
+  const canCreateNs = useFlag(FLAGS.CAN_CREATE_PROJECT);
   const allProjects = t('kubevirt-plugin~All projects');
 
   return (
@@ -281,14 +274,38 @@ export const SelectTemplate: React.FC<SelectTemplateProps> = ({
                           selections={namespace}
                           className="kv-select-template__project"
                         >
-                          {(canListNs
-                            ? [allProjects, ...namespaces.sort()]
-                            : namespaces.sort()
-                          ).map((ns) => (
-                            <SelectOption key={ns} value={ns}>
-                              <ResourceName kind={ProjectModel.kind} name={ns} />
-                            </SelectOption>
-                          ))}
+                          <>
+                            {canCreateNs && (
+                              <>
+                                <Button
+                                  className="kv-select-template__create-project-btn"
+                                  variant="plain"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    createProjectModal({
+                                      blocking: true,
+                                      onSubmit: (newProject) => {
+                                        setNamespace(newProject.metadata.name);
+                                      },
+                                    });
+                                  }}
+                                >
+                                  {t('kubevirt-plugin~Create Project')}
+                                </Button>
+                                <Divider component="li" key={5} />
+                              </>
+                            )}
+                          </>
+                          <>
+                            {(canListNs
+                              ? [allProjects, ...namespaces.sort()]
+                              : namespaces.sort()
+                            ).map((ns) => (
+                              <SelectOption key={ns} value={ns}>
+                                <ResourceName kind={ProjectModel.kind} name={ns} />
+                              </SelectOption>
+                            ))}
+                          </>
                         </FormPFSelect>
                       </ToolbarItem>
                     </SplitItem>

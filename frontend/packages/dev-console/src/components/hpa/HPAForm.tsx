@@ -1,14 +1,20 @@
 import * as React from 'react';
-import { isEmpty } from 'lodash';
 import { FormikProps } from 'formik';
+import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { FlexForm, FormFooter, SyncedEditorField, YAMLEditorField } from '@console/shared';
-import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
-import { HorizontalPodAutoscalerKind, K8sResourceCommon } from '@console/internal/module/k8s';
-import HPADetailsForm from './HPADetailsForm';
-import { sanitizeHPAToForm } from './hpa-utils';
-import { HPAFormValues } from './types';
 import { HorizontalPodAutoscalerModel } from '@console/internal/models';
+import { HorizontalPodAutoscalerKind, K8sResourceCommon } from '@console/internal/module/k8s';
+import {
+  FlexForm,
+  FormBody,
+  FormFooter,
+  SyncedEditorField,
+  YAMLEditorField,
+} from '@console/shared';
+import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
+import { sanitizeHPAToForm } from './hpa-utils';
+import HPADetailsForm from './HPADetailsForm';
+import { HPAFormValues } from './types';
 
 type HPAFormProps = {
   targetResource: K8sResourceCommon;
@@ -44,23 +50,25 @@ const HPAForm: React.FC<FormikProps<HPAFormValues> & HPAFormProps> = ({
 
   return (
     <FlexForm onSubmit={handleSubmit}>
-      <SyncedEditorField
-        name="editorType"
-        formContext={{
-          name: 'formData',
-          editor: formEditor,
-          isDisabled: customMetrics,
-          sanitizeTo: (newFormData: Partial<HorizontalPodAutoscalerKind>) =>
-            sanitizeHPAToForm(newFormData, targetResource),
-        }}
-        yamlContext={{ name: 'yamlData', editor: yamlEditor }}
-      />
+      <FormBody flexLayout>
+        <SyncedEditorField
+          name="editorType"
+          formContext={{
+            name: 'formData',
+            editor: formEditor,
+            isDisabled: customMetrics,
+            sanitizeTo: (newFormData: Partial<HorizontalPodAutoscalerKind>) =>
+              sanitizeHPAToForm(newFormData, targetResource),
+          }}
+          yamlContext={{ name: 'yamlData', editor: yamlEditor }}
+        />
+      </FormBody>
       <FormFooter
         handleReset={handleReset}
         errorMessage={status?.submitError}
         isSubmitting={isSubmitting}
         submitLabel={t('devconsole~Save')}
-        disableSubmit={isForm && !isEmpty(errors)}
+        disableSubmit={(isForm && !isEmpty(errors)) || isSubmitting}
         resetLabel={t('devconsole~Cancel')}
         sticky
       />

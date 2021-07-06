@@ -1,6 +1,6 @@
+import { safeDump, safeLoad } from 'js-yaml';
 import * as _ from 'lodash';
 import { getRandomChars } from '@console/shared';
-import { safeLoad, safeDump } from 'js-yaml';
 import { V1CloudInitNoCloudSource } from '../../../types/api';
 
 const safeAtob = (value: string) => {
@@ -12,6 +12,7 @@ const safeAtob = (value: string) => {
 };
 
 export enum CloudInitDataFormKeys {
+  USER = 'user',
   NAME = 'name',
   HOSTNAME = 'hostname',
   SSH_AUTHORIZED_KEYS = 'ssh_authorized_keys',

@@ -1,40 +1,27 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import { PersistentVolumeClaimKind, StorageClassResourceKind } from '@console/internal/module/k8s';
 import {
+  Checkbox,
+  ExpandableSection,
   FileUpload,
   Form,
   SelectOption,
   TextInput,
-  Checkbox,
-  ExpandableSection,
-  Popover,
-  PopoverPosition,
 } from '@patternfly/react-core';
-import { HelpIcon } from '@patternfly/react-icons';
-import { PersistentVolumeClaimModel, StorageClassModel } from '@console/internal/models';
-import {
-  ListDropdown,
-  LoadingInline,
-  RequestSizeInput,
-  useAccessReview2,
-} from '@console/internal/components/utils';
+import { useTranslation } from 'react-i18next';
 import {
   dropdownUnits,
   getAccessModeForProvisioner,
-  provisionerAccessModeMapping,
 } from '@console/internal/components/storage/shared';
-import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
-
-import { FormRow } from '../../form/form-row';
-import { ProjectDropdown } from '../../form/project-dropdown';
-import { BootSourceAction, BootSourceState, BOOT_ACTION_TYPE } from './boot-source-form-reducer';
-import { AccessMode, VolumeMode, ANNOTATION_SOURCE_PROVIDER } from '../../../constants';
-import { FormPFSelect } from '../../form/form-pf-select';
-import { preventDefault } from '../../form/utils';
+import {
+  FieldLevelHelp,
+  ListDropdown,
+  LoadingInline,
+  RequestSizeInput,
+} from '@console/internal/components/utils';
+import { PersistentVolumeClaimModel } from '@console/internal/models';
+import { PersistentVolumeClaimKind, StorageClassResourceKind } from '@console/internal/module/k8s';
+import { AccessMode, ANNOTATION_SOURCE_PROVIDER, VolumeMode } from '../../../constants';
 import { ProvisionSource } from '../../../constants/vm/provision-source';
-import { URLSourceHelp } from '../../form/helper/url-source-help';
-import { ContainerSourceHelp } from '../../form/helper/container-source-help';
 import { useStorageClassConfigMap } from '../../../hooks/storage-class-config-map';
 import {
   getDefaultSCAccessModes,
@@ -43,43 +30,48 @@ import {
   isConfigMapContainsScModes,
 } from '../../../selectors/config-map/sc-defaults';
 import { getAnnotation } from '../../../selectors/selectors';
-import { getFieldId } from '../../create-vm-wizard/utils/renderable-field-utils';
-import { VMSettingsField } from '../../create-vm-wizard/types';
 import { ConfigMapDefaultModesAlert } from '../../Alerts/ConfigMapDefaultModesAlert';
+import { getGiBUploadPVCSizeByImage } from '../../cdi-upload-provider/upload-pvc-form/upload-pvc-form';
+import { VMSettingsField } from '../../create-vm-wizard/types';
+import { getFieldId } from '../../create-vm-wizard/utils/renderable-field-utils';
+import { FormPFSelect } from '../../form/form-pf-select';
+import { FormRow } from '../../form/form-row';
+import { ContainerSourceHelp } from '../../form/helper/container-source-help';
+import { URLSourceHelp } from '../../form/helper/url-source-help';
+import { ProjectDropdown } from '../../form/project-dropdown';
+import { preventDefault } from '../../form/utils';
+import { BOOT_ACTION_TYPE, BootSourceAction, BootSourceState } from './boot-source-form-reducer';
 
 type AdvancedSectionProps = {
   state: BootSourceState;
   dispatch: React.Dispatch<BootSourceAction>;
   disabled?: boolean;
+  storageClasses: StorageClassResourceKind[];
+  storageClassesLoaded: boolean;
+  scAllowed: boolean;
+  scAllowedLoading: boolean;
 };
 
-const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disabled }) => {
+const AdvancedSection: React.FC<AdvancedSectionProps> = ({
+  state,
+  dispatch,
+  disabled,
+  storageClasses,
+  storageClassesLoaded,
+  scAllowed,
+  scAllowedLoading,
+}) => {
   const { t } = useTranslation();
-  const [scAllowed, scAllowedLoading] = useAccessReview2({
-    group: StorageClassModel.apiGroup,
-    resource: StorageClassModel.plural,
-    verb: 'list',
-  });
-  const [storageClasses, scLoaded] = useK8sWatchResource<StorageClassResourceKind[]>(
-    scAllowed
-      ? {
-          kind: StorageClassModel.kind,
-          isList: true,
-          namespaced: false,
-        }
-      : null,
-  );
+
   const [scConfigMap, cmLoaded] = useStorageClassConfigMap();
 
   const defaultSCName = getDefaultStorageClass(storageClasses)?.metadata.name;
-
   const updatedStorageClass = storageClasses?.find(
     (sc) => sc.metadata.name === state.storageClass?.value,
   );
   const storageClassName = updatedStorageClass?.metadata?.name;
   const provisioner = updatedStorageClass?.provisioner || '';
-  let accessModes: string[] =
-    provisionerAccessModeMapping[provisioner] || getAccessModeForProvisioner(provisioner);
+  let accessModes: string[] = getAccessModeForProvisioner(provisioner);
 
   if (!scAllowedLoading && !scAllowed && scConfigMap) {
     accessModes = getDefaultSCAccessModes(scConfigMap).map((am) => am.getValue());
@@ -104,7 +96,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disa
   );
 
   React.useEffect(() => {
-    if (!scAllowedLoading && scLoaded && cmLoaded && !state.storageClass?.value) {
+    if (!scAllowedLoading && storageClassesLoaded && cmLoaded && !state.storageClass?.value) {
       if (defaultSCName) {
         handleStorageClass(defaultSCName);
       } else {
@@ -115,7 +107,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disa
   }, [
     defaultSCName,
     handleStorageClass,
-    scLoaded,
+    storageClassesLoaded,
     state.storageClass,
     dispatch,
     scConfigMap,
@@ -155,7 +147,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disa
     });
   }, [state.pvcVolumeMode, state.dataSource, dispatch, defaultVolumeMode]);
 
-  return cmLoaded && scLoaded && !scAllowedLoading ? (
+  return cmLoaded && storageClassesLoaded && !scAllowedLoading ? (
     <Form>
       {scAllowed && !!storageClasses?.length && (
         <FormRow fieldId="form-ds-sc" title={t('kubevirt-plugin~Storage class')} isRequired>
@@ -251,13 +243,19 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disa
 
 type BootSourceFormProps = AdvancedSectionProps & {
   withUpload?: boolean;
+  baseImageName?: string;
 };
 
 export const BootSourceForm: React.FC<BootSourceFormProps> = ({
   state,
   dispatch,
   withUpload,
+  baseImageName,
   disabled,
+  storageClasses,
+  storageClassesLoaded,
+  scAllowed,
+  scAllowedLoading,
 }) => {
   const { t } = useTranslation();
 
@@ -295,12 +293,16 @@ export const BootSourceForm: React.FC<BootSourceFormProps> = ({
             id="file-upload"
             value={state.file?.value.value}
             filename={state.file?.value.name}
-            onChange={(file: File, name: string) =>
+            onChange={(file: File, name: string) => {
               dispatch({
                 type: BOOT_ACTION_TYPE.SET_FILE,
                 payload: { value: file, name },
-              })
-            }
+              });
+              dispatch({
+                type: BOOT_ACTION_TYPE.SET_PVC_SIZE,
+                payload: getGiBUploadPVCSizeByImage(state.file?.value?.value?.size).toString(),
+              });
+            }}
             hideDefaultPreview
             isRequired
             isDisabled={disabled}
@@ -322,7 +324,7 @@ export const BootSourceForm: React.FC<BootSourceFormProps> = ({
             isDisabled={disabled}
             id={getFieldId(VMSettingsField.IMAGE_URL)}
           />
-          <URLSourceHelp />
+          <URLSourceHelp baseImageName={baseImageName} />
         </FormRow>
       )}
       {state.dataSource?.value === ProvisionSource.CONTAINER.getValue() && (
@@ -409,22 +411,11 @@ export const BootSourceForm: React.FC<BootSourceFormProps> = ({
           label={
             <>
               {t('kubevirt-plugin~Mount this as a CD-ROM boot source')}
-              <Popover
-                position={PopoverPosition.top}
-                aria-label={t('kubevirt-plugin~CDROM help')}
-                bodyContent={t(
+              <FieldLevelHelp>
+                {t(
                   'kubevirt-plugin~CD-ROM requires an additional disk for the operating system to be installed onto. This disk will be added and can be customized when creating the virtual machine.',
                 )}
-              >
-                <button
-                  type="button"
-                  onClick={preventDefault}
-                  className="pf-c-form__group-label-help"
-                  aria-label={t('kubevirt-plugin~CDROM help')}
-                >
-                  <HelpIcon noVerticalAlign />
-                </button>
-              </Popover>
+              </FieldLevelHelp>
             </>
           }
           id="cdrom"
@@ -459,11 +450,12 @@ export const BootSourceForm: React.FC<BootSourceFormProps> = ({
         </FormRow>
       )}
       {withUpload && (
-        <FormRow fieldId="form-ds-provider" title={t('kubevirt-plugin~Source provider')}>
+        <FormRow fieldId="form-ds-provider" isRequired title={t('kubevirt-plugin~Source provider')}>
           <TextInput
             isDisabled={disabled}
             value={state.provider?.value}
             type="text"
+            isRequired
             onChange={(payload) => dispatch({ type: BOOT_ACTION_TYPE.SET_PROVIDER, payload })}
             aria-label={t('kubevirt-plugin~Source provider')}
             id="form-ds-provider-input"
@@ -473,8 +465,19 @@ export const BootSourceForm: React.FC<BootSourceFormProps> = ({
           </div>
         </FormRow>
       )}
-      <ExpandableSection toggleText={t('kubevirt-plugin~Advanced')} data-test="advanced-section">
-        <AdvancedSection state={state} dispatch={dispatch} disabled={disabled} />
+      <ExpandableSection
+        toggleText={t('kubevirt-plugin~Advanced Storage settings')}
+        data-test="advanced-section"
+      >
+        <AdvancedSection
+          state={state}
+          dispatch={dispatch}
+          disabled={disabled}
+          storageClasses={storageClasses}
+          storageClassesLoaded={storageClassesLoaded}
+          scAllowed={scAllowed}
+          scAllowedLoading={scAllowedLoading}
+        />
       </ExpandableSection>
     </Form>
   );

@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 import {
+  asValidationObject,
   getName,
   getNamespace,
-  asValidationObject,
   ValidationErrorType,
   ValidationObject,
 } from '@console/shared';
@@ -75,3 +75,9 @@ export const validateContainer = (value: string): ValidationObject => {
 
   return null;
 };
+
+export enum ValidatedOptions {
+  success = 'success',
+  error = 'error',
+  default = 'default',
+}

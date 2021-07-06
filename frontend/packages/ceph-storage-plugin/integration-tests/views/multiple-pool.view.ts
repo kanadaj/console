@@ -8,7 +8,7 @@ import { poolData } from '../mocks/storage-pool';
 
 export const poolMessage = {
   PROGRESS:
-    'The creation of an OCS storage cluster is still in progress or have failed, please try again after the storage cluster is ready to use.',
+    'The creation of an OCS storage cluster is still in progress or have failed, please try again after the StorageCluster is ready to use.',
   POOL_START: 'Pool "foo" creation in progress',
   POOL_TIMEOUT:
     'Pool "foo" creation timed out. Please check if ocs-operator and rook operator are running',
@@ -55,7 +55,7 @@ export const prepareStorageClassForm = async (provisioner: string) => {
   await goToStorageClassView();
   await click(crudView.createYAMLButton);
   await browser.wait(
-    until.textToBePresentInElement($('.co-m-pane__heading'), 'Create Storage Class'),
+    until.textToBePresentInElement($('.co-m-pane__heading'), 'Create StorageClass'),
   );
   await browser.wait(until.and(crudView.untilNoLoadersPresent));
   await selectItemFromDropdown(provisioner);

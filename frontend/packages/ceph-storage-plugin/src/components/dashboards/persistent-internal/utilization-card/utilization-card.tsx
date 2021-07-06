@@ -7,6 +7,7 @@ import { Dropdown } from '@console/internal/components/utils/dropdown';
 import {
   humanizeBinaryBytes,
   humanizeDecimalBytesPerSec,
+  FieldLevelHelp,
 } from '@console/internal/components/utils';
 import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
@@ -25,7 +26,7 @@ import {
 
 const UtilizationCard: React.FC = () => {
   const { t } = useTranslation();
-  const [duration, setDuration] = useMetricDuration();
+  const [duration, setDuration] = useMetricDuration(t);
   const [timestamps, setTimestamps] = React.useState<Date[]>();
 
   const storagePopover = React.useCallback(
@@ -43,8 +44,20 @@ const UtilizationCard: React.FC = () => {
   return (
     <DashboardCard>
       <DashboardCardHeader>
-        <DashboardCardTitle>{t('ceph-storage-plugin~Utilization')}</DashboardCardTitle>
-        <Dropdown items={Duration} onChange={setDuration} selectedKey={duration} title={duration} />
+        <DashboardCardTitle>
+          {t('ceph-storage-plugin~Utilization')}
+          <FieldLevelHelp>
+            {t(
+              'ceph-storage-plugin~Performance metrics over time showing IOPS, Latency and more. Each metric is a link to a detailed view of this metric.',
+            )}
+          </FieldLevelHelp>
+        </DashboardCardTitle>
+        <Dropdown
+          items={Duration(t)}
+          onChange={setDuration}
+          selectedKey={duration}
+          title={duration}
+        />
       </DashboardCardHeader>
       <UtilizationBody timestamps={timestamps}>
         <PrometheusUtilizationItem

@@ -1,16 +1,16 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import { observer } from '@patternfly/react-topology';
 import { Tooltip, Popover, Button } from '@patternfly/react-core';
 import { ListIcon, TopologyIcon, QuestionCircleIcon } from '@patternfly/react-icons';
-import { useIsMobile } from '@console/shared';
+import { observer } from '@patternfly/react-topology';
+import { useTranslation } from 'react-i18next';
 import {
   FileUploadContext,
   FileUploadContextType,
 } from '@console/app/src/components/file-upload/file-upload-context';
-import { getTopologyShortcuts } from '../graph-view/TopologyShortcuts';
+import { useIsMobile } from '@console/shared';
 import { ModelContext, ExtensibleModel } from '../../data-transforms/ModelContext';
 import { TopologyViewType } from '../../topology-types';
+import { getTopologyShortcuts } from '../graph-view/TopologyShortcuts';
 
 interface TopologyPageToolbarProps {
   viewType: TopologyViewType;
@@ -35,10 +35,14 @@ const TopologyPageToolbar: React.FC<TopologyPageToolbarProps> = observer(
 
     return (
       <>
-        {showGraphView && !isMobile ? (
+        {!isMobile ? (
           <Popover
             aria-label={t('topology~Shortcuts')}
-            bodyContent={getTopologyShortcuts(t, { supportedFileTypes: extensions })}
+            bodyContent={getTopologyShortcuts(t, {
+              supportedFileTypes: extensions,
+              isEmptyModel,
+              viewType,
+            })}
             position="left"
             maxWidth="100vw"
           >
@@ -47,7 +51,6 @@ const TopologyPageToolbar: React.FC<TopologyPageToolbarProps> = observer(
               variant="link"
               className="odc-topology__shortcuts-button"
               icon={<QuestionCircleIcon />}
-              isDisabled={isEmptyModel}
               data-test-id="topology-view-shortcuts"
             >
               {t('topology~View shortcuts')}

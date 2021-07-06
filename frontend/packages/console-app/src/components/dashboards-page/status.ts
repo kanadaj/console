@@ -1,18 +1,9 @@
+import { pluralize } from '@patternfly/react-core';
 import { TFunction } from 'i18next';
 import * as _ from 'lodash';
-import {
-  PrometheusHealthHandler,
-  URLHealthHandler,
-  SubsystemHealth,
-  GetOperatorsWithStatuses,
-  GetOperatorStatusPriority,
-} from '@console/plugin-sdk';
-import {
-  HealthState,
-  healthStateMapping,
-  healthStateMessage,
-} from '@console/shared/src/components/dashboard/status-card/states';
 import { coFetch } from '@console/internal/co-fetch';
+import { PrometheusResponse } from '@console/internal/components/graphs';
+import { humanizePercentage } from '@console/internal/components/utils/units';
 import {
   ClusterVersionKind,
   ClusterUpdateStatus,
@@ -21,10 +12,20 @@ import {
   OperatorStatus,
   ClusterOperator,
 } from '@console/internal/module/k8s';
-import { PrometheusResponse } from '@console/internal/components/graphs';
-import { humanizePercentage } from '@console/internal/components/utils/units';
+import {
+  PrometheusHealthHandler,
+  URLHealthHandler,
+  SubsystemHealth,
+  GetOperatorsWithStatuses,
+  GetOperatorStatusPriority,
+} from '@console/plugin-sdk';
 import { getOperatorsStatus } from '@console/shared/src/components/dashboard/status-card/state-utils';
-import { pluralize } from '@patternfly/react-core';
+import {
+  HealthState,
+  healthStateMapping,
+  healthStateMessage,
+} from '@console/shared/src/components/dashboard/status-card/states';
+import { isSingleNode } from '@console/shared/src/selectors/infrastructure';
 
 export const fetchK8sHealth = async (url: string) => {
   const response = await coFetch(url);
@@ -89,7 +90,12 @@ export const getWorstStatus = (
   };
 };
 
-export const getControlPlaneHealth: PrometheusHealthHandler = (responses, t) => {
+export const getControlPlaneHealth: PrometheusHealthHandler = (
+  responses,
+  t,
+  resource,
+  infrastructure,
+) => {
   const componentsHealth = responses.map(({ response, error }) =>
     getControlPlaneComponentHealth(response, error, t),
   );
@@ -98,13 +104,20 @@ export const getControlPlaneHealth: PrometheusHealthHandler = (responses, t) => 
   }
   const worstStatus = getWorstStatus(componentsHealth, t);
 
+  const singleMasterMsg =
+    worstStatus.state === HealthState.OK && isSingleNode(infrastructure)
+      ? t('console-app~Single master')
+      : undefined;
+
   return {
     state: worstStatus.state,
-    message: worstStatus.message
-      ? worstStatus.count === 4
-        ? worstStatus.message
-        : `${pluralize(worstStatus.count, 'component')} ${worstStatus.message.toLowerCase()}`
-      : null,
+    message:
+      singleMasterMsg ||
+      (worstStatus.message
+        ? worstStatus.count === 4
+          ? worstStatus.message
+          : `${pluralize(worstStatus.count, 'component')} ${worstStatus.message.toLowerCase()}`
+        : null),
   };
 };
 

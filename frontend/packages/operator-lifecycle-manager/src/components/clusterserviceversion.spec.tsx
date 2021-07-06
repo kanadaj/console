@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { shallow, ShallowWrapper, mount, ReactWrapper } from 'enzyme';
-import { Link } from 'react-router-dom';
-import * as _ from 'lodash';
 import { CardTitle, CardBody, CardFooter } from '@patternfly/react-core';
-import { ErrorBoundary } from '@console/shared/src/components/error/error-boundary';
+import { shallow, ShallowWrapper, mount, ReactWrapper } from 'enzyme';
+import * as _ from 'lodash';
+import { Link } from 'react-router-dom';
 import {
   DetailsPage,
   TableInnerProps,
@@ -18,8 +17,10 @@ import {
   resourceObjPath,
   StatusBox,
 } from '@console/internal/components/utils';
-import { referenceForModel } from '@console/internal/module/k8s';
 import * as operatorLogo from '@console/internal/imgs/operator.svg';
+import { referenceForModel } from '@console/internal/module/k8s';
+import { ErrorBoundary } from '@console/shared/src/components/error/error-boundary';
+import { useActiveNamespace } from '@console/shared/src/hooks/redux-selectors';
 import {
   testClusterServiceVersion,
   testSubscription,
@@ -50,7 +51,6 @@ import {
   ClusterServiceVersionLogoProps,
   referenceForProvidedAPI,
 } from '.';
-import { useActiveNamespace } from '@console/shared/src/hooks/redux-selectors';
 
 jest.mock('@console/shared/src/hooks/useK8sModel', () => ({
   useK8sModel: () => [testModel],
@@ -431,6 +431,44 @@ describe(ClusterServiceVersionDetails.displayName, () => {
         .props().text,
     ).toEqual('olm~Conditions');
   });
+
+  it('does not render service accounts section if empty', () => {
+    const emptyTestClusterServiceVersion = _.cloneDeep(testClusterServiceVersion);
+    emptyTestClusterServiceVersion.spec.install.spec.permissions = [];
+    wrapper = shallow(
+      <ClusterServiceVersionDetails
+        obj={emptyTestClusterServiceVersion}
+        subscriptions={testSubscriptions}
+      />,
+    );
+    expect(emptyTestClusterServiceVersion.spec.install.spec.permissions.length).toEqual(0);
+    expect(
+      wrapper.findWhere(
+        (node) => node.type() === 'dt' && node.text() === 'olm~Operator ServiceAccounts',
+      ).length,
+    ).toEqual(0);
+  });
+
+  it('does not render duplicate service accounts', () => {
+    const duplicateTestClusterServiceVersion = _.cloneDeep(testClusterServiceVersion);
+    const permission = duplicateTestClusterServiceVersion.spec.install.spec.permissions[0];
+    duplicateTestClusterServiceVersion.spec.install.spec.permissions.push(permission);
+    wrapper = shallow(
+      <ClusterServiceVersionDetails
+        obj={duplicateTestClusterServiceVersion}
+        subscriptions={testSubscriptions}
+      />,
+    );
+    expect(duplicateTestClusterServiceVersion.spec.install.spec.permissions.length).toEqual(2);
+    expect(
+      wrapper.findWhere(
+        (node) => node.type() === 'dt' && node.text() === 'olm~Operator ServiceAccounts',
+      ).length,
+    ).toEqual(1);
+    expect(
+      wrapper.find(`[data-service-account-name="${permission.serviceAccountName}"]`).length,
+    ).toEqual(1);
+  });
 });
 
 describe(CSVSubscription.displayName, () => {
@@ -538,14 +576,14 @@ describe(ClusterServiceVersionsDetailsPage.displayName, () => {
   it('renders a `DetailsPage` with the correct subpages', () => {
     const detailsPage = wrapper.find(DetailsPage);
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[0].nameKey).toEqual(
-      'details-page~Details',
+      'public~Details',
     );
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[0].href).toEqual('');
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[0].component).toEqual(
       ClusterServiceVersionDetails,
     );
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[1].nameKey).toEqual(
-      `details-page~YAML`,
+      `public~YAML`,
     );
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[1].href).toEqual('yaml');
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[2].nameKey).toEqual(
@@ -553,7 +591,7 @@ describe(ClusterServiceVersionsDetailsPage.displayName, () => {
     );
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[2].href).toEqual('subscription');
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[3].nameKey).toEqual(
-      `details-page~Events`,
+      `public~Events`,
     );
     expect(detailsPage.props().pagesFor(testClusterServiceVersion)[3].href).toEqual('events');
   });

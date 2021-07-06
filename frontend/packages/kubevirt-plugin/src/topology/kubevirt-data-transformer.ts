@@ -1,26 +1,26 @@
+import { Model } from '@patternfly/react-topology';
+import { getImageForIconClass } from '@console/internal/components/catalog/catalog-item-icon';
 import {
-  apiVersionForModel,
   K8sResourceKind,
   PersistentVolumeClaimKind,
   PodKind,
   referenceFor,
 } from '@console/internal/module/k8s';
 import { OverviewItem } from '@console/shared';
-import { getImageForIconClass } from '@console/internal/components/catalog/catalog-item-icon';
-import { Model } from '@patternfly/react-topology';
-import { TopologyDataObject, TopologyDataResources } from '@console/topology/src/topology-types';
 import {
   getTopologyGroupItems,
   getTopologyNodeItem,
   mergeGroup,
   WorkloadModelProps,
 } from '@console/topology/src/data-transforms/transform-utils';
-import { VMIKind, VMKind } from '../types';
+import { TopologyDataObject, TopologyDataResources } from '@console/topology/src/topology-types';
 import { VirtualMachineModel } from '../models';
-import { TYPE_VIRTUAL_MACHINE } from './components/const';
+import { getKubevirtModelAvailableAPIVersion } from '../models/kubevirtReferenceForModel';
 import { getVMStatus } from '../statuses/vm/vm-status';
+import { VMIKind, VMKind } from '../types';
 import { V1alpha1DataVolume } from '../types/api';
 import { VMImportKind } from '../types/vm-import/ovirt/vm-import';
+import { TYPE_VIRTUAL_MACHINE } from './components/const';
 import { VMNodeData } from './types';
 
 export const getOperatingSystemImage = (vm: VMKind, templates: K8sResourceKind[]): string => {
@@ -35,7 +35,7 @@ export const getOperatingSystemImage = (vm: VMKind, templates: K8sResourceKind[]
 
 export const createVMOverviewItem = (vm: K8sResourceKind): OverviewItem => {
   if (!vm.apiVersion) {
-    vm.apiVersion = apiVersionForModel(VirtualMachineModel);
+    vm.apiVersion = getKubevirtModelAvailableAPIVersion(VirtualMachineModel);
   }
   if (!vm.kind) {
     vm.kind = VirtualMachineModel.kind;

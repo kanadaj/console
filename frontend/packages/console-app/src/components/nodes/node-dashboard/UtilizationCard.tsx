@@ -2,20 +2,9 @@ import * as React from 'react';
 import { PopoverPosition } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
 import {
-  useMetricDuration,
-  Duration,
-} from '@console/shared/src/components/dashboard/duration-hook';
-import { TopConsumerPopoverProp } from '@console/shared/src/components/dashboard/utilization-card/UtilizationItem';
-import ConsumerPopover, {
-  LimitsBody,
-} from '@console/shared/src/components/dashboard/utilization-card/TopConsumerPopover';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
-import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
-import { getNodeAddresses } from '@console/shared/src/selectors/node';
-import { PodModel, NamespaceModel } from '@console/internal/models';
+  PrometheusUtilizationItem,
+  PrometheusMultilineUtilizationItem,
+} from '@console/internal/components/dashboard/dashboards-page/cluster-dashboard/utilization-card';
 import {
   humanizeCpuCores,
   humanizeBinaryBytes,
@@ -23,11 +12,22 @@ import {
   humanizeNumber,
   Dropdown,
 } from '@console/internal/components/utils';
+import { PodModel, NamespaceModel } from '@console/internal/models';
+import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
+import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
+import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
 import {
-  PrometheusUtilizationItem,
-  PrometheusMultilineUtilizationItem,
-} from '@console/internal/components/dashboard/dashboards-page/cluster-dashboard/utilization-card';
-
+  useMetricDuration,
+  Duration,
+} from '@console/shared/src/components/dashboard/duration-hook';
+import ConsumerPopover, {
+  LimitsBody,
+} from '@console/shared/src/components/dashboard/utilization-card/TopConsumerPopover';
+import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
+import { TopConsumerPopoverProp } from '@console/shared/src/components/dashboard/utilization-card/UtilizationItem';
+import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
+import { getNodeAddresses } from '@console/shared/src/selectors/node';
+import { NodeDashboardContext } from './NodeDashboardContext';
 import {
   NodeQueries,
   getUtilizationQueries,
@@ -35,7 +35,6 @@ import {
   getTopConsumerQueries,
   getResourceQutoaQueries,
 } from './queries';
-import { NodeDashboardContext } from './NodeDashboardContext';
 
 const getPodConsumers = (query: string, nodeName: string) => ({
   query,
@@ -109,8 +108,9 @@ export const MemoryPopover: React.FC<PopoverProps> = ({
 };
 
 const UtilizationCard: React.FC = () => {
+  const { t } = useTranslation();
   const [timestamps, setTimestamps] = React.useState<Date[]>();
-  const [duration, setDuration] = useMetricDuration();
+  const [duration, setDuration] = useMetricDuration(t);
 
   const { obj, setCPULimit, setMemoryLimit } = React.useContext(NodeDashboardContext);
 
@@ -153,7 +153,7 @@ const UtilizationCard: React.FC = () => {
     ),
     [nodeIp, nodeName],
   );
-  const { t } = useTranslation();
+
   const filesystemPopover = React.useCallback(
     ({ current }: TopConsumerPopoverProp) => (
       <ConsumerPopover
@@ -202,7 +202,12 @@ const UtilizationCard: React.FC = () => {
     <DashboardCard data-test-id="utilization-card">
       <DashboardCardHeader>
         <DashboardCardTitle>{t('nodes~Utilization')}</DashboardCardTitle>
-        <Dropdown items={Duration} onChange={setDuration} selectedKey={duration} title={duration} />
+        <Dropdown
+          items={Duration(t)}
+          onChange={setDuration}
+          selectedKey={duration}
+          title={duration}
+        />
       </DashboardCardHeader>
       <UtilizationBody timestamps={timestamps}>
         <PrometheusUtilizationItem

@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { getBadgeFromType } from '@console/shared';
 import { ListPage } from '@console/internal/components/factory';
 import { referenceForModel } from '@console/internal/module/k8s';
 import { PipelineRunModel } from '../../models';
+import { usePipelineTechPreviewBadge } from '../../utils/hooks';
 import { runFilters } from '../pipelines/detail-page-tabs/PipelineRuns';
 import PipelineRunsList from './list-page/PipelineRunList';
 
@@ -16,6 +16,7 @@ const PipelineRunsResourceList: React.FC<Omit<
   'kind' | 'ListComponent' | 'rowFilters'
 > &
   PipelineRunsResourceListProps> = (props) => {
+  const badge = usePipelineTechPreviewBadge(props.namespace);
   return (
     <ListPage
       {...props}
@@ -23,7 +24,7 @@ const PipelineRunsResourceList: React.FC<Omit<
       kind={referenceForModel(PipelineRunModel)}
       ListComponent={PipelineRunsList}
       rowFilters={runFilters}
-      badge={props.hideBadge ? null : getBadgeFromType(PipelineRunModel.badge)}
+      badge={props.hideBadge ? null : badge}
     />
   );
 };

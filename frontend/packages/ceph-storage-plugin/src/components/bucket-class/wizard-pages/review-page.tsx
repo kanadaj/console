@@ -1,9 +1,19 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Title, List, ListItem } from '@patternfly/react-core';
+import { Alert, Title, pluralize } from '@patternfly/react-core';
 import { LoadingInline } from '@console/internal/components/utils';
 import { getName } from '@console/shared';
+import {
+  convertTime,
+  getTimeUnitString,
+} from '@console/ceph-storage-plugin/src/utils/bucket-class';
 import { State } from '../state';
+import { StoreCard } from '../review-utils';
+import {
+  ReviewListBody,
+  ReviewListTitle,
+} from '../../ocs-install/install-wizard/review-and-create';
+import { NamespacePolicyType, BucketClassType } from '../../../constants/bucket-class';
 
 const ReviewPage: React.FC<ReviewPageProps> = ({ state }) => {
   const {
@@ -13,66 +23,125 @@ const ReviewPage: React.FC<ReviewPageProps> = ({ state }) => {
     tier2BackingStore,
     tier1Policy,
     tier2Policy,
+    namespacePolicyType,
+    bucketClassType,
+    readNamespaceStore,
+    hubNamespaceStore,
+    cacheBackingStore,
+    timeToLive,
+    timeUnit,
+    writeNamespaceStore,
   } = state;
   const { error, isLoading } = state;
   const { t } = useTranslation();
 
+  const getReviewForNamespaceStore = () => (
+    <>
+      <ReviewListBody hideIcon>
+        <span>{t('ceph-storage-plugin~Namespace Policy: ')}</span>&nbsp;
+        <span className="text-secondary">{namespacePolicyType}</span>
+      </ReviewListBody>
+      {namespacePolicyType === NamespacePolicyType.SINGLE && (
+        <ReviewListBody hideIcon>
+          <span>{t('ceph-storage-plugin~Read and write NamespaceStore : ')}</span>&nbsp;
+          <span className="text-secondary">{readNamespaceStore[0]?.metadata.name}</span>
+        </ReviewListBody>
+      )}
+      {namespacePolicyType === NamespacePolicyType.CACHE && (
+        <>
+          <ReviewListBody hideIcon>
+            <span>{t('ceph-storage-plugin~Hub namespace store: ')}</span>&nbsp;
+            <span className="text-secondary">{getName(hubNamespaceStore)}</span>
+          </ReviewListBody>
+          <ReviewListBody hideIcon>
+            <span>{t('ceph-storage-plugin~Cache backing store: ')}</span>&nbsp;
+            <span className="text-secondary">{getName(cacheBackingStore)}</span>
+          </ReviewListBody>
+          <ReviewListBody hideIcon>
+            <span>{t('ceph-storage-plugin~Time to live: ')}</span>&nbsp;
+            <span className="text-secondary">{`${pluralize(
+              convertTime(timeUnit, timeToLive),
+              getTimeUnitString(timeUnit, t),
+            )}`}</span>
+          </ReviewListBody>
+        </>
+      )}
+      {namespacePolicyType === NamespacePolicyType.MULTI && (
+        <ReviewListBody hideIcon>
+          <span>{t('ceph-storage-plugin~Resources ')}</span>&nbsp;
+          <p>{t('ceph-storage-plugin~Selected read namespace stores: ')}</p>
+          <StoreCard resources={readNamespaceStore} />
+          <br />
+          <span>{t('ceph-storage-plugin~Selected write namespace store: ')}</span>
+          <span className="text-secondary">{getName(writeNamespaceStore[0])}</span>
+        </ReviewListBody>
+      )}
+    </>
+  );
+
+  const getReviewForBackingStore = () => (
+    <>
+      <ReviewListBody hideIcon>
+        <span>{t('ceph-storage-plugin~Placement policy details ')}</span>&nbsp;
+        <br />
+        <p data-test="tier1">
+          <b>
+            {t('ceph-storage-plugin~Tier 1: ')}
+            {tier1Policy}
+          </b>
+        </p>
+        <p>{t('ceph-storage-plugin~Selected BackingStores')}</p>
+        <StoreCard resources={tier1BackingStore} />
+      </ReviewListBody>
+      <ReviewListBody hideIcon>
+        {!!tier2Policy && (
+          <>
+            <p data-test="tier2">
+              <b>
+                {t('ceph-storage-plugin~Tier 2: ')}
+                {tier2Policy}
+              </b>
+            </p>
+            <p>{t('ceph-storage-plugin~Selected BackingStores')}</p>
+            <StoreCard resources={tier2BackingStore} />
+          </>
+        )}
+      </ReviewListBody>
+    </>
+  );
+
   return (
     <div className="nb-create-bc-step-page">
       <Title size="xl" headingLevel="h2">
-        {t('ceph-storage-plugin~Review and confirm Bucket Class settings')}
+        {t('ceph-storage-plugin~Review BucketClass')}
       </Title>
-      <div className="nb-create-bc-step-page-review__item">
-        <Title size="lg" headingLevel="h4" className="nb-create-bc-step-page-review__item-header">
-          {t('ceph-storage-plugin~Bucket Class name')}
-        </Title>
-        <p data-test="bc-name" data-testid="bc-name">
-          {bucketClassName}
-        </p>
-      </div>
-      {description && (
-        <div className="nb-create-bc-step-page-review__item">
-          <Title size="lg" headingLevel="h4" className="nb-create-bc-step-page-review__item-header">
-            {t('ceph-storage-plugin~Description')}
-          </Title>
-          <p data-test="bc-desc" data-testid="bc-desc">
-            {description}
-          </p>
+      <dl>
+        <ReviewListTitle text={t('ceph-storage-plugin~General')} />
+        <br />
+        <div className="nb-create-bc-list--indent">
+          <ReviewListBody hideIcon>
+            <span>{t('ceph-storage-plugin~BucketClass type: ')}</span>&nbsp;
+            <span className="text-secondary">{bucketClassType}</span>
+          </ReviewListBody>
+          <ReviewListBody hideIcon>
+            <span>{t('ceph-storage-plugin~BucketClass name: ')}</span>&nbsp;
+            <span data-test="bc-name" className="text-secondary">
+              {bucketClassName}
+            </span>
+          </ReviewListBody>
+          {!!description && (
+            <ReviewListBody hideIcon>
+              <span>{t('ceph-storage-plugin~Description: ')}</span>&nbsp;
+              <span data-test="bc-desc" className="text-secondary">
+                {description}
+              </span>
+            </ReviewListBody>
+          )}
+          {bucketClassType === BucketClassType.NAMESPACE
+            ? getReviewForNamespaceStore()
+            : getReviewForBackingStore()}
         </div>
-      )}
-      <div className="nb-create-bc-step-page-review__item">
-        <Title size="lg" headingLevel="h4" className="nb-create-bc-step-page-review__item-header">
-          {t('ceph-storage-plugin~Placement Policy Details')}
-        </Title>
-        <div className="co-nobaa-create-bc-step-page-review__item-tier1">
-          <Title size="md" headingLevel="h5" data-test="tier1" data-testid="tier1-policy">
-            {t('ceph-storage-plugin~Tier 1: {{tier1Policy}}', { tier1Policy })}
-          </Title>
-          <div className="nb-bc-create-review__selected-stores" data-testid="tier1-stores">
-            <p data-testid="tier1-stores">{t('ceph-storage-plugin~Selected Backing Store:')} </p>
-            <List>
-              {tier1BackingStore.map((item) => (
-                <ListItem>{getName(item)}</ListItem>
-              ))}
-            </List>
-          </div>
-        </div>
-        {tier2Policy && (
-          <>
-            <Title size="md" headingLevel="h5" data-test="tier2" data-testid="tier2-policy">
-              {t('ceph-storage-plugin~Tier 2:')} {tier2Policy}
-            </Title>
-            <div className="nb-bc-create-review__selected-stores" data-testid="tier2-stores">
-              <p data-testid="tier2-stores">{t('ceph-storage-plugin~Selected Backing Store:')} </p>
-              <List>
-                {tier2BackingStore.map((item) => (
-                  <ListItem>{getName(item)}</ListItem>
-                ))}
-              </List>
-            </div>
-          </>
-        )}
-      </div>
+      </dl>
       {isLoading && <LoadingInline />}
       {!!error && (
         <Alert variant="danger" title="Error" isInline>

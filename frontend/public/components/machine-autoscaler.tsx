@@ -41,11 +41,11 @@ const MachineAutoscalerTargetLink: React.FC<MachineAutoscalerTargetLinkProps> = 
 };
 
 const tableColumnClasses = [
-  classNames('col-md-4', 'col-sm-4', 'col-xs-6'),
-  classNames('col-md-3', 'col-sm-4', 'col-xs-6'),
-  classNames('col-md-3', 'col-sm-4', 'hidden-xs'),
-  classNames('col-md-1', 'hidden-sm', 'hidden-xs'),
-  classNames('col-md-1', 'hidden-sm', 'hidden-xs'),
+  'pf-u-w-33-on-lg',
+  '',
+  'pf-m-hidden pf-m-visible-on-md',
+  'pf-m-hidden pf-m-visible-on-lg pf-u-w-16-on-lg',
+  'pf-m-hidden pf-m-visible-on-lg pf-u-w-16-on-lg',
   Kebab.columnClass,
 ];
 
@@ -86,32 +86,32 @@ const MachineAutoscalerList: React.FC = (props) => {
   const MachineAutoscalerTableHeader = () => {
     return [
       {
-        title: t('machine-autoscalers~Name'),
+        title: t('public~Name'),
         sortField: 'metadata.name',
         transforms: [sortable],
         props: { className: tableColumnClasses[0] },
       },
       {
-        title: t('machine-autoscalers~Namespace'),
+        title: t('public~Namespace'),
         sortField: 'metadata.namespace',
         transforms: [sortable],
         props: { className: tableColumnClasses[1] },
         id: 'namespace',
       },
       {
-        title: t('machine-autoscalers~Scale target'),
+        title: t('public~Scale target'),
         sortField: 'spec.scaleTargetRef.name',
         transforms: [sortable],
         props: { className: tableColumnClasses[2] },
       },
       {
-        title: t('machine-autoscalers~Min'),
+        title: t('public~Min'),
         sortField: 'spec.minReplicas',
         transforms: [sortable],
         props: { className: tableColumnClasses[3] },
       },
       {
-        title: t('machine-autoscalers~Max'),
+        title: t('public~Max'),
         sortField: 'spec.maxReplicas',
         transforms: [sortable],
         props: { className: tableColumnClasses[4] },
@@ -126,7 +126,7 @@ const MachineAutoscalerList: React.FC = (props) => {
   return (
     <Table
       {...props}
-      aria-label={t('machine-autoscalers~Machine autoscalers')}
+      aria-label={t('public~Machine autoscalers')}
       Header={MachineAutoscalerTableHeader}
       Row={MachineAutoscalerTableRow}
       virtualize
@@ -139,17 +139,17 @@ const MachineAutoscalerDetails: React.FC<MachineAutoscalerDetailsProps> = ({ obj
   return (
     <>
       <div className="co-m-pane__body">
-        <SectionHeading text={t('machine-autoscalers~MachineAutoscaler details')} />
+        <SectionHeading text={t('public~MachineAutoscaler details')} />
         <div className="row">
           <div className="col-md-6">
             <ResourceSummary resource={obj}>
-              <dt>{t('machine-autoscalers~Scale target')}</dt>
+              <dt>{t('public~Scale target')}</dt>
               <dd>
                 <MachineAutoscalerTargetLink obj={obj} />
               </dd>
-              <dt>{t('machine-autoscalers~Min replicas')}</dt>
+              <dt>{t('public~Min replicas')}</dt>
               <dd>{_.get(obj, 'spec.minReplicas') || '-'}</dd>
-              <dt>{t('machine-autoscalers~Max replicas')}</dt>
+              <dt>{t('public~Max replicas')}</dt>
               <dd>{_.get(obj, 'spec.maxReplicas') || '-'}</dd>
             </ResourceSummary>
           </div>

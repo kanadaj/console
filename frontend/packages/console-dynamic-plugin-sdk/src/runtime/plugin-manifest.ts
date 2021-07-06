@@ -1,14 +1,14 @@
 import * as _ from 'lodash';
 import { coFetch } from '@console/internal/co-fetch';
-import { ConsolePluginManifestJSON } from '../schema/plugin-manifest';
 import { pluginManifestFile } from '../constants';
+import { ConsolePluginManifestJSON } from '../schema/plugin-manifest';
 import { resolveURL } from '../utils/url';
 
 export const validatePluginManifestSchema = async (
   manifest: ConsolePluginManifestJSON,
   manifestURL: string,
 ) => {
-  const schema = (await import('../../dist/schema/plugin-manifest')).default;
+  const schema = (await import('../../schema/plugin-manifest')).default;
 
   // Use dynamic import to avoid pulling ajv dependency tree into main vendors chunk
   const SchemaValidator = await import(

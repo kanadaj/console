@@ -2,7 +2,31 @@
 import * as _ from 'lodash';
 import { getLabels } from '@console/shared/src/selectors/common';
 import { compareOwnerReference } from '@console/shared/src/utils/owner-references';
-import { K8sResourceWrapper } from '../common/k8s-resource-wrapper';
+import { VMWizardNetwork, VMWizardStorage } from '../../../components/create-vm-wizard/types';
+import {
+  CLOUD_INIT_CONFIG_DRIVE,
+  TEMPLATE_FLAVOR_LABEL,
+  TEMPLATE_OS_LABEL,
+  TEMPLATE_WORKLOAD_LABEL,
+  VolumeType,
+} from '../../../constants/vm';
+import { VirtualMachineImportModel, VirtualMachineModel } from '../../../models';
+import { toDataVolumeTemplateSpec } from '../../../selectors/dv/selectors';
+import { findKeySuffixValue } from '../../../selectors/utils';
+import { transformDevices } from '../../../selectors/vm/devices';
+import {
+  getAffinity,
+  getCloudInitVolume,
+  getDataVolumeTemplates,
+  getDevices,
+  getDisks,
+  getInterfaces,
+  getNetworks,
+  getNodeSelector,
+  getTolerations,
+  getVolumes,
+  isDedicatedCPUPlacement,
+} from '../../../selectors/vm/selectors';
 import {
   CPURaw,
   V1DataVolumeTemplateSpec,
@@ -10,34 +34,11 @@ import {
   VMISpec,
   VMKind,
 } from '../../../types';
-import {
-  getCloudInitVolume,
-  getDataVolumeTemplates,
-  getDisks,
-  getInterfaces,
-  getNetworks,
-  getVolumes,
-  isDedicatedCPUPlacement,
-  getNodeSelector,
-  getTolerations,
-  getAffinity,
-  getDevices,
-} from '../../../selectors/vm/selectors';
-import { VMWizardNetwork, VMWizardStorage } from '../../../components/create-vm-wizard/types';
-import { VMILikeMethods, BootDevice } from './types';
-import { findKeySuffixValue } from '../../../selectors/utils';
-import {
-  TEMPLATE_FLAVOR_LABEL,
-  TEMPLATE_OS_LABEL,
-  TEMPLATE_WORKLOAD_LABEL,
-  VolumeType,
-} from '../../../constants/vm';
-import { VolumeWrapper } from './volume-wrapper';
-import { V1Disk, V1alpha1DataVolume, V1Volume } from '../../../types/api';
-import { VirtualMachineImportModel, VirtualMachineModel } from '../../../models';
+import { V1alpha1DataVolume, V1Disk, V1Volume } from '../../../types/api';
 import { buildOwnerReferenceForModel } from '../../../utils';
-import { transformDevices } from '../../../selectors/vm/devices';
-import { toDataVolumeTemplateSpec } from '../../../selectors/dv/selectors';
+import { K8sResourceWrapper } from '../common/k8s-resource-wrapper';
+import { BootDevice, VMILikeMethods } from './types';
+import { VolumeWrapper } from './volume-wrapper';
 
 export class VMWrapper extends K8sResourceWrapper<VMKind, VMWrapper> implements VMILikeMethods {
   constructor(vm?: VMKind | VMWrapper | any, copy = false) {
@@ -329,6 +330,17 @@ export class VMWrapper extends K8sResourceWrapper<VMKind, VMWrapper> implements 
     this.ensurePath('spec.template.spec');
     this.data.spec.template.spec.hostname = hostname;
     return this;
+  };
+
+  setSSHKey = (secretNames: string[]) => {
+    this.ensurePath('spec.template.spec');
+    const accessCredentialsKeys = secretNames.map((secretName) => ({
+      sshPublicKey: {
+        propagationMethod: { configDrive: { name: CLOUD_INIT_CONFIG_DRIVE } },
+        source: { secret: { secretName } },
+      },
+    }));
+    this.data.spec.template.spec.accessCredentials = accessCredentialsKeys;
   };
 
   ensureDataVolumeTemplates = (): V1DataVolumeTemplateSpec[] =>

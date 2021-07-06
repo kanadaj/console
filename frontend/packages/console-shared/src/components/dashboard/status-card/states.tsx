@@ -1,4 +1,6 @@
 import * as React from 'react';
+import { InProgressIcon } from '@patternfly/react-icons';
+import { TFunction } from 'i18next';
 import {
   GreenCheckCircleIcon,
   RedExclamationCircleIcon,
@@ -6,8 +8,6 @@ import {
   BlueSyncIcon,
   GrayUnknownIcon,
 } from '@console/shared/src/components/status/icons';
-import { InProgressIcon } from '@patternfly/react-icons';
-import { TFunction } from 'i18next';
 
 export enum HealthState {
   OK = 'OK',
@@ -25,21 +25,21 @@ export const healthStateMessage = (state: keyof typeof HealthState, t: TFunction
     case HealthState.OK:
       return '';
     case HealthState.UNKNOWN:
-      return t('dashboard~Unknown');
+      return t('console-shared~Unknown');
     case HealthState.PROGRESS:
-      return t('dashboard~Pending');
+      return t('console-shared~Pending');
     case HealthState.UPDATING:
-      return t('dashboard~Updating');
+      return t('console-shared~Updating');
     case HealthState.WARNING:
-      return t('dashboard~Degraded');
+      return t('console-shared~Degraded');
     case HealthState.ERROR:
-      return t('dashboard~Degraded');
+      return t('console-shared~Degraded');
     case HealthState.LOADING:
-      return t('dashboard~Loading');
+      return t('console-shared~Loading');
     case HealthState.NOT_AVAILABLE:
-      return t('dashboard~Not available');
+      return t('console-shared~Not available');
     default:
-      return t('dashboard~Unknown');
+      return t('console-shared~Unknown');
   }
 };
 

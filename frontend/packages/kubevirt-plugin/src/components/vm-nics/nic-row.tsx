@@ -1,23 +1,24 @@
 import * as React from 'react';
-import { TableData, TableRow, RowFunction } from '@console/internal/components/factory';
+import { RowFunction, TableData, TableRow } from '@console/internal/components/factory';
 import { asAccessReview, Kebab, KebabOption } from '@console/internal/components/utils';
 import { TemplateModel } from '@console/internal/models';
 import { DASH, dimensifyRow, getDeletetionTimestamp } from '@console/shared';
-import { deleteNICModal } from '../modals/delete-nic-modal/delete-nic-modal';
+import { PENDING_RESTART_LABEL } from '../../constants';
 import { VirtualMachineModel } from '../../models';
-import { asVM, isVMRunningOrExpectedRunning } from '../../selectors/vm';
 import { isVM, isVMI } from '../../selectors/check-type';
+import { asVM, isVMRunningOrExpectedRunning } from '../../selectors/vm';
+import { VMIKind } from '../../types';
 import { VMLikeEntityKind } from '../../types/vmLike';
+import { deleteNICModal } from '../modals/delete-nic-modal/delete-nic-modal';
 import { nicModalEnhanced } from '../modals/nic-modal/nic-modal-enhanced';
 import { ValidationCell } from '../table/validation-cell';
 import {
-  VMNicRowActionOpts,
   NetworkBundle,
   NetworkSimpleData,
   NetworkSimpleDataValidation,
+  VMNicRowActionOpts,
   VMNicRowCustomData,
 } from './types';
-import { PENDING_RESTART_LABEL } from '../../constants';
 
 const menuActionEdit = (
   nic,
@@ -60,8 +61,14 @@ const menuActionDelete = (
   ),
 });
 
-const getActions = (nic, network, vmLikeEntity: VMLikeEntityKind, opts: VMNicRowActionOpts) => {
-  if (isVMI(vmLikeEntity) || isVMRunningOrExpectedRunning(asVM(vmLikeEntity))) {
+const getActions = (
+  nic,
+  network,
+  vmLikeEntity: VMLikeEntityKind,
+  vmi: VMIKind,
+  opts: VMNicRowActionOpts,
+) => {
+  if (isVMI(vmLikeEntity) || isVMRunningOrExpectedRunning(asVM(vmLikeEntity), vmi)) {
     return [];
   }
   const actions = [menuActionEdit, menuActionDelete];
@@ -120,7 +127,7 @@ export const NicSimpleRow: React.FC<VMNicSimpleRowProps> = ({
 
 export const NicRow: RowFunction<NetworkBundle, VMNicRowCustomData> = ({
   obj: { name, nic, network, ...restData },
-  customData: { isDisabled, withProgress, vmLikeEntity, columnClasses, pendingChangesNICs },
+  customData: { isDisabled, withProgress, vmLikeEntity, vmi, columnClasses, pendingChangesNICs },
   index,
   style,
 }) => (
@@ -132,12 +139,12 @@ export const NicRow: RowFunction<NetworkBundle, VMNicRowCustomData> = ({
     isPendingRestart={!!pendingChangesNICs?.has(name)}
     actionsComponent={
       <Kebab
-        options={getActions(nic, network, vmLikeEntity, { withProgress })}
+        options={getActions(nic, network, vmLikeEntity, vmi, { withProgress })}
         isDisabled={
           isDisabled ||
           isVMI(vmLikeEntity) ||
           !!getDeletetionTimestamp(vmLikeEntity) ||
-          isVMRunningOrExpectedRunning(asVM(vmLikeEntity))
+          isVMRunningOrExpectedRunning(asVM(vmLikeEntity), vmi)
         }
         id={`kebab-for-${name}`}
       />

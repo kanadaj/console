@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { Firehose, ResourceIcon, StatusBox } from '@console/internal/components/utils';
 import {
   GroupVersionKind,
   K8sResourceKind,
@@ -19,9 +20,8 @@ import {
   flattenCsvResources,
   linkForCsvResource,
 } from '@console/operator-lifecycle-manager/src/components/k8s-resource';
-import { Firehose, ResourceIcon, StatusBox } from '@console/internal/components/utils';
-import { TopologyDataObject } from '../topology-types';
 import TopologyGroupResourcesPanel from '../components/side-bar/TopologyGroupResourcesPanel';
+import { TopologyDataObject } from '../topology-types';
 
 type OperatorResourcesProps = {
   namespace: string;
@@ -128,6 +128,7 @@ const TopologyOperatorBackedResources: React.FC<TopologyOperatorBackedResourcesP
   item,
   csv,
 }) => {
+  const { t } = useTranslation();
   const { resource } = item;
   const { namespace } = resource.metadata;
   const reference = referenceFor(resource);
@@ -141,7 +142,7 @@ const TopologyOperatorBackedResources: React.FC<TopologyOperatorBackedResourcesP
 
     return (
       <div className="co-m-pane__heading-owner">
-        Managed by{' '}
+        {t('topology~Managed by')}{' '}
         <span className="co-resource-item">
           <ResourceIcon kind={kind} />
           <Link to={link} className="co-resource-item__resource-name" data-test-operand-link={name}>

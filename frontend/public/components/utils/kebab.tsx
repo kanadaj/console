@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
 import { KEY_CODES, Tooltip, FocusTrap } from '@patternfly/react-core';
 import { AngleRightIcon, EllipsisVIcon } from '@patternfly/react-icons';
-import { subscribeToExtensions } from '@console/plugin-sdk/src/api/subscribeToExtensions';
+import { subscribeToExtensions } from '@console/plugin-sdk/src/api/pluginSubscriptionService';
 import { KebabActions, isKebabActions } from '@console/plugin-sdk/src/typings/kebab-actions';
 import Popper from '@console/shared/src/components/popper/Popper';
 import {
@@ -32,7 +32,7 @@ import {
 } from '../../module/k8s';
 import { impersonateStateToProps } from '../../reducers/ui';
 import { connectToModel } from '../../kinds';
-import { VolumeSnapshotModel } from '../../models';
+import { DeploymentConfigModel, DeploymentModel, VolumeSnapshotModel } from '../../models';
 
 export const kebabOptionsToMenu = (options: KebabOption[]): KebabMenuOption[] => {
   const subs: { [key: string]: KebabSubMenu } = {};
@@ -92,6 +92,7 @@ const KebabItem_: React.FC<KebabItemProps & { isAllowed: boolean }> = ({
       onClick={(e) => !disabled && onClick(e, option)}
       autoFocus={autoFocus}
       onKeyDown={onEscape && handleEscape}
+      disabled={disabled}
       data-test-action={option.labelKey ? t(option.labelKey, option.labelKind) : option.label}
     >
       {option.icon && <span className="oc-kebab__icon">{option.icon}</span>}
@@ -159,11 +160,17 @@ const KebabSubMenu: React.FC<KebabSubMenuProps> = ({ option, onClick }) => {
         }}
         reference={referenceCb}
       >
-        <FocusTrap focusTrapOptions={{ clickOutsideDeactivates: true }}>
+        <FocusTrap
+          focusTrapOptions={{
+            clickOutsideDeactivates: true,
+            fallbackFocus: () => subMenuRef.current, // fallback to popover content wrapper div if there are no tabbable elements
+          }}
+        >
           <div
             ref={subMenuCbRef}
             role="presentation"
             className="pf-c-dropdown pf-m-expanded"
+            tabIndex={-1}
             onMouseLeave={(e) => {
               // only close the sub menu if the mouse does not enter the item
               if (!nodeRef.current || !nodeRef.current.contains(e.relatedTarget as Node)) {
@@ -205,9 +212,10 @@ export const KebabItem: React.FC<KebabItemProps> = (props) => {
   } else {
     item = <KebabItem_ {...props} isAllowed />;
   }
+  const tooltip = option.tooltipKey ? i18next.t(option.tooltipKey) : option.tooltip;
 
-  return option.tooltip ? (
-    <Tooltip position="left" content={option.tooltip}>
+  return tooltip ? (
+    <Tooltip position="left" content={tooltip}>
       {item}
     </Tooltip>
   ) : (
@@ -255,8 +263,8 @@ export const KebabItems: React.FC<KebabItemsProps> = ({ options, ...props }) => 
 
 const kebabFactory: KebabFactory = {
   Delete: (kind, obj) => ({
-    // t('details-page~Delete {{kind}}', {kind: kind.label})
-    labelKey: 'details-page~Delete {{kind}}',
+    // t('public~Delete {{kind}}', {kind: kind.label})
+    labelKey: 'public~Delete {{kind}}',
     labelKind: { kind: kind.labelKey ? i18next.t(kind.labelKey) : kind.label },
     callback: () =>
       deleteModal({
@@ -266,17 +274,19 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'delete'),
   }),
   Edit: (kind, obj) => ({
-    // t('details-page~Edit {{kind}}', {kind: kind.label})
-    labelKey: 'details-page~Edit {{kind}}',
+    // t('public~Edit {{kind}}', {kind: kind.label})
+    labelKey: 'public~Edit {{kind}}',
     labelKind: { kind: kind.labelKey ? i18next.t(kind.labelKey) : kind.label },
     dataTest: `Edit ${kind.label}`,
-    href: `${resourceObjPath(obj, kind.crd ? referenceForModel(kind) : kind.kind)}/yaml`,
+    href: [DeploymentModel.kind, DeploymentConfigModel.kind].includes(kind.kind)
+      ? `/edit-deployment/ns/${obj.metadata.namespace}?name=${obj.metadata.name}&kind=${kind.kind}`
+      : `${resourceObjPath(obj, kind.crd ? referenceForModel(kind) : kind.kind)}/yaml`,
     // TODO: Fallback to "View YAML"? We might want a similar fallback for annotations, labels, etc.
     accessReview: asAccessReview(kind, obj, 'update'),
   }),
   ModifyLabels: (kind, obj) => ({
-    // t('details-page~Edit labels')
-    labelKey: 'details-page~Edit labels',
+    // t('public~Edit labels')
+    labelKey: 'public~Edit labels',
     callback: () =>
       labelsModal({
         kind,
@@ -286,8 +296,8 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'patch'),
   }),
   ModifyPodSelector: (kind, obj) => ({
-    // t('details-page~Edit Pod selector')
-    labelKey: 'details-page~Edit Pod selector',
+    // t('public~Edit Pod selector')
+    labelKey: 'public~Edit Pod selector',
     callback: () =>
       podSelectorModal({
         kind,
@@ -297,8 +307,8 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'patch'),
   }),
   ModifyAnnotations: (kind, obj) => ({
-    // t('details-page~Edit annotations')
-    labelKey: 'details-page~Edit annotations',
+    // t('public~Edit annotations')
+    labelKey: 'public~Edit annotations',
     callback: () =>
       annotationsModal({
         kind,
@@ -308,8 +318,8 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'patch'),
   }),
   ModifyCount: (kind, obj) => ({
-    // t('details-page~Edit Pod count')
-    labelKey: 'details-page~Edit Pod count',
+    // t('public~Edit Pod count')
+    labelKey: 'public~Edit Pod count',
     callback: () =>
       configureReplicaCountModal({
         resourceKind: kind,
@@ -318,8 +328,8 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'patch', 'scale'),
   }),
   ModifyTaints: (kind, obj) => ({
-    // t('details-page~Edit taints')
-    labelKey: 'details-page~Edit taints',
+    // t('public~Edit taints')
+    labelKey: 'public~Edit taints',
     callback: () =>
       taintsModal({
         resourceKind: kind,
@@ -329,8 +339,8 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'patch'),
   }),
   ModifyTolerations: (kind, obj) => ({
-    // t('details-page~Edit tolerations')
-    labelKey: 'details-page~Edit tolerations',
+    // t('public~Edit tolerations')
+    labelKey: 'public~Edit tolerations',
     callback: () =>
       tolerationsModal({
         resourceKind: kind,
@@ -340,14 +350,14 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'patch'),
   }),
   AddStorage: (kind, obj) => ({
-    // t('details-page~Add storage')
-    labelKey: 'details-page~Add storage',
+    // t('public~Add storage')
+    labelKey: 'public~Add storage',
     href: `${resourceObjPath(obj, kind.crd ? referenceForModel(kind) : kind.kind)}/attach-storage`,
     accessReview: asAccessReview(kind, obj, 'patch'),
   }),
   ExpandPVC: (kind, obj) => ({
-    // t('details-page~Expand PVC')
-    labelKey: 'details-page~Expand PVC',
+    // t('public~Expand PVC')
+    labelKey: 'public~Expand PVC',
     callback: () =>
       expandPVCModal({
         kind,
@@ -356,18 +366,16 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'patch'),
   }),
   PVCSnapshot: (kind, obj) => ({
-    // t('details-page~Create snapshot')
-    labelKey: 'details-page~Create snapshot',
+    // t('public~Create snapshot')
+    labelKey: 'public~Create snapshot',
     isDisabled: obj?.status?.phase !== 'Bound',
     tooltip: obj?.status?.phase !== 'Bound' ? 'PVC is not Bound' : '',
-    href: `${resourceObjPath(obj, kind.crd ? referenceForModel(kind) : kind.kind)}/${
-      VolumeSnapshotModel.plural
-    }/~new/form`,
+    href: `/k8s/ns/${obj.metadata.namespace}/${VolumeSnapshotModel.plural}/~new/form?pvc=${obj.metadata.name}`,
     accessReview: asAccessReview(kind, obj, 'create'),
   }),
   ClonePVC: (kind, obj) => ({
-    // t('details-page~Clone PVC')
-    labelKey: 'details-page~Clone PVC',
+    // t('public~Clone PVC')
+    labelKey: 'public~Clone PVC',
     isDisabled: obj?.status?.phase !== 'Bound',
     tooltip: obj?.status?.phase !== 'Bound' ? 'PVC is not Bound' : '',
     callback: () =>
@@ -378,8 +386,8 @@ const kebabFactory: KebabFactory = {
     accessReview: asAccessReview(kind, obj, 'create'),
   }),
   RestorePVC: (kind, obj: VolumeSnapshotKind) => ({
-    // t('details-page~Restore as new PVC')
-    labelKey: 'details-page~Restore as new PVC',
+    // t('public~Restore as new PVC')
+    labelKey: 'public~Restore as new PVC',
     isDisabled: !obj?.status?.readyToUse,
     tooltip: !obj?.status?.readyToUse ? 'Volume Snapshot is not Ready' : '',
     callback: () =>
@@ -445,6 +453,8 @@ export class Kebab extends React.Component<any, { active: boolean }> {
 
   private dropdownElement = React.createRef<HTMLButtonElement>();
 
+  private divElement = React.createRef<HTMLDivElement>();
+
   constructor(props) {
     super(props);
     this.state = {
@@ -497,6 +507,8 @@ export class Kebab extends React.Component<any, { active: boolean }> {
 
   getPopperReference = () => this.dropdownElement.current;
 
+  getDivReference = () => this.divElement.current;
+
   render() {
     const { options, isDisabled } = this.props;
 
@@ -533,9 +545,13 @@ export class Kebab extends React.Component<any, { active: boolean }> {
           reference={this.getPopperReference}
         >
           <FocusTrap
-            focusTrapOptions={{ clickOutsideDeactivates: true, returnFocusOnDeactivate: false }}
+            focusTrapOptions={{
+              clickOutsideDeactivates: true,
+              returnFocusOnDeactivate: false,
+              fallbackFocus: this.getDivReference, // fallback to popover content wrapper div if there are no tabbable elements
+            }}
           >
-            <div className="pf-c-dropdown pf-m-expanded">
+            <div ref={this.divElement} className="pf-c-dropdown pf-m-expanded" tabIndex={-1}>
               <KebabMenuItems
                 options={menuOptions}
                 onClick={this.onClick}
@@ -560,6 +576,7 @@ export type KebabOption = {
   accessReview?: AccessReviewResourceAttributes;
   isDisabled?: boolean;
   tooltip?: string;
+  tooltipKey?: string;
   // a `/` separated string where each segment denotes a new sub menu entry
   // Eg. `Menu 1/Menu 2/Menu 3`
   path?: string;

@@ -5,16 +5,26 @@ export const ZONE_LABELS = [
   'failure-domain.beta.kubernetes.io/zone', // deprecated
 ];
 
+export const RACK_LABEL = 'topology.rook.io/rack';
+
 export enum MODES {
   INTERNAL = 'Internal',
-  EXTERNAL = 'External',
   ATTACHED_DEVICES = 'Internal - Attached Devices',
+  EXTERNAL = 'External',
 }
 
 export enum OCS_PROVISIONER {
   BLOCK = 'rook-ceph.rbd.csi.ceph.com',
   FILE = 'rook-ceph.cephfs.csi.ceph.com',
 }
+
+export const OCS_PROVISIONERS = [
+  'ceph.rook.io/block',
+  'cephfs.csi.ceph.com',
+  'rbd.csi.ceph.com',
+  'noobaa.io/obc',
+  'ceph.rook.io/bucket',
+];
 
 export enum CLUSTER_STATUS {
   READY = 'Ready',

@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { getBadgeFromType } from '@console/shared';
 import { ListPage } from '@console/internal/components/factory';
-import { referenceForModel } from '@console/internal/module/k8s';
 import { getURLSearchParams } from '@console/internal/components/utils';
-import TaskRunsList from './TaskRunsList';
+import { referenceForModel } from '@console/internal/module/k8s';
 import { TaskRunModel } from '../../../models';
+import { usePipelineTechPreviewBadge } from '../../../utils/hooks';
 import { runFilters as taskRunFilters } from '../../pipelines/detail-page-tabs/PipelineRuns';
+import TaskRunsList from './TaskRunsList';
 
 interface TaskRunsListPageProps {
   hideBadge?: boolean;
@@ -16,10 +16,10 @@ const TaskRunsListPage: React.FC<Omit<
   React.ComponentProps<typeof ListPage>,
   'canCreate' | 'kind' | 'ListComponent' | 'rowFilters'
 > &
-  TaskRunsListPageProps> = ({ hideBadge, showPipelineColumn = true, ...props }) => {
+  TaskRunsListPageProps> = ({ hideBadge, showPipelineColumn = true, namespace, ...props }) => {
   const searchParams = getURLSearchParams();
   const kind = searchParams?.kind;
-
+  const badge = usePipelineTechPreviewBadge(namespace);
   return (
     <ListPage
       {...props}
@@ -28,7 +28,8 @@ const TaskRunsListPage: React.FC<Omit<
       kind={referenceForModel(TaskRunModel)}
       ListComponent={TaskRunsList}
       rowFilters={taskRunFilters}
-      badge={hideBadge ? null : getBadgeFromType(TaskRunModel.badge)}
+      badge={hideBadge ? null : badge}
+      namespace={namespace}
     />
   );
 };

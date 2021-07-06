@@ -5,12 +5,13 @@ import { History, Location } from 'history';
 import { useTranslation } from 'react-i18next';
 import { Route, Switch, Link, withRouter, match, matchPath } from 'react-router-dom';
 
-import { EmptyBox, StatusBox } from './status-box';
+import { EmptyBox, LoadingBox, StatusBox } from './status-box';
 import { PodsPage } from '../pod';
 import { AsyncComponent } from './async';
 import { K8sResourceKind, K8sResourceCommon } from '../../module/k8s';
 import { referenceForModel, referenceFor } from '../../module/k8s/k8s';
 import { useExtensions, HorizontalNavTab, isHorizontalNavTab } from '@console/plugin-sdk';
+import { ResourceMetricsDashboard } from './resource-metrics';
 
 const editYamlComponent = (props) => (
   <AsyncComponent loader={() => import('../edit-yaml').then((c) => c.EditYAML)} obj={props.obj} />
@@ -55,6 +56,7 @@ export type Page = {
   name?: string;
   nameKey?: string;
   component?: React.ComponentType<PageComponentProps>;
+  badge?: React.ReactNode;
   pageData?: any;
 };
 
@@ -62,105 +64,111 @@ type NavFactory = { [name: string]: (c?: React.ComponentType<any>) => Page };
 export const navFactory: NavFactory = {
   details: (component) => ({
     href: '',
-    // t('details-page~Details')
-    nameKey: 'details-page~Details',
+    // t('public~Details')
+    nameKey: 'public~Details',
     component,
   }),
   events: (component) => ({
     href: 'events',
-    // t('details-page~Events')
-    nameKey: 'details-page~Events',
+    // t('public~Events')
+    nameKey: 'public~Events',
     component,
   }),
   logs: (component) => ({
     href: 'logs',
-    // t('details-page~Logs')
-    nameKey: 'details-page~Logs',
+    // t('public~Logs')
+    nameKey: 'public~Logs',
     component,
   }),
   editYaml: (component) => ({
     href: 'yaml',
-    // t('details-page~YAML')
-    nameKey: 'details-page~YAML',
+    // t('public~YAML')
+    nameKey: 'public~YAML',
     component: component || editYamlComponent,
   }),
   pods: (component) => ({
     href: 'pods',
-    // t('details-page~Pods')
-    nameKey: 'details-page~Pods',
+    // t('public~Pods')
+    nameKey: 'public~Pods',
     component: component || PodsComponent,
   }),
   jobs: (component) => ({
     href: 'jobs',
-    // t('details-page~Jobs')
-    nameKey: 'details-page~Jobs',
+    // t('public~Jobs')
+    nameKey: 'public~Jobs',
     component,
   }),
   roles: (component) => ({
     href: 'roles',
-    // t('details-page~RoleBindings')
-    nameKey: 'details-page~RoleBindings',
+    // t('public~RoleBindings')
+    nameKey: 'public~RoleBindings',
     component,
   }),
   builds: (component) => ({
     href: 'builds',
-    // t('details-page~Builds')
-    nameKey: 'details-page~Builds',
+    // t('public~Builds')
+    nameKey: 'public~Builds',
     component,
   }),
   envEditor: (component) => ({
     href: 'environment',
-    // t('details-page~Environment')
-    nameKey: 'details-page~Environment',
+    // t('public~Environment')
+    nameKey: 'public~Environment',
     component,
   }),
   clusterServiceClasses: (component) => ({
     href: 'serviceclasses',
-    // t('details-page~ServiceClasses')
-    nameKey: 'details-page~ServiceClasses',
+    // t('public~ServiceClasses')
+    nameKey: 'public~ServiceClasses',
     component,
   }),
   clusterServicePlans: (component) => ({
     href: 'serviceplans',
-    // t('details-page~ServicePlans')
-    nameKey: 'details-page~ServicePlans',
+    // t('public~ServicePlans')
+    nameKey: 'public~ServicePlans',
     component,
   }),
   serviceBindings: (component) => ({
     href: 'servicebindings',
-    // t('details-page~ServiceBindings')
-    nameKey: 'details-page~ServiceBindings',
+    // t('public~ServiceBindings')
+    nameKey: 'public~ServiceBindings',
     component,
   }),
   clusterOperators: (component) => ({
     href: 'clusteroperators',
-    // t('details-page~Cluster Operators')
-    nameKey: 'details-page~Cluster Operators',
+    // t('public~Cluster Operators')
+    nameKey: 'public~Cluster Operators',
     component,
   }),
   machineConfigs: (component) => ({
     href: 'machineconfigs',
-    // t('details-page~MachineConfigs')
-    nameKey: 'details-page~MachineConfigs',
+    // t('public~MachineConfigs')
+    nameKey: 'public~MachineConfigs',
     component,
   }),
   machines: (component) => ({
     href: 'machines',
-    // t('details-page~Machines')
-    nameKey: 'details-page~Machines',
+    // t('public~Machines')
+    nameKey: 'public~Machines',
     component,
   }),
   workloads: (component) => ({
     href: 'workloads',
-    // t('details-page~Workloads')
-    nameKey: 'details-page~Workloads',
+    // t('public~Workloads')
+    nameKey: 'public~Workloads',
     component,
   }),
   history: (component) => ({
     href: 'history',
-    // t('details-page~History')
-    nameKey: 'details-page~History',
+    // t('public~History')
+    nameKey: 'public~History',
     component,
+  }),
+  metrics: (component) => ({
+    href: 'metrics',
+    // t('public~Metrics')
+    nameKey: 'public~Metrics',
+    component: component ?? ResourceMetricsDashboard,
   }),
 };
 
@@ -199,7 +207,11 @@ NavBar.displayName = 'NavBar';
 export const HorizontalNav = React.memo((props: HorizontalNavProps) => {
   const renderContent = (routes: JSX.Element[]) => {
     const { noStatusBox, obj, EmptyMsg, label } = props;
-    const content = <Switch> {routes} </Switch>;
+    const content = (
+      <React.Suspense fallback={<LoadingBox />}>
+        <Switch>{routes}</Switch>
+      </React.Suspense>
+    );
 
     const skeletonDetails = (
       <div data-test="skeleton-detail-view" className="skeleton-detail-view">

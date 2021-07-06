@@ -1,7 +1,6 @@
 import * as React from 'react';
 import Measure from 'react-measure';
 import MonacoEditor from 'react-monaco-editor';
-
 import { registerYAMLinMonaco, defaultEditorOptions } from './yaml-editor-utils';
 import YAMLEditorToolbar from './YAMLEditorToolbar';
 
@@ -28,15 +27,16 @@ const YAMLEditor = React.forwardRef<MonacoEditor, YAMLEditorProps>((props, ref) 
     onSave,
   } = props;
 
+  const [usesValue] = React.useState<boolean>(value !== undefined);
   const editorDidMount = React.useCallback(
     (editor, monaco) => {
       editor.layout();
       editor.focus();
-      registerYAMLinMonaco(editor, monaco);
+      registerYAMLinMonaco(editor, monaco, usesValue);
       monaco.editor.getModels()[0].updateOptions({ tabSize: 2 });
       onSave && editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, onSave); // eslint-disable-line no-bitwise
     },
-    [onSave],
+    [onSave, usesValue],
   );
 
   return (

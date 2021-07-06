@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Alert } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 import { PipelineKind, PipelineRunKind } from '../../../../types';
-import PipelineTopologyGraph from '../../pipeline-topology/PipelineTopologyGraph';
-import { getTopologyNodesEdges } from '../../pipeline-topology/utils';
 import { PipelineLayout } from '../../pipeline-topology/const';
+import PipelineTopologyGraph from '../../pipeline-topology/PipelineTopologyGraph';
+import { getTopologyNodesEdges, hasWhenExpression } from '../../pipeline-topology/utils';
 
 import './PipelineVisualization.scss';
 
@@ -36,9 +36,14 @@ const PipelineVisualization: React.FC<PipelineTopologyVisualizationProps> = ({
     content = (
       <PipelineTopologyGraph
         id={`${pipelineRun?.metadata?.name || pipeline.metadata.name}-graph`}
+        data-test="pipeline-visualization"
         nodes={nodes}
         edges={edges}
-        layout={PipelineLayout.DAGRE_VIEWER}
+        layout={
+          hasWhenExpression(pipeline)
+            ? PipelineLayout.DAGRE_VIEWER_SPACED
+            : PipelineLayout.DAGRE_VIEWER
+        }
       />
     );
   }

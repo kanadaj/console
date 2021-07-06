@@ -1,17 +1,17 @@
 import { ConfigMapKind, PersistentVolumeClaimKind } from '@console/internal/module/k8s';
-import { V1Network, V1NetworkInterface } from '../../types/vm';
-import { IDReferences } from '../../utils/redux/id-reference';
+import { V1alpha1DataVolume, V1Disk, V1PersistentVolumeClaim, V1Volume } from '../../types/api';
 import { UINetworkEditConfig, UINetworkInterfaceValidation } from '../../types/ui/nic';
-import { V1Disk, V1PersistentVolumeClaim, V1alpha1DataVolume, V1Volume } from '../../types/api';
 import { UIStorageEditConfig, UIStorageValidation } from '../../types/ui/storage';
 import { VMWizardInitialData } from '../../types/url';
+import { V1Network, V1NetworkInterface } from '../../types/vm';
+import { IDReferences } from '../../utils/redux/id-reference';
 
 export enum VMWizardTab {
   IMPORT_PROVIDERS = 'IMPORT_PROVIDERS',
   VM_SETTINGS = 'VM_SETTINGS',
   NETWORKING = 'NETWORKING',
   STORAGE = 'STORAGE',
-  ADVANCED_CLOUD_INIT = 'ADVANCED_CLOUD_INIT',
+  ADVANCED = 'ADVANCED',
   REVIEW = 'REVIEW',
   RESULT = 'RESULT',
 }
@@ -41,7 +41,7 @@ export const ALL_VM_WIZARD_TABS = [
   VMWizardTab.VM_SETTINGS,
   VMWizardTab.NETWORKING,
   VMWizardTab.STORAGE,
-  VMWizardTab.ADVANCED_CLOUD_INIT,
+  VMWizardTab.ADVANCED,
   VMWizardTab.REVIEW,
   VMWizardTab.RESULT,
 ];
@@ -62,6 +62,7 @@ export enum VMSettingsField {
   DESCRIPTION = 'DESCRIPTION',
   OPERATING_SYSTEM = 'OPERATING_SYSTEM',
   CLONE_COMMON_BASE_DISK_IMAGE = 'CLONE_COMMON_BASE_DISK_IMAGE',
+  CLONE_COMMON_BASE_DISK_IMAGE_TEMPLATE = 'CLONE_COMMON_BASE_DISK_IMAGE_TEMPLATE',
   MOUNT_WINDOWS_GUEST_TOOLS = 'MOUNT_WINDOWS_GUEST_TOOLS',
   FLAVOR = 'FLAVOR',
   MEMORY = 'MEMORY',

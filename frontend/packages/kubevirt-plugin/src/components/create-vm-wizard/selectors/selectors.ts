@@ -1,7 +1,7 @@
+import { FirehoseResourceEnhanced } from '../../../types/custom';
 import { iGetIn, immutableListToShallowJS, toShallowJS } from '../../../utils/immutable';
 import { VMWizardNetwork, VMWizardStorage, VMWizardTab } from '../types';
 import { getCreateVMWizards } from './wizards';
-import { FirehoseResourceEnhanced } from '../../../types/custom';
 
 export const getExtraWSQueries = (state, reduxID: string): FirehoseResourceEnhanced[] => {
   const wizards = getCreateVMWizards(state);
@@ -35,3 +35,5 @@ export const getStorages = (state, id: string): VMWizardStorage[] =>
   immutableListToShallowJS(
     iGetIn(getCreateVMWizards(state), [id, 'tabs', VMWizardTab.STORAGE, 'value']),
   );
+
+export const getV2VConfigMap = (state) => state?.plugins?.kubevirt?.v2vConfigMap;

@@ -8,6 +8,7 @@ import { Status, useCsvWatchResource } from '@console/shared';
 import { useTranslation } from 'react-i18next';
 import PodRingSet from '@console/shared/src/components/pod/PodRingSet';
 import { AddHealthChecks, EditHealthChecks } from '@console/app/src/actions/modify-health-checks';
+import { EditResourceLimits } from '@console/app/src/actions/edit-resource-limits';
 import {
   AddHorizontalPodAutoScaler,
   DeleteHorizontalPodAutoScaler,
@@ -34,6 +35,7 @@ import {
   getExtensionsKebabActionsForKind,
   navFactory,
   togglePaused,
+  RuntimeClass,
 } from './utils';
 import { ReplicationControllersPage } from './replication-controller';
 import { WorkloadTableRow, WorkloadTableHeader } from './workload-table';
@@ -99,10 +101,32 @@ export const menuActions: KebabAction[] = [
   EditHorizontalPodAutoScaler,
   AddStorage,
   DeleteHorizontalPodAutoScaler,
+  EditResourceLimits,
   ...getExtensionsKebabActionsForKind(DeploymentConfigModel),
   EditHealthChecks,
   ...common,
 ];
+
+const getDeploymentConfigStatus = (dc: K8sResourceKind): string => {
+  const conditions = _.get(dc, 'status.conditions');
+  const progressingFailure = _.some(conditions, {
+    type: 'Progressing',
+    reason: 'ProgressDeadlineExceeded',
+    status: 'False',
+  });
+  const replicaFailure = _.some(conditions, { type: 'ReplicaFailure', status: 'True' });
+  if (progressingFailure || replicaFailure) {
+    return 'Failed';
+  }
+
+  if (
+    dc.status.availableReplicas === dc.status.updatedReplicas &&
+    dc.spec.replicas === dc.status.availableReplicas
+  ) {
+    return 'Up to date';
+  }
+  return 'Updating';
+};
 
 export const DeploymentConfigDetailsList = ({ dc }) => {
   const { t } = useTranslation();
@@ -171,6 +195,7 @@ export const DeploymentConfigDetailsList = ({ dc }) => {
       <DetailsItem label={t('public~Triggers')} obj={dc} path="spec.triggers" hideEmpty>
         {triggers}
       </DetailsItem>
+      <RuntimeClass obj={dc} />
     </dl>
   );
 };
@@ -189,12 +214,7 @@ export const DeploymentConfigsDetails: React.FC<{ obj: K8sResourceKind }> = ({ o
               <ResourceSummary resource={dc} showPodSelector showNodeSelector showTolerations>
                 <dt>{t('public~Status')}</dt>
                 <dd>
-                  {dc.status.availableReplicas === dc.status.updatedReplicas &&
-                  dc.spec.replicas === dc.status.availableReplicas ? (
-                    <Status status="Up to date" />
-                  ) : (
-                    <Status status="Updating" />
-                  )}
+                  <Status status={getDeploymentConfigStatus(dc)} />
                 </dd>
               </ResourceSummary>
             </div>
@@ -253,13 +273,13 @@ const ReplicationControllersTab: React.FC<ReplicationControllersTabProps> = ({ o
     />
   );
 };
-// t('details-page~ReplicationControllers')
+// t('public~ReplicationControllers')
 const pages = [
   navFactory.details(DeploymentConfigsDetails),
   navFactory.editYaml(),
   {
     href: 'replicationcontrollers',
-    nameKey: 'details-page~ReplicationControllers',
+    nameKey: 'public~ReplicationControllers',
     component: ReplicationControllersTab,
   },
   navFactory.pods(),

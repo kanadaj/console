@@ -1,6 +1,6 @@
 import i18next from 'i18next';
-import { K8sResourceKind, referenceFor } from '@console/internal/module/k8s';
 import { KebabOption } from '@console/internal/components/utils';
+import { K8sResourceKind, referenceFor } from '@console/internal/module/k8s';
 import { UNASSIGNED_KEY } from '@console/topology/src/const';
 import { ImportOptions } from '../components/import/import-types';
 import {
@@ -93,6 +93,14 @@ export const getAddPageUrl = (
       break;
     case ImportOptions.EVENTCHANNEL:
       pageUrl = `/channel/ns/${ns}`;
+      break;
+    case ImportOptions.UPLOADJAR:
+      pageUrl = `/upload-jar/ns/${ns}`;
+      contextSource &&
+        params.append(
+          QUERY_PROPERTIES.CONTEXT_ACTION,
+          JSON.stringify({ type: INCONTEXT_ACTIONS_CONNECTS_TO, payload: contextSource }),
+        );
       break;
     default:
       throw new Error(i18next.t('devconsole~Invalid import option provided'));

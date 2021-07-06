@@ -1,10 +1,8 @@
 import { useExtensions } from '@console/plugin-sdk';
-
 import { testHook } from '../../../../../__tests__/utils/hooks-utils';
-
 import { useActivePerspective } from '../useActivePerspective';
-import { useUserSettingsCompatibility } from '../useUserSettingsCompatibility';
 import { usePinnedResources } from '../usePinnedResources';
+import { useUserSettingsCompatibility } from '../useUserSettingsCompatibility';
 
 const useActivePerspectiveMock = useActivePerspective as jest.Mock;
 const useExtensionsMock = useExtensions as jest.Mock;
@@ -67,7 +65,11 @@ describe('usePinnedResources', () => {
   it('returns some default pins if there are no other pins defined and the extension has default pins', async () => {
     // Mock empty old data
     useActivePerspectiveMock.mockReturnValue(['dev']);
-    useUserSettingsCompatibilityMock.mockReturnValue([{}, setPinnedResourcesMock, true]);
+    useUserSettingsCompatibilityMock.mockImplementation((configKey, storageKey, defaultPins) => [
+      defaultPins,
+      setPinnedResourcesMock,
+      true,
+    ]);
 
     const { result } = testHook(() => usePinnedResources());
 

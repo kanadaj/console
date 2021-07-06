@@ -1,6 +1,4 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import { useTranslation } from 'react-i18next';
 import {
   Alert,
   ClipboardCopy,
@@ -10,6 +8,8 @@ import {
 } from '@patternfly/react-core';
 import { ExclamationCircleIcon } from '@patternfly/react-icons';
 import { useFormikContext, FormikValues } from 'formik';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import {
   RegistryType,
@@ -18,8 +18,8 @@ import {
 } from '../../../utils/imagestream-utils';
 import { ImageStreamState, ImageStreamAction, ImageStreamActions } from '../import-types';
 import { ImageStreamContext } from './ImageStreamContext';
-import ImageStreamNsDropdown from './ImageStreamNsDropdown';
 import ImageStreamDropdown from './ImageStreamDropdown';
+import ImageStreamNsDropdown from './ImageStreamNsDropdown';
 import ImageStreamTagDropdown from './ImageStreamTagDropdown';
 
 import './ImageStream.scss';
@@ -44,19 +44,20 @@ export const ImageStreamReducer = (state: ImageStreamState, action: ImageStreamA
   }
 };
 
-const ImageStream: React.FC<{ disabled?: boolean; label?: string; required?: boolean }> = ({
-  disabled = false,
-  label,
-  required = false,
-}) => {
+const ImageStream: React.FC<{
+  disabled?: boolean;
+  label?: string;
+  required?: boolean;
+  formContextField?: string;
+}> = ({ disabled = false, label, required = false, formContextField }) => {
   const { t } = useTranslation();
-  const {
-    values: { imageStream, project, registry, isi },
-  } = useFormikContext<FormikValues>();
+  const { values } = useFormikContext<FormikValues>();
   const [validated, setValidated] = React.useState<ValidatedOptions>(ValidatedOptions.default);
   const [state, dispatch] = React.useReducer(ImageStreamReducer, initialState);
   const [hasImageStreams, setHasImageStreams] = React.useState(false);
   const { loading, accessLoading, selectedImageStream } = state;
+  const { imageStream, project, registry, isi, fromImageStreamTag } =
+    _.get(values, formContextField) || values;
 
   const imageStreamTagList = getImageStreamTags(selectedImageStream as K8sResourceKind);
   const isNamespaceSelected = imageStream.namespace !== '' && !accessLoading;
@@ -67,7 +68,7 @@ const ImageStream: React.FC<{ disabled?: boolean; label?: string; required?: boo
   const showCommandLineAlert =
     project.name !== imageStream.namespace &&
     imageStream.namespace !== BuilderImagesNamespace.Openshift &&
-    registry === RegistryType.Internal &&
+    (registry === RegistryType.Internal || fromImageStreamTag) &&
     isStreamsAvailable &&
     isTagsAvailable;
   const helperTextInvalid = validated === ValidatedOptions.error && isi.status?.message && (
@@ -91,14 +92,14 @@ const ImageStream: React.FC<{ disabled?: boolean; label?: string; required?: boo
         >
           <div className="row">
             <div className="col-lg-4 col-md-4 col-sm-4 col-xs-12">
-              <ImageStreamNsDropdown disabled={disabled} />
+              <ImageStreamNsDropdown disabled={disabled} formContextField={formContextField} />
             </div>
             <div className="col-lg-4 col-md-4 col-sm-4 col-xs-12">
-              <ImageStreamDropdown disabled={disabled} />
+              <ImageStreamDropdown disabled={disabled} formContextField={formContextField} />
               <div className="odc-imagestream-separator">/</div>
             </div>
             <div className="col-lg-4 col-md-4 col-sm-4 col-xs-12">
-              <ImageStreamTagDropdown disabled={disabled} />
+              <ImageStreamTagDropdown disabled={disabled} formContextField={formContextField} />
               <div className="odc-imagestream-separator">:</div>
             </div>
           </div>

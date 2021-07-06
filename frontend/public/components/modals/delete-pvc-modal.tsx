@@ -1,7 +1,10 @@
 import * as React from 'react';
-import { Alert, Stack, StackItem } from '@patternfly/react-core';
-import { AsyncComponent, HandlePromiseProps, withHandlePromise } from '../utils';
+import { Stack, StackItem } from '@patternfly/react-core';
+import { Trans, useTranslation } from 'react-i18next';
+import { HandlePromiseProps, withHandlePromise } from '../utils';
 import { getName, YellowExclamationTriangleIcon } from '@console/shared';
+import { useResolvedExtensions } from '@console/dynamic-plugin-sdk/src/api/useResolvedExtensions';
+import { isPVCDelete, PVCDelete } from '@console/dynamic-plugin-sdk/src/extensions/pvc';
 import {
   createModalLauncher,
   ModalTitle,
@@ -11,30 +14,30 @@ import {
 } from '../factory';
 import { k8sKill, PersistentVolumeClaimKind } from '@console/internal/module/k8s';
 import { PersistentVolumeClaimModel } from '../../models';
-import { isPVCDelete, PVCDelete, useExtensions } from '@console/plugin-sdk';
 
 const DeletePVCModal = withHandlePromise<DeletePVCModalProps>((props) => {
   const { pvc, inProgress, errorMessage, handlePromise, close, cancel } = props;
-  const pvcDeleteExtensions = useExtensions<PVCDelete>(isPVCDelete);
+  const [pvcDeleteExtensions] = useResolvedExtensions<PVCDelete>(isPVCDelete);
   const pvcName = getName(pvc);
+  const { t } = useTranslation();
+  const pvcMetadata = { metadata: { ...pvc?.metadata } };
 
   const submit = (e) => {
     e.preventDefault();
 
     const promise = k8sKill(PersistentVolumeClaimModel, pvc);
     const extensionPromises = pvcDeleteExtensions.map(
-      ({ properties: { predicate, onPVCKill } }) => predicate(pvc) && onPVCKill(pvc),
+      ({ properties: { predicate, onPVCKill } }) =>
+        predicate(pvcMetadata) && onPVCKill(pvcMetadata),
     );
     return handlePromise(Promise.all([promise, ...extensionPromises]), close);
   };
 
   const alertComponents = pvcDeleteExtensions.map(
-    ({ properties: { predicate, alert }, uid }) =>
-      predicate(pvc) && (
+    ({ properties: { predicate, alert: PVCAlert }, uid }) =>
+      predicate(pvcMetadata) && (
         <StackItem key={uid}>
-          <Alert className="co-m-form-row" isInline variant={alert?.type} title={alert?.title}>
-            <AsyncComponent loader={alert?.body} pvc={pvc} />
-          </Alert>
+          <PVCAlert pvc={pvcMetadata} />
         </StackItem>
       ),
   );
@@ -42,21 +45,24 @@ const DeletePVCModal = withHandlePromise<DeletePVCModalProps>((props) => {
   return (
     <form onSubmit={submit} className="modal-content">
       <ModalTitle>
-        <YellowExclamationTriangleIcon className="co-icon-space-r" /> Delete Persistent Volume Claim
+        <YellowExclamationTriangleIcon className="co-icon-space-r" />{' '}
+        {t('public~Delete PersistentVolumeClaim')}
       </ModalTitle>
       <ModalBody>
         <Stack hasGutter>
           {alertComponents}
           <StackItem>
-            Are you sure you want to delete <strong className="co-break-word">{pvcName}</strong>{' '}
-            Persistent Volume Claim?
+            <Trans t={t} ns="public">
+              Are you sure you want to delete{' '}
+              <strong className="co-break-word">{{ pvcName }}</strong> PersistentVolumeClaim?
+            </Trans>
           </StackItem>
         </Stack>
       </ModalBody>
       <ModalSubmitFooter
         errorMessage={errorMessage}
         inProgress={inProgress}
-        submitText="Delete"
+        submitText={t('public~Delete')}
         submitDanger
         cancel={cancel}
       />

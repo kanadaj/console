@@ -19,12 +19,13 @@ interface Configuration extends webpack.Configuration {
 
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const MomentLocalesPlugin = require('moment-locales-webpack-plugin');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const HOT_RELOAD = process.env.HOT_RELOAD || 'true';
 const CHECK_CYCLES = process.env.CHECK_CYCLES || 'false';
-const IS_WDS = process.env.WEBPACK_DEV_SERVER;
+const ANALYZE_BUNDLE = process.env.ANALYZE_BUNDLE || 'false';
+const REACT_REFRESH = process.env.REACT_REFRESH;
 const WDS_PORT = 8080;
 
 /* Helpers */
@@ -84,7 +85,7 @@ const config: Configuration = {
               workers: require('os').cpus().length - 1,
             },
           },
-          ...(IS_WDS
+          ...(REACT_REFRESH
             ? [
                 {
                   loader: 'babel-loader',
@@ -217,6 +218,8 @@ const config: Configuration = {
     new CopyWebpackPlugin([{ from: './packages/pipelines-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/topology/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/helm-plugin/locales', to: 'locales' }]),
+    new CopyWebpackPlugin([{ from: './packages/rhoas-plugin/locales', to: 'locales' }]),
+    new CopyWebpackPlugin([{ from: './packages/git-service/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/gitops-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/kubevirt-plugin/locales', to: 'locales' }]),
     new CopyWebpackPlugin([{ from: './packages/ceph-storage-plugin/locales', to: 'locales' }]),
@@ -225,13 +228,10 @@ const config: Configuration = {
     new CopyWebpackPlugin([
       { from: './packages/local-storage-operator-plugin/locales', to: 'locales' },
     ]),
-    new MomentLocalesPlugin({
-      localesToKeep: ['en', 'ja', 'ko', 'zh-cn'],
-    }),
     extractCSS,
     virtualModules,
     new ConsoleActivePluginsModule(resolvePluginPackages(), virtualModules),
-    ...(IS_WDS
+    ...(REACT_REFRESH
       ? [
           new ReactRefreshWebpackPlugin({
             overlay: {
@@ -253,6 +253,17 @@ if (CHECK_CYCLES === 'true') {
       minLengthCycles: 17,
     },
   }).apply(config.plugins);
+}
+
+if (ANALYZE_BUNDLE === 'true') {
+  config.plugins.push(
+    new BundleAnalyzerPlugin({
+      analyzerMode: 'static',
+      reportFilename: 'report.html',
+      // Don't open report in default browser automatically
+      openAnalyzer: false,
+    }),
+  );
 }
 
 /* Production settings */

@@ -1,28 +1,28 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import { PopoverPosition } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
 // @ts-ignore: FIXME missing exports due to out-of-sync @types/react-redux version
 import { useSelector } from 'react-redux';
-import { useTranslation } from 'react-i18next';
-import { DataPoint } from '@console/internal/components/graphs';
-import { Humanize, resourcePathFromModel } from '@console/internal/components/utils';
-import { Dropdown } from '@console/internal/components/utils/dropdown';
-import { K8sKind, referenceForModel, K8sResourceCommon } from '@console/internal/module/k8s';
+import { Link } from 'react-router-dom';
+import { getPrometheusQueryResponse } from '@console/internal/actions/dashboards';
 import {
   withDashboardResources,
   DashboardItemProps,
 } from '@console/internal/components/dashboard/with-dashboard-resources';
+import { DataPoint } from '@console/internal/components/graphs';
 import { getInstantVectorStats } from '@console/internal/components/graphs/utils';
+import { Humanize, resourcePathFromModel } from '@console/internal/components/utils';
+import { Dropdown } from '@console/internal/components/utils/dropdown';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { K8sKind, referenceForModel, K8sResourceCommon } from '@console/internal/module/k8s';
 import { featureReducerName } from '@console/internal/reducers/features';
 import { RootState } from '@console/internal/redux';
-import { getPrometheusQueryResponse } from '@console/internal/actions/dashboards';
-import { PopoverPosition } from '@patternfly/react-core';
-import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { FLAGS } from '@console/shared/src/constants';
 import { getName, getNamespace } from '../../..';
-import { DashboardCardPopupLink } from '../dashboard-card/DashboardCardLink';
-import { RedExclamationCircleIcon, YellowExclamationTriangleIcon } from '../../status';
 import { useActivePerspective } from '../../../hooks';
+import { RedExclamationCircleIcon, YellowExclamationTriangleIcon } from '../../status';
+import { DashboardCardPopupLink } from '../dashboard-card/DashboardCardLink';
 import Status from '../status-card/StatusPopup';
 import { LIMIT_STATE } from './UtilizationItem';
 
@@ -34,7 +34,7 @@ const ConsumerPopover: React.FC<ConsumerPopoverProps> = React.memo(
     const [isOpen, setOpen] = React.useState(false);
     return (
       <DashboardCardPopupLink
-        popupTitle={t('dashboard~{{title}} breakdown', { title })}
+        popupTitle={t('console-shared~{{title}} breakdown', { title })}
         linkTitle={current}
         onHide={React.useCallback(() => setOpen(false), [])}
         onShow={React.useCallback(() => setOpen(true), [])}
@@ -88,14 +88,14 @@ export const LimitsBody: React.FC<LimitsBodyProps> = ({
     ((!!limitState && limitState !== LIMIT_STATE.OK) ||
       (!!requestedState && requestedState !== LIMIT_STATE.OK)) && (
       <ul className="co-utilization-card-popover__consumer-list">
-        <Status value={total}>{t('dashboard~Total capacity')}</Status>
+        <Status value={total}>{t('console-shared~Total capacity')}</Status>
         <Status value={limit} icon={getLimitIcon(limitState)}>
-          {t('dashboard~Total limit')}
+          {t('console-shared~Total limit')}
         </Status>
-        <Status value={current}>{t('dashboard~Current utilization')}</Status>
-        <Status value={available}>{t('dashboard~Current available capacity')}</Status>
+        <Status value={current}>{t('console-shared~Current utilization')}</Status>
+        <Status value={available}>{t('console-shared~Current available capacity')}</Status>
         <Status value={requested} icon={getLimitIcon(requestedState)}>
-          {t('dashboard~Total requested')}
+          {t('console-shared~Total requested')}
         </Status>
       </ul>
     )
@@ -171,7 +171,7 @@ export const PopoverBody = withDashboardResources<DashboardItemProps & PopoverBo
       const dropdownItems = React.useMemo(
         () =>
           consumers.reduce((items, curr) => {
-            items[referenceForModel(curr.model)] = t('dashboard~By {{label}}', {
+            items[referenceForModel(curr.model)] = t('console-shared~By {{label}}', {
               label: curr.model.label,
             });
             return items;
@@ -191,7 +191,7 @@ export const PopoverBody = withDashboardResources<DashboardItemProps & PopoverBo
 
       let body: React.ReactNode;
       if (error || consumersLoadError) {
-        body = <div className="text-secondary">{t('public~Not available')}</div>;
+        body = <div className="text-secondary">{t('console-shared~Not available')}</div>;
       } else if (!consumerLoaded || !data) {
         body = (
           <ul className="co-utilization-card-popover__consumer-list">
@@ -207,7 +207,7 @@ export const PopoverBody = withDashboardResources<DashboardItemProps & PopoverBo
           <>
             <ul
               className="co-utilization-card-popover__consumer-list"
-              aria-label={t('dashboard~Top consumer by {{label}}', { label: model.label })}
+              aria-label={t('console-shared~Top consumer by {{label}}', { label: model.label })}
             >
               {top5Data &&
                 top5Data.map((item) => {
@@ -224,7 +224,7 @@ export const PopoverBody = withDashboardResources<DashboardItemProps & PopoverBo
                   );
                 })}
             </ul>
-            <Link to={monitoringURL}>{t('dashboard~View more')}</Link>
+            <Link to={monitoringURL}>{t('console-shared~View more')}</Link>
           </>
         );
       }
@@ -237,17 +237,17 @@ export const PopoverBody = withDashboardResources<DashboardItemProps & PopoverBo
           {children}
           <div className="co-utilization-card-popover__title">
             {consumers.length === 1
-              ? t('dashboard~Top {{label}} consumers', {
+              ? t('console-shared~Top {{label}} consumers', {
                   label: currentConsumer.model.label.toLowerCase(),
                 })
-              : t('dashboard~Top consumers')}
+              : t('console-shared~Top consumers')}
           </div>
           {consumers.length > 1 && (
             <Dropdown
               className="co-utilization-card-popover__dropdown"
               id="consumer-select"
               name="selectConsumerType"
-              aria-label={t('dashboard~Select consumer type')}
+              aria-label={t('console-shared~Select consumer type')}
               items={dropdownItems}
               onChange={onDropdownChange}
               selectedKey={referenceForModel(model)}

@@ -1,11 +1,4 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import * as classNames from 'classnames';
-import { Trans, useTranslation } from 'react-i18next';
-import { TFunction } from 'i18next';
-import { match } from 'react-router';
-import { Link, useLocation } from 'react-router-dom';
-import { sortable } from '@patternfly/react-table';
 import {
   Button,
   EmptyState,
@@ -14,29 +7,21 @@ import {
   EmptyStateSecondaryActions,
   Title,
 } from '@patternfly/react-core';
-import { VirtualMachineIcon, RocketIcon } from '@patternfly/react-icons';
+import { RocketIcon, VirtualMachineIcon } from '@patternfly/react-icons';
+import { sortable } from '@patternfly/react-table';
+import { TFunction } from 'i18next';
+import * as _ from 'lodash';
+import { Trans, useTranslation } from 'react-i18next';
+import { match } from 'react-router';
+import { Link, useLocation } from 'react-router-dom';
+import { QuickStart } from '@console/app/src/components/quick-starts/utils/quick-start-types';
+import { QuickStartModel } from '@console/app/src/models';
 import {
-  createLookup,
-  dimensifyHeader,
-  dimensifyRow,
-  getCreationTimestamp,
-  getName,
-  getNamespace,
-  getUID,
-  getLabels,
-} from '@console/shared';
-import {
-  NamespaceModel,
-  PodModel,
-  NodeModel,
-  PersistentVolumeClaimModel,
-} from '@console/internal/models';
-import {
-  Table,
   MultiListPage,
-  TableRow,
-  TableData,
   RowFunction,
+  Table,
+  TableData,
+  TableRow,
 } from '@console/internal/components/factory';
 import {
   FirehoseResult,
@@ -46,16 +31,28 @@ import {
   ResourceLink,
   Timestamp,
 } from '@console/internal/components/utils';
-import {
-  K8sKind,
-  PersistentVolumeClaimKind,
-  PodKind,
-  referenceForModel,
-} from '@console/internal/module/k8s';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
-import { QuickStart } from '@console/app/src/components/quick-starts/utils/quick-start-types';
-import { QuickStartModel } from '@console/app/src/models';
-import { VMStatus } from '../vm-status/vm-status';
+import {
+  NamespaceModel,
+  NodeModel,
+  PersistentVolumeClaimModel,
+  PodModel,
+} from '@console/internal/models';
+import { K8sKind, PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
+import {
+  createLookup,
+  dimensifyHeader,
+  dimensifyRow,
+  getCreationTimestamp,
+  getLabels,
+  getName,
+  getNamespace,
+  getUID,
+} from '@console/shared';
+import { VMWizardMode, VMWizardName } from '../../constants';
+import { V2VVMImportStatus } from '../../constants/v2v-import/ovirt/v2v-vm-import-status';
+import { useNamespace } from '../../hooks/use-namespace';
+import { VMImportWrappper } from '../../k8s/wrapper/vm-import/vm-import-wrapper';
 import {
   DataVolumeModel,
   VirtualMachineImportModel,
@@ -63,34 +60,33 @@ import {
   VirtualMachineInstanceModel,
   VirtualMachineModel,
 } from '../../models';
-import { VMIKind, VMKind } from '../../types';
-import { getBasicID, getLoadedData } from '../../utils';
-import { getVMStatus } from '../../statuses/vm/vm-status';
+import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
+import { isVM, isVMI, isVMImport } from '../../selectors/check-type';
 import { getVmiIpAddresses, getVMINodeName } from '../../selectors/vmi';
-import { isVMImport, isVM, isVMI } from '../../selectors/check-type';
-import { vmStatusFilter } from './table-filters';
-import { vmiMenuActions, vmImportMenuActions, vmMenuActions } from './menu-actions';
-import { VMILikeEntityKind } from '../../types/vmLike';
-import { VMImportKind } from '../../types/vm-import/ovirt/vm-import';
-import { VMStatusBundle } from '../../statuses/vm/types';
-import { V1alpha1DataVolume } from '../../types/api';
-import { VMImportWrappper } from '../../k8s/wrapper/vm-import/vm-import-wrapper';
 import { getVMImportStatusAsVMStatus } from '../../statuses/vm-import/vm-import-status';
-import { V2VVMImportStatus } from '../../constants/v2v-import/ovirt/v2v-vm-import-status';
+import { VMStatusBundle } from '../../statuses/vm/types';
+import { getVMStatus } from '../../statuses/vm/vm-status';
+import { VMIKind, VMKind } from '../../types';
+import { V1alpha1DataVolume } from '../../types/api';
+import { VMImportKind } from '../../types/vm-import/ovirt/vm-import';
+import { VMILikeEntityKind } from '../../types/vmLike';
+import { getBasicID, getLoadedData } from '../../utils';
 import { hasPendingChanges } from '../../utils/pending-changes';
 import { getVMWizardCreateLink } from '../../utils/url';
-import { VMWizardMode, VMWizardName } from '../../constants';
-import { useNamespace } from '../../hooks/use-namespace';
+import { VMStatus } from '../vm-status/vm-status';
+import { vmiMenuActions, vmImportMenuActions, vmMenuActions } from './menu-actions';
+import { vmStatusFilter } from './table-filters';
+import VMIP from './VMIP';
 
 import './vm.scss';
 
 const tableColumnClasses = [
-  classNames('col-lg-2', 'col-md-2', 'col-sm-6', 'col-xs-6'),
-  classNames('col-lg-2', 'col-md-2', 'hidden-sm', 'hidden-xs'),
-  classNames('col-lg-2', 'col-md-2', 'col-sm-3', 'col-xs-3'),
-  classNames('col-lg-2', 'col-md-2', 'hidden-sm', 'hidden-xs'),
-  classNames('col-lg-2', 'col-md-2', 'hidden-sm', 'hidden-xs'),
-  classNames('col-lg-2', 'col-md-2', 'col-sm-3', 'col-xs-3'),
+  'pf-u-w-16-on-xl pf-u-w-50-on-xs',
+  'pf-m-hidden pf-m-visible-on-lg',
+  '',
+  'pf-m-hidden pf-m-visible-on-xl',
+  'pf-m-hidden pf-m-visible-on-lg',
+  '',
   Kebab.columnClass,
 ];
 
@@ -166,7 +162,7 @@ const VMRow: RowFunction<VMRowObjType> = ({ obj, index, key, style }) => {
   return (
     <TableRow key={`${key}${name}`} id={uid} index={index} trKey={key} style={style}>
       <TableData className={dimensify()}>
-        <ResourceLink kind={model?.kind} name={name} namespace={namespace} />
+        <ResourceLink kind={kubevirtReferenceForModel(model)} name={name} namespace={namespace} />
       </TableData>
       <TableData className={dimensify()}>
         <ResourceLink kind={NamespaceModel.kind} name={namespace} title={namespace} />
@@ -188,7 +184,7 @@ const VMRow: RowFunction<VMRowObjType> = ({ obj, index, key, style }) => {
           <ResourceLink key="node-link" kind={NodeModel.kind} name={node} namespace={namespace} />
         )}
       </TableData>
-      <TableData className={dimensify()}>{vmi && getVmiIpAddresses(vmi).join(', ')}</TableData>
+      <TableData className={dimensify()}>{vmi && <VMIP data={getVmiIpAddresses(vmi)} />}</TableData>
       <TableData className={dimensify(true)}>
         <Kebab options={options} key={`kebab-for-${uid}`} id={`kebab-for-${uid}`} />
       </TableData>
@@ -203,7 +199,7 @@ const VMListEmpty: React.FC = () => {
 
   const searchText = 'virtual machine';
   const [quickStarts, quickStartsLoaded] = useK8sWatchResource<QuickStart[]>({
-    kind: referenceForModel(QuickStartModel),
+    kind: kubevirtReferenceForModel(QuickStartModel),
     isList: true,
   });
   const hasQuickStarts =
@@ -288,12 +284,12 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
 
   const resources = [
     {
-      kind: VirtualMachineModel.kind,
+      kind: kubevirtReferenceForModel(VirtualMachineModel),
       namespace,
       prop: 'vms',
     },
     {
-      kind: VirtualMachineInstanceModel.kind,
+      kind: kubevirtReferenceForModel(VirtualMachineInstanceModel),
       namespace,
       prop: 'vmis',
     },
@@ -303,7 +299,7 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
       prop: 'pods',
     },
     {
-      kind: VirtualMachineInstanceMigrationModel.kind,
+      kind: kubevirtReferenceForModel(VirtualMachineInstanceMigrationModel),
       namespace,
       prop: 'migrations',
     },
@@ -314,13 +310,13 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
       prop: 'pvcs',
     },
     {
-      kind: DataVolumeModel.kind,
+      kind: kubevirtReferenceForModel(DataVolumeModel),
       isList: true,
       namespace,
       prop: 'dataVolumes',
     },
     {
-      kind: VirtualMachineImportModel.kind,
+      kind: kubevirtReferenceForModel(VirtualMachineImportModel),
       isList: true,
       namespace,
       prop: 'vmImports',

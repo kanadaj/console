@@ -1,27 +1,26 @@
 import { VMWizardTab } from '../types';
-import { UpdateOptions } from './types';
+import { finalizeImportProviderStateUpdate } from './finalize-state-update/import-provider-finalize-state-update';
 import { updateImportProvidersState } from './state-update/import-provider-tab-state-update';
-import { updateVmSettingsState } from './state-update/vm-settings-tab-state-update';
 import { updateStorageTabState } from './state-update/storage-tab-state-update';
-import {
-  setVmSettingsTabValidity,
-  validateVmSettings,
-} from './validations/vm-settings-tab-validation';
-import { setNetworksTabValidity, validateNetworks } from './validations/networks-tab-validation';
-import { setStoragesTabValidity, validateStorages } from './validations/storage-tab-validation';
+import { updateVmSettingsState } from './state-update/vm-settings-tab-state-update';
+import { UpdateOptions } from './types';
 import {
   setImportProvidersTabValidity,
   validateImportProviderTab,
 } from './validations/import-providers-tab-validation';
-import { finalizeImportProviderStateUpdate } from './finalize-state-update/import-provider-finalize-state-update';
-import { setAdvancedTabValidity } from './validations/advanced-tab-validation';
+import { setNetworksTabValidity, validateNetworks } from './validations/networks-tab-validation';
+import { setStoragesTabValidity, validateStorages } from './validations/storage-tab-validation';
+import {
+  setVmSettingsTabValidity,
+  validateVmSettings,
+} from './validations/vm-settings-tab-validation';
 
 const UPDATE_TABS = [
   VMWizardTab.IMPORT_PROVIDERS,
   VMWizardTab.VM_SETTINGS,
   VMWizardTab.NETWORKING,
   VMWizardTab.STORAGE,
-  VMWizardTab.ADVANCED_CLOUD_INIT,
+  VMWizardTab.ADVANCED,
 ];
 
 const updaterResolver = {
@@ -42,7 +41,6 @@ const isTabValidResolver = {
   [VMWizardTab.VM_SETTINGS]: setVmSettingsTabValidity,
   [VMWizardTab.NETWORKING]: setNetworksTabValidity,
   [VMWizardTab.STORAGE]: setStoragesTabValidity,
-  [VMWizardTab.ADVANCED_CLOUD_INIT]: setAdvancedTabValidity,
 };
 
 const finalizeTabResolver = {

@@ -1,11 +1,13 @@
 import { FormikValues } from 'formik';
 import {
   TektonParam,
+  TektonWorkspace,
   VolumeTypeClaim,
   VolumeTypeConfigMaps,
   VolumeTypePVC,
   VolumeTypeSecret,
 } from '../../../../types';
+import { VolumeTypes } from '../../const';
 
 export type PipelineModalFormResource = {
   name: string;
@@ -17,30 +19,51 @@ export type PipelineModalFormResource = {
   };
 };
 
-export type PipelineModalFormWorkspace = {
-  name: string;
-  type: string;
-  data:
-    | {
+export type PipelineModalFormWorkspaceStructure =
+  | {
+      type: VolumeTypes.NoWorkspace;
+      data: {};
+    }
+  | {
+      type: VolumeTypes.EmptyDirectory;
+      data: {
         emptyDir: {};
-      }
-    | {
+      };
+    }
+  | {
+      type: VolumeTypes.Secret;
+      data: {
         secret: VolumeTypeSecret;
-      }
-    | {
+      };
+    }
+  | {
+      type: VolumeTypes.ConfigMap;
+      data: {
         configMap: VolumeTypeConfigMaps;
-      }
-    | {
+      };
+    }
+  | {
+      type: VolumeTypes.PVC;
+      data: {
         persistentVolumeClaim: VolumeTypePVC;
-      }
-    | {
+      };
+    }
+  | {
+      type: VolumeTypes.VolumeClaimTemplate;
+      data: {
         volumeClaimTemplate: VolumeTypeClaim;
       };
+    };
+
+export type PipelineModalFormWorkspace = TektonWorkspace & PipelineModalFormWorkspaceStructure;
+
+export type ModalParameter = TektonParam & {
+  value?: string | string[];
 };
 
 export type CommonPipelineModalFormikValues = FormikValues & {
   namespace: string;
-  parameters: TektonParam[];
+  parameters: ModalParameter[];
   resources: PipelineModalFormResource[];
   workspaces: PipelineModalFormWorkspace[];
 };

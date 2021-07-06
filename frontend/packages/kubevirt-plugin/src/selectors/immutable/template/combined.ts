@@ -1,21 +1,21 @@
 import { List as ImmutableList, Map as ImmutableMap } from 'immutable';
-import { getFlavorLabel, getOsLabel, getWorkloadLabel } from '../../vm-template/combined-dependent';
 import {
-  TEMPLATE_VERSION_LABEL,
-  TEMPLATE_TYPE_BASE,
-  TEMPLATE_TYPE_LABEL,
   TEMPLATE_DEFAULT_LABEL,
   TEMPLATE_FLAVOR_LABEL,
+  TEMPLATE_TYPE_BASE,
+  TEMPLATE_TYPE_LABEL,
+  TEMPLATE_VERSION_LABEL,
   TEMPLATE_WORKLOAD_LABEL,
 } from '../../../constants/vm';
-import { ITemplate } from '../../../types/template';
-import { iGetCreationTimestamp, iGetLabels } from '../common';
-import { compareVersions } from '../../../utils/sort';
-import { iGet, iGetIn } from '../../../utils/immutable';
-import { VirtualMachineModel } from '../../../models';
 import { Flavor } from '../../../constants/vm/flavor';
 import { WorkloadProfile } from '../../../constants/vm/workload-profile';
-import { isWinToolsImage } from '../../vm';
+import { VirtualMachineModel } from '../../../models';
+import { ITemplate } from '../../../types/template';
+import { iGet, iGetIn } from '../../../utils/immutable';
+import { compareVersions } from '../../../utils/sort';
+import { getFlavorLabel, getOsLabel, getWorkloadLabel } from '../../vm-template/combined-dependent';
+import { isWinToolsImage } from '../../vm/winimage';
+import { iGetCreationTimestamp, iGetLabels } from '../common';
 
 type FindTemplateOptions = {
   workload?: string;

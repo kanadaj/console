@@ -18,7 +18,14 @@ import {
 } from '@console/local-storage-operator-plugin/src/constants';
 import { getNodeCPUCapacity, getNodeAllocatableMemory, getName } from '@console/shared';
 import { NodeModel } from '@console/internal/models';
-import { ocsTaint, NO_PROVISIONER, MINIMUM_NODES, ZONE_LABELS } from '../constants';
+import {
+  ocsTaint,
+  OCS_PROVISIONERS,
+  NO_PROVISIONER,
+  MINIMUM_NODES,
+  ZONE_LABELS,
+  RACK_LABEL,
+} from '../constants';
 import { getSCAvailablePVs } from '../selectors';
 
 export const hasNoTaints = (node: NodeKind) => {
@@ -49,6 +56,9 @@ export const getConvertedUnits = (value: string) => {
   return humanizeBinaryBytes(convertToBaseValue(value)).string ?? '-';
 };
 
+export const filterSC = (sc: StorageClassResourceKind) =>
+  !OCS_PROVISIONERS.some((ocsProvisioner: string) => sc?.provisioner?.includes(ocsProvisioner));
+
 export const filterSCWithNoProv = (sc: StorageClassResourceKind) =>
   sc?.provisioner === NO_PROVISIONER;
 
@@ -58,10 +68,12 @@ export const filterSCWithoutNoProv = (sc: StorageClassResourceKind) =>
 export const getZone = (node: NodeKind) =>
   node.metadata.labels?.[ZONE_LABELS[0]] || node.metadata.labels?.[ZONE_LABELS[1]];
 
+export const getRack = (node: NodeKind) => node.metadata.labels?.[RACK_LABEL];
+
 export const getAssociatedNodes = (pvs: K8sResourceKind[]): string[] => {
   const nodes = pvs.reduce((res, pv) => {
     const matchExpressions: MatchExpression[] =
-      pv?.spec?.nodeAffinity?.required?.nodeSelectorTerms?.[0]?.matchExpressions;
+      pv?.spec?.nodeAffinity?.required?.nodeSelectorTerms?.[0]?.matchExpressions || [];
     matchExpressions.forEach(({ key, operator, values }) => {
       if (key === HOSTNAME_LABEL_KEY && operator === LABEL_OPERATOR) {
         values.forEach((value) => res.add(value));
@@ -73,6 +85,21 @@ export const getAssociatedNodes = (pvs: K8sResourceKind[]): string[] => {
   return Array.from(nodes);
 };
 
+export const getTopologyInfo = (nodes: NodeKind[]) =>
+  nodes.reduce(
+    (data, node) => {
+      const zone = getZone(node);
+      const rack = getRack(node);
+      if (zone && (hasOCSTaint(node) || hasNoTaints(node))) data.zones.add(zone);
+      if (rack && (hasOCSTaint(node) || hasNoTaints(node))) data.racks.add(rack);
+      return data;
+    },
+    {
+      zones: new Set<string>(),
+      racks: new Set<string>(),
+    },
+  );
+
 export const getNodeInfo = (nodes: NodeKind[]) =>
   nodes.reduce(
     (data, node) => {
@@ -82,13 +109,13 @@ export const getNodeInfo = (nodes: NodeKind[]) =>
       const zone = getZone(node);
       data.cpu += cpus;
       data.memory += memory;
-      if (zone && hasNoTaints(node)) data.zones.add(zone);
+      if (zone && (hasOCSTaint(node) || hasNoTaints(node))) data.zones.add(zone);
       return data;
     },
     {
       cpu: 0,
       memory: 0,
-      zones: new Set(),
+      zones: new Set<string>(),
     },
   );
 
@@ -113,22 +140,45 @@ export const countNodesPerZone = (nodes: NodeKind[]) =>
 export const nodesWithoutTaints = (nodes: NodeKind[]) =>
   nodes.filter((node: NodeKind) => hasOCSTaint(node) || hasNoTaints(node));
 
-export const isArbiterSC = (
-  sc: StorageClassResourceKind,
+const getSelectedNodes = (
+  scName: string,
   pvData: K8sResourceKind[],
   nodesData: NodeKind[],
-): boolean => {
-  const pvs: K8sResourceKind[] = getSCAvailablePVs(pvData, getName(sc));
+): NodeKind[] => {
+  const pvs: K8sResourceKind[] = getSCAvailablePVs(pvData, scName);
   const scNodeNames = getAssociatedNodes(pvs);
   const tableData: NodeKind[] = nodesData.filter(
     (node: NodeKind) =>
       scNodeNames.includes(getName(node)) ||
       scNodeNames.includes(node.metadata.labels?.['kubernetes.io/hostname']),
   );
+  return tableData;
+};
+
+export const isValidTopology = (
+  scName: string,
+  pvData: K8sResourceKind[],
+  nodesData: NodeKind[],
+): boolean => {
+  const tableData: NodeKind[] = getSelectedNodes(scName, pvData, nodesData);
+
+  /** For AWS scenario, checking if PVs are in 3 different zones or not
+   *  For Baremetal/Vsphere scenario, checking if PVs are in 3 different racks or not
+   */
+  const { zones, racks } = getTopologyInfo(tableData);
+  return zones.size >= MINIMUM_NODES || racks.size >= MINIMUM_NODES;
+};
+
+export const isArbiterSC = (
+  scName: string,
+  pvData: K8sResourceKind[],
+  nodesData: NodeKind[],
+): boolean => {
+  const tableData: NodeKind[] = getSelectedNodes(scName, pvData, nodesData);
   const uniqZones: Set<string> = new Set(nodesData.map(getZone));
-  const uniqSelectedNodesZones: Set<string> = new Set(tableData.map(getZone));
+  const uniqSelectedNodesZones: Set<string> = getNodeInfo(tableData).zones;
   if (_.compact([...uniqZones]).length < 3) return false;
-  if (_.compact([...uniqSelectedNodesZones]).length !== 2) return false;
+  if (uniqSelectedNodesZones.size !== 2) return false;
   const zonePerNode = countNodesPerZone(tableData);
   return Object.keys(zonePerNode).every((zone) => zonePerNode[zone] >= 2);
 };

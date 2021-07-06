@@ -1,16 +1,17 @@
-import { K8sKind } from '@console/internal/module/k8s';
 import { TemplateModel } from '@console/internal/models';
+import { K8sKind } from '@console/internal/module/k8s';
+import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
+import { getKubevirtAvailableModel } from '../../models/kubevirtReferenceForModel';
 import { VMKind } from '../../types/vm';
 import { VMGenericLikeEntityKind } from '../../types/vmLike';
-import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
-import { selectVM } from '../vm-template/basic';
 import { isVM, isVMI } from '../check-type';
+import { selectVM } from '../vm-template/basic';
 
 export const getVMLikeModel = (vmLikeEntity: VMGenericLikeEntityKind): K8sKind =>
   isVM(vmLikeEntity)
-    ? VirtualMachineModel
+    ? getKubevirtAvailableModel(VirtualMachineModel)
     : isVMI(vmLikeEntity)
-    ? VirtualMachineInstanceModel
+    ? getKubevirtAvailableModel(VirtualMachineInstanceModel)
     : TemplateModel;
 
 export const asVM = (vmLikeEntity: VMGenericLikeEntityKind): VMKind => {

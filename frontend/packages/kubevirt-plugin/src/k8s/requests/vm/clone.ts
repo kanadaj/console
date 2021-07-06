@@ -3,23 +3,25 @@ import {
   K8sResourceKind,
   PersistentVolumeClaimKind,
 } from '@console/internal/module/k8s';
-import { VMKind } from '../../../types/vm';
 import { VirtualMachineModel } from '../../../models';
-import { CloneTo, VMClone } from '../../helpers/vm-clone';
+import { getKubevirtAvailableModel } from '../../../models/kubevirtReferenceForModel';
 import { isVMExpectedRunning } from '../../../selectors/vm';
+import { VMIKind, VMKind } from '../../../types/vm';
+import { CloneTo, VMClone } from '../../helpers/vm-clone';
 import { stopVM } from './actions';
 
 type CloneFrom = {
   vm: VMKind;
+  vmi: VMIKind;
   persistentVolumeClaims: PersistentVolumeClaimKind[];
   dataVolumes: K8sResourceKind[];
 };
 
 export const cloneVM = async (
-  { vm, persistentVolumeClaims, dataVolumes }: CloneFrom,
+  { vm, vmi, persistentVolumeClaims, dataVolumes }: CloneFrom,
   cloneTo: CloneTo,
 ) => {
-  if (isVMExpectedRunning(vm)) {
+  if (isVMExpectedRunning(vm, vmi)) {
     await stopVM(vm);
   }
 
@@ -28,5 +30,5 @@ export const cloneVM = async (
     .withClonedDataVolumes(dataVolumes)
     .build();
 
-  return k8sCreate(VirtualMachineModel, vmClone);
+  return k8sCreate(getKubevirtAvailableModel(VirtualMachineModel), vmClone);
 };

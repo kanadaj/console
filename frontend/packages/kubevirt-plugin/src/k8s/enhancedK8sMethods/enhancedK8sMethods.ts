@@ -12,6 +12,8 @@ import {
   referenceForModel,
 } from '@console/internal/module/k8s';
 import { getFullResourceId } from '../../utils/utils';
+import { Wrapper } from '../wrapper/common/wrapper';
+import { K8sResourceKindMethods } from '../wrapper/types/types';
 import {
   K8sCreateError,
   K8sGetError,
@@ -20,8 +22,6 @@ import {
   K8sPatchError,
 } from './errors';
 import { HistoryItem, HistoryType } from './types';
-import { Wrapper } from '../wrapper/common/wrapper';
-import { K8sResourceKindMethods } from '../wrapper/types/types';
 
 export type EnhancedOpts = {
   disableHistory: boolean;

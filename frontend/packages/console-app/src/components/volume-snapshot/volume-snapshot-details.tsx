@@ -1,4 +1,7 @@
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ResourceEventStream } from '@console/internal/components/events';
+import { DetailsPage, DetailsPageProps } from '@console/internal/components/factory';
 import {
   SectionHeading,
   ResourceSummary,
@@ -14,8 +17,6 @@ import {
   VolumeSnapshotClassModel,
 } from '@console/internal/models';
 import { referenceForModel, VolumeSnapshotKind } from '@console/internal/module/k8s';
-import { ResourceEventStream } from '@console/internal/components/events';
-import { DetailsPage, DetailsPageProps } from '@console/internal/components/factory';
 import { Status, snapshotSource, FLAGS } from '@console/shared';
 import { useFlag } from '@console/shared/src/hooks/flag';
 import { volumeSnapshotStatus } from '../../status';
@@ -25,6 +26,7 @@ const { common, RestorePVC } = Kebab.factory;
 const menuActions = [RestorePVC, ...common];
 
 const Details: React.FC<DetailsProps> = ({ obj }) => {
+  const { t } = useTranslation();
   const { namespace } = obj.metadata || {};
   const sourceModel = obj?.spec?.source?.persistentVolumeClaimName
     ? PersistentVolumeClaimModel
@@ -40,11 +42,11 @@ const Details: React.FC<DetailsProps> = ({ obj }) => {
 
   return (
     <div className="co-m-pane__body">
-      <SectionHeading text="Volume Snapshot Details" />
+      <SectionHeading text={t('console-app~VolumeSnapshot details')} />
       <div className="row">
         <div className="col-md-6 col-xs-12">
           <ResourceSummary resource={obj}>
-            <dt>Status</dt>
+            <dt>{t('console-app~Status')}</dt>
             <dd>
               <Status status={volumeSnapshotStatus(obj)} />
             </dd>
@@ -52,9 +54,9 @@ const Details: React.FC<DetailsProps> = ({ obj }) => {
         </div>
         <div className="col-md-6">
           <dl className="co-m-pane__details">
-            <dt>Size</dt>
+            <dt>{t('console-app~Size')}</dt>
             <dd>{size ? sizeMetrics : '-'}</dd>
-            <dt>Source</dt>
+            <dt>{t('console-app~Source')}</dt>
             <dd>
               <ResourceLink
                 kind={referenceForModel(sourceModel)}
@@ -64,7 +66,7 @@ const Details: React.FC<DetailsProps> = ({ obj }) => {
             </dd>
             {canListVSC && (
               <>
-                <dt>{VolumeSnapshotContentModel.label}</dt>
+                <dt>{t('console-app~VolumeSnapshotContent')}</dt>
                 <dd data-test="details-item-value__VSC">
                   {snapshotContent ? (
                     <ResourceLink
@@ -77,7 +79,7 @@ const Details: React.FC<DetailsProps> = ({ obj }) => {
                 </dd>
               </>
             )}
-            <dt>{VolumeSnapshotClassModel.label}</dt>
+            <dt>{t('console-app~VolumeSnapshotClass')}</dt>
             <dd data-test="details-item-value__SC">
               {snapshotClass ? (
                 <ResourceLink
@@ -95,24 +97,26 @@ const Details: React.FC<DetailsProps> = ({ obj }) => {
   );
 };
 
-const pages = [
-  {
-    href: '',
-    name: 'Details',
-    component: Details,
-  },
-  editYaml(),
-  events(ResourceEventStream),
-];
-
-const VolumeSnapshotDetailsPage: React.FC<DetailsPageProps> = (props) => (
-  <DetailsPage
-    {...props}
-    getResourceStatus={volumeSnapshotStatus}
-    menuActions={menuActions}
-    pages={pages}
-  />
-);
+const VolumeSnapshotDetailsPage: React.FC<DetailsPageProps> = (props) => {
+  const { t } = useTranslation();
+  const pages = [
+    {
+      href: '',
+      name: t('console-app~Details'),
+      component: Details,
+    },
+    editYaml(),
+    events(ResourceEventStream),
+  ];
+  return (
+    <DetailsPage
+      {...props}
+      getResourceStatus={volumeSnapshotStatus}
+      menuActions={menuActions}
+      pages={pages}
+    />
+  );
+};
 
 type DetailsProps = {
   obj: VolumeSnapshotKind;

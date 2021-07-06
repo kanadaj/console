@@ -674,21 +674,6 @@ export const PersistentVolumeClaimModel: K8sKind = {
   labelPluralKey: 'public~PersistentVolumeClaims',
 };
 
-export const PetsetModel: K8sKind = {
-  apiVersion: 'v1',
-  label: 'Petset',
-  // t('public~Petset')
-  labelKey: 'public~Petset',
-  plural: 'petsets',
-  abbr: 'PS',
-  propagationPolicy: 'Foreground',
-  kind: 'Petset',
-  id: 'petset',
-  labelPlural: 'Petsets',
-  // t('public~Petsets')
-  labelPluralKey: 'public~Petsets',
-};
-
 export const StatefulSetModel: K8sKind = {
   label: 'StatefulSet',
   // t('public~StatefulSet')
@@ -1325,5 +1310,22 @@ export const VolumeSnapshotContentModel: K8sKind = {
   labelPlural: 'VolumeSnapshotContents',
   // t('public~VolumeSnapshotContents')
   labelPluralKey: 'public~VolumeSnapshotContents',
+  crd: true,
+};
+
+export const ConsolePluginModel: K8sKind = {
+  label: 'ConsolePlugin',
+  // t('public~ConsolePlugin')
+  labelKey: 'public~ConsolePlugin',
+  apiVersion: 'v1alpha1',
+  apiGroup: 'console.openshift.io',
+  plural: 'consoleplugins',
+  abbr: 'CP',
+  namespaced: false,
+  kind: 'ConsolePlugin',
+  id: 'consoleplugin',
+  labelPlural: 'ConsolePlugins',
+  // t('public~ConsolePlugins')
+  labelPluralKey: 'public~ConsolePlugins',
   crd: true,
 };

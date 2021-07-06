@@ -1,22 +1,22 @@
 import { TFunction } from 'i18next';
-import { HealthState } from '@console/shared/src/components/dashboard/status-card/states';
-import { GridPosition } from '@console/shared/src/components/dashboard/DashboardGrid';
+import { PrometheusResponse } from '@console/internal/components/graphs';
 import {
   FirehoseResource,
   FirehoseResult,
   FirehoseResourcesResult,
 } from '@console/internal/components/utils';
-import { K8sKind, K8sResourceKind, K8sResourceCommon } from '@console/internal/module/k8s';
-import {
-  StatusGroupMapper,
-  ExpandedComponentProps,
-} from '@console/shared/src/components/dashboard/inventory-card/InventoryItem';
-import { PrometheusResponse } from '@console/internal/components/graphs';
 import {
   WatchK8sResources,
   ResourcesObject,
   WatchK8sResults,
 } from '@console/internal/components/utils/k8s-watch-hook';
+import { K8sKind, K8sResourceKind, K8sResourceCommon } from '@console/internal/module/k8s';
+import { GridPosition } from '@console/shared/src/components/dashboard/DashboardGrid';
+import {
+  StatusGroupMapper,
+  ExpandedComponentProps,
+} from '@console/shared/src/components/dashboard/inventory-card/InventoryItem';
+import { HealthState } from '@console/shared/src/components/dashboard/status-card/states';
 import { Extension, LazyLoader } from './base';
 
 namespace ExtensionProperties {
@@ -130,6 +130,9 @@ namespace ExtensionProperties {
   export interface DashboardsTab {
     /** The tab's ID which will be used as part of href within dashboards page */
     id: string;
+
+    /** NavSection to which the tab belongs to */
+    navSection: 'home' | 'storage';
 
     /** The tab title */
     title: string;
@@ -287,15 +290,6 @@ export interface DashboardsCard extends Extension<ExtensionProperties.Dashboards
 
 export const isDashboardsCard = (e: Extension): e is DashboardsCard => e.type === 'Dashboards/Card';
 
-export interface DashboardsOverviewUtilizationItem
-  extends Extension<ExtensionProperties.DashboardsOverviewUtilizationItem> {
-  type: 'Dashboards/Overview/Utilization/Item';
-}
-
-export const isDashboardsOverviewUtilizationItem = (
-  e: Extension,
-): e is DashboardsOverviewUtilizationItem => e.type === 'Dashboards/Overview/Utilization/Item';
-
 export interface DashboardsOverviewInventoryItem
   extends Extension<ExtensionProperties.DashboardsOverviewInventoryItem> {
   type: 'Dashboards/Overview/Inventory/Item';
@@ -380,6 +374,7 @@ export type PrometheusHealthHandler = (
   responses: { response: PrometheusResponse; error: any }[],
   t?: TFunction,
   additionalResource?: FirehoseResult<K8sResourceKind | K8sResourceKind[]>,
+  infrastructure?: K8sResourceKind,
 ) => SubsystemHealth;
 
 export type ResourceHealthHandler<R extends ResourcesObject> = (

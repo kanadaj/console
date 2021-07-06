@@ -1,27 +1,27 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  PrometheusMultilineUtilizationItem,
+  PrometheusUtilizationItem,
+} from '@console/internal/components/dashboard/dashboards-page/cluster-dashboard/utilization-card';
+import {
   Dropdown,
   humanizeBinaryBytes,
   humanizeCpuCores as humanizeCpuCoresUtil,
 } from '@console/internal/components/utils';
-import { getName, getNamespace, getCreationTimestamp } from '@console/shared';
+import { getCreationTimestamp, getName, getNamespace } from '@console/shared';
 import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
 import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
 import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
 import {
-  PrometheusUtilizationItem,
-  PrometheusMultilineUtilizationItem,
-} from '@console/internal/components/dashboard/dashboards-page/cluster-dashboard/utilization-card';
-import {
-  useMetricDuration,
   Duration,
+  useMetricDuration,
 } from '@console/shared/src/components/dashboard/duration-hook';
+import UtilizationBody from '@console/shared/src/components/dashboard/utilization-card/UtilizationBody';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
-import { VMDashboardContext } from '../../vms/vm-dashboard-context';
 import { findVMIPod } from '../../../selectors/pod/selectors';
-import { getUtilizationQueries, getMultilineUtilizationQueries, VMQueries } from './queries';
+import { VMDashboardContext } from '../../vms/vm-dashboard-context';
+import { getMultilineUtilizationQueries, getUtilizationQueries, VMQueries } from './queries';
 
 // TODO: extend humanizeCpuCores() from @console/internal for the flexibility of space
 const humanizeCpuCores = (v) => {
@@ -46,7 +46,7 @@ const adjustDurationForStart = (start: number, createdAt: string): number => {
 export const VMUtilizationCard: React.FC = () => {
   const { t } = useTranslation();
   const [timestamps, setTimestamps] = React.useState<Date[]>();
-  const [duration, setDuration] = useMetricDuration();
+  const [duration, setDuration] = useMetricDuration(t);
   const { vm, vmi, pods } = React.useContext(VMDashboardContext);
   const vmiLike = vm || vmi;
   const vmName = getName(vmiLike);
@@ -82,7 +82,12 @@ export const VMUtilizationCard: React.FC = () => {
     <DashboardCard>
       <DashboardCardHeader>
         <DashboardCardTitle>{t('kubevirt-plugin~Utilization')}</DashboardCardTitle>
-        <Dropdown items={Duration} onChange={setDuration} selectedKey={duration} title={duration} />
+        <Dropdown
+          items={Duration(t)}
+          onChange={setDuration}
+          selectedKey={duration}
+          title={duration}
+        />
       </DashboardCardHeader>
       <UtilizationBody timestamps={timestamps}>
         <PrometheusUtilizationItem
@@ -96,7 +101,7 @@ export const VMUtilizationCard: React.FC = () => {
           isDisabled={!vmiIsRunning}
         />
         <PrometheusUtilizationItem
-          title={t('kubevirt-plugin~Memory')}
+          title={t('kubevirt-plugin~Memory (RSS)')}
           utilizationQuery={queries[VMQueries.MEMORY_USAGE]}
           humanizeValue={humanizeBinaryBytes}
           byteDataType={ByteDataTypes.BinaryBytes}
@@ -105,9 +110,9 @@ export const VMUtilizationCard: React.FC = () => {
           adjustDuration={adjustDuration}
           isDisabled={!vmiIsRunning}
         />
-        <PrometheusUtilizationItem
-          title={t('kubevirt-plugin~Filesystem')}
-          utilizationQuery={queries[VMQueries.FILESYSTEM_USAGE]}
+        <PrometheusMultilineUtilizationItem
+          title={t('kubevirt-plugin~Storage')}
+          queries={multilineQueries[VMQueries.FILESYSTEM_USAGE]}
           humanizeValue={humanizeBinaryBytes}
           byteDataType={ByteDataTypes.BinaryBytes}
           duration={duration}

@@ -1,28 +1,35 @@
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { Firehose, FirehoseResult } from '@console/internal/components/utils';
 import { createModalLauncher, ModalComponentProps } from '@console/internal/components/factory';
+import { Firehose, FirehoseResult } from '@console/internal/components/utils';
 import {
   NamespaceModel,
   PersistentVolumeClaimModel,
   ProjectModel,
   StorageClassModel,
 } from '@console/internal/models';
-import { iGetCommonData } from '../../selectors/immutable/selectors';
-import { VMWizardProps, VMWizardStorage, VMWizardStorageType } from '../../types';
+import { ConfigMapKind } from '@console/internal/module/k8s';
+import { DUMMY_VM_NAME } from '../../../../constants/vm';
+import { DataVolumeWrapper } from '../../../../k8s/wrapper/vm/data-volume-wrapper';
+import { DiskWrapper } from '../../../../k8s/wrapper/vm/disk-wrapper';
+import { PersistentVolumeClaimWrapper } from '../../../../k8s/wrapper/vm/persistent-volume-claim-wrapper';
+import { VolumeWrapper } from '../../../../k8s/wrapper/vm/volume-wrapper';
+import { toShallowJS } from '../../../../utils/immutable';
+import { TemplateValidations } from '../../../../utils/validations/template/template-validations';
+import { DiskModal } from '../../../modals/disk-modal';
 import { vmWizardActions } from '../../redux/actions';
 import { ActionType } from '../../redux/types';
-import { DiskWrapper } from '../../../../k8s/wrapper/vm/disk-wrapper';
-import { VolumeWrapper } from '../../../../k8s/wrapper/vm/volume-wrapper';
-import { DataVolumeWrapper } from '../../../../k8s/wrapper/vm/data-volume-wrapper';
-import { DiskModal } from '../../../modals/disk-modal';
-import { PersistentVolumeClaimWrapper } from '../../../../k8s/wrapper/vm/persistent-volume-claim-wrapper';
-import { TemplateValidations } from '../../../../utils/validations/template/template-validations';
-import { getTemplateValidation } from '../../selectors/template';
-import { ConfigMapKind } from '@console/internal/module/k8s';
-import { toShallowJS } from '../../../../utils/immutable';
+import { iGetImportProvidersValue } from '../../selectors/immutable/import-providers';
+import { getInitialData, iGetCommonData } from '../../selectors/immutable/selectors';
 import { getStorages } from '../../selectors/selectors';
-import { DUMMY_VM_NAME } from '../../../../constants/vm';
+import { getTemplateValidation } from '../../selectors/template';
+import {
+  ImportProvidersField,
+  VMImportProvider,
+  VMWizardProps,
+  VMWizardStorage,
+  VMWizardStorageType,
+} from '../../types';
 
 const VMWizardStorageModal: React.FC<VMWizardStorageModalProps> = (props) => {
   const {
@@ -34,6 +41,8 @@ const VMWizardStorageModal: React.FC<VMWizardStorageModalProps> = (props) => {
     storages,
     templateValidations,
     storageClassConfigMap,
+    importProvider,
+    commonTemplateName,
     ...restProps
   } = props;
   const { type, disk, volume, dataVolume, persistentVolumeClaim, editConfig } = storage || {};
@@ -96,11 +105,13 @@ const VMWizardStorageModal: React.FC<VMWizardStorageModalProps> = (props) => {
         disk={new DiskWrapper(disk, true)}
         volume={new VolumeWrapper(volume, true)}
         dataVolume={dataVolume && new DataVolumeWrapper(dataVolume, true)}
+        importProvider={importProvider}
         persistentVolumeClaim={
           persistentVolumeClaim && new PersistentVolumeClaimWrapper(persistentVolumeClaim, true)
         }
         isTemplate={isCreateTemplate}
         editConfig={editConfig}
+        baseImageName={commonTemplateName}
         onSubmit={(
           resultDiskWrapper,
           resultVolumeWrapper,
@@ -141,6 +152,8 @@ type VMWizardStorageModalProps = ModalComponentProps & {
   storages: VMWizardStorage[];
   addUpdateStorage: (storage: VMWizardStorage) => void;
   templateValidations: TemplateValidations;
+  importProvider?: VMImportProvider;
+  commonTemplateName: string;
 };
 
 const stateToProps = (state, { wizardReduxID }) => {
@@ -154,6 +167,8 @@ const stateToProps = (state, { wizardReduxID }) => {
     ),
     storages: getStorages(state, wizardReduxID),
     templateValidations: getTemplateValidation(state, wizardReduxID),
+    importProvider: iGetImportProvidersValue(state, wizardReduxID, ImportProvidersField.PROVIDER),
+    commonTemplateName: getInitialData(state, wizardReduxID).commonTemplateName,
   };
 };
 

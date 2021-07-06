@@ -1,7 +1,8 @@
 import * as React from 'react';
+import { ClipboardCopy, ClipboardCopyVariant } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 import { ResourceLink } from '@console/internal/components/utils';
 import { K8sKind, referenceForModel } from '@console/internal/module/k8s';
-import { ClipboardCopy } from '@patternfly/react-core';
 import { RouteTemplate } from '../utils/triggers';
 import './TriggerTemplateResourceLink.scss';
 
@@ -15,7 +16,8 @@ const TriggerTemplateResourceLink: React.FC<TriggerTemplateResourceLinkProps> = 
   namespace,
   model,
 }) => {
-  const title = model.labelPlural;
+  const { t } = useTranslation();
+  const title = t(model.labelPluralKey);
   const kind = referenceForModel(model);
 
   if (links.length === 0) {
@@ -35,7 +37,13 @@ const TriggerTemplateResourceLink: React.FC<TriggerTemplateResourceLinkProps> = 
                 title={triggerTemplateName}
                 inline
               />
-              {routeURL && <ClipboardCopy isReadOnly>{routeURL}</ClipboardCopy>}
+              {routeURL && (
+                <div>
+                  <ClipboardCopy variant={ClipboardCopyVariant.inlineCompact}>
+                    {routeURL}
+                  </ClipboardCopy>
+                </div>
+              )}
             </dd>
           );
         })}

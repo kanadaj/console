@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { shallow, ShallowWrapper } from 'enzyme';
+import { ListPageWrapper } from '@console/internal/components/factory';
 import { EmptyBox, LoadingBox } from '@console/internal/components/utils';
-import { ListPageWrapper_ as ListPageWrapper } from '@console/internal/components/factory';
 import { PipelineExampleNames, pipelineTestData } from '../../../../test-data/pipeline-data';
 import PipelineAugmentRunsWrapper from '../PipelineAugmentRunsWrapper';
 
@@ -9,14 +9,6 @@ const mockData = pipelineTestData[PipelineExampleNames.WORKSPACE_PIPELINE];
 const { pipeline } = mockData;
 
 type PipelineAugmentRunsWrapperProps = React.ComponentProps<typeof PipelineAugmentRunsWrapper>;
-
-jest.mock('react-i18next', () => {
-  const reactI18next = require.requireActual('react-i18next');
-  return {
-    ...reactI18next,
-    useTranslation: () => ({ t: (key) => key }),
-  };
-});
 
 describe('Pipeline Augment Run Wrapper', () => {
   let pipelineAugmentRunsWrapperProps: PipelineAugmentRunsWrapperProps;

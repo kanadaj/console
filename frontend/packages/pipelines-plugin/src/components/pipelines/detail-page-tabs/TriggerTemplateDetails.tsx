@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { SectionHeading, ResourceSummary } from '@console/internal/components/utils';
 import { EventListenerModel, PipelineModel } from '../../../models';
 import ResourceLinkList from '../resource-overview/ResourceLinkList';
+import { TriggerTemplateKind } from '../resource-types';
 import {
   useTriggerTemplateEventListenerNames,
   getTriggerTemplatePipelineName,
 } from '../utils/triggers';
-import { TriggerTemplateKind } from '../resource-types';
 
 export interface TriggerTemplateDetailsProps {
   obj: TriggerTemplateKind;
@@ -21,7 +21,7 @@ const TriggerTemplateDetails: React.FC<TriggerTemplateDetailsProps> = ({
   const pipelineName: string = getTriggerTemplatePipelineName(triggerTemplate);
   return (
     <div className="co-m-pane__body">
-      <SectionHeading text={t('pipelines-plugin~Trigger Template details')} />
+      <SectionHeading text={t('pipelines-plugin~TriggerTemplate details')} />
       <div className="row">
         <div className="col-sm-6">
           <ResourceSummary resource={triggerTemplate} />

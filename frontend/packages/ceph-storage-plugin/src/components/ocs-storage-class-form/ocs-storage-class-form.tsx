@@ -19,19 +19,25 @@ import {
   ActionGroup,
 } from '@patternfly/react-core';
 import { CaretDownIcon } from '@patternfly/react-icons';
-
-import { LoadingInline } from '@console/internal/components/utils/status-box';
+import { StatusBox, LoadingInline } from '@console/internal/components/utils/status-box';
+import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
 import {
   useK8sWatchResource,
   WatchK8sResource,
 } from '@console/internal/components/utils/k8s-watch-hook';
 import { useFlag } from '@console/shared/src/hooks/flag';
 import { ProvisionerProps } from '@console/plugin-sdk';
-import { ConfigMapKind, K8sResourceKind } from '@console/internal/module/k8s/types';
-import { ButtonBar } from '@console/internal/components/utils/button-bar';
-import { ConfigMapModel } from '@console/internal/models';
-
 import {
+  ConfigMapKind,
+  K8sResourceKind,
+  StorageClassResourceKind,
+} from '@console/internal/module/k8s/types';
+import { ButtonBar } from '@console/internal/components/utils/button-bar';
+import { ConfigMapModel, StorageClassModel } from '@console/internal/models';
+import { OCS_INDEPENDENT_FLAG, GUARDED_FEATURES } from '../../features';
+import {
+  OCS_INTERNAL_CR_NAME,
+  OCS_EXTERNAL_CR_NAME,
   CEPH_INTERNAL_CR_NAME,
   CEPH_EXTERNAL_CR_NAME,
   CLUSTER_STATUS,
@@ -40,10 +46,10 @@ import {
 } from '../../constants';
 import { cephBlockPoolResource, cephClusterResource } from '../../resources';
 import { CephClusterKind, StoragePoolKind, KMSConfig, KMSConfigMap } from '../../types';
-import { storagePoolModal } from '../modals/storage-pool-modal/storage-pool-modal';
+import { createBlockPoolModal } from '../modals/block-pool-modal/create-block-pool-modal';
 import { POOL_STATE } from '../../constants/storage-pool-const';
 import { KMSConfigure } from '../kms-config/kms-config';
-import { scReducer, scInitialState, SCActionType } from '../../utils/storage-pool';
+import { scReducer, scInitialState, SCActionType } from '../../utils/kms-encryption';
 import {
   createKmsResources,
   setEncryptionDispatch,
@@ -52,18 +58,68 @@ import {
   getPort,
 } from '../kms-config/utils';
 import './ocs-storage-class-form.scss';
-import { GUARDED_FEATURES } from '../../features';
 
-export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChange }) => {
+export const CephFsNameComponent: React.FC<ProvisionerProps> = ({
+  parameterKey,
+  parameterValue,
+  onParamChange,
+}) => {
+  const { t } = useTranslation();
+
+  const isExternal = useFlag(OCS_INDEPENDENT_FLAG);
+  const scName = `${isExternal ? OCS_EXTERNAL_CR_NAME : OCS_INTERNAL_CR_NAME}-cephfs`;
+  const [sc, scLoaded, scLoadError] = useK8sGet<StorageClassResourceKind>(
+    StorageClassModel,
+    scName,
+  );
+
+  React.useEffect(() => {
+    if (scLoaded && !scLoadError) {
+      const fsName = sc?.parameters?.fsName;
+      if (fsName) {
+        onParamChange(parameterKey, fsName, false);
+      }
+    }
+  }, [sc, scLoaded, scLoadError, parameterKey, onParamChange]);
+
+  if (scLoaded && !scLoadError) {
+    return (
+      <div className="form-group">
+        <label htmlFor="filesystem-name" className="co-required">
+          {t('ceph-storage-plugin~Filesystem name')}
+        </label>
+        <input
+          className="pf-c-form-control"
+          type="text"
+          value={parameterValue}
+          disabled={!isExternal}
+          onChange={(e) => onParamChange(parameterKey, e.currentTarget.value, false)}
+          placeholder={t('ceph-storage-plugin~Enter filesystem name')}
+          id="filesystem-name"
+          required
+        />
+        <span className="help-block">
+          {t('ceph-storage-plugin~CephFS filesystem name into which the volume shall be created')}
+        </span>
+      </div>
+    );
+  }
+  return <StatusBox loadError={scLoadError} loaded={scLoaded} />;
+};
+
+export const PoolResourceComponent: React.FC<ProvisionerProps> = ({
+  parameterKey,
+  onParamChange,
+}) => {
   const { t } = useTranslation();
 
   const [poolData, poolDataLoaded, poolDataLoadError] = useK8sWatchResource<StoragePoolKind[]>(
     cephBlockPoolResource,
   );
 
-  const [cephClusterObj, loaded, loadError] = useK8sWatchResource<CephClusterKind[]>(
-    cephClusterResource,
-  );
+  const [cephClusters, cephClusterLoaded, cephClusterLoadError] = useK8sWatchResource<
+    CephClusterKind[]
+  >(cephClusterResource);
 
   const [isOpen, setOpen] = React.useState(false);
   const [poolName, setPoolName] = React.useState('');
@@ -71,17 +127,17 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
   const handleDropdownChange = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const name = e.currentTarget.id;
     setPoolName(name);
-    onParamChange(name);
+    onParamChange(parameterKey, name, false);
   };
 
   const onPoolCreation = (name: string) => {
     setPoolName(name);
-    onParamChange(name);
+    onParamChange(parameterKey, name, false);
   };
 
   const onPoolInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPoolName(e.currentTarget.value);
-    onParamChange(e.currentTarget.value);
+    onParamChange(parameterKey, e.currentTarget.value, false);
   };
 
   const poolDropdownItems = _.reduce(
@@ -91,28 +147,25 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
         pool?.spec?.compressionMode === 'none' || pool?.spec?.compressionMode === ''
           ? t('ceph-storage-plugin~no compression')
           : t('ceph-storage-plugin~with compression');
-      try {
-        if (
-          pool?.status?.phase === POOL_STATE.READY &&
-          cephClusterObj[0]?.status?.phase === CLUSTER_STATUS.READY
-        ) {
-          res.push(
-            <DropdownItem
-              key={pool.metadata.uid}
-              component="button"
-              id={pool?.metadata?.name}
-              onClick={handleDropdownChange}
-              description={t('ceph-storage-plugin~Replica {{poolSize}} {{compressionText}}', {
-                poolSize: pool?.spec?.replicated?.size,
-                compressionText,
-              })}
-            >
-              {pool?.metadata?.name}
-            </DropdownItem>,
-          );
-        }
-      } catch (error) {
-        // Ignore error
+      if (
+        pool?.status?.phase === POOL_STATE.READY &&
+        cephClusters[0]?.status?.phase === CLUSTER_STATUS.READY
+      ) {
+        res.push(
+          <DropdownItem
+            key={pool.metadata.uid}
+            component="button"
+            id={pool?.metadata?.name}
+            data-test={pool?.metadata?.name}
+            onClick={handleDropdownChange}
+            description={t('ceph-storage-plugin~Replica {{poolSize}} {{compressionText}}', {
+              poolSize: pool?.spec?.replicated?.size,
+              compressionText,
+            })}
+          >
+            {pool?.metadata?.name}
+          </DropdownItem>,
+        );
       }
       return res;
     },
@@ -122,8 +175,8 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
         key="first-item"
         component="button"
         onClick={() =>
-          storagePoolModal({
-            cephClusterObj,
+          createBlockPoolModal({
+            cephClusters,
             onPoolCreation,
           })
         }
@@ -134,10 +187,10 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
     ],
   );
 
-  if (cephClusterObj[0]?.metadata.name === CEPH_INTERNAL_CR_NAME) {
+  if (cephClusters[0]?.metadata.name === CEPH_INTERNAL_CR_NAME) {
     return (
-      <div>
-        {!poolDataLoadError && !cephClusterObj && (
+      <>
+        {!poolDataLoadError && cephClusters && (
           <div className="form-group">
             <label className="co-required" htmlFor="ocs-storage-pool">
               {t('ceph-storage-plugin~Storage Pool')}
@@ -164,7 +217,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
             </span>
           </div>
         )}
-        {(poolDataLoadError || loadError) && (
+        {(poolDataLoadError || cephClusterLoadError) && (
           <Alert
             className="co-alert"
             variant="danger"
@@ -175,7 +228,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
       </div>
     );
   }
-  if (cephClusterObj[0]?.metadata.name === CEPH_EXTERNAL_CR_NAME) {
+  if (cephClusters[0]?.metadata.name === CEPH_EXTERNAL_CR_NAME) {
     return (
       <div className="form-group">
         <label className="co-required" htmlFor="ocs-storage-pool">
@@ -197,15 +250,20 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({ onParamChang
       </div>
     );
   }
-  return <>{(!loaded || !poolDataLoaded) && <LoadingInline />}</>;
+  return (
+    <StatusBox
+      loadError={cephClusterLoadError && poolDataLoadError}
+      loaded={cephClusterLoaded && poolDataLoaded}
+    />
+  );
 };
 
 const StorageClassEncryptionLabel: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="ocs-storageClass-encryption__pv-title">
-      <span className="ocs-storageClass-encryption__pv-title--padding">
+    <div className="ocs-storage-class-encryption__pv-title">
+      <span className="ocs-storage-class-encryption__pv-title--padding">
         {t('ceph-storage-plugin~Enable Encryption')}
       </span>
     </div>
@@ -224,40 +282,41 @@ const KMSDetails: React.FC<KMSDetailsProps> = ({ setEditKMS, currentKMS }) => {
           onClick={() => {
             setEditKMS(true);
           }}
+          data-test="edit-kms-link"
         >
           {t('ceph-storage-plugin~Change connection details')}
         </Button>
       </h3>
       <TextContent>
-        <TextList component={TextListVariants.ul} className="ocs-storageClass-encryption__details">
+        <TextList component={TextListVariants.ul} className="ocs-storage-class-encryption__details">
           {currentKMS?.VAULT_NAMESPACE && (
             <TextListItem>
               {t('ceph-storage-plugin~Vault Enterprise Namespace:')}{' '}
-              <span className="help-block ocs-storageClass-encryption__help-block">
+              <span className="help-block ocs-storage-class-encryption__help-block">
                 {currentKMS?.VAULT_NAMESPACE}
               </span>
             </TextListItem>
           )}
           <TextListItem>
             {t('ceph-storage-plugin~Key management service name:')}{' '}
-            <span className="help-block ocs-storageClass-encryption__help-block">
+            <span className="help-block ocs-storage-class-encryption__help-block">
               {currentKMS?.KMS_SERVICE_NAME}
             </span>
           </TextListItem>
           <TextListItem>
             {t('ceph-storage-plugin~Provider:')}{' '}
-            <span className="help-block ocs-storageClass-encryption__help-block">Vault</span>
+            <span className="help-block ocs-storage-class-encryption__help-block">Vault</span>
           </TextListItem>
           <TextListItem>
             {t('ceph-storage-plugin~Address and Port:')}{' '}
-            <span className="help-block ocs-storageClass-encryption__help-block">
+            <span className="help-block ocs-storage-class-encryption__help-block">
               {currentKMS?.VAULT_ADDR}
             </span>
           </TextListItem>
           {currentKMS?.VAULT_CACERT && (
             <TextListItem>
               {t('ceph-storage-plugin~CA certificate:')}{' '}
-              <span className="help-block ocs-storageClass-encryption__help-block">
+              <span className="help-block ocs-storage-class-encryption__help-block">
                 {t('ceph-storage-plugin~Provided')}
               </span>
             </TextListItem>
@@ -273,7 +332,10 @@ type KMSDetailsProps = {
   setEditKMS: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChange }) => {
+export const StorageClassEncryption: React.FC<ProvisionerProps> = ({
+  parameterKey,
+  onParamChange,
+}) => {
   const { t } = useTranslation();
   const isKmsSupported = useFlag(GUARDED_FEATURES.OCS_KMS);
   const [state, dispatch] = React.useReducer(scReducer, scInitialState);
@@ -352,7 +414,7 @@ export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChan
   ]);
 
   const setChecked = (value: boolean) => {
-    onParamChange(value.toString());
+    onParamChange(parameterKey, value.toString(), false);
     isChecked(value);
   };
 
@@ -392,71 +454,86 @@ export const StorageClassEncryption: React.FC<ProvisionerProps> = ({ onParamChan
   };
 
   return (
-    (isKmsSupported && (
-      <Form>
-        <FormGroup
-          fieldId="storage-class-encryption"
-          helperTextInvalid={t('ceph-storage-plugin~This is a required field')}
-          isRequired
-        >
-          <Checkbox
-            id="storage-class-encryption"
-            isChecked={checked}
-            label={<StorageClassEncryptionLabel />}
-            aria-label={t('ceph-storage-plugin~Storage class encryption')}
-            description={t(
-              'ceph-storage-plugin~An encryption key for each Persistent volume (block only) will be generated.',
-            )}
-            onChange={setChecked}
-            className="ocs-storageClass-encryption__form-checkbox"
-          />
+    isKmsSupported && (
+      <div className="ocs-storage-class__form">
+        <Form>
+          <FormGroup
+            fieldId="storage-class-encryption"
+            helperTextInvalid={t('ceph-storage-plugin~This is a required field')}
+            isRequired
+          >
+            <Checkbox
+              id="storage-class-encryption"
+              isChecked={checked}
+              label={<StorageClassEncryptionLabel />}
+              aria-label={t('ceph-storage-plugin~StorageClass encryption')}
+              onChange={setChecked}
+              className="ocs-storage-class-encryption__form-checkbox"
+              data-test="storage-class-encryption"
+            />
+            <span className="help-block">
+              {t(
+                'ceph-storage-plugin~An encryption key will be generated for each persistent volume created using this StorageClass.',
+              )}
+            </span>
 
-          {checked && (
-            <>
-              <Card isFlat className="ocs-storageClass-encryption__card">
-                {((!csiConfigMapLoaded && !csiConfigMapLoadError) || progress) && <LoadingInline />}
-                {csiConfigMapLoaded && csiConfigMap && !editKMS && !csiConfigMapLoadError ? (
-                  <KMSDetails currentKMS={currentKMS} setEditKMS={setEditKMS} />
-                ) : (
-                  <>
-                    <KMSConfigure
-                      state={state}
-                      dispatch={dispatch}
-                      className="ocs-storageClass-encryption"
-                    />
-                    <div className="ocs-install-kms__save-button">
-                      <ButtonBar errorMessage={errorMessage} inProgress={progress}>
-                        <ActionGroup>
-                          <Button variant="secondary" onClick={updateKMS} isDisabled={!validSave}>
-                            {t('ceph-storage-plugin~Save')}
-                          </Button>
-                          <Button variant="plain" onClick={cancelKMSUpdate}>
-                            {t('ceph-storage-plugin~Cancel')}
-                          </Button>
-                        </ActionGroup>
-                      </ButtonBar>
-                    </div>
-                  </>
-                )}
-              </Card>
-              <Alert
-                className="co-alert"
-                variant="warning"
-                title={t(
-                  'ceph-storage-plugin~Encrypted PVs cannot be cloned expanded or create snapshots.',
-                )}
-                aria-label={t('ceph-storage-plugin~The last saved values will be updated')}
-                isInline
-              />
-            </>
-          )}
-        </FormGroup>
-      </Form>
-    )) || <div />
+            {checked && (
+              <>
+                <Card isFlat className="ocs-storage-class-encryption__card">
+                  {((!csiConfigMapLoaded && !csiConfigMapLoadError) || progress) && (
+                    <LoadingInline />
+                  )}
+                  {csiConfigMapLoaded && csiConfigMap && !editKMS && !csiConfigMapLoadError ? (
+                    <KMSDetails currentKMS={currentKMS} setEditKMS={setEditKMS} />
+                  ) : (
+                    <>
+                      <KMSConfigure
+                        state={state}
+                        dispatch={dispatch}
+                        className="ocs-storage-class-encryption"
+                      />
+                      <div className="ocs-install-kms__save-button">
+                        <ButtonBar errorMessage={errorMessage} inProgress={progress}>
+                          <ActionGroup>
+                            <Button
+                              variant="secondary"
+                              onClick={updateKMS}
+                              isDisabled={!validSave}
+                              data-test="save-action"
+                            >
+                              {t('ceph-storage-plugin~Save')}
+                            </Button>
+                            <Button variant="plain" onClick={cancelKMSUpdate}>
+                              {t('ceph-storage-plugin~Cancel')}
+                            </Button>
+                          </ActionGroup>
+                        </ButtonBar>
+                      </div>
+                    </>
+                  )}
+                </Card>
+                <Alert
+                  className="co-alert"
+                  variant="warning"
+                  title={t(
+                    'ceph-storage-plugin~PV expansion operation is not supported for encrypted PVs.',
+                  )}
+                  aria-label={t('ceph-storage-plugin~The last saved values will be updated')}
+                  isInline
+                />
+              </>
+            )}
+          </FormGroup>
+        </Form>
+      </div>
+    )
   );
 };
 
-export const StorageClassEncryptionKMSID: React.FC<ProvisionerProps> = ({ onParamChange }) => {
+export const StorageClassEncryptionKMSID: React.FC<ProvisionerProps> = ({
+  parameterKey,
+  onParamChange,
+}) => {
   const isKmsSupported = useFlag(GUARDED_FEATURES.OCS_KMS);
 
   const csiCMWatchResource: WatchK8sResource = {
@@ -473,7 +550,7 @@ export const StorageClassEncryptionKMSID: React.FC<ProvisionerProps> = ({ onPara
     if (isKmsSupported && csiConfigMapLoaded && csiConfigMap) {
       const serviceNames: string[] = Object.keys(csiConfigMap?.data);
       const targetServiceName: string = serviceNames[serviceNames.length - 1];
-      onParamChange(targetServiceName);
+      onParamChange(parameterKey, targetServiceName, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [csiConfigMap]);

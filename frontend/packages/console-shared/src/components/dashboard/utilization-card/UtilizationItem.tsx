@@ -1,19 +1,19 @@
 import * as React from 'react';
-import { Humanize } from '@console/internal/components/utils/types';
+import { useTranslation } from 'react-i18next';
+import { DataPoint, PrometheusResponse } from '@console/internal/components/graphs';
 import {
   AreaChart,
   AreaChartStatus,
   chartStatusColors,
 } from '@console/internal/components/graphs/area';
-import { DataPoint, PrometheusResponse } from '@console/internal/components/graphs';
-import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import { mapLimitsRequests } from '@console/internal/components/graphs/utils';
+import { Humanize } from '@console/internal/components/utils/types';
+import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import {
   YellowExclamationTriangleIcon,
   RedExclamationCircleIcon,
   ColoredIconProps,
 } from '../../status';
-import { useTranslation } from 'react-i18next';
 
 export enum LIMIT_STATE {
   ERROR = 'ERROR',
@@ -60,14 +60,14 @@ export const MultilineUtilizationItem: React.FC<MultilineUtilizationItemProps> =
       <AreaChart
         data={error ? [[]] : data}
         loading={!error && isLoading}
-        query={queries[0].query}
+        query={queries.map((q) => q.query)}
         xAxis={false}
         humanize={humanizeValue}
         padding={{ top: 13, left: 70, bottom: 0, right: 0 }}
         height={70}
         byteDataType={byteDataType}
         showAllTooltip
-        ariaChartLinkLabel={t('dashboard~View {{title}} metrics in query browser', {
+        ariaChartLinkLabel={t('console-shared~View {{title}} metrics in query browser', {
           title,
         })}
         ariaChartTitle={title}
@@ -89,7 +89,7 @@ export const MultilineUtilizationItem: React.FC<MultilineUtilizationItemProps> =
           <div className="co-utilization-card__item-section-multiline">
             <h4 className="pf-c-title pf-m-md">{title}</h4>
             {error || (!isLoading && !(data.length && data.every((datum) => datum.length))) ? (
-              <div className="text-secondary">{t('public~Not available')}</div>
+              <div className="text-secondary">{t('console-shared~Not available')}</div>
             ) : (
               <div className="co-utilization-card__item-description">{currentValue}</div>
             )}
@@ -135,9 +135,11 @@ export const UtilizationItem: React.FC<UtilizationItemProps> = React.memo(
       trimSecondsXMutator,
     );
     const [utilizationData, limitData, requestedData] = data;
-    setTimestamps &&
-      utilizationData &&
-      setTimestamps(utilizationData.map((datum) => datum.x as Date));
+    React.useEffect(() => {
+      setTimestamps &&
+        utilizationData &&
+        setTimestamps(utilizationData.map((datum) => datum.x as Date));
+    }, [setTimestamps, utilizationData]);
     const current = utilizationData?.length ? utilizationData[utilizationData.length - 1].y : null;
 
     let humanMax: string;
@@ -157,7 +159,7 @@ export const UtilizationItem: React.FC<UtilizationItemProps> = React.memo(
 
     const chart = (
       <AreaChart
-        ariaChartLinkLabel={t('dashboard~View {{title}} metrics in query browser', {
+        ariaChartLinkLabel={t('console-shared~View {{title}} metrics in query browser', {
           title,
         })}
         ariaChartTitle={title}
@@ -216,7 +218,7 @@ export const UtilizationItem: React.FC<UtilizationItemProps> = React.memo(
           <div className="co-utilization-card__item-section">
             <h4 className="pf-c-title pf-m-md">{title}</h4>
             {error || (!isLoading && !utilizationData?.length) ? (
-              <div className="text-secondary">{t('public~Not available')}</div>
+              <div className="text-secondary">{t('console-shared~Not available')}</div>
             ) : (
               <div>
                 {LimitIcon && <LimitIcon className="co-utilization-card__item-icon" />}
@@ -245,15 +247,18 @@ export const UtilizationItem: React.FC<UtilizationItemProps> = React.memo(
               >
                 {humanLimit && (
                   <span>
-                    {t('dashboard~{{humanAvailable}} available of {{humanLimit}} total limit', {
-                      humanAvailable,
-                      humanLimit,
-                    })}
+                    {t(
+                      'console-shared~{{humanAvailable}} available of {{humanLimit}} total limit',
+                      {
+                        humanAvailable,
+                        humanLimit,
+                      },
+                    )}
                   </span>
                 )}
                 {!humanLimit && humanMax && (
                   <span>
-                    {t('dashboard~{{humanAvailable}} available of {{humanMax}}', {
+                    {t('console-shared~{{humanAvailable}} available of {{humanMax}}', {
                       humanAvailable,
                       humanMax,
                     })}
@@ -261,7 +266,7 @@ export const UtilizationItem: React.FC<UtilizationItemProps> = React.memo(
                 )}
                 {!humanLimit && !humanMax && (
                   <span>
-                    {t('dashboard~{{humanAvailable}} available', {
+                    {t('console-shared~{{humanAvailable}} available', {
                       humanAvailable,
                     })}
                   </span>
@@ -290,7 +295,7 @@ type UtilizationItemProps = {
   requested?: PrometheusResponse;
   isLoading: boolean;
   humanizeValue: Humanize;
-  query: string;
+  query: string | string[];
   error: boolean;
   max?: number;
   byteDataType?: ByteDataTypes;

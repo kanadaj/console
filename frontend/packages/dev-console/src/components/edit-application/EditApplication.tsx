@@ -3,21 +3,26 @@ import { Formik, FormikProps } from 'formik';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { history } from '@console/internal/components/utils';
-import { useExtensions, Perspective, isPerspective } from '@console/plugin-sdk';
-import { k8sGet, K8sResourceKind } from '@console/internal/module/k8s';
 import { ImageStreamModel } from '@console/internal/models';
+import { k8sGet, K8sResourceKind } from '@console/internal/module/k8s';
+import { useExtensions, Perspective, isPerspective } from '@console/plugin-sdk';
 import { useActivePerspective } from '@console/shared';
 import { NormalizedBuilderImages, normalizeBuilderImages } from '../../utils/imagestream-utils';
+import { createOrUpdateDeployImageResources } from '../import/deployImage-submit-utils';
 import {
   createOrUpdateResources as createOrUpdateGitResources,
   handleRedirect,
 } from '../import/import-submit-utils';
-import { validationSchema as gitValidationSchema } from '../import/import-validation-utils';
-import { createOrUpdateDeployImageResources } from '../import/deployImage-submit-utils';
-import { deployValidationSchema } from '../import/deployImage-validation-utils';
-import EditApplicationForm from './EditApplicationForm';
+import { useUploadJarFormToast } from '../import/jar/useUploadJarFormToast';
+import { createOrUpdateJarFile } from '../import/upload-jar-submit-utils';
 import { EditApplicationProps } from './edit-application-types';
-import { getPageHeading, getInitialValues, CreateApplicationFlow } from './edit-application-utils';
+import {
+  getFlowType,
+  getInitialValues,
+  ApplicationFlowType,
+  getValidationSchema,
+} from './edit-application-utils';
+import EditApplicationForm from './EditApplicationForm';
 
 export interface StateProps {
   perspective: string;
@@ -31,8 +36,12 @@ const EditApplication: React.FC<EditApplicationProps> = ({
   const { t } = useTranslation();
   const [perspective] = useActivePerspective();
   const perspectiveExtensions = useExtensions<Perspective>(isPerspective);
+  const uploadJarFormToastCallback = useUploadJarFormToast();
   const initialValues = getInitialValues(appResources, appName, namespace);
-  const pageHeading = getPageHeading(_.get(initialValues, 'build.strategy', ''));
+  const buildStrategy = _.get(initialValues, 'build.strategy', '');
+  const buildSourceType = _.get(initialValues, 'build.source.type', undefined);
+  const flowType = getFlowType(buildStrategy, buildSourceType);
+  const validationSchema = getValidationSchema(buildStrategy, buildSourceType);
   const imageStreamsData =
     appResources.imageStreams && appResources.imageStreams.loaded
       ? appResources.imageStreams.data
@@ -44,6 +53,22 @@ const EditApplication: React.FC<EditApplicationProps> = ({
     if (values.build.strategy) {
       const imageStream =
         values.image.selected && builderImages ? builderImages[values.image.selected].obj : null;
+      if (flowType === ApplicationFlowType.JarUpload) {
+        const isNewFileUploaded = values.fileUpload.value !== '';
+        return createOrUpdateJarFile(
+          values,
+          imageStream,
+          false,
+          false,
+          'update',
+          appResources,
+        ).then((resp) => {
+          if (isNewFileUploaded) {
+            uploadJarFormToastCallback(resp);
+          }
+          return resp;
+        });
+      }
       return createOrUpdateGitResources(
         t,
         values,
@@ -68,18 +93,6 @@ const EditApplication: React.FC<EditApplicationProps> = ({
       });
   };
 
-  const renderForm = (formikProps: FormikProps<any>) => {
-    return (
-      <EditApplicationForm
-        {...formikProps}
-        appResources={appResources}
-        enableReinitialize
-        createFlowType={pageHeading}
-        builderImages={builderImages}
-      />
-    );
-  };
-
   React.useEffect(() => {
     let ignore = false;
 
@@ -87,11 +100,11 @@ const EditApplication: React.FC<EditApplicationProps> = ({
       let allBuilderImages: NormalizedBuilderImages = !_.isEmpty(imageStreamsData)
         ? normalizeBuilderImages(imageStreamsData)
         : {};
-      if (appResources.buildConfig.loaded) {
+      if (appResources.buildConfig.loaded && appResources.buildConfig.data) {
         const {
           name: imageName,
           namespace: imageNs,
-        } = appResources.buildConfig.data.spec?.strategy.sourceStrategy.from;
+        } = appResources.buildConfig.data?.spec?.strategy.sourceStrategy.from;
         const selectedImage = imageName?.split(':')[0];
         const builderImageExists = imageNs === 'openshift' && allBuilderImages?.[selectedImage];
         if (!builderImageExists) {
@@ -110,28 +123,31 @@ const EditApplication: React.FC<EditApplicationProps> = ({
       setBuilderImages(!_.isEmpty(allBuilderImages) ? allBuilderImages : null);
     };
 
-    if (pageHeading === CreateApplicationFlow.Git) {
+    if (flowType === ApplicationFlowType.Git || flowType === ApplicationFlowType.JarUpload) {
       getBuilderImages();
     }
 
     return () => {
       ignore = true;
     };
-  }, [
-    appResources.buildConfig.data.spec,
-    appResources.buildConfig.loaded,
-    imageStreamsData,
-    pageHeading,
-  ]);
+  }, [appResources.buildConfig.data, appResources.buildConfig.loaded, imageStreamsData, flowType]);
+
+  const renderForm = (formikProps: FormikProps<any>) => (
+    <EditApplicationForm
+      {...formikProps}
+      appResources={appResources}
+      enableReinitialize
+      flowType={flowType}
+      builderImages={builderImages}
+    />
+  );
 
   return (
     <Formik
       initialValues={initialValues}
       onSubmit={handleSubmit}
       onReset={history.goBack}
-      validationSchema={
-        _.get(initialValues, 'build.strategy') ? gitValidationSchema(t) : deployValidationSchema(t)
-      }
+      validationSchema={validationSchema(t)}
     >
       {renderForm}
     </Formik>

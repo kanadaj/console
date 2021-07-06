@@ -1,6 +1,6 @@
+import { Alert } from '@console/internal/components/monitoring/types';
 import { HorizontalPodAutoscalerKind, K8sResourceKind } from '@console/internal/module/k8s';
 import { DEPLOYMENT_STRATEGY } from '../constants';
-import { Alert } from '@console/internal/components/monitoring/types';
 
 export type APIError = {
   status?: string;
@@ -26,3 +26,16 @@ export type OverviewItem<T = K8sResourceKind> = {
 };
 
 export type DeploymentStrategy = DEPLOYMENT_STRATEGY.recreate | DEPLOYMENT_STRATEGY.rolling;
+
+export interface ResourceType {
+  request: number | string;
+  requestUnit: string;
+  defaultRequestUnit: string;
+  limit: number | string;
+  limitUnit: string;
+  defaultLimitUnit: string;
+}
+export interface LimitsData {
+  cpu: ResourceType;
+  memory: ResourceType;
+}

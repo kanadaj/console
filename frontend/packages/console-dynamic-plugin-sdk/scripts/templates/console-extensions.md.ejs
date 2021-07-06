@@ -1,0 +1,26 @@
+# OpenShift Console Extension Types
+
+<%# Table of contents _%>
+<% extensions.map((e) => e.type).forEach((type, index) => { _%>
+<%- index + 1 %>. [`<%- type %>`](#<%- type %>)
+<% }); _%>
+
+<%# Generate one section per extension type _%>
+<% extensions.forEach((e) => { _%>
+---
+
+## `<%- e.type %>`
+
+### Summary
+
+<%- printComments(e.docComments) || '(not available)' %>
+
+### Properties
+
+| Name | Value Type | Optional | Description |
+| ---- | ---------- | -------- | ----------- |
+<% e.properties.forEach((p) => { _%>
+| `<%- p.name %>` | `<%- escapeTableCell(p.valueType) %>` | <%- p.optional ? 'yes' : 'no' %> | <%- escapeTableCell(printComments(p.docComments)) %> |
+<% }); _%>
+
+<% }); _%>

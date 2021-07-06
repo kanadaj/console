@@ -1,16 +1,16 @@
 import * as React from 'react';
+import { TFunction } from 'i18next';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { TFunction } from 'i18next';
-import { referenceForModel } from '@console/internal/module/k8s';
-import { CatalogExtensionHook, CatalogItem } from '@console/dynamic-plugin-sdk';
-import { getImageForCSVIcon } from '@console/shared';
+import { ExtensionHook, CatalogItem } from '@console/dynamic-plugin-sdk';
 import { SyncMarkdownView } from '@console/internal/components/markdown-view';
 import { ExpandCollapse } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { referenceForModel } from '@console/internal/module/k8s';
+import { getImageForCSVIcon } from '@console/shared';
+import { providedAPIsForCSV, referenceForProvidedAPI } from '../components';
 import { ClusterServiceVersionModel } from '../models';
 import { ClusterServiceVersionKind } from '../types';
-import { providedAPIsForCSV, referenceForProvidedAPI } from '../components';
 
 type ExpandCollapseDescriptionProps = {
   children: React.ReactNode;
@@ -133,7 +133,7 @@ const normalizeClusterServiceVersions = (
   return operatorProvidedAPIs;
 };
 
-const useClusterServiceVersions: CatalogExtensionHook<CatalogItem[]> = ({
+const useClusterServiceVersions: ExtensionHook<CatalogItem[]> = ({
   namespace,
 }): [CatalogItem[], boolean, any] => {
   const { t } = useTranslation();

@@ -1,6 +1,5 @@
-import { devFilePO } from '../../pageObjects/add-flow-po';
-import { createSourceSecret } from '../../pageObjects/global-po';
-import { authenticationType } from '../../constants/global';
+import { authenticationType, messages } from '../../constants';
+import { devFilePO, createSourceSecret, gitPO } from '../../pageObjects';
 
 export const devFilePage = {
   clickTrySample: () =>
@@ -27,5 +26,25 @@ export const devFilePage = {
       cy.get(createSourceSecret.basicAuthentication.userName).type('');
       cy.get(createSourceSecret.basicAuthentication.password).type('');
     }
+  },
+  verifyValidatedMessage: (gitUrl = 'https://github.com/sclorg/nodejs-ex.git') => {
+    cy.get(gitPO.gitSection.validatedMessage).should('not.have.text', 'Validating...');
+    cy.get('body').then(($body) => {
+      if (
+        $body
+          .find(gitPO.gitSection.validatedMessage)
+          .text()
+          .includes(messages.addFlow.privateGitRepoMessage) ||
+        $body
+          .find(gitPO.gitSection.validatedMessage)
+          .text()
+          .includes(messages.addFlow.rateLimitExceeded) ||
+        $body.find('[aria-label="Warning Alert"]').length
+      ) {
+        cy.log(
+          `Issue with Git Rate limit or given ${gitUrl} may be private repo url. please check it`,
+        );
+      }
+    });
   },
 };

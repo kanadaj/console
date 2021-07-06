@@ -1,25 +1,26 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import { Table, RowFunction } from '@console/internal/components/factory';
-import { sortable } from '@patternfly/react-table';
-import { getName, getNamespace, dimensifyHeader } from '@console/shared';
-import { useSafetyFirst } from '@console/internal/components/safety-first';
 import { Button } from '@patternfly/react-core';
+import { sortable } from '@patternfly/react-table';
+import { useTranslation } from 'react-i18next';
+import { RowFunction, Table } from '@console/internal/components/factory';
+import { useSafetyFirst } from '@console/internal/components/safety-first';
 import {
-  WatchK8sResource,
   useK8sWatchResource,
+  WatchK8sResource,
 } from '@console/internal/components/utils/k8s-watch-hook';
-import { getVmSnapshotVmName } from '../../selectors/snapshot/snapshot';
-import { VMSnapshot } from '../../types';
-import { isVMI } from '../../selectors/check-type';
-import { wrapWithProgress } from '../../utils/utils';
-import { VMLikeEntityTabProps } from '../vms/types';
-import { snapshotsTableColumnClasses } from './utils';
+import { dimensifyHeader, getName, getNamespace } from '@console/shared';
 import { VirtualMachineSnapshotModel } from '../../models';
-import { VMSnapshotRow } from './vm-snapshot-row';
-import SnapshotModal from '../modals/snapshot-modal/snapshot-modal';
+import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
+import { isVMI } from '../../selectors/check-type';
+import { getVmSnapshotVmName } from '../../selectors/snapshot/snapshot';
 import { asVM, isVMRunningOrExpectedRunning } from '../../selectors/vm';
+import { VMSnapshot } from '../../types';
+import { wrapWithProgress } from '../../utils/utils';
+import SnapshotModal from '../modals/snapshot-modal/SnapshotsModal';
+import { VMTabProps } from '../vms/types';
 import { useMappedVMRestores } from './use-mapped-vm-restores';
+import { snapshotsTableColumnClasses } from './utils';
+import { VMSnapshotRow } from './vm-snapshot-row';
 
 export type VMSnapshotsTableProps = {
   data?: any[];
@@ -70,6 +71,9 @@ export const VMSnapshotsTable: React.FC<VMSnapshotsTableProps> = ({
               transforms: [sortable],
             },
             {
+              title: t('kubevirt-plugin~Indications'),
+            },
+            {
               title: '',
             },
             {
@@ -86,14 +90,15 @@ export const VMSnapshotsTable: React.FC<VMSnapshotsTableProps> = ({
   );
 };
 
-export const VMSnapshotsPage: React.FC<VMLikeEntityTabProps> = ({ obj: vmLikeEntity }) => {
+export const VMSnapshotsPage: React.FC<VMTabProps> = ({ obj: vmLikeEntity, vmis: vmisProp }) => {
   const { t } = useTranslation();
   const vmName = getName(vmLikeEntity);
   const namespace = getNamespace(vmLikeEntity);
+  const vmi = vmisProp[0];
 
   const snapshotResource: WatchK8sResource = {
     isList: true,
-    kind: VirtualMachineSnapshotModel.kind,
+    kind: kubevirtReferenceForModel(VirtualMachineSnapshotModel),
     namespaced: true,
     namespace,
   };
@@ -106,7 +111,7 @@ export const VMSnapshotsPage: React.FC<VMLikeEntityTabProps> = ({ obj: vmLikeEnt
   const [isLocked, setIsLocked] = useSafetyFirst(false);
   const withProgress = wrapWithProgress(setIsLocked);
   const filteredSnapshots = snapshots.filter((snap) => getVmSnapshotVmName(snap) === vmName);
-  const isDisabled = isLocked || isVMRunningOrExpectedRunning(asVM(vmLikeEntity));
+  const isDisabled = isLocked;
 
   return (
     <div className="co-m-list">
@@ -121,10 +126,14 @@ export const VMSnapshotsPage: React.FC<VMLikeEntityTabProps> = ({ obj: vmLikeEnt
                   SnapshotModal({
                     blocking: true,
                     vmLikeEntity,
+                    isVMRunningOrExpectedRunning: isVMRunningOrExpectedRunning(
+                      asVM(vmLikeEntity),
+                      vmi,
+                    ),
+                    snapshots,
                   }).result,
                 )
               }
-              isDisabled={isDisabled}
             >
               {t('kubevirt-plugin~Take Snapshot')}
             </Button>
@@ -141,6 +150,7 @@ export const VMSnapshotsPage: React.FC<VMLikeEntityTabProps> = ({ obj: vmLikeEnt
             withProgress,
             restores: mappedRelevantRestores,
             isDisabled,
+            isVMRunning: isVMRunningOrExpectedRunning(asVM(vmLikeEntity), vmi),
           }}
           row={VMSnapshotRow}
           columnClasses={snapshotsTableColumnClasses}

@@ -1,15 +1,16 @@
 import * as React from 'react';
 import { Button, Split, SplitItem, Stack, StackItem } from '@patternfly/react-core';
 import { history, resourcePath } from '@console/internal/components/utils';
-import { getName, getNamespace, Status, ErrorStatus, ProgressStatus } from '@console/shared';
+import { ErrorStatus, getName, getNamespace, ProgressStatus, Status } from '@console/shared';
 import { VirtualMachineRestoreModel } from '../../models';
-import { VMRestore, VMSnapshot } from '../../types';
+import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
 import {
   getVMRestoreError,
   getVMSnapshotError,
   isVmRestoreProgressing,
   isVMSnapshotReady,
 } from '../../selectors/snapshot/snapshot';
+import { VMRestore, VMSnapshot } from '../../types';
 import snapshotRestoreModal from '../modals/snapshot-restore-modal/snapshot-restore-modal';
 
 export const VMSnapshotStatus: React.FC<VMSnapshotStatusProps> = ({ snapshot, restore }) => {
@@ -41,7 +42,7 @@ export const VMSnapshotStatus: React.FC<VMSnapshotStatusProps> = ({ snapshot, re
                   onClick={() =>
                     history.push(
                       resourcePath(
-                        VirtualMachineRestoreModel.kind,
+                        kubevirtReferenceForModel(VirtualMachineRestoreModel),
                         getName(restore),
                         getNamespace(restore),
                       ),
@@ -70,7 +71,7 @@ export const VMSnapshotStatus: React.FC<VMSnapshotStatusProps> = ({ snapshot, re
               onClick={() =>
                 history.push(
                   resourcePath(
-                    VirtualMachineRestoreModel.kind,
+                    kubevirtReferenceForModel(VirtualMachineRestoreModel),
                     getName(restore),
                     getNamespace(restore),
                   ),

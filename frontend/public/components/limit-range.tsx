@@ -1,6 +1,5 @@
 import * as React from 'react';
 import * as _ from 'lodash-es';
-import * as classNames from 'classnames';
 import { sortable } from '@patternfly/react-table';
 import { useTranslation } from 'react-i18next';
 import { K8sResourceKindReference, K8sResourceKind } from '../module/k8s';
@@ -21,12 +20,7 @@ const menuActions = [...Kebab.getExtensionsActionsForKind(LimitRangeModel), ...c
 
 const LimitRangeReference: K8sResourceKindReference = LimitRangeModel.kind;
 
-const tableColumnClasses = [
-  classNames('col-sm-4', 'col-xs-6'),
-  classNames('col-sm-4', 'col-xs-6'),
-  classNames('col-sm-4', 'hidden-xs'),
-  Kebab.columnClass,
-];
+const tableColumnClasses = ['', '', 'pf-m-hidden pf-m-visible-on-md', Kebab.columnClass];
 
 export const LimitRangeTableRow: RowFunction<K8sResourceKind> = ({ obj, index, key, style }) => {
   return (
@@ -39,11 +33,7 @@ export const LimitRangeTableRow: RowFunction<K8sResourceKind> = ({ obj, index, k
         />
       </TableData>
       <TableData className={tableColumnClasses[1]} columnID="namespace">
-        <ResourceLink
-          kind="Namespace"
-          name={obj.metadata.namespace}
-          title={obj.metadata.namespace}
-        />
+        <ResourceLink kind="Namespace" name={obj.metadata.namespace} />
       </TableData>
       <TableData className={tableColumnClasses[2]}>
         <Timestamp timestamp={obj.metadata.creationTimestamp} />
@@ -60,20 +50,20 @@ export const LimitRangeList: React.FC = (props) => {
   const LimitRangeTableHeader = () => {
     return [
       {
-        title: t('limit-range~Name'),
+        title: t('public~Name'),
         sortField: 'metadata.name',
         transforms: [sortable],
         props: { className: tableColumnClasses[0] },
       },
       {
-        title: t('limit-range~Namespace'),
+        title: t('public~Namespace'),
         sortField: 'metadata.namespace',
         transforms: [sortable],
         props: { className: tableColumnClasses[1] },
         id: 'namespace',
       },
       {
-        title: t('limit-range~Created'),
+        title: t('public~Created'),
         sortField: 'metadata.creationTimestamp',
         transforms: [sortable],
         props: { className: tableColumnClasses[2] },
@@ -97,13 +87,7 @@ export const LimitRangeList: React.FC = (props) => {
 };
 
 export const LimitRangeListPage: React.FC<LimitRangeListPageProps> = (props) => (
-  <ListPage
-    {...props}
-    title={LimitRangeModel.labelPlural}
-    kind={LimitRangeReference}
-    ListComponent={LimitRangeList}
-    canCreate={true}
-  />
+  <ListPage {...props} kind={LimitRangeReference} ListComponent={LimitRangeList} canCreate={true} />
 );
 
 export const LimitRangeDetailsRow: React.SFC<LimitRangeDetailsRowProps> = ({
@@ -149,18 +133,18 @@ export const LimitRangeDetailsList = (resource) => {
   const { t } = useTranslation();
   return (
     <div className="co-m-pane__body">
-      <SectionHeading text={t('limit-range~Limits')} />
+      <SectionHeading text={t('public~Limits')} />
       <div className="table-responsive">
         <table className="co-m-table-grid co-m-table-grid--bordered table">
           <thead className="co-m-table-grid__head">
             <tr>
-              <td>{t('limit-range~Type')}</td>
-              <td>{t('limit-range~Resource')}</td>
-              <td>{t('limit-range~Min')}</td>
-              <td>{t('limit-range~Max')}</td>
-              <td>{t('limit-range~Default request')}</td>
-              <td>{t('limit-range~Default limit')}</td>
-              <td>{t('limit-range~Max limit/request ratio')}</td>
+              <td>{t('public~Type')}</td>
+              <td>{t('public~Resource')}</td>
+              <td>{t('public~Min')}</td>
+              <td>{t('public~Max')}</td>
+              <td>{t('public~Default request')}</td>
+              <td>{t('public~Default limit')}</td>
+              <td>{t('public~Max limit/request ratio')}</td>
             </tr>
           </thead>
           <tbody className="co-m-table-grid__body">
@@ -179,9 +163,7 @@ export const LimitRangeDetailsPage = (props) => {
   const Details = ({ obj: rq }) => (
     <>
       <div className="co-m-pane__body">
-        <SectionHeading
-          text={t('limit-range~{{resource}} details', { resource: LimitRangeModel.label })}
-        />
+        <SectionHeading text={t('public~LimitRange details')} />
         <div className="row">
           <div className="col-md-6">
             <ResourceSummary resource={rq} />

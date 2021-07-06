@@ -1,5 +1,12 @@
 import * as _ from 'lodash';
 import { Extension } from '@console/plugin-sdk/src/typings/base';
+import { EncodedCodeRef, CodeRef } from '../../types';
+import {
+  getExecutableCodeRefMock,
+  getEntryModuleMocks,
+  ModuleFactoryMock,
+  RemoteEntryModuleMock,
+} from '../../utils/test-utils';
 import {
   applyCodeRefSymbol,
   isEncodedCodeRef,
@@ -10,14 +17,8 @@ import {
   loadReferencedObject,
   resolveEncodedCodeRefs,
   resolveCodeRefProperties,
+  resolveExtension,
 } from '../coderef-resolver';
-import { EncodedCodeRef, CodeRef } from '../../types';
-import {
-  getExecutableCodeRefMock,
-  getEntryModuleMocks,
-  ModuleFactoryMock,
-  RemoteEntryModuleMock,
-} from '../../utils/test-utils';
 
 describe('applyCodeRefSymbol', () => {
   it('marks the given function with CodeRef symbol', () => {
@@ -207,7 +208,7 @@ describe('loadReferencedObject', () => {
 });
 
 describe('resolveEncodedCodeRefs', () => {
-  it('replaces encoded code references with executable CodeRef functions', () => {
+  it('replaces encoded code references with CodeRef functions', () => {
     const extensions: Extension[] = [
       {
         type: 'Foo',
@@ -241,7 +242,7 @@ describe('resolveEncodedCodeRefs', () => {
 });
 
 describe('resolveCodeRefProperties', () => {
-  it('replaces executable CodeRef functions with corresponding objects', async () => {
+  it('replaces CodeRef functions with referenced objects', async () => {
     const extensions: Extension[] = [
       {
         type: 'Foo',
@@ -255,5 +256,37 @@ describe('resolveCodeRefProperties', () => {
 
     expect(await resolveCodeRefProperties(extensions[0])).toEqual({ test: true });
     expect(await resolveCodeRefProperties(extensions[1])).toEqual({ baz: 1, qux: 'value' });
+  });
+});
+
+describe('resolveExtension', () => {
+  it('returns an extension with CodeRef functions replaced with referenced objects', async () => {
+    const extensions: Extension[] = [
+      {
+        type: 'Foo',
+        properties: { test: true },
+      },
+      {
+        type: 'Bar',
+        properties: { baz: 1, qux: getExecutableCodeRefMock('value') },
+      },
+    ];
+
+    expect(await resolveExtension(extensions[0])).toEqual({
+      type: 'Foo',
+      properties: { test: true },
+    });
+    expect(await resolveExtension(extensions[1])).toEqual({
+      type: 'Bar',
+      properties: { baz: 1, qux: 'value' },
+    });
+  });
+
+  it('returns a new extension instance', async () => {
+    const testExtension: Extension = { type: 'Foo/Bar', properties: {} };
+    const resolvedExtension = await resolveExtension(testExtension);
+
+    expect(resolvedExtension).not.toBe(testExtension);
+    expect(Object.isFrozen(resolvedExtension)).toBe(true);
   });
 });

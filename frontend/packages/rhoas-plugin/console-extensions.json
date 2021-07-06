@@ -1,0 +1,56 @@
+[
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "flag": "RHOAS_FLAG",
+      "model": {
+        "group": "rhoas.redhat.com",
+        "version": "v1alpha1",
+        "kind": "CloudServiceAccountRequest"
+      }
+    }
+  },
+  {
+    "type": "dev-console.add/action",
+    "flags": {
+      "required": ["RHOAS_FLAG"]
+    },
+    "properties": {
+      "id": "rhoasAddAction",
+      "groupId": "developer-catalog",
+      "href": "/catalog?catalogType=managedservices",
+      "label": "%rhoas-plugin~Managed Services%",
+      "description": "%rhoas-plugin~Discover managed services to simplify deployments and reduce operational overhead & complexities%",
+      "icon": { "$codeRef": "constants.cloudServicesIcon" },
+      "accessReview": [
+        { "group": "apps.openshift.io", "resource": "deploymentconfigs", "verb": "create" },
+        { "group": "route.openshift.io", "resource": "routes", "verb": "create" },
+        { "group": "", "resource": "secrets", "verb": "create" },
+        { "group": "", "resource": "services", "verb": "create" }
+      ]
+    }
+  },
+  {
+    "type": "console.catalog/item-type",
+    "properties": {
+      "type": "managedservices",
+      "title": "%rhoas-plugin~Managed Services%",
+      "catalogDescription": "%rhoas-plugin~Browse managed services to connect applications and microservices to support services to create a full solution.%",
+      "typeDescription": "%rhoas-plugin~Managed Services%"
+    },
+    "flags": {
+      "required": ["RHOAS_FLAG"]
+    }
+  },
+  {
+    "type": "console.catalog/item-provider",
+    "properties": {
+      "catalogId": "dev-catalog",
+      "type": "managedservices",
+      "provider": { "$codeRef": "catalog.rhoasProvider" }
+    },
+    "flags": {
+      "required": ["RHOAS_FLAG"]
+    }
+  }
+]

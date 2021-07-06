@@ -1,23 +1,18 @@
 import * as React from 'react';
 import * as _ from 'lodash';
-import { Status } from '@console/shared';
-import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
-import { Timestamp, Kebab, ResourceIcon } from '@console/internal/components/utils';
 import { Link } from 'react-router-dom';
+import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
+import { Timestamp, ResourceIcon } from '@console/internal/components/utils';
+import { ActionsLoader, ActionMenu, Status } from '@console/shared';
 import { HelmRelease, HelmActionOrigins } from '../../types/helm-types';
 import { tableColumnClasses } from './HelmReleaseListHeader';
-import {
-  deleteHelmRelease,
-  upgradeHelmRelease,
-  rollbackHelmRelease,
-} from '../../actions/modify-helm-release';
 
 const HelmReleaseListRow: RowFunction<HelmRelease> = ({ obj, index, key, style }) => {
-  const menuActions = [
-    upgradeHelmRelease(obj.name, obj.namespace, HelmActionOrigins.list),
-    rollbackHelmRelease(obj.name, obj.namespace, HelmActionOrigins.list),
-    deleteHelmRelease(obj.name, obj.namespace),
-  ];
+  const actionsScope = {
+    releaseName: obj.name,
+    namespace: obj.namespace,
+    actionOrigin: HelmActionOrigins.list,
+  };
   return (
     <TableRow id={obj.name} index={index} trKey={key} style={style}>
       <TableData className={tableColumnClasses.name}>
@@ -45,7 +40,11 @@ const HelmReleaseListRow: RowFunction<HelmRelease> = ({ obj, index, key, style }
         {obj.chart.metadata.appVersion || '-'}
       </TableData>
       <TableData className={tableColumnClasses.kebab}>
-        <Kebab options={menuActions} />
+        <ActionsLoader contextId="helm-actions" scope={actionsScope}>
+          {(loader) =>
+            loader.loaded && <ActionMenu actions={loader.actions} options={loader.options} />
+          }
+        </ActionsLoader>
       </TableData>
     </TableRow>
   );

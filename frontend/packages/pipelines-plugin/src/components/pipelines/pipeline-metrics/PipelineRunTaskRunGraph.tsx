@@ -1,25 +1,26 @@
 import * as React from 'react';
-import Measure from 'react-measure';
-import * as _ from 'lodash';
-import { useTranslation } from 'react-i18next';
-import { DEFAULT_CHART_HEIGHT, DEFAULT_LEGEND_CHART_HEIGHT } from '../const';
 import {
   ChartLegend,
-  ChartVoronoiContainer,
   getInteractiveLegendEvents,
   getInteractiveLegendItemStyles,
+  ChartLegendTooltip,
 } from '@patternfly/react-charts';
-import { PipelineTask } from '../../../types';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
+import Measure from 'react-measure';
+import { CursorVoronoiContainer } from '@console/internal/components/graphs';
 import { GraphEmpty } from '@console/internal/components/graphs/graph-empty';
-import { formatDuration } from '@console/internal/components/utils/datetime';
 import { LoadingInline, truncateMiddle } from '@console/internal/components/utils';
+import { formatPrometheusDuration } from '@console/internal/components/utils/datetime';
+import { PipelineTask } from '../../../types';
+import { DEFAULT_CHART_HEIGHT, DEFAULT_LEGEND_CHART_HEIGHT } from '../const';
 import { usePipelineRunTaskRunPoll } from '../hooks';
+import { LineChart } from './charts/lineChart';
 import {
   PipelineMetricsGraphProps,
   getRangeVectorData,
   getYaxisValues,
 } from './pipeline-metrics-utils';
-import { LineChart } from './charts/lineChart';
 
 import './pipeline-chart.scss';
 
@@ -29,6 +30,7 @@ const PipelineRunTaskRunGraph: React.FC<PipelineMetricsGraphProps> = ({
   interval,
   loaded = true,
   onLoad: onInitialLoad,
+  queryPrefix,
 }) => {
   const {
     metadata: { name, namespace },
@@ -41,6 +43,7 @@ const PipelineRunTaskRunGraph: React.FC<PipelineMetricsGraphProps> = ({
     namespace,
     timespan,
     delay: interval,
+    queryPrefix,
   });
 
   const taskNameMap = pipeline.spec.tasks
@@ -53,17 +56,18 @@ const PipelineRunTaskRunGraph: React.FC<PipelineMetricsGraphProps> = ({
   const getCustomTaskName = (task: string): string =>
     taskNameMap[task] ? taskNameMap[task] : task;
 
-  if (runDataLoading) {
-    return <LoadingInline />;
-  }
-
   const pipelineTaskRunData = runData?.data?.result ?? [];
-  if (!loaded) {
-    onInitialLoad &&
+  React.useEffect(() => {
+    if (!loaded && onInitialLoad) {
       onInitialLoad({
         chartName: 'pipelineTaskRunDuration',
         hasData: !!pipelineTaskRunData.length,
       });
+    }
+  }, [loaded, onInitialLoad, pipelineTaskRunData]);
+
+  if (runDataLoading) {
+    return <LoadingInline />;
   }
 
   if ((!loaded && pipelineTaskRunData.length) || runDataError || pipelineTaskRunData.length === 0) {
@@ -138,17 +142,22 @@ const PipelineRunTaskRunGraph: React.FC<PipelineMetricsGraphProps> = ({
               />
             }
             containerComponent={
-              <ChartVoronoiContainer
+              <CursorVoronoiContainer
                 constrainToVisibleArea
+                mouseFollowTooltips
+                voronoiDimension="x"
+                cursorDimension="x"
+                labels={({ datum }) =>
+                  `${datum.y !== null ? formatPrometheusDuration(datum?.y * 1000) : null}`
+                }
+                labelComponent={
+                  <ChartLegendTooltip
+                    legendData={getLegendData()}
+                    title={(datum) => truncateMiddle(datum?.metric?.pipelinerun)}
+                  />
+                }
                 activateData={false}
                 voronoiPadding={{ bottom: 75 } as any}
-                labels={({ datum }) =>
-                  datum.childName.includes('line-') && datum.y !== null
-                    ? `${datum?.metric?.pipelinerun}
-                ${getCustomTaskName(datum?.metric?.task)}
-            ${formatDuration(datum?.y * 1000)}`
-                    : null
-                }
               />
             }
           />

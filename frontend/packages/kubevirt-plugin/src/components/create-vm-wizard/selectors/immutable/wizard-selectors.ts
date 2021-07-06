@@ -1,17 +1,17 @@
+import { isCustomFlavor } from '../../../../selectors/vm-like/flavor';
 import { iGet, iGetIn } from '../../../../utils/immutable';
+import { getStringEnumValues } from '../../../../utils/types';
 import {
+  ALL_VM_WIZARD_TABS,
   ImportProvidersField,
   VMSettingsField,
   VMWizardNetworkType,
   VMWizardProps,
   VMWizardTab,
   VMWizardTabsMetadata,
-  ALL_VM_WIZARD_TABS,
 } from '../../types';
-import { getStringEnumValues } from '../../../../utils/types';
 import { iGetCreateVMWizardTabs } from './common';
 import { iGetCommonData } from './selectors';
-import { isCustomFlavor } from '../../../../selectors/vm-like/flavor';
 
 const getTabBoolean = (state, wizardID: string, stepId: VMWizardTab, key) =>
   !!iGetIn(iGetCreateVMWizardTabs(state, wizardID), [stepId, key]);
@@ -45,6 +45,9 @@ export const getStepError = (state, wizardID: string, stepId: VMWizardTab) =>
 
 export const isLastStepErrorFatal = (state, wizardID: string) =>
   iGetIn(iGetCreateVMWizardTabs(state, wizardID), [VMWizardTab.RESULT, 'value', 'isFatal']);
+
+export const getEnableSSHService = (state): boolean =>
+  state?.plugins?.kubevirt?.authorizedSSHKeys?.enableSSHService;
 
 export const getStepsMetadata = (state, wizardID: string): VMWizardTabsMetadata => {
   const stepData = iGetCreateVMWizardTabs(state, wizardID);

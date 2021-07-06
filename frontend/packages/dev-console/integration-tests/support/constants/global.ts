@@ -1,6 +1,6 @@
 export enum devNavigationMenu {
   Add = '+Add',
-  Topology = ' Topology',
+  Topology = 'Topology',
   Monitoring = 'Monitoring',
   Builds = 'Builds',
   Search = 'Search',
@@ -16,20 +16,31 @@ export enum devNavigationMenu {
 
 export enum switchPerspective {
   Developer = 'Developer',
-  Administrator = ' Administrator',
+  Administrator = 'Administrator',
 }
 
 export enum operators {
   PipelinesOperator = 'Pipeline',
   ServerlessOperator = 'Serverless',
   VirtualizationOperator = 'Virtualization',
-  KnativeCamelOperator = 'Knative Apache Camel K',
+  RedHatIntegrationCamelK = 'Red Hat Integration - Camel K',
+  ApacheCamelKOperator = 'Camel K Operator',
+  KnativeApacheCamelOperator = 'Knative Apache Camel Operator',
   EclipseCheOperator = 'Eclipse Che',
   GitOpsOperator = 'GitOps',
   WebTerminalOperator = 'Web Terminal',
+  ApacheKafka = 'Red Hat Integration - AMQ Streams',
 }
 
 export enum authenticationType {
   BasicAuthentication = 'Basic Authentication',
   SSHKey = 'SSHKey',
+}
+
+export enum resources {
+  DeploymentConfigs = 'Deployment Configs',
+  BuildConfigs = 'Build Configs',
+  Services = 'Services',
+  ImageStreams = 'Image Streams',
+  Routes = 'Routes',
 }

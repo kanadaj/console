@@ -1,17 +1,17 @@
 import * as React from 'react';
-import { useTranslation, Trans } from 'react-i18next';
 import { TextInputTypes } from '@patternfly/react-core';
-import { PromiseComponent, history } from '@console/internal/components/utils';
+import { Formik, FormikProps, FormikValues } from 'formik';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   createModalLauncher,
   ModalTitle,
   ModalBody,
   ModalSubmitFooter,
 } from '@console/internal/components/factory/modal';
-import { Formik, FormikProps, FormikValues } from 'formik';
+import { PromiseComponent, history } from '@console/internal/components/utils';
 import { K8sResourceKind } from '@console/internal/module/k8s';
-import { YellowExclamationTriangleIcon } from '../status';
 import { InputField } from '../formik-fields';
+import { YellowExclamationTriangleIcon } from '../status';
 
 type DeleteResourceModalProps = {
   resourceName: string;
@@ -63,7 +63,7 @@ const DeleteResourceForm: React.FC<FormikProps<FormikValues> & DeleteResourceMod
       </ModalBody>
       <ModalSubmitFooter
         submitText={submitLabel}
-        submitDisabled={(status && !!status.submitError) || !isValid}
+        submitDisabled={(status && !!status.submitError) || !isValid || isSubmitting}
         cancel={cancel}
         inProgress={isSubmitting}
         submitDanger
@@ -78,19 +78,18 @@ class DeleteResourceModal extends PromiseComponent<
   DeleteResourceModalState
 > {
   private handleSubmit = (values, actions) => {
-    actions.setSubmitting(true);
     const { onSubmit, close, redirect } = this.props;
-    onSubmit &&
+    return (
+      onSubmit &&
       this.handlePromise(onSubmit(values))
         .then(() => {
-          actions.setSubmitting(false);
           close();
           redirect && history.push(redirect);
         })
         .catch((errorMessage) => {
-          actions.setSubmitting(false);
           actions.setStatus({ submitError: errorMessage });
-        });
+        })
+    );
   };
 
   render() {

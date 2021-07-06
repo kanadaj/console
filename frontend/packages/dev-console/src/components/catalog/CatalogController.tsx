@@ -1,8 +1,9 @@
 import * as React from 'react';
 import * as _ from 'lodash';
 import Helmet from 'react-helmet';
-import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
+import { CatalogItem, CatalogItemAttribute } from '@console/dynamic-plugin-sdk';
 import {
   PageHeading,
   skeletonCatalog,
@@ -10,18 +11,28 @@ import {
   removeQueryArgument,
   setQueryArgument,
 } from '@console/internal/components/utils';
-import { CatalogItem, CatalogItemAttribute } from '@console/dynamic-plugin-sdk';
 import { useQueryParams } from '@console/shared';
-
-import { CatalogService } from './service/CatalogServiceProvider';
 import CatalogView from './catalog-view/CatalogView';
-import useCatalogCategories from './hooks/useCatalogCategories';
-import CatalogDetailsModal from './details/CatalogDetailsModal';
 import CatalogTile from './CatalogTile';
+import CatalogDetailsModal from './details/CatalogDetailsModal';
+import { CatalogService } from './service/CatalogServiceProvider';
+import { getURLWithParams } from './utils/catalog-utils';
 import { determineAvailableFilters } from './utils/filter-utils';
-import { CatalogFilters, CatalogQueryParams, CatalogStringMap, CatalogType } from './utils/types';
+import {
+  CatalogCategory,
+  CatalogFilters,
+  CatalogQueryParams,
+  CatalogStringMap,
+  CatalogType,
+} from './utils/types';
 
-type CatalogControllerProps = CatalogService;
+type CatalogControllerProps = CatalogService & {
+  enableDetailsPanel?: boolean;
+  hideSidebar?: boolean;
+  title: string;
+  description: string;
+  categories?: CatalogCategory[];
+};
 
 const CatalogController: React.FC<CatalogControllerProps> = ({
   type,
@@ -30,15 +41,15 @@ const CatalogController: React.FC<CatalogControllerProps> = ({
   loaded,
   loadError,
   catalogExtensions,
+  enableDetailsPanel,
+  title: defaultTitle,
+  description: defaultDescription,
+  hideSidebar,
+  categories,
 }) => {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const queryParams = useQueryParams();
-
-  const defaultTitle = t('devconsole~Developer Catalog');
-  const defaultDescription = t(
-    'devconsole~Add shared applications, services, event sources, or source-to-image builders to your Project from the developer catalog. Cluster administrators can customize the content made available in the catalog.',
-  );
 
   const typeExtension = React.useMemo(
     () => catalogExtensions?.find((extension) => extension.properties.type === type),
@@ -99,8 +110,6 @@ const CatalogController: React.FC<CatalogControllerProps> = ({
     return crumbs;
   }, [pathname, queryParams, t, title, type]);
 
-  const availableCategories = useCatalogCategories();
-
   const selectedItem = React.useMemo(() => {
     const selectedId = queryParams.get(CatalogQueryParams.SELECTED_ID);
     return items.find((it) => selectedId === it.uid);
@@ -137,9 +146,24 @@ const CatalogController: React.FC<CatalogControllerProps> = ({
 
   const renderTile = React.useCallback(
     (item: CatalogItem) => (
-      <CatalogTile item={item} onClick={openDetailsPanel} catalogTypes={catalogTypes} />
+      <CatalogTile
+        item={item}
+        catalogTypes={catalogTypes}
+        onClick={
+          enableDetailsPanel
+            ? openDetailsPanel
+            : item.cta?.callback
+            ? () => item.cta.callback()
+            : null
+        }
+        href={
+          !enableDetailsPanel
+            ? item.cta?.href
+            : getURLWithParams(CatalogQueryParams.SELECTED_ID, item.uid)
+        }
+      />
     ),
-    [catalogTypes, openDetailsPanel],
+    [catalogTypes, openDetailsPanel, enableDetailsPanel],
   );
 
   return (
@@ -163,12 +187,13 @@ const CatalogController: React.FC<CatalogControllerProps> = ({
                 catalogType={type}
                 catalogTypes={catalogTypes}
                 items={catalogItems}
-                categories={availableCategories}
+                categories={categories}
                 filters={availableFilters}
                 filterGroups={filterGroups}
                 filterGroupNameMap={filterGroupNameMap}
                 groupings={groupings}
                 renderTile={renderTile}
+                hideSidebar={hideSidebar}
               />
               <CatalogDetailsModal item={selectedItem} onClose={closeDetailsPanel} />
             </StatusBox>

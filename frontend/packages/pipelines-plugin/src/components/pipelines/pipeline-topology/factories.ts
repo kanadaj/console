@@ -6,16 +6,16 @@ import {
   ModelKind,
   Graph,
 } from '@patternfly/react-topology';
-import { NodeType, PipelineLayout } from './const';
+import BuilderFinallyNode from './BuilderFinallyNode';
 import BuilderNode from './BuilderNode';
+import { NodeType, PipelineLayout } from './const';
+import FinallyNode from './FinallyNode';
 import InvalidTaskListNode from './InvalidTaskListNode';
 import SpacerNode from './SpacerNode';
-import TaskNode from './TaskNode';
 import TaskEdge from './TaskEdge';
 import TaskListNode from './TaskListNode';
+import TaskNode from './TaskNode';
 import { getLayoutData } from './utils';
-import FinallyNode from './FinallyNode';
-import BuilderFinallyNode from './BuilderFinallyNode';
 
 export const componentFactory: ComponentFactory = (kind: ModelKind, type: string) => {
   switch (kind) {
@@ -51,6 +51,8 @@ export const layoutFactory: LayoutFactory = (type: string, graph: Graph) => {
   switch (type) {
     case PipelineLayout.DAGRE_BUILDER:
     case PipelineLayout.DAGRE_VIEWER:
+    case PipelineLayout.DAGRE_VIEWER_SPACED:
+    case PipelineLayout.DAGRE_BUILDER_SPACED:
       return new DagreLayout(graph, {
         // Hack to get around undesirable defaults
         // TODO: fix this, it's not ideal but it works for now

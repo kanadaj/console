@@ -1,14 +1,14 @@
-import { cloneDeep } from 'lodash';
 import { TFunction } from 'i18next';
+import { cloneDeep } from 'lodash';
 import { CREATE_APPLICATION_KEY, UNASSIGNED_KEY } from '@console/topology/src/const';
+import { mockFormData } from '../__mocks__/import-validation-mock';
+import { GitTypes } from '../import-types';
 import {
   validationSchema,
   detectGitType,
   detectGitRepoName,
   createComponentName,
 } from '../import-validation-utils';
-import { mockFormData } from '../__mocks__/import-validation-mock';
-import { GitTypes } from '../import-types';
 import { serverlessCommonTests } from './serverless-common-tests';
 
 const t = (key: TFunction) => key;
@@ -46,12 +46,15 @@ describe('ValidationUtils', () => {
 
   describe('createComponentName', () => {
     const invalidConvertedtoValidNamePair: { [key: string]: string } = {
-      '0name': 'ocp-0name',
-      '-name': 'ocp--name',
-      'name-': 'ocp-name',
-      'invalid&name': 'ocp-invalidname',
-      'invalid name': 'ocp-invalidname',
-      'invalid-Name': 'ocp-invalid-name',
+      '-2name': 'ocp-2-name',
+      '0name': 'ocp-0-name',
+      Name: 'name',
+      '-name': 'name',
+      'name-': 'name',
+      'invalid&name': 'invalid-name',
+      'invalid name': 'invalid-name',
+      'invalid-Name': 'invalid-name',
+      InvalidName: 'invalid-name',
     };
     const validNames: string[] = ['name', 'valid-name', 'name0', 'name-0'];
 
@@ -130,7 +133,7 @@ describe('ValidationUtils', () => {
       await validationSchema(t)
         .validate(mockData)
         .catch((err) => {
-          expect(err.message).toBe('Required');
+          expect(err.message).toBe('console-shared~Required');
           expect(err.type).toBe('required');
         });
     });
@@ -145,6 +148,21 @@ describe('ValidationUtils', () => {
       expect(name).toEqual('wild-west-frontend');
     });
 
+    it('should convert the detected name to valid kebabCase', async () => {
+      expect(
+        detectGitRepoName('https://github.com/openshift-evangelists/Wild-West-Frontend'),
+      ).toEqual('wild-west-frontend');
+      expect(
+        detectGitRepoName('https://github.com/openshift-evangelists/wildWestFrontend'),
+      ).toEqual('wild-west-frontend');
+      expect(
+        detectGitRepoName('https://github.com/openshift-evangelists/wild-west-frontend.git'),
+      ).toEqual('wild-west-frontend-git');
+      expect(
+        detectGitRepoName('https://github.com/openshift-evangelists/Wild-West-Frontend123'),
+      ).toEqual('wild-west-frontend-123');
+    });
+
     it('should throw an error if name is invalid', async () => {
       const mockData = cloneDeep(mockFormData);
       mockData.name = 'app_name';
@@ -155,7 +173,7 @@ describe('ValidationUtils', () => {
         .validate(mockData)
         .catch((err) => {
           expect(err.message).toBe(
-            'Name must consist of lower-case letters, numbers and hyphens. It must start with a letter and end with a letter or number.',
+            'console-shared~Name must consist of lower-case letters, numbers and hyphens. It must start with a letter and end with a letter or number.',
           );
         });
     });
@@ -280,7 +298,7 @@ describe('ValidationUtils', () => {
       await validationSchema(t)
         .validate(mockData)
         .catch((err) => {
-          expect(err.message).toBe('devconsole~Port must be an Integer.');
+          expect(err.message).toBe('devconsole~Port must be an integer.');
         });
     });
 

@@ -1,16 +1,19 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import * as cx from 'classnames';
 import { ActionGroup, Alert, Button, ButtonVariant } from '@patternfly/react-core';
+import { DownloadIcon } from '@patternfly/react-icons';
+import * as cx from 'classnames';
+import { useTranslation } from 'react-i18next';
 import { ButtonBar } from '@console/internal/components/utils';
-import { FormFooterProps } from './form-utils-types';
-import './FormFooter.scss';
 import { Shadows, useScrollShadows, useScrollContainer } from '../../hooks';
+import { FormFooterProps } from './form-utils-types';
+
+import './FormFooter.scss';
 
 const FormFooter: React.FC<FormFooterProps> = ({
   handleSubmit,
   handleReset,
   handleCancel,
+  handleDownload,
   submitLabel,
   resetLabel,
   cancelLabel,
@@ -85,6 +88,18 @@ const FormFooter: React.FC<FormFooterProps> = ({
               onClick={handleCancel}
             >
               {cancelLabel || t('console-shared~Cancel')}
+            </Button>
+          )}
+          {handleDownload && (
+            <Button
+              type="button"
+              data-test-id="download-button"
+              variant={ButtonVariant.secondary}
+              className="pf-c-button--align-right hidden-sm hidden-xs"
+              onClick={handleDownload}
+              icon={<DownloadIcon />}
+            >
+              {t('console-shared~Download')}
             </Button>
           )}
         </ActionGroup>

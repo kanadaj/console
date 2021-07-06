@@ -8,6 +8,10 @@ export const PipelineModel: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
   label: 'Pipeline',
+  // t('pipelines-plugin~Pipeline')
+  labelKey: 'pipelines-plugin~Pipeline',
+  // t('pipelines-plugin~Pipelines')
+  labelPluralKey: 'pipelines-plugin~Pipelines',
   plural: 'pipelines',
   abbr: 'PL',
   namespaced: true,
@@ -15,22 +19,24 @@ export const PipelineModel: K8sKind = {
   id: 'pipeline',
   labelPlural: 'Pipelines',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
 export const PipelineRunModel: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
-  label: 'Pipeline Run',
+  label: 'PipelineRun',
+  // t('pipelines-plugin~PipelineRun')
+  labelKey: 'pipelines-plugin~PipelineRun',
+  // t('pipelines-plugin~PipelineRuns')
+  labelPluralKey: 'pipelines-plugin~PipelineRuns',
   plural: 'pipelineruns',
   abbr: 'PLR',
   namespaced: true,
   kind: 'PipelineRun',
   id: 'pipelinerun',
-  labelPlural: 'Pipeline Runs',
+  labelPlural: 'PipelineRuns',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
@@ -38,6 +44,10 @@ export const TaskModel: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
   label: 'Task',
+  // t('pipelines-plugin~Task')
+  labelKey: 'pipelines-plugin~Task',
+  // t('pipelines-plugin~Tasks')
+  labelPluralKey: 'pipelines-plugin~Tasks',
   plural: 'tasks',
   abbr: 'T',
   namespaced: true,
@@ -45,52 +55,60 @@ export const TaskModel: K8sKind = {
   id: 'task',
   labelPlural: 'Tasks',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
 export const TaskRunModel: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
-  label: 'Task Run',
+  label: 'TaskRun',
+  // t('pipelines-plugin~TaskRun')
+  labelKey: 'pipelines-plugin~TaskRun',
+  // t('pipelines-plugin~TaskRuns')
+  labelPluralKey: 'pipelines-plugin~TaskRuns',
   plural: 'taskruns',
   abbr: 'TR',
   namespaced: true,
   kind: 'TaskRun',
   id: 'taskrun',
-  labelPlural: 'Task Runs',
+  labelPlural: 'TaskRuns',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
 export const PipelineResourceModel: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1alpha1',
-  label: 'Pipeline Resource',
+  label: 'PipelineResource',
+  // t('pipelines-plugin~PipelineResource')
+  labelKey: 'pipelines-plugin~PipelineResource',
+  // t('pipelines-plugin~PipelineResources')
+  labelPluralKey: 'pipelines-plugin~PipelineResources',
   plural: 'pipelineresources',
   abbr: 'PR',
   namespaced: true,
   kind: 'PipelineResource',
   id: 'pipelineresource',
-  labelPlural: 'Pipeline Resources',
+  labelPlural: 'PipelineResources',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
 export const ClusterTaskModel: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1beta1',
-  label: 'Cluster Task',
+  label: 'ClusterTask',
+  // t('pipelines-plugin~ClusterTask')
+  labelKey: 'pipelines-plugin~ClusterTask',
+  // t('pipelines-plugin~ClusterTasks')
+  labelPluralKey: 'pipelines-plugin~ClusterTasks',
   plural: 'clustertasks',
   abbr: 'CT',
   namespaced: false,
   kind: 'ClusterTask',
   id: 'clustertask',
-  labelPlural: 'Cluster Tasks',
+  labelPlural: 'ClusterTasks',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
@@ -98,6 +116,10 @@ export const ConditionModel: K8sKind = {
   apiGroup: 'tekton.dev',
   apiVersion: 'v1alpha1',
   label: 'Condition',
+  // t('pipelines-plugin~Condition')
+  labelKey: 'pipelines-plugin~Condition',
+  // t('pipelines-plugin~Conditions')
+  labelPluralKey: 'pipelines-plugin~Conditions',
   plural: 'conditions',
   abbr: 'C',
   namespaced: true,
@@ -105,20 +127,23 @@ export const ConditionModel: K8sKind = {
   id: 'condition',
   labelPlural: 'Conditions',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
 export const TriggerBindingModel: K8sKind = {
   apiGroup: 'triggers.tekton.dev',
   apiVersion: 'v1alpha1',
-  label: 'Trigger Binding',
+  label: 'TriggerBinding',
+  // t('pipelines-plugin~TriggerBinding')
+  labelKey: 'pipelines-plugin~TriggerBinding',
+  // t('pipelines-plugin~TriggerBindings')
+  labelPluralKey: 'pipelines-plugin~TriggerBindings',
   plural: 'triggerbindings',
   abbr: 'TB',
   namespaced: true,
   kind: 'TriggerBinding',
   id: 'triggerbinding',
-  labelPlural: 'Trigger Bindings',
+  labelPlural: 'TriggerBindings',
   crd: true,
   badge: BadgeType.TECH,
   color,
@@ -127,13 +152,17 @@ export const TriggerBindingModel: K8sKind = {
 export const ClusterTriggerBindingModel: K8sKind = {
   apiGroup: 'triggers.tekton.dev',
   apiVersion: 'v1alpha1',
-  label: 'Cluster Trigger Binding',
+  label: 'ClusterTriggerBinding',
+  // t('pipelines-plugin~ClusterTriggerBinding')
+  labelKey: 'pipelines-plugin~ClusterTriggerBinding',
+  // t('pipelines-plugin~ClusterTriggerBindings')
+  labelPluralKey: 'pipelines-plugin~ClusterTriggerBindings',
   plural: 'clustertriggerbindings',
   abbr: 'CTB',
   namespaced: false,
   kind: 'ClusterTriggerBinding',
   id: 'clustertriggerbinding',
-  labelPlural: 'Cluster Trigger Bindings',
+  labelPlural: 'ClusterTriggerBindings',
   crd: true,
   badge: BadgeType.TECH,
   color,
@@ -142,13 +171,17 @@ export const ClusterTriggerBindingModel: K8sKind = {
 export const TriggerTemplateModel: K8sKind = {
   apiGroup: 'triggers.tekton.dev',
   apiVersion: 'v1alpha1',
-  label: 'Trigger Template',
+  label: 'TriggerTemplate',
+  // t('pipelines-plugin~TriggerTemplate')
+  labelKey: 'pipelines-plugin~TriggerTemplate',
+  // t('pipelines-plugin~TriggerTemplates')
+  labelPluralKey: 'pipelines-plugin~TriggerTemplates',
   plural: 'triggertemplates',
   abbr: 'TT',
   namespaced: true,
   kind: 'TriggerTemplate',
   id: 'triggertemplate',
-  labelPlural: 'Trigger Templates',
+  labelPlural: 'TriggerTemplates',
   crd: true,
   badge: BadgeType.TECH,
   color,
@@ -157,13 +190,17 @@ export const TriggerTemplateModel: K8sKind = {
 export const EventListenerModel: K8sKind = {
   apiGroup: 'triggers.tekton.dev',
   apiVersion: 'v1alpha1',
-  label: 'Event Listener',
+  label: 'EventListener',
+  // t('pipelines-plugin~EventListener')
+  labelKey: 'pipelines-plugin~EventListener',
+  // t('pipelines-plugin~EventListeners')
+  labelPluralKey: 'pipelines-plugin~EventListeners',
   plural: 'eventlisteners',
   abbr: 'EL',
   namespaced: true,
   kind: 'EventListener',
   id: 'eventlistener',
-  labelPlural: 'Event Listeners',
+  labelPlural: 'EventListeners',
   crd: true,
   badge: BadgeType.TECH,
   color,

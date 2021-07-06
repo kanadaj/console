@@ -205,6 +205,7 @@ describe('CRD extensions', () => {
       const newContent = _.defaultsDeep({}, { spec: { location, text } }, safeLoad(content));
       await yamlView.setEditorContent(safeDump(newContent));
       expect(yamlView.getEditorContent()).toContain(`location: ${location}`);
+      await browser.wait(until.elementToBeClickable(yamlView.saveButton));
       await yamlView.saveButton.click();
       await browser.wait(until.visibilityOf(crudView.successMessage));
       expect(crudView.successMessage.isPresent()).toBe(true);
@@ -274,9 +275,6 @@ describe('CRD extensions', () => {
         { metadata: { name: podName, labels: { app: name } } },
         safeLoad(content),
       );
-      // TODO: Remove when the default `registry.redhat.io/openshift4/ose-hello-openshift-rhel8`
-      // image is published.
-      newContent.spec.containers[0].image = 'openshift/hello-openshift:latest';
       await yamlView.setEditorContent(safeDump(newContent));
       await yamlView.saveButton.click();
       expect(crudView.errorMessage.isPresent()).toBe(false);
@@ -300,6 +298,7 @@ describe('CRD extensions', () => {
       const newContent = _.defaultsDeep({}, { spec: { namespaceFilter } }, safeLoad(content));
       await yamlView.setEditorContent(safeDump(newContent));
       expect(yamlView.getEditorContent()).toContain(`namespaceFilter: ${namespaceFilter}`);
+      await browser.wait(until.elementToBeClickable(yamlView.saveButton));
       await yamlView.saveButton.click();
       await browser.wait(until.visibilityOf(crudView.successMessage));
       expect(crudView.successMessage.isPresent()).toBe(true);

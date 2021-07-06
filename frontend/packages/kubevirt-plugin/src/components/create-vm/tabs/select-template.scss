@@ -17,6 +17,10 @@
   }
 }
 
+.kv-select-template__create-project-btn {
+  color: var(--pf-c-button--m-plain--active--Color);
+}
+
 .kv-select-template__tile {
   width: 300px;
   height: 100%;
@@ -38,8 +42,4 @@
 
 .kv-select-template__tile-desc {
   --pf-l-stack--m-gutter--MarginBottom: var(--pf-global--spacer--sm);
-}
-
-.kv-select-template__support-label {
-  text-align: right;
 }

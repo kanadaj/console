@@ -36,6 +36,7 @@ import {
   NodesDisksListPage,
   NodesDisksListPageProps,
 } from '@console/local-storage-operator-plugin/src/components/disks-list/disks-list-page';
+import { getAnnotations } from '@console/shared/src';
 import { OCSKebabOptions } from './ocs-kebab-options';
 import { OCSStatus } from './ocs-status-column';
 import {
@@ -47,6 +48,7 @@ import {
   OCSColumnStateAction,
   Status,
   OCSDiskStatus,
+  ReplacedDisk,
 } from './state-reducer';
 import { CEPH_STORAGE_NAMESPACE, OSD_DOWN_ALERT, OSD_DOWN_AND_OUT_ALERT } from '../../constants';
 
@@ -97,13 +99,19 @@ const diskRow: RowFunction<DiskMetadata, OCSMetadata> = ({
   style,
   customData,
 }) => {
-  const { ocsState, dispatch } = customData;
-  const diskName = obj.path;
+  const { ocsState, nodeName, dispatch } = customData;
   return (
     <TableRow id={obj.deviceID} index={index} trKey={key} style={style}>
       <TableData className={tableColumnClasses[0]}>{obj.path}</TableData>
       <TableData className={tableColumnClasses[1]}>{obj.status.state}</TableData>
-      <OCSStatus ocsState={ocsState} diskName={diskName} className={tableColumnClasses[1]} />
+      <OCSStatus
+        ocsState={ocsState}
+        nodeName={nodeName}
+        diskName={obj.path}
+        diskID={obj.deviceID}
+        diskSerial={obj.serial}
+        className={tableColumnClasses[1]}
+      />
       <TableData className={tableColumnClasses[2]}>{obj.type || '-'}</TableData>
       <TableData className={cx(tableColumnClasses[3], 'co-break-word')}>
         {obj.model || '-'}
@@ -112,25 +120,20 @@ const diskRow: RowFunction<DiskMetadata, OCSMetadata> = ({
         {humanizeBinaryBytes(obj.size).string || '-'}
       </TableData>
       <TableData className={tableColumnClasses[5]}>{obj.fstype || '-'}</TableData>
-      <OCSKebabOptions
-        diskName={diskName}
-        alertsMap={ocsState.alertsMap}
-        replacementMap={ocsState.replacementMap}
-        isRebalancing={ocsState.isRebalancing}
-        dispatch={dispatch}
-      />
+      <OCSKebabOptions disk={obj} nodeName={nodeName} ocsState={ocsState} dispatch={dispatch} />
     </TableRow>
   );
 };
 
 const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
   const { t } = useTranslation();
-
   const [ocsState, dispatch] = React.useReducer(reducer, initialState);
+
+  const nodeName = props.customData.node;
 
   const [cephDiskData, cephDiskLoadError, cephDiskLoading] = usePrometheusPoll({
     endpoint: PrometheusEndpoint.QUERY,
-    query: osdDiskInfoMetric({ nodeName: props.customData.node }),
+    query: osdDiskInfoMetric({ nodeName }),
   });
   const [progressData, progressLoadError, progressLoading] = usePrometheusPoll({
     endpoint: PrometheusEndpoint.QUERY,
@@ -154,6 +157,7 @@ const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
       ocsDiskList[metric.device] = {
         osd: metric.ceph_daemon,
         status: Status.Online,
+        node: metric.exported_instance,
       };
       return ocsDiskList;
     }, {});
@@ -161,7 +165,7 @@ const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
       (ocsDiskList: OCSDiskList, alert: Alert) => {
         const { rule, labels } = alert;
         const status = getAlertsBasedStatus(rule.name);
-        if (status) ocsDiskList[labels.device] = { osd: labels.disk, status };
+        if (status) ocsDiskList[labels.device] = { osd: labels.disk, status, node: labels.host };
         return ocsDiskList;
       },
       {},
@@ -180,20 +184,49 @@ const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
     }
 
     if (tiLoaded && !tiLoadError && tiData.length) {
-      const newData: OCSDiskList = tiData.reduce((data, ti) => {
-        const disk = ti.metadata.annotations?.disk;
-        const osd = ti.metadata.annotations?.osd;
-        if (osd && disk) {
-          data[disk] = {
-            osd,
+      const newData: ReplacedDisk[] = tiData.reduce((data: ReplacedDisk[], ti) => {
+        const { devicePath, deviceID, deviceOsd, deviceNode, deviceSerial } =
+          getAnnotations(ti) || {};
+        if (devicePath && deviceOsd && deviceNode === nodeName) {
+          data.push({
+            osd: deviceOsd,
+            disk: {
+              id: deviceID,
+              path: devicePath,
+              serial: deviceSerial,
+            },
+            node: nodeName,
             status: getTiBasedStatus(ti.status.conditions?.[0].type),
-          };
+          });
         }
         return data;
-      }, {});
-      if (!_.isEqual(newData, ocsState.replacementMap)) {
+      }, []);
+      if (!_.isEqual(newData, ocsState.replacedDiskList)) {
         dispatch({
-          type: ActionType.SET_REPLACEMENT_MAP,
+          type: ActionType.SET_REPLACED_DISK_LIST,
+          payload: newData,
+        });
+      }
+    }
+
+    if (ocsState.replacingDiskList.length !== 0) {
+      const replacedDiskIndexList = ocsState.replacingDiskList.reduce((indexes, disk, index) => {
+        const hasReplaced = ocsState.replacedDiskList?.some((rd: ReplacedDisk) => {
+          const diskInfo = rd?.disk;
+          return (
+            diskInfo?.path === disk.path &&
+            diskInfo?.id === disk.id &&
+            diskInfo?.serial === disk.serial
+          );
+        });
+        if (hasReplaced) indexes.push(index);
+        return indexes;
+      }, []);
+      if (replacedDiskIndexList.length) {
+        const newData = [...ocsState.replacingDiskList];
+        replacedDiskIndexList.forEach((index) => newData.splice(index, 1));
+        dispatch({
+          type: ActionType.SET_REPLACING_DISK_LIST,
           payload: newData,
         });
       }
@@ -214,7 +247,7 @@ const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
       props: { className: tableColumnClasses[1] },
     },
     {
-      title: t('ceph-storage-plugin~OCS Status'),
+      title: t("ceph-storage-plugin~OpenShift Container Storage's Status"),
       sortField: '',
       transforms: [],
       props: { className: tableColumnClasses[1] },
@@ -257,7 +290,7 @@ const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
       aria-label={t('ceph-storage-plugin~Disks List')}
       Header={diskHeader}
       Row={diskRow}
-      customData={{ ocsState, dispatch }}
+      customData={{ ocsState, dispatch, nodeName }}
       NoDataEmptyMsg={props.customData.EmptyMsg}
       virtualize
     />
@@ -269,6 +302,7 @@ export const OCSNodesDiskListPage = (props: NodesDisksListPageProps) => (
 );
 
 type OCSMetadata = {
+  nodeName: string;
   ocsState: OCSColumnState;
   dispatch: React.Dispatch<OCSColumnStateAction>;
 };

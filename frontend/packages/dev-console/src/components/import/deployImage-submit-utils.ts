@@ -15,7 +15,8 @@ import {
 } from '@console/internal/module/k8s';
 import { ServiceModel as KnServiceModel } from '@console/knative-plugin';
 import { getKnativeServiceDepResource } from '@console/knative-plugin/src/utils/create-knative-utils';
-import { getRandomChars } from '@console/shared/src/utils';
+import { getRandomChars, getResourceLimitsData } from '@console/shared/src/utils';
+import { RegistryType } from '../../utils/imagestream-utils';
 import {
   getAppLabels,
   getPodLabels,
@@ -24,9 +25,8 @@ import {
   getTriggerAnnotation,
 } from '../../utils/resource-label-utils';
 import { createRoute, createService, dryRunOpt } from '../../utils/shared-submit-utils';
-import { getProbesData } from '../health-checks/create-health-checks-probe-utils';
-import { RegistryType } from '../../utils/imagestream-utils';
 import { AppResources } from '../edit-application/edit-application-types';
+import { getProbesData } from '../health-checks/create-health-checks-probe-utils';
 import { DeployImageFormData, Resources } from './import-types';
 
 const WAIT_FOR_IMAGESTREAM_UPDATE_TIMEOUT = 5000;
@@ -47,12 +47,14 @@ export const createOrUpdateImageStream = async (
     isi: { name: isiName, tag },
     labels: userLabels,
   } = formData;
+  const imgStreamName =
+    verb === 'update' && originalImageStream ? originalImageStream.metadata.name : name;
   const defaultLabels = getAppLabels({ name, applicationName });
   const newImageStream = {
     apiVersion: 'image.openshift.io/v1',
     kind: 'ImageStream',
     metadata: {
-      name: `${generatedImageStreamName || name}`,
+      name: `${generatedImageStreamName || imgStreamName}`,
       namespace,
       labels: { ...defaultLabels, ...userLabels },
     },
@@ -206,20 +208,7 @@ export const createOrUpdateDeployment = (
               ports,
               volumeMounts,
               env,
-              resources: {
-                ...((cpu.limit || memory.limit) && {
-                  limits: {
-                    ...(cpu.limit && { cpu: `${cpu.limit}${cpu.limitUnit}` }),
-                    ...(memory.limit && { memory: `${memory.limit}${memory.limitUnit}` }),
-                  },
-                }),
-                ...((cpu.request || memory.request) && {
-                  requests: {
-                    ...(cpu.request && { cpu: `${cpu.request}${cpu.requestUnit}` }),
-                    ...(memory.request && { memory: `${memory.request}${memory.requestUnit}` }),
-                  },
-                }),
-              },
+              resources: getResourceLimitsData({ cpu, memory }),
               ...getProbesData(healthChecks),
             },
           ],
@@ -280,20 +269,7 @@ export const createOrUpdateDeploymentConfig = (
               ports,
               volumeMounts,
               env,
-              resources: {
-                ...((cpu.limit || memory.limit) && {
-                  limits: {
-                    ...(cpu.limit && { cpu: `${cpu.limit}${cpu.limitUnit}` }),
-                    ...(memory.limit && { memory: `${memory.limit}${memory.limitUnit}` }),
-                  },
-                }),
-                ...((cpu.request || memory.request) && {
-                  requests: {
-                    ...(cpu.request && { cpu: `${cpu.request}${cpu.requestUnit}` }),
-                    ...(memory.request && { memory: `${memory.request}${memory.requestUnit}` }),
-                  },
-                }),
-              },
+              resources: getResourceLimitsData({ cpu, memory }),
               ...getProbesData(healthChecks),
             },
           ],

@@ -1,6 +1,6 @@
-import { detailsPage } from '../../../../integration-tests-cypress/views/details-page';
-import { pageTitle } from '../constants/pageTitle';
-import { addHealthChecksPO } from '../pageObjects/addHealthChecks-po';
+import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
+import { pageTitle } from '../constants';
+import { addHealthChecksPO } from '../pageObjects';
 
 export const addHealthChecksPage = {
   verifyTitle: () => detailsPage.titleShouldContain(pageTitle.AddHealthChecks),
@@ -20,28 +20,28 @@ export const addHealthChecksPage = {
       .scrollIntoView()
       .click(),
   addReadinessProbe: () => {
-    addHealthChecksPage.clickProbeLink('Add Readiness Probe');
+    addHealthChecksPage.clickProbeLink('Add Readiness probe');
     addHealthChecksPage.verifyHealthChecksForm();
     addHealthChecksPage.clickCheckIcon();
-    addHealthChecksPage.verifySuccessText('Readiness Probe Added');
+    addHealthChecksPage.verifySuccessText('Readiness probe added');
   },
   removeReadinessProbe: () => {
     cy.get(addHealthChecksPO.removeReadinessProbeIcon).click();
   },
   addLivenessProbe: () => {
-    cy.byButtonText('Add Liveness Probe')
+    cy.byButtonText('Add Liveness probe')
       .scrollIntoView()
       .click();
     cy.get('div.odc-heath-check-probe-form').should('be.visible');
     addHealthChecksPage.clickCheckIcon();
-    addHealthChecksPage.verifySuccessText('Liveness Probe Added');
+    addHealthChecksPage.verifySuccessText('Liveness probe added');
   },
   addStartupProbe: () => {
-    cy.byButtonText('Add Startup Probe')
+    cy.byButtonText('Add Startup probe')
       .scrollIntoView()
       .click();
     cy.get('div.odc-heath-check-probe-form').should('be.visible');
     addHealthChecksPage.clickCheckIcon();
-    addHealthChecksPage.verifySuccessText('Startup Probe Added');
+    addHealthChecksPage.verifySuccessText('Startup probe added');
   },
 };

@@ -1,14 +1,14 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import classNames from 'classnames';
 import {
+  ActionGroup,
   Alert,
+  AlertProps,
   Button,
   ButtonVariant,
-  AlertProps,
-  ActionGroup,
   Spinner,
 } from '@patternfly/react-core';
+import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 
 import './modal-footer.scss';
 
@@ -128,6 +128,7 @@ export const ModalFooter: React.FC<ModalFooterProps> = ({
         <Button
           variant={ButtonVariant.primary}
           isDisabled={isDisabled}
+          data-test="confirm-action"
           id="confirm-action"
           onClick={onSubmit}
         >

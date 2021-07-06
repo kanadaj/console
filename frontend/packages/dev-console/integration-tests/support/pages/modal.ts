@@ -1,5 +1,5 @@
-import { eventSourcePO } from '../pageObjects/add-flow-po';
-import { modal } from '../../../../integration-tests-cypress/views/modal';
+import { modal } from '@console/cypress-integration-tests/views/modal';
+import { eventSourcePO } from '../pageObjects';
 
 export const editLabels = {
   enterLabel: (labelName: string) =>
@@ -14,6 +14,20 @@ export const editLabels = {
     cy.get('tags-input span.tag-item')
       .contains(labelName)
       .next('a.remove-button')
+      .click();
+  },
+};
+
+export const addSubscription = {
+  enterSubscriberName: (name: string) =>
+    cy
+      .get('#form-input-metadata-name-field')
+      .clear()
+      .type(name),
+  selectKnativeService: (knativeService: string = 'nodejs-ex-git') => {
+    cy.get('[id$="subscriber-ref-name-field"]').click();
+    cy.get('li')
+      .contains(knativeService)
       .click();
   },
 };
@@ -47,9 +61,14 @@ export const setTrafficDistribution = {
       .get('form [type="button"]')
       .contains('Add')
       .click(),
-  enterSplit: (split: string) => cy.get('#form-input-trafficSplitting-0-percent-field').type(split),
+  enterSplit: (split: string) =>
+    cy
+      .get('[id$="percent-field"]')
+      .last()
+      .clear()
+      .type(split),
   selectRevision: (revisionName: string) => {
-    cy.get('#form-dropdown-trafficSplitting-0-revisionName-field').click();
+    cy.get('[id$="revisionName-field"]').click();
     cy.get(`[data-test-dropdown-menu^="${revisionName}"]`).click();
   },
 };
@@ -94,17 +113,18 @@ export const deleteRevision = {
 
 export const moveSink = {
   selectResource: (resourceName: string) => {
-    cy.get(eventSourcePO.sinkBinding.resource).should('be.checked');
-    cy.get(eventSourcePO.sinkBinding.sinkResource).click();
+    cy.get(eventSourcePO.sinkBinding.sink.resourceRadioButton).should('be.checked');
+    cy.get(eventSourcePO.sinkBinding.sink.resource.resourceDropdown).click();
     cy.get(`[id*="${resourceName}-link"]`).click();
   },
   enterURI: (uri: string) => {
-    cy.get(eventSourcePO.sinkBinding.uri).should('be.checked');
+    cy.get(eventSourcePO.sinkBinding.sink.uriRadioButton).should('be.checked');
     cy.byLegacyTestID('sink-section-uri')
       .clear()
       .type(uri);
   },
-  verifyResourceDropDown: () => cy.get(eventSourcePO.sinkBinding.sinkResource).should('be.visible'),
+  verifyResourceDropDown: () =>
+    cy.get(eventSourcePO.sinkBinding.sink.resource.resourceDropdown).should('be.visible'),
 };
 
 export const editPodCount = {

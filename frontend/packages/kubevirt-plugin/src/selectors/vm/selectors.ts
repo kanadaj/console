@@ -7,27 +7,29 @@ import {
   TEMPLATE_OS_NAME_ANNOTATION,
   TEMPLATE_WORKLOAD_LABEL,
 } from '../../constants/vm';
+import { RunStrategy, StateChangeRequest } from '../../constants/vm/vm';
+import { VMIPhase } from '../../constants/vmi/phase';
+import { NetworkWrapper } from '../../k8s/wrapper/vm/network-wrapper';
+import { VolumeWrapper } from '../../k8s/wrapper/vm/volume-wrapper';
 import {
   CPURaw,
   V1DataVolumeTemplateSpec,
   V1Network,
   V1NetworkInterface,
+  VMIKind,
   VMKind,
 } from '../../types';
-import { findKeySuffixValue, getSimpleName, getValueByPrefix } from '../utils';
-import { getAnnotations, getLabels } from '../selectors';
-import { NetworkWrapper } from '../../k8s/wrapper/vm/network-wrapper';
-import { getDataVolumeStorageClassName, getDataVolumeStorageSize } from '../dv/selectors';
 import { V1Disk, V1Volume } from '../../types/api';
+import { Devices } from '../../types/vm/devices';
+import { VMGenericLikeEntityKind } from '../../types/vmLike';
+import { getDataVolumeStorageClassName, getDataVolumeStorageSize } from '../dv/selectors';
+import { getAnnotations, getLabels, getStatusPhase } from '../selectors';
+import { findKeySuffixValue, getSimpleName, getValueByPrefix } from '../utils';
 import {
   getVolumeCloudInitNoCloud,
   getVolumeContainerImage,
   getVolumePersistentVolumeClaimName,
 } from './volume';
-import { VMGenericLikeEntityKind } from '../../types/vmLike';
-import { RunStrategy, StateChangeRequest } from '../../constants/vm/vm';
-import { VolumeWrapper } from '../../k8s/wrapper/vm/volume-wrapper';
-import { Devices } from '../../types/vm/devices';
 
 export const getMemory = (vm: VMKind) =>
   _.get(vm, 'spec.template.spec.domain.resources.requests.memory');
@@ -87,11 +89,11 @@ export const getWorkloadProfile = (vm: VMGenericLikeEntityKind) =>
 export const getFlavor = (vmLike: VMGenericLikeEntityKind) =>
   findKeySuffixValue(getLabels(vmLike), TEMPLATE_FLAVOR_LABEL);
 
-export const isVMReady = (vm: VMKind) => !!vm?.status?.ready;
+export const isVMIReady = (vmi: VMIKind) => getStatusPhase(vmi) === VMIPhase.Running;
 
 export const isVMCreated = (vm: VMKind) => !!vm?.status?.created;
 
-export const isVMExpectedRunning = (vm: VMKind) => {
+export const isVMExpectedRunning = (vm: VMKind, vmi: VMIKind) => {
   if (!vm?.spec) {
     return false;
   }
@@ -107,8 +109,9 @@ export const isVMExpectedRunning = (vm: VMKind) => {
       case RunStrategy.Halted:
         return false;
       case RunStrategy.Always:
-      case RunStrategy.RerunOnFailure:
         return true;
+      case RunStrategy.RerunOnFailure:
+        return getStatusPhase<VMIPhase>(vmi) !== VMIPhase.Succeeded;
       case RunStrategy.Manual:
       default:
         changeRequests = new Set(
@@ -128,8 +131,17 @@ export const isVMExpectedRunning = (vm: VMKind) => {
   return false;
 };
 
-export const isVMRunningOrExpectedRunning = (vm: VMKind) => {
-  return isVMCreated(vm) || isVMExpectedRunning(vm);
+export const isVMRunningOrExpectedRunning = (vm: VMKind, vmi: VMIKind) => {
+  if (isVMExpectedRunning(vm, vmi)) {
+    return true;
+  }
+  if (
+    (vm?.spec?.runStrategy as RunStrategy) === RunStrategy.RerunOnFailure &&
+    getStatusPhase<VMIPhase>(vmi) === VMIPhase.Succeeded
+  ) {
+    return false;
+  }
+  return isVMCreated(vm);
 };
 
 export const getUsedNetworks = (vm: VMKind): NetworkWrapper[] => {

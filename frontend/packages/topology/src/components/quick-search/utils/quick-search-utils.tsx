@@ -1,16 +1,17 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { TextList, TextListItem } from '@patternfly/react-core';
-import { CatalogItem } from '@console/dynamic-plugin-sdk';
-import { keywordCompare } from '@console/dev-console/src/components/catalog/utils/catalog-utils';
-import { QuickStart } from '@console/app/src/components/quick-starts/utils/quick-start-types';
+import { useTranslation } from 'react-i18next';
 import {
   QuickStartContext,
   QuickStartContextValues,
 } from '@console/app/src/components/quick-starts/utils/quick-start-context';
+import { QuickStart } from '@console/app/src/components/quick-starts/utils/quick-start-types';
+import { keywordCompare } from '@console/dev-console/src/components/catalog/utils/catalog-utils';
+import { CatalogItem } from '@console/dynamic-plugin-sdk';
+import { history, removeQueryArgument } from '@console/internal/components/utils';
 
 export const quickSearch = (items: CatalogItem[], query: string) => {
-  return items.filter((item) => keywordCompare(query, item));
+  return keywordCompare(query, items);
 };
 
 export const useTransformedQuickStarts = (quickStarts: QuickStart[]): CatalogItem[] => {
@@ -38,7 +39,7 @@ export const useTransformedQuickStarts = (quickStarts: QuickStart[]): CatalogIte
         );
         return {
           name: qs.spec.displayName,
-          type: 'Quick Start',
+          type: t('topology~Quick Starts'),
           uid: qs.metadata.uid,
           cta: {
             callback: () => setActiveQuickStart(qs.metadata.name, qs.spec.tasks?.length),
@@ -52,4 +53,24 @@ export const useTransformedQuickStarts = (quickStarts: QuickStart[]): CatalogIte
       }),
     [t, quickStarts, setActiveQuickStart],
   );
+};
+
+export const handleCta = (
+  e: React.SyntheticEvent,
+  item: CatalogItem,
+  closeModal: () => void,
+  fireTelemetryEvent: (event: string, properties?: {}) => void,
+) => {
+  e.preventDefault();
+  const { href, callback } = item.cta;
+  if (callback) {
+    fireTelemetryEvent('Quick Search Used', {
+      id: item.uid,
+      type: item.type,
+      name: item.name,
+    });
+    closeModal();
+    callback();
+    removeQueryArgument('catalogSearch');
+  } else history.push(href);
 };

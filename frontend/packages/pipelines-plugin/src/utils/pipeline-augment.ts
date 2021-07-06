@@ -1,18 +1,17 @@
-import { TFunction } from 'i18next';
-import {
-  chart_color_green_400 as successColor,
-  chart_color_blue_300 as runningColor,
-  global_danger_color_100 as failureColor,
-  chart_color_blue_100 as pendingColor,
-  chart_color_black_400 as skippedColor,
-  chart_color_black_500 as cancelledColor,
-} from '@patternfly/react-tokens';
+import { chart_color_black_400 as skippedColor } from '@patternfly/react-tokens/dist/js/chart_color_black_400';
+import { chart_color_black_500 as cancelledColor } from '@patternfly/react-tokens/dist/js/chart_color_black_500';
+import { chart_color_blue_100 as pendingColor } from '@patternfly/react-tokens/dist/js/chart_color_blue_100';
+import { chart_color_blue_300 as runningColor } from '@patternfly/react-tokens/dist/js/chart_color_blue_300';
+import { chart_color_green_400 as successColor } from '@patternfly/react-tokens/dist/js/chart_color_green_400';
+import { global_danger_color_100 as failureColor } from '@patternfly/react-tokens/dist/js/global_danger_color_100';
+import i18next from 'i18next';
 import {
   K8sKind,
   referenceForModel,
   GroupVersionKind,
   apiVersionForModel,
 } from '@console/internal/module/k8s';
+import { TektonResourceLabel } from '../components/pipelines/const';
 import {
   ClusterTaskModel,
   ClusterTriggerBindingModel,
@@ -21,9 +20,8 @@ import {
   TriggerBindingModel,
   PipelineModel,
 } from '../models';
-import { pipelineRunFilterReducer } from './pipeline-filter-reducer';
-import { TektonResourceLabel } from '../components/pipelines/const';
 import { PipelineKind, PipelineRunKind, PipelineTask } from '../types';
+import { pipelineRunFilterReducer, SucceedConditionReason } from './pipeline-filter-reducer';
 
 interface Metadata {
   name: string;
@@ -163,31 +161,34 @@ export enum runStatus {
   Idle = 'Idle',
 }
 
-export const getRunStatusColor = (status: string, t: TFunction): StatusMessage => {
+export const getRunStatusColor = (status: string): StatusMessage => {
   switch (status) {
     case runStatus.Succeeded:
-      return { message: t('pipelines-plugin~Succeeded'), pftoken: successColor };
+      return { message: i18next.t('pipelines-plugin~Succeeded'), pftoken: successColor };
     case runStatus.Failed:
-      return { message: t('pipelines-plugin~Failed'), pftoken: failureColor };
+      return { message: i18next.t('pipelines-plugin~Failed'), pftoken: failureColor };
     case runStatus.FailedToStart:
       return {
-        message: t('pipelines-plugin~PipelineRun failed to start'),
+        message: i18next.t('pipelines-plugin~PipelineRun failed to start'),
         pftoken: failureColor,
       };
     case runStatus.Running:
-      return { message: t('pipelines-plugin~Running'), pftoken: runningColor };
+      return { message: i18next.t('pipelines-plugin~Running'), pftoken: runningColor };
     case runStatus['In Progress']:
-      return { message: t('pipelines-plugin~Running'), pftoken: runningColor };
+      return { message: i18next.t('pipelines-plugin~Running'), pftoken: runningColor };
 
     case runStatus.Skipped:
-      return { message: t('pipelines-plugin~Skipped'), pftoken: skippedColor };
+      return { message: i18next.t('pipelines-plugin~Skipped'), pftoken: skippedColor };
     case runStatus.Cancelled:
-      return { message: t('pipelines-plugin~Cancelled'), pftoken: cancelledColor };
+      return { message: i18next.t('pipelines-plugin~Cancelled'), pftoken: cancelledColor };
     case runStatus.Idle:
     case runStatus.Pending:
-      return { message: t('pipelines-plugin~Pending'), pftoken: pendingColor };
+      return { message: i18next.t('pipelines-plugin~Pending'), pftoken: pendingColor };
     default:
-      return { message: t('pipelines-plugin~PipelineRun not started yet'), pftoken: pendingColor };
+      return {
+        message: i18next.t('pipelines-plugin~PipelineRun not started yet'),
+        pftoken: pendingColor,
+      };
   }
 };
 
@@ -195,8 +196,10 @@ export const truncateName = (name: string, length: number): string =>
   name.length < length ? name : `${name.slice(0, length - 1)}...`;
 
 export const getPipelineFromPipelineRun = (pipelineRun: PipelineRunKind): PipelineKind => {
-  const pipelineName = pipelineRun?.metadata?.labels?.[TektonResourceLabel.pipeline];
-  if (!pipelineName || !pipelineRun?.status?.pipelineSpec) {
+  const pipelineName =
+    pipelineRun?.metadata?.labels?.[TektonResourceLabel.pipeline] || pipelineRun?.metadata?.name;
+  const pipelineSpec = pipelineRun?.status?.pipelineSpec || pipelineRun?.spec?.pipelineSpec;
+  if (!pipelineName || !pipelineSpec) {
     return null;
   }
   return {
@@ -206,12 +209,11 @@ export const getPipelineFromPipelineRun = (pipelineRun: PipelineRunKind): Pipeli
       name: pipelineName,
       namespace: pipelineRun.metadata.namespace,
     },
-    spec: pipelineRun?.status?.pipelineSpec,
+    spec: pipelineSpec,
   };
 };
 
-export const totalPipelineRunTasks = (pipelinerun: PipelineRunKind): number => {
-  const executedPipeline = getPipelineFromPipelineRun(pipelinerun);
+export const totalPipelineRunTasks = (executedPipeline: PipelineKind): number => {
   if (!executedPipeline) {
     return 0;
   }
@@ -220,8 +222,8 @@ export const totalPipelineRunTasks = (pipelinerun: PipelineRunKind): number => {
   return totalTasks + finallyTasks;
 };
 
-export const getTaskStatus = (pipelinerun: PipelineRunKind): TaskStatus => {
-  const totalTasks = totalPipelineRunTasks(pipelinerun);
+export const getTaskStatus = (pipelinerun: PipelineRunKind, pipeline: PipelineKind): TaskStatus => {
+  const totalTasks = totalPipelineRunTasks(pipeline);
   const plrTasks =
     pipelinerun && pipelinerun.status && pipelinerun.status.taskRuns
       ? Object.keys(pipelinerun.status.taskRuns)
@@ -237,7 +239,8 @@ export const getTaskStatus = (pipelinerun: PipelineRunKind): TaskStatus => {
     Cancelled: 0,
     Skipped: skippedTaskLength,
   };
-  if (pipelinerun && pipelinerun.status && pipelinerun.status.taskRuns) {
+
+  if (pipelinerun?.status?.taskRuns) {
     plrTasks.forEach((taskRun) => {
       const status = pipelineRunFilterReducer(pipelinerun.status.taskRuns[taskRun]);
       if (status === 'Succeeded' || status === 'Completed' || status === 'Complete') {
@@ -264,23 +267,43 @@ export const getTaskStatus = (pipelinerun: PipelineRunKind): TaskStatus => {
       taskStatus[runStatus.Pending] += unhandledTasks;
     }
   } else if (
-    pipelinerun &&
-    pipelinerun.status &&
-    pipelinerun.status.conditions &&
-    pipelinerun.status.conditions[0].status === 'False'
+    pipelinerun?.status?.conditions?.[0]?.status === 'False' ||
+    pipelinerun?.spec.status === SucceedConditionReason.PipelineRunCancelled
   ) {
     taskStatus[runStatus.Cancelled] = totalTasks;
+  } else if (pipelinerun?.spec.status === SucceedConditionReason.PipelineRunPending) {
+    taskStatus[runStatus.Pending] += totalTasks;
   } else {
     taskStatus[runStatus.PipelineNotStarted]++;
   }
   return taskStatus;
 };
 
-export const getResourceModelFromTaskKind = (kind: string): K8sKind =>
-  kind === ClusterTaskModel.kind ? ClusterTaskModel : TaskModel;
+export const getResourceModelFromTaskKind = (kind: string): K8sKind => {
+  if (kind === ClusterTaskModel.kind) {
+    return ClusterTaskModel;
+  }
+  if (kind === TaskModel.kind || kind === undefined) {
+    return TaskModel;
+  }
+  return null;
+};
 
-export const getResourceModelFromBindingKind = (kind: string): K8sKind =>
-  kind === ClusterTriggerBindingModel.kind ? ClusterTriggerBindingModel : TriggerBindingModel;
+export const getSafeTaskResourceKind = (kind: string): string =>
+  (getResourceModelFromTaskKind(kind) || TaskModel).kind;
+
+export const getResourceModelFromBindingKind = (kind: string): K8sKind => {
+  if (kind === ClusterTriggerBindingModel.kind) {
+    return ClusterTriggerBindingModel;
+  }
+  if (kind === TriggerBindingModel.kind || kind === undefined) {
+    return TriggerBindingModel;
+  }
+  return null;
+};
+
+export const getSafeBindingResourceKind = (kind: string): string =>
+  (getResourceModelFromBindingKind(kind) || TriggerBindingModel).kind;
 
 export const getResourceModelFromTask = (task: PipelineTask): K8sKind => {
   const {
@@ -297,3 +320,15 @@ export const getModelReferenceFromTaskKind = (kind: string): GroupVersionKind =>
   const model = getResourceModelFromTaskKind(kind);
   return referenceForModel(model);
 };
+
+export const countRunningTasks = (pipelineRun: PipelineRunKind): number => {
+  const taskStatuses = getTaskStatus(pipelineRun, undefined);
+  return taskStatuses.Running;
+};
+
+export const shouldHidePipelineRunStop = (pipelineRun: PipelineRunKind): boolean =>
+  !(
+    pipelineRun &&
+    (countRunningTasks(pipelineRun) > 0 ||
+      pipelineRunFilterReducer(pipelineRun) === runStatus.Running)
+  );

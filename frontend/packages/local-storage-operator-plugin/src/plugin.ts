@@ -1,6 +1,8 @@
 import * as _ from 'lodash';
+import { NodeModel } from '@console/internal/models';
+import { referenceForModel } from '@console/internal/module/k8s';
+import { ClusterServiceVersionModel } from '@console/operator-lifecycle-manager';
 import {
-  AlertAction,
   CustomFeatureFlag,
   ModelDefinition,
   ModelFeatureFlag,
@@ -8,14 +10,10 @@ import {
   RoutePage,
   HorizontalNavTab,
 } from '@console/plugin-sdk';
-import { referenceForModel } from '@console/internal/module/k8s';
-import { ClusterServiceVersionModel } from '@console/operator-lifecycle-manager';
-import { NodeModel } from '@console/internal/models';
 import { detectOCSAttachedDeviceMode, OCS_ATTACHED_DEVICES_FLAG } from './features';
 import * as models from './models';
 
 type ConsumedExtensions =
-  | AlertAction
   | CustomFeatureFlag
   | HorizontalNavTab
   | ModelFeatureFlag

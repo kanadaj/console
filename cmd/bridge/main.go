@@ -123,6 +123,9 @@ func main() {
 
 	fDevCatalogCategories := fs.String("developer-catalog-categories", "", "Allow catalog categories customization. (JSON as string)")
 	fUserSettingsLocation := fs.String("user-settings-location", "configmap", "DEV ONLY. Define where the user settings should be stored. (configmap | localstorage).")
+	fQuickStarts := fs.String("quick-starts", "", "Allow customization of available ConsoleQuickStart resources in console. (JSON as string)")
+	fAddPage := fs.String("add-page", "", "DEV ONLY. Allow add page customization. (JSON as string)")
+	fProjectAccessClusterRoles := fs.String("project-access-cluster-roles", "", "The list of Cluster Roles assignable for the project access page. (JSON as string)")
 
 	if err := serverconfig.Parse(fs, os.Args[1:], "BRIDGE"); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -213,29 +216,32 @@ func main() {
 	consolePluginsMap := consolePluginsFlags.ToMap()
 	if len(consolePluginsMap) > 0 {
 		klog.Infoln("The following console plugins are enabled:")
-		for pluginName, _ := range consolePluginsMap {
+		for pluginName := range consolePluginsMap {
 			klog.Infof(" - %s\n", pluginName)
 		}
 	}
 
 	srv := &server.Server{
-		PublicDir:             *fPublicDir,
-		BaseURL:               baseURL,
-		LogoutRedirect:        logoutRedirect,
-		Branding:              branding,
-		CustomProductName:     *fCustomProductName,
-		CustomLogoFile:        *fCustomLogoFile,
-		StatuspageID:          *fStatuspageID,
-		DocumentationBaseURL:  documentationBaseURL,
-		AlertManagerPublicURL: alertManagerPublicURL,
-		GrafanaPublicURL:      grafanaPublicURL,
-		PrometheusPublicURL:   prometheusPublicURL,
-		ThanosPublicURL:       thanosPublicURL,
-		LoadTestFactor:        *fLoadTestFactor,
-		InactivityTimeout:     *fInactivityTimeout,
-		DevCatalogCategories:  *fDevCatalogCategories,
-		UserSettingsLocation:  *fUserSettingsLocation,
-		EnabledConsolePlugins: consolePluginsMap,
+		PublicDir:                 *fPublicDir,
+		BaseURL:                   baseURL,
+		LogoutRedirect:            logoutRedirect,
+		Branding:                  branding,
+		CustomProductName:         *fCustomProductName,
+		CustomLogoFile:            *fCustomLogoFile,
+		StatuspageID:              *fStatuspageID,
+		DocumentationBaseURL:      documentationBaseURL,
+		AlertManagerPublicURL:     alertManagerPublicURL,
+		GrafanaPublicURL:          grafanaPublicURL,
+		PrometheusPublicURL:       prometheusPublicURL,
+		ThanosPublicURL:           thanosPublicURL,
+		LoadTestFactor:            *fLoadTestFactor,
+		InactivityTimeout:         *fInactivityTimeout,
+		DevCatalogCategories:      *fDevCatalogCategories,
+		UserSettingsLocation:      *fUserSettingsLocation,
+		EnabledConsolePlugins:     consolePluginsMap,
+		QuickStarts:               *fQuickStarts,
+		AddPage:                   *fAddPage,
+		ProjectAccessClusterRoles: *fProjectAccessClusterRoles,
 	}
 
 	// if !in-cluster (dev) we should not pass these values to the frontend
@@ -373,7 +379,7 @@ func main() {
 
 		if *fK8sModeOffClusterThanos != "" {
 			offClusterThanosURL := bridge.ValidateFlagIsURL("k8s-mode-off-cluster-thanos", *fK8sModeOffClusterThanos)
-			offClusterThanosURL.Path = "/api"
+			offClusterThanosURL.Path += "/api"
 			srv.ThanosTenancyProxyConfig = &proxy.Config{
 				TLSClientConfig: serviceProxyTLSConfig,
 				HeaderBlacklist: []string{"Cookie", "X-CSRFToken"},
@@ -393,7 +399,7 @@ func main() {
 
 		if *fK8sModeOffClusterAlertmanager != "" {
 			offClusterAlertManagerURL := bridge.ValidateFlagIsURL("k8s-mode-off-cluster-alertmanager", *fK8sModeOffClusterAlertmanager)
-			offClusterAlertManagerURL.Path = "/api"
+			offClusterAlertManagerURL.Path += "/api"
 			srv.AlertManagerProxyConfig = &proxy.Config{
 				TLSClientConfig: serviceProxyTLSConfig,
 				HeaderBlacklist: []string{"Cookie", "X-CSRFToken"},
@@ -408,7 +414,7 @@ func main() {
 
 		if *fK8sModeOffClusterMetering != "" {
 			offClusterMeteringURL := bridge.ValidateFlagIsURL("k8s-mode-off-cluster-metering", *fK8sModeOffClusterMetering)
-			offClusterMeteringURL.Path = "/api"
+			offClusterMeteringURL.Path += "/api"
 			srv.MeteringProxyConfig = &proxy.Config{
 				TLSClientConfig: serviceProxyTLSConfig,
 				HeaderBlacklist: []string{"Cookie", "X-CSRFToken"},
@@ -566,7 +572,7 @@ func main() {
 		&url.URL{
 			Scheme: k8sEndpoint.Scheme,
 			Host:   k8sEndpoint.Host,
-			Path:   "/api/v1/namespaces/openshift-config-managed/configmaps",
+			Path:   k8sEndpoint.Path + "/api/v1/namespaces/openshift-config-managed/configmaps",
 			RawQuery: url.Values{
 				"labelSelector": {"console.openshift.io/dashboard=true"},
 			}.Encode(),
@@ -584,7 +590,7 @@ func main() {
 		&url.URL{
 			Scheme: k8sEndpoint.Scheme,
 			Host:   k8sEndpoint.Host,
-			Path:   "/apis/apiextensions.k8s.io/v1/customresourcedefinitions",
+			Path:   k8sEndpoint.Path + "/apis/apiextensions.k8s.io/v1/customresourcedefinitions",
 			RawQuery: url.Values{
 				"labelSelector": {"duck.knative.dev/source=true"},
 			}.Encode(),
@@ -602,7 +608,7 @@ func main() {
 		&url.URL{
 			Scheme: k8sEndpoint.Scheme,
 			Host:   k8sEndpoint.Host,
-			Path:   "/apis/apiextensions.k8s.io/v1/customresourcedefinitions",
+			Path:   k8sEndpoint.Path + "/apis/apiextensions.k8s.io/v1/customresourcedefinitions",
 			RawQuery: url.Values{
 				"labelSelector": {"duck.knative.dev/addressable=true,messaging.knative.dev/subscribable=true"},
 			}.Encode(),

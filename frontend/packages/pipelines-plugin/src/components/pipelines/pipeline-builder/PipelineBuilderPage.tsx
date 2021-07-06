@@ -1,22 +1,18 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import { RouteComponentProps } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
 import { Formik, FormikBag } from 'formik';
 import { safeLoad } from 'js-yaml';
+import { Helmet } from 'react-helmet';
+import { useTranslation } from 'react-i18next';
+import { RouteComponentProps } from 'react-router-dom';
 import { history } from '@console/internal/components/utils';
+import { k8sCreate, k8sUpdate, referenceForModel } from '@console/internal/module/k8s';
 import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
-import { k8sCreate, k8sUpdate } from '@console/internal/module/k8s';
 import { PipelineModel } from '../../../models';
 import { PipelineKind } from '../../../types';
+import { initialPipelineFormData } from './const';
 import PipelineBuilderForm from './PipelineBuilderForm';
 import { PipelineBuilderFormYamlValues, PipelineBuilderFormikValues } from './types';
-import {
-  convertBuilderFormToPipeline,
-  convertPipelineToBuilderForm,
-  getPipelineURL,
-} from './utils';
-import { initialPipelineFormData } from './const';
+import { convertBuilderFormToPipeline, convertPipelineToBuilderForm } from './utils';
 import { validationSchema } from './validation-utils';
 
 import './PipelineBuilderPage.scss';
@@ -37,8 +33,15 @@ const PipelineBuilderPage: React.FC<PipelineBuilderPageProps> = (props) => {
   const initialValues: PipelineBuilderFormYamlValues = {
     editorType: EditorType.Form,
     yamlData: '',
-    formData: initialPipelineFormData,
-    ...(convertPipelineToBuilderForm(existingPipeline) || {}),
+    formData: {
+      ...initialPipelineFormData,
+      ...(convertPipelineToBuilderForm(existingPipeline) || {}),
+    },
+    taskResources: {
+      clusterTasks: [],
+      namespacedTasks: [],
+      tasksLoaded: false,
+    },
   };
 
   const handleSubmit = (
@@ -69,8 +72,7 @@ const PipelineBuilderPage: React.FC<PipelineBuilderPageProps> = (props) => {
 
     return resourceCall
       .then(() => {
-        actions.setSubmitting(false);
-        history.push(`${getPipelineURL(ns)}/${pipeline.metadata.name}`);
+        history.push(`/k8s/ns/${ns}/${referenceForModel(PipelineModel)}/${pipeline.metadata.name}`);
       })
       .catch((e) => {
         actions.setStatus({ submitError: e.message });
@@ -86,7 +88,7 @@ const PipelineBuilderPage: React.FC<PipelineBuilderPageProps> = (props) => {
         initialValues={initialValues}
         onSubmit={handleSubmit}
         onReset={history.goBack}
-        validationSchema={validationSchema(t)}
+        validationSchema={validationSchema()}
       >
         {(formikProps) => (
           <PipelineBuilderForm

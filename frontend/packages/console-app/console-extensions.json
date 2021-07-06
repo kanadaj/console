@@ -9,5 +9,61 @@
         "kind": "DevWorkspace"
       }
     }
+  },
+  {
+    "type": "console.flag/model",
+    "properties": {
+      "flag": "v1alpha2DEVWORKSPACE",
+      "model": {
+        "group": "workspace.devfile.io",
+        "version": "v1alpha2",
+        "kind": "DevWorkspace"
+      }
+    }
+  },
+  {
+    "type": "console.context-provider",
+    "properties": {
+      "provider": { "$codeRef": "tourContext.TourContextProvider" },
+      "useValueHook": { "$codeRef": "tourContext.useTourValuesForContext" }
+    }
+  },
+  {
+    "type": "console.context-provider",
+    "properties": {
+      "provider": { "$codeRef": "quickStartContext.QuickStartContextProvider" },
+      "useValueHook": { "$codeRef": "quickStartContext.useValuesForQuickStartContext" }
+    }
+  },
+  {
+    "type": "console.context-provider",
+    "properties": {
+      "provider": { "$codeRef": "fileUploadContext.FileUploadContextProvider" },
+      "useValueHook": { "$codeRef": "fileUploadContext.useValuesFileUploadContext" }
+    }
+  },
+  {
+    "type": "console.redux-reducer",
+    "properties": {
+      "scope": "console",
+      "reducer": { "$codeRef": "reduxReducer" }
+    }
+  },
+  {
+    "type": "console.navigation/resource-cluster",
+    "properties": {
+      "id": "volumesnapshots",
+      "section": "storage",
+      "name": "%console-app~VolumeSnapshotContents%",
+      "insertBefore": "deployments",
+      "model": {
+        "group": "snapshot.storage.k8s.io",
+        "kind": "VolumeSnapshotContent",
+        "version": "v1"
+      }
+    },
+    "flags": {
+      "required": ["CAN_LIST_VSC"]
+    }
   }
 ]

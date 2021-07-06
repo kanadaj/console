@@ -2,7 +2,9 @@ import * as React from 'react';
 import { ResourceSummary } from '@console/internal/components/utils';
 import { OverviewItem, PodRing } from '@console/shared';
 import { RevisionModel } from '../../models';
+import { isServerlessFunction } from '../../topology/knative-topology-utils';
 import { usePodsForRevisions } from '../../utils/usePodsForRevisions';
+import ServerlessFunctionType from './ServerlessFunctionType';
 
 type KnativeOverviewProps = {
   item?: OverviewItem;
@@ -32,6 +34,11 @@ const KnativeOverview: React.FC<KnativeOverviewProps> = ({ item }) => {
       <div className="resource-overview__summary">
         <ResourceSummary resource={obj} />
       </div>
+      {isServerlessFunction(obj) && (
+        <div className="resource-overview__details">
+          <ServerlessFunctionType />
+        </div>
+      )}
     </div>
   );
 };

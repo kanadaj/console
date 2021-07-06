@@ -12,6 +12,7 @@ import {
   apiVersionCompare,
 } from '@console/internal/module/k8s';
 import { PackageManifestModel } from '../models';
+import * as operatorLogo from '../operator.svg';
 import {
   APIServiceDefinition,
   ClusterServiceVersionIcon,
@@ -24,7 +25,6 @@ import {
   StepResource,
   SubscriptionKind,
 } from '../types';
-import * as operatorLogo from '../operator.svg';
 import { getInternalObjects } from '../utils';
 
 export const visibilityLabel = 'olm-visibility';
@@ -102,7 +102,7 @@ export const iconFor = (pkg: PackageManifestKind) => {
   });
 };
 
-export const ClusterServiceVersionLogo: React.SFC<ClusterServiceVersionLogoProps> = (props) => {
+export const ClusterServiceVersionLogo: React.FC<ClusterServiceVersionLogoProps> = (props) => {
   const { icon, displayName, provider, version } = props;
   const imgSrc: string = _.isString(icon)
     ? icon
@@ -116,7 +116,8 @@ export const ClusterServiceVersionLogo: React.SFC<ClusterServiceVersionLogoProps
         <img
           className="co-catalog-item-icon__img co-catalog-item-icon__img--large"
           src={imgSrc}
-          alt=""
+          alt={displayName}
+          aria-hidden
         />
       </div>
       <div className="co-clusterserviceversion-logo__name">
@@ -215,13 +216,6 @@ export const NamespaceIncludesManualApproval: React.FC<NamespaceIncludesManualAp
   </Trans>
 );
 
-export type ClusterServiceVersionLogoProps = {
-  displayName: string;
-  icon: ClusterServiceVersionIcon | string;
-  provider: { name: string } | string;
-  version?: string;
-};
-
 const InstallPlanCSVNames: React.FC<InstallPlanReviewProps> = ({ installPlan }) =>
   installPlan?.spec.clusterServiceVersionNames
     .sort()
@@ -238,6 +232,13 @@ export const InstallPlanReview: React.FC<InstallPlanReviewProps> = ({ installPla
     </Trans>
   </p>
 );
+
+export type ClusterServiceVersionLogoProps = {
+  displayName: string;
+  icon: ClusterServiceVersionIcon | string;
+  provider: { name: string } | string;
+  version?: string;
+};
 
 export type OperatorsWithManualApprovalProps = {
   subscriptions: SubscriptionKind[];

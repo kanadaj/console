@@ -1,8 +1,8 @@
 import * as React from 'react';
+import { Text } from '@patternfly/react-core';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
 import { LoadingBox } from '@console/internal/components/utils';
-import { Text } from '@patternfly/react-core';
 import QuickStartCatalog from './catalog/QuickStartCatalog';
 import QuickStartsLoader from './loader/QuickStartsLoader';
 
@@ -14,7 +14,7 @@ const QuickStartCatalogPage: React.FC = () => {
         <title>{t('quickstart~Quick Starts')}</title>
       </Helmet>
       <div className="ocs-page-layout__header">
-        <Text component="h1" className="ocs-page-layout__title">
+        <Text component="h1" className="ocs-page-layout__title" data-test="page-title">
           {t('quickstart~Quick Starts')}
         </Text>
         <div className="ocs-page-layout__hint">

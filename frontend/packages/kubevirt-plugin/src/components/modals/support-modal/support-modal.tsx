@@ -1,6 +1,6 @@
 import * as React from 'react';
+import { Checkbox, Label, Stack, StackItem } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-import { Stack, StackItem, Checkbox, Label } from '@patternfly/react-core';
 import {
   createModalLauncher,
   ModalBody,
@@ -9,23 +9,29 @@ import {
 } from '@console/internal/components/factory';
 import { ExternalLink } from '@console/internal/components/utils';
 import { BlueInfoCircleIcon } from '@console/shared';
-
-import { ModalFooter } from '../modal/modal-footer';
 import { TEMPLATE_PROVIDER_ANNOTATION, TEMPLATE_SUPPORT_LEVEL } from '../../../constants';
+import { SUPPORT_URL } from '../../../constants/vm-templates/constants';
 import { TemplateSupport } from '../../../constants/vm-templates/support';
+import { ModalFooter } from '../modal/modal-footer';
 
 import './support-modal.scss';
 
 type SupportModalProps = ModalComponentProps & {
   onConfirm: (disable: boolean) => void;
   communityURL?: string;
+  isCommonTemplate?: boolean;
 };
 
-const SupportModal: React.FC<SupportModalProps> = ({ onConfirm, close, communityURL }) => {
+const SupportModal: React.FC<SupportModalProps> = ({
+  onConfirm,
+  close,
+  communityURL,
+  isCommonTemplate,
+}) => {
   const { t } = useTranslation();
   const [doNotShow, setDoNotShow] = React.useState(false);
   return (
-    <div className="modal-content">
+    <div className="modal-content" data-test="SupportModal">
       <ModalTitle>
         <BlueInfoCircleIcon className="co-icon-space-r" />
         {t('kubevirt-plugin~Template support')}
@@ -44,6 +50,13 @@ const SupportModal: React.FC<SupportModalProps> = ({ onConfirm, close, community
                   href={communityURL}
                   text={t('kubevirt-plugin~Learn more about the community')}
                 />
+              </StackItem>
+            </>
+          ) : isCommonTemplate ? (
+            <>
+              <StackItem>
+                {t('kubevirt-plugin~This template is provided by Red Hat, but is not supported')}{' '}
+                <ExternalLink href={SUPPORT_URL} text={t('kubevirt-plugin~Learn more')} />
               </StackItem>
             </>
           ) : (

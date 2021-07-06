@@ -1,43 +1,17 @@
 import { JSONSchema6 } from 'json-schema';
 import { BadgeType, NodeAddress } from '@console/shared';
+import {
+  ObjectReference,
+  ObjectMetadata,
+  K8sResourceCommon,
+  K8sVerb,
+  AccessReviewResourceAttributes,
+  Selector,
+  MatchLabels,
+} from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import { EventInvolvedObject } from './event';
 
-export type OwnerReference = {
-  name: string;
-  kind: string;
-  uid: string;
-  apiVersion: string;
-  controller?: boolean;
-  blockOwnerDeletion?: boolean;
-};
-
-export type ObjectReference = {
-  kind?: string;
-  namespace?: string;
-  name?: string;
-  uid?: string;
-  apiVersion?: string;
-  resourceVersion?: string;
-  fieldPath?: string;
-};
-
-export type ObjectMetadata = {
-  annotations?: { [key: string]: string };
-  clusterName?: string;
-  creationTimestamp?: string;
-  deletionGracePeriodSeconds?: number;
-  deletionTimestamp?: string;
-  finalizers?: string[];
-  generateName?: string;
-  generation?: number;
-  labels?: { [key: string]: string };
-  managedFields?: any[];
-  name?: string;
-  namespace?: string;
-  ownerReferences?: OwnerReference[];
-  resourceVersion?: string;
-  uid?: string;
-};
+export * from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 
 export type PartialObjectMetadata = {
   apiVersion: string;
@@ -59,22 +33,6 @@ export type K8sResourceCondition = {
   message?: string;
 };
 
-export type MatchExpression = {
-  key: string;
-  operator: 'Exists' | 'DoesNotExist' | 'In' | 'NotIn' | 'Equals' | 'NotEqual';
-  values?: string[];
-  value?: string;
-};
-
-export type MatchLabels = {
-  [key: string]: string;
-};
-
-export type Selector = {
-  matchLabels?: MatchLabels;
-  matchExpressions?: MatchExpression[];
-};
-
 export type TaintEffect = '' | 'NoSchedule' | 'PreferNoSchedule' | 'NoExecute';
 
 export type Taint = {
@@ -93,13 +51,6 @@ export type Toleration = {
   value?: string;
 };
 
-// Properties common to (almost) all Kubernetes resources.
-export type K8sResourceCommon = {
-  apiVersion?: string;
-  kind?: string;
-  metadata?: ObjectMetadata;
-};
-
 // Generic, unknown kind. Avoid when possible since it allows any key in spec
 // or status, weakening type checking.
 export type K8sResourceKind = K8sResourceCommon & {
@@ -108,7 +59,6 @@ export type K8sResourceKind = K8sResourceCommon & {
     [key: string]: any;
   };
   status?: { [key: string]: any };
-  type?: { [key: string]: any };
   data?: { [key: string]: any };
 };
 
@@ -457,6 +407,9 @@ export type HorizontalPodAutoscalerKind = K8sResourceCommon & {
 export type StorageClassResourceKind = {
   provisioner: string;
   reclaimPolicy: string;
+  parameters?: {
+    [key: string]: string;
+  };
 } & K8sResourceCommon;
 
 export type NodeCondition = {
@@ -784,6 +737,7 @@ export type ClusterUpdate = {
   force: boolean;
   image: string;
   version: string;
+  channels?: string[];
 };
 
 export type UpdateHistory = {
@@ -801,6 +755,7 @@ export enum ClusterVersionConditionType {
   Progressing = 'Progressing',
   RetrievedUpdates = 'RetrievedUpdates',
   Invalid = 'Invalid',
+  Upgradeable = 'Upgradeable',
 }
 
 export type ClusterVersionCondition = {
@@ -895,25 +850,6 @@ export type OAuthKind = {
   };
 } & K8sResourceCommon;
 
-export type K8sVerb =
-  | 'create'
-  | 'get'
-  | 'list'
-  | 'update'
-  | 'patch'
-  | 'delete'
-  | 'deletecollection'
-  | 'watch';
-
-export type AccessReviewResourceAttributes = {
-  group?: string;
-  resource?: string;
-  subresource?: string;
-  verb?: K8sVerb;
-  name?: string;
-  namespace?: string;
-};
-
 export type SelfSubjectAccessReviewKind = {
   apiVersion: string;
   kind: string;
@@ -1002,19 +938,6 @@ export type Status = {
   reason: string;
   status: string;
 };
-
-/**
- * GroupVersionKind unambiguously identifies a kind.
- * https://godoc.org/k8s.io/apimachinery/pkg/runtime/schema#GroupVersionKind
- * TODO: Change this to a regex-type if it ever becomes a thing (https://github.com/Microsoft/TypeScript/issues/6579)
- */
-export type GroupVersionKind = string;
-
-/**
- * The canonical, unique identifier for a Kubernetes resource type.
- * Maintains backwards-compatibility with references using the `kind` string field.
- */
-export type K8sResourceKindReference = GroupVersionKind | string;
 
 export type SecretKind = {
   data?: { [key: string]: string };
@@ -1132,5 +1055,46 @@ export type PersistentVolumeClaimKind = K8sResourceCommon & {
   };
   status?: {
     phase: string;
+  };
+};
+
+export type NetworkPolicyKind = K8sResourceCommon & {
+  spec: {
+    podSelector: Selector;
+    ingress?: {
+      from?: NetworkPolicyPeer[];
+      ports?: NetworkPolicyPort[];
+    }[];
+    egress?: {
+      to?: NetworkPolicyPeer[];
+      ports?: NetworkPolicyPort[];
+    }[];
+    policyTypes?: string[];
+  };
+};
+
+export type NetworkPolicyPeer = {
+  podSelector?: Selector;
+  namespaceSelector?: Selector;
+  ipBlock?: {
+    cidr: string;
+    except?: string[];
+  };
+};
+
+export type NetworkPolicyPort = {
+  port?: string;
+  protocol?: string;
+};
+
+export type ConsolePluginKind = K8sResourceCommon & {
+  spec: {
+    displayName: string;
+    service: {
+      basePath: string;
+      name: string;
+      namespace: string;
+      port: number;
+    };
   };
 };

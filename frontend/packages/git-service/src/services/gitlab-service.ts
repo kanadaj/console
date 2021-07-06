@@ -1,5 +1,5 @@
-import { Gitlab } from 'gitlab';
 import * as GitUrlParse from 'git-url-parse';
+import { Gitlab } from 'gitlab';
 import i18n from 'i18next';
 import {
   GitSource,
@@ -16,6 +16,8 @@ type GitlabRepo = {
   id: number;
   path_with_namespace: string;
 };
+
+const removeLeadingSlash = (str: string) => str?.replace(/^\//, '') || '';
 
 export class GitlabService extends BaseService {
   private readonly client: any;
@@ -56,16 +58,14 @@ export class GitlabService extends BaseService {
   };
 
   getRepoMetadata(): RepoMetadata {
-    const { name, owner, protocol, resource, full_name: fullName } = GitUrlParse(
-      this.gitsource.url,
-    );
-    const contextDir = this.gitsource.contextDir?.replace(/\/$/, '') || '';
-    const host = `${protocol}://${resource}`;
+    const { name, owner, resource, full_name: fullName } = GitUrlParse(this.gitsource.url);
+    const contextDir = removeLeadingSlash(this.gitsource.contextDir);
+    const host = `https://${resource}`;
     return {
       repoName: name,
       owner,
       host,
-      defaultBranch: this.gitsource.ref || 'master',
+      defaultBranch: this.gitsource.ref,
       fullName,
       contextDir,
     };
@@ -94,7 +94,7 @@ export class GitlabService extends BaseService {
       await this.getRepo();
       return RepoStatus.Reachable;
     } catch (e) {
-      if (e.response.status === 429) {
+      if (e.response?.status === 429) {
         return RepoStatus.RateLimitExceeded;
       }
     }

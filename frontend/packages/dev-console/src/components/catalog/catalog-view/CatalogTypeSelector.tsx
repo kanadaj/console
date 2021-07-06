@@ -1,10 +1,10 @@
 import * as React from 'react';
+import { VerticalTabs } from '@patternfly/react-catalog-view-extension';
+import { Title } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { Button, Popover, Title } from '@patternfly/react-core';
-import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons';
-import { VerticalTabs } from '@patternfly/react-catalog-view-extension';
 import { SyncMarkdownView } from '@console/internal/components/markdown-view';
+import { FieldLevelHelp } from '@console/internal/components/utils';
 import { CatalogQueryParams, CatalogType, CatalogTypeCounts } from '../utils/types';
 
 interface CatalogTypeSelectorProps {
@@ -21,22 +21,20 @@ const CatalogTypeSelector: React.FC<CatalogTypeSelectorProps> = ({
 
   const typeDescriptions = React.useMemo(
     () =>
-      catalogTypes.map((type) => <SyncMarkdownView key={type.value} content={type.description} />),
+      catalogTypes.map(
+        (type) =>
+          type.description && (
+            <SyncMarkdownView key={type.value} content={type.description} inline />
+          ),
+      ),
     [catalogTypes],
-  );
-
-  const info = (
-    <Popover headerContent={t('devconsole~Types')} bodyContent={typeDescriptions}>
-      <Button variant="link" isInline>
-        <OutlinedQuestionCircleIcon className="co-catalog-page__info-icon" />
-      </Button>
-    </Popover>
   );
 
   return (
     <>
       <Title headingLevel="h4" style={{ marginLeft: '14px' }}>
-        {t('devconsole~Type')} {info}
+        {t('devconsole~Type')}
+        <FieldLevelHelp>{typeDescriptions}</FieldLevelHelp>
       </Title>
       <VerticalTabs>
         {catalogTypes.map((type) => {
@@ -46,7 +44,7 @@ const CatalogTypeSelector: React.FC<CatalogTypeSelectorProps> = ({
           queryParams.set(CatalogQueryParams.TYPE, type.value);
 
           const to = {
-            path: pathname,
+            pathname,
             search: `?${queryParams.toString()}`,
           };
 

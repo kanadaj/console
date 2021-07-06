@@ -1,12 +1,17 @@
-import { apiVersionForModel, k8sKill, k8sPatch, resourceURL } from '@console/internal/module/k8s';
-import { getName, getNamespace } from '@console/shared/src';
 import { coFetch } from '@console/internal/co-fetch';
-import { getBootPatch } from '../../patches/vm/vm-boot-patches';
+import { groupVersionFor, k8sKill, k8sPatch, resourceURL } from '@console/internal/module/k8s';
+import { getAPIVersion, getName, getNamespace } from '@console/shared/src';
 import { VirtualMachineModel } from '../../../models';
-import { VMKind } from '../../../types/vm';
-import { freeOwnedResources } from '../free-owned-resources';
-import { VMImportKind } from '../../../types/vm-import/ovirt/vm-import';
+import {
+  getKubevirtAvailableModel,
+  getKubevirtModelAvailableAPIVersion,
+  kubevirtReferenceForModel,
+} from '../../../models/kubevirtReferenceForModel';
 import { K8sResourceWithModel } from '../../../types/k8s-resource-with-model';
+import { VMKind } from '../../../types/vm';
+import { VMImportKind } from '../../../types/vm-import/ovirt/vm-import';
+import { getBootPatch } from '../../patches/vm/vm-boot-patches';
+import { freeOwnedResources } from '../free-owned-resources';
 import { cancelVMImport } from '../vmimport';
 
 export enum VMActionType {
@@ -18,7 +23,11 @@ export enum VMActionType {
 const VMActionRequest = async (vm: VMKind, action: VMActionType) => {
   const method = 'PUT';
   let url = resourceURL(
-    { ...VirtualMachineModel, apiGroup: `subresources.${VirtualMachineModel.apiGroup}` },
+    {
+      ...VirtualMachineModel,
+      apiVersion: groupVersionFor(getAPIVersion(vm)).version,
+      apiGroup: `subresources.${VirtualMachineModel.apiGroup}`,
+    },
     {
       ns: getNamespace(vm),
       name: getName(vm),
@@ -37,7 +46,7 @@ export const VMActionWithBootOrderRequest = async (vm: VMKind, action: VMActionT
   // handle PXE/CDRom boot (kubevirt.ui/firstBoot annotation)
   const bootPatch = getBootPatch(vm);
   if (bootPatch.length > 0) {
-    await k8sPatch(VirtualMachineModel, vm, bootPatch);
+    await k8sPatch(getKubevirtAvailableModel(VirtualMachineModel), vm, bootPatch);
   }
   return VMActionRequest(vm, action);
 };
@@ -66,8 +75,8 @@ export const deleteVM = async (
       ownedVolumeResources,
       {
         name: getName(vm),
-        kind: VirtualMachineModel.kind,
-        apiVersion: apiVersionForModel(VirtualMachineModel),
+        kind: kubevirtReferenceForModel(VirtualMachineModel),
+        apiVersion: getKubevirtModelAvailableAPIVersion(VirtualMachineModel),
       } as any,
       false,
     );
@@ -76,6 +85,6 @@ export const deleteVM = async (
   if (vmImport && deleteVMImport) {
     await cancelVMImport(vmImport, vm);
   } else {
-    await k8sKill(VirtualMachineModel, vm);
+    await k8sKill(getKubevirtAvailableModel(VirtualMachineModel), vm);
   }
 };

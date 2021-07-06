@@ -1,11 +1,11 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import { useField, useFormikContext, FormikValues } from 'formik';
-import { NumberSpinner } from '@console/internal/components/utils';
 import { FormGroup } from '@patternfly/react-core';
+import { useField, useFormikContext, FormikValues } from 'formik';
+import * as _ from 'lodash';
+import { NumberSpinner } from '@console/internal/components/utils';
+import { useFormikValidationFix } from '../../hooks';
 import { FieldProps } from './field-types';
 import { getFieldId } from './field-utils';
-import { useFormikValidationFix } from '../../hooks';
 
 const NumberSpinnerField: React.FC<FieldProps> = ({ label, helpText, required, ...props }) => {
   const [field, { touched, error }] = useField(props.name);
@@ -28,12 +28,13 @@ const NumberSpinnerField: React.FC<FieldProps> = ({ label, helpText, required, .
       <NumberSpinner
         {...field}
         {...props}
+        value={parseInt(field.value, 10)}
         id={fieldId}
         changeValueBy={(operation: number) => {
           setFieldValue(props.name, _.toInteger(field.value) + operation);
           setFieldTouched(props.name, true);
         }}
-        aria-describedby={`${fieldId}-helper`}
+        aria-describedby={helpText ? `${fieldId}-helper` : undefined}
       />
     </FormGroup>
   );

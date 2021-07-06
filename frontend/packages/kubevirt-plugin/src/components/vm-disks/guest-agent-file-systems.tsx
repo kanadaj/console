@@ -1,18 +1,16 @@
 import * as React from 'react';
+import { sortable } from '@patternfly/react-table';
+import * as classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import * as classNames from 'classnames';
-import { sortable } from '@patternfly/react-table';
-import { Button, Popover } from '@patternfly/react-core';
-import { QuestionCircleIcon } from '@patternfly/react-icons';
-import { TableRow, TableData, Table } from '@console/internal/components/factory';
-import { humanizeBinaryBytes } from '@console/internal/components/utils';
+import { Table, TableData, TableRow } from '@console/internal/components/factory';
+import { FieldLevelHelp, humanizeBinaryBytes } from '@console/internal/components/utils';
 import { useGuestAgentInfo } from '../../hooks/use-guest-agent-info';
 import { GuestAgentInfoWrapper } from '../../k8s/wrapper/vm/guest-agent-info/guest-agent-info-wrapper';
-import { isGuestAgentInstalled } from '../dashboards-page/vm-dashboard/vm-alerts';
-import { VMIKind } from '../../types/vm';
 import { VMStatusBundle } from '../../statuses/vm/types';
+import { VMIKind } from '../../types/vm';
 import { getGuestAgentFieldNotAvailMsg } from '../../utils/guest-agent-strings';
+import { isGuestAgentInstalled } from '../../utils/guest-agent-utils';
 
 import './guest-agent-file-systems.scss';
 
@@ -121,21 +119,11 @@ export const FileSystemsList: React.FC<FileSystemsListProps> = ({ vmi, vmStatusB
     <div className="kubevirt-vm-details__file-systems">
       <h3 id="file-systems-header">
         {t('kubevirt-plugin~File Systems')}
-        <Popover
-          aria-label={t('kubevirt-plugin~File systems description')}
-          position="top"
-          bodyContent={
-            <>
-              {t(
-                'kubevirt-plugin~The following information regarding how the disks are partitioned is provided by the guest agent.',
-              )}
-            </>
-          }
-        >
-          <Button variant="plain">
-            <QuestionCircleIcon />
-          </Button>
-        </Popover>
+        <FieldLevelHelp>
+          {t(
+            'kubevirt-plugin~The following information regarding how the disks are partitioned is provided by the guest agent.',
+          )}
+        </FieldLevelHelp>
       </h3>
       {body()}
     </div>

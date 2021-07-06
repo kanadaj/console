@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { ListPage } from '@console/internal/components/factory';
 import { shallow } from 'enzyme';
+import { ListPage } from '@console/internal/components/factory';
 import PipelineRuns from '../PipelineRuns';
 
 const pipelineRunProps: React.ComponentProps<typeof PipelineRuns> = {
@@ -8,6 +8,13 @@ const pipelineRunProps: React.ComponentProps<typeof PipelineRuns> = {
     metadata: {
       name: 'pipeline-a',
     },
+    spec: {
+      tasks: [{ name: 'task1' }],
+    },
+  },
+  customData: {
+    templateNames: [],
+    queryPrefix: '',
   },
 };
 

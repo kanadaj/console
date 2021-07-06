@@ -24,6 +24,7 @@ import {
   OwnerReferences,
   Timestamp,
   PodsComponent,
+  RuntimeClass,
 } from './utils';
 
 import { VolumesTable } from './volumes-table';
@@ -119,15 +120,18 @@ export const ReplicationControllersDetailsPage = (props) => {
               </ResourceSummary>
             </div>
             <div className="col-md-6">
-              {phase && (
-                <>
-                  <dt>{t('public~Phase')}</dt>
-                  <dd>
-                    <Status status={phase} />
-                  </dd>
-                </>
-              )}
-              <ResourcePodCount resource={replicationController} />
+              <dl className="co-m-pane__details">
+                {phase && (
+                  <>
+                    <dt>{t('public~Phase')}</dt>
+                    <dd>
+                      <Status status={phase} />
+                    </dd>
+                  </>
+                )}
+                <ResourcePodCount resource={replicationController} />
+                <RuntimeClass obj={replicationController} />
+              </dl>
             </div>
           </div>
         </div>
@@ -163,12 +167,12 @@ export const ReplicationControllersDetailsPage = (props) => {
 const kind = 'ReplicationController';
 
 const tableColumnClasses = [
-  classNames('col-lg-2', 'col-md-2', 'col-sm-4', 'col-xs-6'),
-  classNames('col-lg-2', 'col-md-2', 'col-sm-4', 'col-xs-6'),
-  classNames('col-lg-2', 'col-md-2', 'col-sm-4', 'hidden-xs'),
-  classNames('col-lg-2', 'col-md-2', 'hidden-sm', 'hidden-xs'),
-  classNames('col-lg-2', 'col-md-2', 'hidden-sm', 'hidden-xs'),
-  classNames('col-lg-2', 'hidden-md', 'hidden-sm', 'hidden-xs'),
+  '',
+  '',
+  'pf-m-hidden pf-m-visible-on-md',
+  'pf-m-hidden pf-m-visible-on-lg',
+  'pf-m-hidden pf-m-visible-on-lg',
+  'pf-m-hidden pf-m-visible-on-xl',
   Kebab.columnClass,
 ];
 
@@ -180,22 +184,13 @@ export const ReplicationControllersList = (props) => {
     return (
       <TableRow id={obj.metadata.uid} index={index} trKey={key} style={style}>
         <TableData className={tableColumnClasses[0]}>
-          <ResourceLink
-            kind={kind}
-            name={obj.metadata.name}
-            namespace={obj.metadata.namespace}
-            title={obj.metadata.uid}
-          />
+          <ResourceLink kind={kind} name={obj.metadata.name} namespace={obj.metadata.namespace} />
         </TableData>
         <TableData
           className={classNames(tableColumnClasses[1], 'co-break-word')}
           columnID="namespace"
         >
-          <ResourceLink
-            kind="Namespace"
-            name={obj.metadata.namespace}
-            title={obj.metadata.namespace}
-          />
+          <ResourceLink kind="Namespace" name={obj.metadata.namespace} />
         </TableData>
         <TableData className={tableColumnClasses[2]}>
           <Link

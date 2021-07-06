@@ -1,13 +1,14 @@
+import { TFunction } from 'i18next';
 import * as _ from 'lodash';
+import { BuildStrategyType } from '@console/internal/components/build';
+import { hasIcon } from '@console/internal/components/catalog/catalog-item-icon';
+import { DeploymentConfigModel, DeploymentModel } from '@console/internal/models';
 import {
   K8sResourceKind,
   referenceFor,
   referenceForModel,
   ImagePullPolicy,
 } from '@console/internal/module/k8s';
-import { BuildStrategyType } from '@console/internal/components/build';
-import { DeploymentConfigModel, DeploymentModel } from '@console/internal/models';
-import { hasIcon } from '@console/internal/components/catalog/catalog-item-icon';
 import {
   KNATIVE_AUTOSCALEWINDOW_ANNOTATION,
   KNATIVE_CONCURRENCYTARGET_ANNOTATION,
@@ -17,30 +18,66 @@ import {
   KNATIVE_SERVING_LABEL,
   ServiceModel,
 } from '@console/knative-plugin';
-import { PipelineKind } from '@console/pipelines-plugin/src/types';
+import { isDockerPipeline } from '@console/pipelines-plugin/src/components/import/pipeline/pipeline-template-utils';
 import {
   PIPELINE_RUNTIME_LABEL,
   PIPELINE_RUNTIME_VERSION_LABEL,
 } from '@console/pipelines-plugin/src/const';
-import { isDockerPipeline } from '@console/pipelines-plugin/src/components/import/pipeline/pipeline-template-utils';
+import { PipelineKind } from '@console/pipelines-plugin/src/types';
+import { getLimitsDataFromResource } from '@console/shared/src';
 import { UNASSIGNED_KEY } from '@console/topology/src/const';
+import { RegistryType } from '../../utils/imagestream-utils';
+import { getHealthChecksData } from '../health-checks/create-health-checks-probe-utils';
+import { deployValidationSchema } from '../import/deployImage-validation-utils';
 import {
   Resources,
   DeploymentData,
   GitReadableTypes,
   ServerlessData,
 } from '../import/import-types';
-import { AppResources } from './edit-application-types';
-import { RegistryType } from '../../utils/imagestream-utils';
-import { getHealthChecksData } from '../health-checks/create-health-checks-probe-utils';
-import { detectGitType } from '../import/import-validation-utils';
+import {
+  detectGitType,
+  validationSchema as importValidationSchema,
+} from '../import/import-validation-utils';
 import { getAutoscaleWindow } from '../import/serverless/serverless-utils';
+import { validationSchema as jarValidationSchema } from '../import/upload-jar-validation-utils';
+import { AppResources } from './edit-application-types';
 
-export enum CreateApplicationFlow {
+export enum ApplicationFlowType {
   Git = 'Import from Git',
   Dockerfile = 'Import from Dockerfile',
   Container = 'Deploy Image',
+  JarUpload = 'Upload JAR file',
 }
+
+export const getFlowTypePageTitle = (flowType: ApplicationFlowType): string => {
+  switch (flowType) {
+    case ApplicationFlowType.Git:
+      // t('devconsole~Import from Git')
+      return 'devconsole~Import from Git';
+    case ApplicationFlowType.Dockerfile:
+      // t('devconsole~Import from Dockerfile')
+      return 'devconsole~Import from Dockerfile';
+    case ApplicationFlowType.Container:
+      // t('devconsole~Deploy Image')
+      return 'devconsole~Deploy Image';
+    case ApplicationFlowType.JarUpload:
+      // t('devconsole~Upload JAR file')
+      return 'devconsole~Upload JAR file';
+    default:
+      return flowType;
+  }
+};
+
+export enum BuildSourceType {
+  Git = 'Git',
+  Binary = 'Binary',
+}
+
+const isFromJarUpload = (type: string): boolean => type === BuildSourceType.Binary;
+
+const getBuildSourceType = (buildConfig: K8sResourceKind): string =>
+  buildConfig?.spec?.source?.type;
 
 export const getResourcesType = (resource: K8sResourceKind): Resources => {
   switch (resource.kind) {
@@ -55,18 +92,34 @@ export const getResourcesType = (resource: K8sResourceKind): Resources => {
   }
 };
 
-export const getPageHeading = (buildStrategy: string): string => {
+export const getFlowType = (buildStrategy: string, buildType?: string): ApplicationFlowType => {
   switch (buildStrategy) {
     case BuildStrategyType.Source:
-      return CreateApplicationFlow.Git;
+      return buildType === BuildSourceType.Binary
+        ? ApplicationFlowType.JarUpload
+        : ApplicationFlowType.Git;
     case BuildStrategyType.Docker:
-      return CreateApplicationFlow.Dockerfile;
+      return ApplicationFlowType.Dockerfile;
     default:
-      return CreateApplicationFlow.Container;
+      return ApplicationFlowType.Container;
   }
 };
 
-const checkIfTriggerExists = (
+export const getValidationSchema = (
+  buildStrategy: string,
+  buildType?: string,
+): ((t: TFunction) => any) => {
+  switch (buildStrategy) {
+    case BuildStrategyType.Source:
+      return buildType === BuildSourceType.Binary ? jarValidationSchema : importValidationSchema;
+    case BuildStrategyType.Docker:
+      return importValidationSchema;
+    default:
+      return deployValidationSchema;
+  }
+};
+
+export const checkIfTriggerExists = (
   triggers: { [key: string]: any }[],
   type: string,
   resourceKind?: string,
@@ -178,6 +231,7 @@ export const getBuildData = (
     strategy:
       buildStrategyType ||
       (isDockerPipeline(pipeline) ? BuildStrategyType.Docker : BuildStrategyType.Source),
+    source: { type: getBuildSourceType(buildConfig) },
   };
   return buildData;
 };
@@ -232,9 +286,8 @@ export const getDeploymentData = (resource: K8sResourceKind) => {
     replicas: 1,
     triggers: { image: true, config: true },
   };
-  const container = _.find(
-    resource.spec?.template?.spec?.containers,
-    (c) => c.name === resource.metadata.name,
+  const container = resource.spec?.template?.spec?.containers?.find((c) =>
+    [resource.metadata.name, resource.metadata.labels?.['app.kubernetes.io/name']].includes(c.name),
   );
   const env = container?.env ?? [];
   switch (getResourcesType(resource)) {
@@ -274,45 +327,15 @@ export const getDeploymentData = (resource: K8sResourceKind) => {
   }
 };
 
-export const getLimitsData = (resource: K8sResourceKind) => {
-  const containers = _.get(resource, 'spec.template.spec.containers', []);
-  const resourcesRegEx = /^[0-9]*|[a-zA-Z]*/g;
-  const cpuLimit = _.get(containers[0], 'resources.limits.cpu', '').match(resourcesRegEx);
-  const memoryLimit = _.get(containers[0], 'resources.limits.memory', '').match(resourcesRegEx);
-  const cpuRequest = _.get(containers[0], 'resources.requests.cpu', '').match(resourcesRegEx);
-  const memoryRequest = _.get(containers[0], 'resources.requests.memory', '').match(resourcesRegEx);
-  const limitsData = {
-    cpu: {
-      request: cpuRequest[0],
-      requestUnit: cpuRequest[1] || '',
-      defaultRequestUnit: cpuRequest[1] || '',
-      limit: cpuLimit[0],
-      limitUnit: cpuLimit[1] || '',
-      defaultLimitUnit: cpuLimit[1] || '',
-    },
-    memory: {
-      request: memoryRequest[0],
-      requestUnit: memoryRequest[1] || 'Mi',
-      defaultRequestUnit: memoryRequest[1] || 'Mi',
-      limit: memoryLimit[0],
-      limitUnit: memoryLimit[1] || 'Mi',
-      defaultLimitUnit: memoryLimit[1] || 'Mi',
-    },
-  };
-  return limitsData;
-};
-
 export const getUserLabels = (resource: K8sResourceKind) => {
   const defaultLabels = [
     'app',
     'app.kubernetes.io/instance',
-    'app.kubernetes.io/component',
-    'app.kubernetes.io/name',
     'app.openshift.io/runtime',
     'app.kubernetes.io/part-of',
     'app.openshift.io/runtime-version',
     'app.openshift.io/runtime-namespace',
-    'serving.knative.dev/visibility',
+    'networking.knative.dev/visibility',
   ];
   const allLabels = _.get(resource, 'metadata.labels', {});
   const userLabels = _.omit(allLabels, defaultLabels);
@@ -345,7 +368,7 @@ export const getCommonInitialValues = (
     },
     deployment: getDeploymentData(editAppResource),
     labels: getUserLabels(editAppResource),
-    limits: getLimitsData(editAppResource),
+    limits: getLimitsDataFromResource(editAppResource),
     healthChecks: getHealthChecksData(editAppResource),
   };
   return commonInitialValues;
@@ -450,7 +473,7 @@ export const getInternalImageInitialValues = (editAppResource: K8sResourceKind) 
     'metadata.labels["app.openshift.io/runtime-namespace"]',
     '',
   );
-  const imageStreamName = _.get(editAppResource, 'metadata.labels["app.kubernetes.io/name"]', '');
+  const imageStreamName = _.get(editAppResource, 'metadata.labels["app.openshift.io/runtime"]', '');
   const imageStreamTag = _.get(
     editAppResource,
     'metadata.labels["app.openshift.io/runtime-version"]',
@@ -482,6 +505,23 @@ export const getExternalImagelValues = (appResource: K8sResourceKind) => {
   };
 };
 
+export const getFileUploadValues = (resource: K8sResourceKind, buildConfig: K8sResourceKind) => {
+  const resourceName = resource.metadata.name;
+  const fileName = buildConfig.metadata?.annotations?.jarFileName ?? '';
+  const javaArgs: string =
+    resource.spec?.template?.spec?.containers
+      ?.find((container) => container.name === resourceName)
+      ?.env?.find((args) => args.name === 'JAVA_ARGS')?.value ?? '';
+  return {
+    fileUpload: {
+      name: fileName,
+      value: '',
+      javaArgs,
+    },
+    ...getIconInitialValues(resource),
+  };
+};
+
 export const getInitialValues = (
   appResources: AppResources,
   appName: string,
@@ -500,7 +540,7 @@ export const getInitialValues = (
     namespace,
   );
   const gitDockerValues = getGitAndDockerfileInitialValues(buildConfigData, pipelineData);
-
+  let fileUploadValues = {};
   let iconValues = {};
   let externalImageValues = {};
   let internalImageValues = {};
@@ -520,11 +560,14 @@ export const getInitialValues = (
         externalImageValues = getExternalImagelValues(editAppResourceData);
       }
     }
+  } else if (isFromJarUpload(getBuildSourceType(buildConfigData))) {
+    fileUploadValues = getFileUploadValues(editAppResourceData, buildConfigData);
   }
 
   return {
     ...commonValues,
     ...iconValues,
+    ...fileUploadValues,
     ...gitDockerValues,
     ...externalImageValues,
     ...internalImageValues,

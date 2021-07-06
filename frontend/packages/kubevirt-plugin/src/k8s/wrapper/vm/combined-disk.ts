@@ -1,24 +1,25 @@
 import * as _ from 'lodash';
-import { K8sResourceKind } from '@console/internal/module/k8s/types';
-import { apiVersionForModel } from '@console/internal/module/k8s/k8s';
-import { createBasicLookup, getName, getNamespace, getOwnerReferences } from '@console/shared/src';
 import { FirehoseResult } from '@console/internal/components/utils';
+import { K8sResourceKind } from '@console/internal/module/k8s/types';
+import { createBasicLookup, getName, getNamespace, getOwnerReferences } from '@console/shared/src';
 import { compareOwnerReference } from '@console/shared/src/utils/owner-references';
-import { V1Disk, V1PersistentVolumeClaim, V1Volume, V1alpha1DataVolume } from '../../../types/api';
-import { getSimpleName } from '../../../selectors/utils';
-import { VolumeType, DiskType, AccessMode, VolumeMode } from '../../../constants/vm/storage';
-import { VMGenericLikeEntityKind } from '../../../types/vmLike';
-import { asVM, getDataVolumeTemplates, isWinToolsImage } from '../../../selectors/vm';
-import { getLoadedData, isLoaded } from '../../../utils';
 import { StorageUISource } from '../../../components/modals/disk-modal/storage-ui-source';
-import { DYNAMIC } from '../../../utils/strings';
-import { DiskWrapper } from './disk-wrapper';
-import { DataVolumeWrapper } from './data-volume-wrapper';
-import { VolumeWrapper } from './volume-wrapper';
-import { PersistentVolumeClaimWrapper } from './persistent-volume-claim-wrapper';
-import { asVMILikeWrapper } from '../utils/convert';
+import { AccessMode, DiskType, VolumeMode, VolumeType } from '../../../constants/vm/storage';
 import { DataVolumeModel } from '../../../models';
+import { getKubevirtModelAvailableAPIVersion } from '../../../models/kubevirtReferenceForModel';
+import { getSimpleName } from '../../../selectors/utils';
+import { asVM, getDataVolumeTemplates } from '../../../selectors/vm';
+import { isWinToolsImage } from '../../../selectors/vm/winimage';
 import { V1DataVolumeTemplateSpec } from '../../../types';
+import { V1alpha1DataVolume, V1Disk, V1PersistentVolumeClaim, V1Volume } from '../../../types/api';
+import { VMGenericLikeEntityKind } from '../../../types/vmLike';
+import { getLoadedData, isLoaded } from '../../../utils';
+import { DYNAMIC } from '../../../utils/strings';
+import { asVMILikeWrapper } from '../utils/convert';
+import { DataVolumeWrapper } from './data-volume-wrapper';
+import { DiskWrapper } from './disk-wrapper';
+import { PersistentVolumeClaimWrapper } from './persistent-volume-claim-wrapper';
+import { VolumeWrapper } from './volume-wrapper';
 
 export class CombinedDisk {
   private readonly dataVolumesLoading: boolean;
@@ -340,7 +341,7 @@ export class CombinedDiskFactory {
                 compareOwnerReference(ownerReference, {
                   name: dataVolumeName,
                   kind: DataVolumeModel.kind,
-                  apiVersion: apiVersionForModel(DataVolumeModel),
+                  apiVersion: getKubevirtModelAvailableAPIVersion(DataVolumeModel),
                 } as any),
               ),
             );

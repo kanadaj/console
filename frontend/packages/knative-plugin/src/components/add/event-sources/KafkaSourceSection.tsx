@@ -1,34 +1,43 @@
 import * as React from 'react';
+import { TextInputTypes } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import FormSection from '@console/dev-console/src/components/import/section/FormSection';
-import { InputField, SelectInputField, SelectInputOption } from '@console/shared';
-import { TextInputTypes } from '@patternfly/react-core';
-import KafkaSourceNetSection from './KafkaSourceNetSection';
-import { K8sResourceKind } from '@console/internal/module/k8s';
 import { useK8sWatchResources } from '@console/internal/components/utils/k8s-watch-hook';
+import { K8sResourceKind } from '@console/internal/module/k8s';
+import { InputField, SelectInputField, SelectInputOption } from '@console/shared';
 import { getBootstrapServers } from '../../../utils/create-eventsources-utils';
 import { strimziResourcesWatcher } from '../../../utils/get-knative-resources';
 import { EventSources } from '../import-types';
+import KafkaSourceNetSection from './KafkaSourceNetSection';
 
 interface KafkaSourceSectionProps {
   title: string;
+  namespace: string;
   fullWidth?: boolean;
 }
 
-const KafkaSourceSection: React.FC<KafkaSourceSectionProps> = ({ title, fullWidth }) => {
+const KafkaSourceSection: React.FC<KafkaSourceSectionProps> = ({ title, namespace, fullWidth }) => {
   const { t } = useTranslation();
-  const memoResources = React.useMemo(() => strimziResourcesWatcher(), []);
-  const { kafkas, kafkatopics } = useK8sWatchResources<{
+  const memoResources = React.useMemo(() => strimziResourcesWatcher(namespace), [namespace]);
+  const { kafkas, kafkatopics, kafkaconnections } = useK8sWatchResources<{
     [key: string]: K8sResourceKind[];
   }>(memoResources);
 
   const [bootstrapServers, bsPlaceholder] = React.useMemo(() => {
     let bootstrapServersOptions: SelectInputOption[] = [];
     let placeholder: React.ReactNode = '';
-    if (kafkas.loaded && !kafkas.loadError) {
-      bootstrapServersOptions = !_.isEmpty(kafkas.data)
-        ? _.map(getBootstrapServers(kafkas.data), (bs) => ({
+    const isKafkasLoaded =
+      (kafkas.loaded && !kafkas.loadError) ||
+      (kafkaconnections.loaded && !kafkaconnections.loadError);
+    const isKafkasLoadError = !!(kafkas.loadError && kafkaconnections.loadError);
+    if (isKafkasLoaded) {
+      const kafkasData = [
+        ...(kafkas.data ? kafkas.data : []),
+        ...(kafkaconnections.data ? kafkaconnections.data : []),
+      ];
+      bootstrapServersOptions = !_.isEmpty(kafkasData)
+        ? _.map(getBootstrapServers(kafkasData), (bs) => ({
             value: bs,
             disabled: false,
           }))
@@ -39,11 +48,11 @@ const KafkaSourceSection: React.FC<KafkaSourceSectionProps> = ({ title, fullWidt
             },
           ];
       placeholder = t('knative-plugin~Add bootstrap servers');
-    } else if (kafkas.loadError) {
+    } else if (isKafkasLoadError) {
       placeholder = t(
         'knative-plugin~{{loadErrorMessage}}. Try adding bootstrap servers manually.',
         {
-          loadErrorMessage: kafkas.loadError?.message,
+          loadErrorMessage: `${kafkas.loadError.message}, ${kafkaconnections.loadError.message}`,
         },
       );
     } else {
@@ -53,7 +62,15 @@ const KafkaSourceSection: React.FC<KafkaSourceSectionProps> = ({ title, fullWidt
       placeholder = '...';
     }
     return [bootstrapServersOptions, placeholder];
-  }, [kafkas.loaded, kafkas.loadError, kafkas.data, t]);
+  }, [
+    kafkas.loaded,
+    kafkas.loadError,
+    kafkas.data,
+    kafkaconnections.loaded,
+    kafkaconnections.loadError,
+    kafkaconnections.data,
+    t,
+  ]);
 
   const [kafkaTopics, ktPlaceholder] = React.useMemo(() => {
     let topicsOptions: SelectInputOption[] = [];

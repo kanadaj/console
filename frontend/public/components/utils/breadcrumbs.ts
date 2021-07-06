@@ -4,10 +4,11 @@ import { LAST_NAMESPACE_NAME_LOCAL_STORAGE_KEY } from '@console/shared/src/const
 import { ALL_NAMESPACES_KEY } from '@console/shared/src/constants/common';
 import { breadcrumbsForGlobalConfig } from '../cluster-settings/global-config';
 
+export const getLastNamespace = () => sessionStorage.getItem(LAST_NAMESPACE_NAME_LOCAL_STORAGE_KEY);
+
 export const getBreadcrumbPath = (match: any, customPlural?: string) => {
-  const lastNamespace = sessionStorage.getItem(LAST_NAMESPACE_NAME_LOCAL_STORAGE_KEY);
   if (match.params.ns) {
-    return lastNamespace === ALL_NAMESPACES_KEY
+    return getLastNamespace() === ALL_NAMESPACES_KEY
       ? `/k8s/all-namespaces/${customPlural || match.params.plural}`
       : `/k8s/ns/${match.params.ns}/${customPlural || match.params.plural}`;
   }
@@ -15,7 +16,8 @@ export const getBreadcrumbPath = (match: any, customPlural?: string) => {
 };
 
 export const breadcrumbsForDetailsPage = (kindObj: K8sKind, match: any) => () =>
-  kindObj.apiGroup === 'config.openshift.io' && match.params.name === 'cluster'
+  (kindObj.apiGroup === 'config.openshift.io' && match.params.name === 'cluster') ||
+  kindObj.apiGroup === 'operator.openshift.io'
     ? breadcrumbsForGlobalConfig(i18next.t(kindObj.labelKey) || kindObj.label, match.url)
     : [
         {
@@ -23,7 +25,7 @@ export const breadcrumbsForDetailsPage = (kindObj: K8sKind, match: any) => () =>
           path: getBreadcrumbPath(match),
         },
         {
-          name: i18next.t('details-page~{{kind}} details', {
+          name: i18next.t('public~{{kind}} details', {
             kind: i18next.t(kindObj.labelKey) || kindObj.label,
           }),
           path: `${match.url}`,

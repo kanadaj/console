@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Dropdown } from './dropdown';
 import * as classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { NumberSpinner } from './number-spinner';
 
 export const RequestSizeInput: React.FC<RequestSizeInputProps> = ({
   children,
@@ -9,7 +10,6 @@ export const RequestSizeInput: React.FC<RequestSizeInputProps> = ({
   defaultRequestSizeValue,
   describedBy,
   dropdownUnits,
-  inputClassName,
   inputID,
   isInputDisabled,
   minValue,
@@ -17,15 +17,21 @@ export const RequestSizeInput: React.FC<RequestSizeInputProps> = ({
   onChange,
   placeholder,
   required,
-  step,
   testID,
 }) => {
   const [unit, setUnit] = React.useState(defaultRequestSizeUnit);
-  const [value, setValue] = React.useState(defaultRequestSizeValue);
+  const [value, setValue] = React.useState(parseInt(defaultRequestSizeValue, 10));
 
   const onValueChange: React.ReactEventHandler<HTMLInputElement> = (event) => {
-    setValue(event.currentTarget.value);
+    setValue(parseInt(event.currentTarget.value, 10));
     onChange({ value: event.currentTarget.value, unit });
+  };
+
+  const changeValueBy = (changeBy: number) => {
+    // When default defaultRequestSizeValue is not set, value becomes NaN and increment decrement buttons of NumberSpinner don't work.
+    const newValue = Number.isFinite(value) ? value + changeBy : 0 + changeBy;
+    setValue(newValue);
+    onChange({ value: newValue, unit });
   };
 
   const onUnitChange = (newUnit) => {
@@ -33,24 +39,27 @@ export const RequestSizeInput: React.FC<RequestSizeInputProps> = ({
     onChange({ value, unit: newUnit });
   };
 
+  React.useEffect(() => {
+    setUnit(defaultRequestSizeUnit);
+    setValue(parseInt(defaultRequestSizeValue, 10));
+  }, [defaultRequestSizeUnit, defaultRequestSizeValue]);
+
   const { t } = useTranslation();
   const inputName = `${name}Value`;
   const dropdownName = `${name}Unit`;
   return (
     <div>
       <div className="pf-c-input-group">
-        <input
-          className={classNames('pf-c-form-control', inputClassName)}
-          type="number"
-          step={step || 'any'}
+        <NumberSpinner
           onChange={onValueChange}
+          changeValueBy={changeValueBy}
           placeholder={placeholder}
           aria-describedby={describedBy}
           name={inputName}
           id={inputID}
           data-test={testID}
           required={required}
-          value={defaultRequestSizeValue}
+          value={value}
           min={minValue}
           disabled={isInputDisabled}
         />
@@ -58,7 +67,7 @@ export const RequestSizeInput: React.FC<RequestSizeInputProps> = ({
           title={dropdownUnits[defaultRequestSizeUnit]}
           selectedKey={defaultRequestSizeUnit}
           name={dropdownName}
-          className="btn-group"
+          className={classNames('btn-group', 'request-size-input__unit')}
           items={dropdownUnits}
           onChange={onUnitChange}
           disabled={isInputDisabled}
@@ -84,7 +93,6 @@ export type RequestSizeInputProps = {
   describedBy?: string;
   step?: number;
   minValue?: number;
-  inputClassName?: string;
   inputID?: string;
   testID?: string;
   isInputDisabled?: boolean;

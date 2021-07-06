@@ -1,13 +1,13 @@
-import * as _ from 'lodash';
 import * as React from 'react';
+import { Checkbox, Switch } from '@patternfly/react-core';
+import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Checkbox } from '@patternfly/react-core';
 import { WidgetProps } from 'react-jsonschema-form';
+import { getSchemaType } from 'react-jsonschema-form/lib/utils';
+import { RadioGroup } from '@console/internal/components/radio';
 import { NumberSpinner, ListDropdown, Dropdown } from '@console/internal/components/utils';
 import { K8sKind, GroupVersionKind, ImagePullPolicy } from '@console/internal/module/k8s';
-import { RadioGroup } from '@console/internal/components/radio';
 import { JSON_SCHEMA_NUMBER_TYPES } from './const';
-import { getSchemaType } from 'react-jsonschema-form/lib/utils';
 import { DynamicFormFieldOptionsList } from './types';
 
 export const TextWidget: React.FC<WidgetProps> = (props) => {
@@ -18,7 +18,6 @@ export const TextWidget: React.FC<WidgetProps> = (props) => {
     onChange,
     onFocus,
     readonly = false,
-    required = false,
     schema = {},
     value = '',
   } = props;
@@ -35,7 +34,6 @@ export const TextWidget: React.FC<WidgetProps> = (props) => {
       onChange={({ currentTarget }) => onChange(currentTarget.value)}
       onFocus={onFocus && ((event) => onFocus(id, event.target.value))}
       readOnly={readonly}
-      required={required}
       type="text"
       value={value}
     />
@@ -71,21 +69,29 @@ export const PasswordWidget: React.FC<WidgetProps> = ({ value = '', id, onChange
   );
 };
 
-export const CheckboxWidget: React.FC<WidgetProps> = ({
-  value = false,
-  id,
-  label,
-  onChange,
-  required,
-}) => {
+export const CheckboxWidget: React.FC<WidgetProps> = ({ value = false, id, label, onChange }) => {
   return (
     <Checkbox
       id={id}
       key={id}
       isChecked={value}
       label={label}
-      required={required}
       onChange={(checked) => onChange(checked)}
+    />
+  );
+};
+
+export const SwitchWidget: React.FC<WidgetProps> = ({ value, id, label, onChange, options }) => {
+  const { t } = useTranslation();
+  const { labelOn = t('console-shared~true'), labelOff = t('console-shared~false') } = options;
+  return (
+    <Switch
+      id={id || label}
+      key={id || label}
+      isChecked={_.isNil(value) ? false : value}
+      onChange={(v) => onChange(v)}
+      label={labelOn as string}
+      labelOff={labelOff as string}
     />
   );
 };
@@ -94,7 +100,6 @@ export const PodCountWidget: React.FC<WidgetProps> = ({ value, id, onChange }) =
   return (
     <NumberSpinner
       id={id}
-      className="pf-c-form-control"
       value={value}
       onChange={({ currentTarget }) => onChange(_.toInteger(currentTarget.value))}
       changeValueBy={(operation) => onChange(_.toInteger(value) + operation)}
@@ -196,6 +201,7 @@ type K8sResourceWidgetProps = WidgetProps & {
 export default {
   BaseInput: TextWidget,
   CheckboxWidget,
+  SwitchWidget,
   ImagePullPolicyWidget,
   K8sResourceWidget,
   NumberWidget,

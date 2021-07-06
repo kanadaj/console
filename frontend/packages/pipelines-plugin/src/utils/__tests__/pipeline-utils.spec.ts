@@ -8,10 +8,9 @@ import {
 import * as k8s from '@console/internal/module/k8s';
 import { ContainerStatus } from '@console/internal/module/k8s';
 import { SecretAnnotationId } from '../../components/pipelines/const';
+import { PipelineRunModel } from '../../models';
 import { DataState, PipelineExampleNames, pipelineTestData } from '../../test-data/pipeline-data';
 import { runStatus } from '../pipeline-augment';
-import { taskRunWithResults } from '../../components/taskruns/__tests__/taskrun-test-data';
-import { PipelineRunModel } from '../../models';
 import {
   getPipelineTasks,
   containerToLogSourceStatus,
@@ -20,20 +19,18 @@ import {
   pipelineRunDuration,
   getSecretAnnotations,
   calculateRelativeTime,
-  hasInlineTaskSpec,
   LatestPipelineRunStatus,
   updateServiceAccount,
   appendPipelineRunStatus,
-  getCellsFromResults,
   getMatchedPVCs,
 } from '../pipeline-utils';
+import { mockPipelineServiceAccount } from './pipeline-serviceaccount-test-data';
 import {
   constructPipelineData,
   mockPipelinesJSON,
   mockRunDurationTest,
   pvcWithPipelineOwnerRef,
 } from './pipeline-test-data';
-import { mockPipelineServiceAccount } from './pipeline-serviceaccount-test-data';
 
 beforeAll(() => {
   jest.spyOn(k8s, 'k8sUpdate').mockImplementation((model, data) => data);
@@ -147,6 +144,55 @@ describe('pipeline-utils ', () => {
     });
   });
 
+  it('should have correct annotation key prefix when there are existing annotations', () => {
+    const existingAnnotations = {
+      'tekton.dev/git-0': 'gitlab.com',
+    };
+    const annotations = getSecretAnnotations(
+      {
+        key: SecretAnnotationId.Git,
+        value: 'github.com',
+      },
+      existingAnnotations,
+    );
+    expect(annotations).toEqual({
+      'tekton.dev/git-0': 'gitlab.com',
+      'tekton.dev/git-1': 'github.com',
+    });
+  });
+
+  it('should avoid adding duplicate annotations to secret', () => {
+    const existingAnnotations = {
+      'tekton.dev/git-0': 'github.com',
+    };
+    const annotations = getSecretAnnotations(
+      {
+        key: SecretAnnotationId.Git,
+        value: 'github.com',
+      },
+      existingAnnotations,
+    );
+    expect(annotations).toEqual({
+      'tekton.dev/git-0': 'github.com',
+    });
+  });
+
+  it('should return unmodified annotations if invalid key is provided', () => {
+    const existingAnnotations = {
+      'tekton.dev/git-0': 'gitlab.com',
+    };
+    const annotations = getSecretAnnotations(
+      {
+        key: 'invalid-type',
+        value: 'github.com',
+      },
+      existingAnnotations,
+    );
+    expect(annotations).toEqual({
+      'tekton.dev/git-0': 'gitlab.com',
+    });
+  });
+
   it('expected relative time should be "a few seconds"', () => {
     const relativeTime = calculateRelativeTime('2020-05-22T11:57:53Z', '2020-05-22T11:57:57Z');
     expect(relativeTime).toBe('a few seconds');
@@ -170,30 +216,6 @@ describe('pipeline-utils ', () => {
   it('expected relative time should be "about 2 hours"', () => {
     const relativeTime = calculateRelativeTime('2020-05-22T10:57:53Z', '2020-05-22T12:57:57Z');
     expect(relativeTime).toBe('about 2 hours');
-  });
-
-  it('expect pipeline with inline task spec to return true', () => {
-    const hasSpec = hasInlineTaskSpec(mockPipelinesJSON[2].spec.tasks);
-    expect(hasSpec).toBe(true);
-  });
-
-  it('expect pipeline without inline task spec to return false', () => {
-    const hasSpec = hasInlineTaskSpec(mockPipelinesJSON[1].spec.tasks);
-    expect(hasSpec).toBe(false);
-  });
-
-  it('expect correct rows and columns for task with results', () => {
-    const { rows, columns } = getCellsFromResults(taskRunWithResults.status.taskResults);
-    expect(columns.length).toBe(2);
-    expect(rows.length).toBe(4);
-    expect(rows[0][0]).toBe('sum');
-    expect(rows[0][1]).toBe('30');
-    expect(rows[1][0]).toBe('difference');
-    expect(rows[1][1]).toBe('10');
-    expect(rows[2][0]).toBe('multiply');
-    expect(rows[2][1]).toBe('200');
-    expect(rows[3][0]).toBe('divide');
-    expect(rows[3][1]).toBe('2');
   });
 
   it('should return PVCs correctly matched with name and kind', () => {
@@ -257,6 +279,24 @@ describe('pipeline-utils ', () => {
     const pipelineRun = pipelineRuns[DataState.IN_PROGRESS];
     const taskList = appendPipelineRunStatus(pipeline, pipelineRun);
     expect(taskList.filter((t) => t.status.reason === runStatus.Running)).toHaveLength(2);
+  });
+
+  it('should append pipelineRun pending status for all the tasks if taskruns are not present and pipelinerun status is PipelineRunPending', () => {
+    const { pipeline, pipelineRuns } = pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE];
+    const pipelineRun = pipelineRuns[DataState.PIPELINE_RUN_PENDING];
+    const taskList = appendPipelineRunStatus(pipeline, pipelineRun);
+    expect(taskList.filter((t) => t.status.reason === runStatus.Idle)).toHaveLength(
+      pipeline.spec.tasks.length,
+    );
+  });
+
+  it('should append pipelineRun cancelled status for all the tasks if taskruns are not present and pipelinerun status is PipelineRunCancelled', () => {
+    const { pipeline, pipelineRuns } = pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE];
+    const pipelineRun = pipelineRuns[DataState.PIPELINE_RUN_CANCELLED];
+    const taskList = appendPipelineRunStatus(pipeline, pipelineRun);
+    expect(taskList.filter((t) => t.status.reason === runStatus.Cancelled)).toHaveLength(
+      pipeline.spec.tasks.length,
+    );
   });
 
   it('should append status to only pipeline tasks if isFinallyTasks is false', () => {

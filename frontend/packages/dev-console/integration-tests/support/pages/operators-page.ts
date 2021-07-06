@@ -1,19 +1,36 @@
-import { operators } from '../constants/global';
-import { detailsPage } from '../../../../integration-tests-cypress/views/details-page';
-import { operatorsPO } from '../pageObjects/operators-po';
-import { pageTitle } from '../constants/pageTitle';
+import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
+import { modal } from '@console/cypress-integration-tests/views/modal';
+import { operators, pageTitle } from '../constants';
+import { operatorsPO } from '../pageObjects';
+import { app } from './app';
 
 export const operatorsPage = {
   navigateToOperatorHubPage: () => {
     cy.get(operatorsPO.nav.operators).click();
     cy.get(operatorsPO.nav.operatorHub).click({ force: true });
     detailsPage.titleShouldContain(pageTitle.OperatorHub);
+    cy.get('.skeleton-catalog--grid').should('not.exist');
   },
 
   navigateToInstallOperatorsPage: () => {
     cy.get(operatorsPO.nav.operators).click();
     cy.get(operatorsPO.nav.installedOperators).click({ force: true });
+    app.waitForLoad();
     detailsPage.titleShouldContain(pageTitle.InstalledOperators);
+  },
+
+  navigateToEventingPage: () => {
+    cy.get(operatorsPO.nav.serverless).click();
+    cy.get(operatorsPO.nav.eventing).click({ force: true });
+    detailsPage.titleShouldContain(pageTitle.Eventing);
+  },
+
+  selectSourceType: (sourceType: string = 'redHat') => {
+    if (sourceType === 'redHat') {
+      cy.get(operatorsPO.operatorHub.redHatSourceType)
+        .scrollIntoView()
+        .click();
+    }
   },
 
   searchOperator: (operatorName: string | operators) => {
@@ -21,6 +38,20 @@ export const operatorsPage = {
       .should('be.visible')
       .clear()
       .type(operatorName);
+  },
+
+  searchOperatorInInstallPage: (operatorName: string | operators) => {
+    cy.get('body').then(($body) => {
+      if ($body.find(operatorsPO.installOperators.noOperatorsDetails).length === 0) {
+        cy.get(operatorsPO.installOperators.search)
+          .clear()
+          .type(operatorName);
+      } else {
+        cy.log(
+          `${operatorName} operator is not installed in this cluster, so lets install it from operator Hub`,
+        );
+      }
+    });
   },
 
   verifySubscriptionPage: (operatorLogo: string) =>
@@ -31,9 +62,9 @@ export const operatorsPage = {
       .should('be.visible')
       .clear()
       .type(operatorName);
-    cy.get(operatorsPO.installOperators.operatorsNameRow, {
+    cy.get(operatorsPO.installOperators.operatorStatus, {
       timeout: 50000,
-    }).should('be.visible');
+    }).should('contain.text', 'Succeeded');
   },
 
   verifyOperatorNotAvailable: (operatorName: string) => {
@@ -63,9 +94,30 @@ export const operatorsPage = {
         cy.get(operatorsPO.operatorHub.virtualizationOperatorCard).click();
         break;
       }
-      case 'knative Apache Camel Operator':
-      case operators.KnativeCamelOperator: {
-        cy.get(operatorsPO.operatorHub.knativeCamelOperatorCard).click();
+      case 'Red Hat Integration - AMQ Streams':
+      case operators.ApacheKafka: {
+        cy.get(operatorsPO.operatorHub.apacheKafkaOperatorCard).click();
+        break;
+      }
+      case 'Red Hat Camel K Operator':
+      case operators.RedHatIntegrationCamelK: {
+        cy.get(operatorsPO.operatorHub.redHatCamelKOperatorCard).click();
+        break;
+      }
+      case 'Apache Camel K Operator':
+      case operators.ApacheCamelKOperator: {
+        cy.get(operatorsPO.operatorHub.apacheCamelKOperatorCard).click();
+        modal.shouldBeOpened();
+        modal.submit();
+        modal.shouldBeClosed();
+        break;
+      }
+      case 'Knative Apache Camel K Operator':
+      case operators.KnativeApacheCamelOperator: {
+        cy.get(operatorsPO.operatorHub.knativeApacheCamelKOperatorCard).click();
+        modal.shouldBeOpened();
+        modal.submit();
+        modal.shouldBeClosed();
         break;
       }
       case 'Eclipse Che':

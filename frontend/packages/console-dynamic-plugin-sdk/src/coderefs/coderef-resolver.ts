@@ -1,14 +1,16 @@
 /* eslint-disable no-console */
 
 import * as _ from 'lodash';
-import { Extension } from '@console/plugin-sdk/src/typings/base';
 import {
+  Extension,
   RemoteEntryModule,
   EncodedCodeRef,
   CodeRef,
   ResolvedCodeRefProperties,
   ExtensionProperties,
+  UpdateExtensionProperties,
 } from '../types';
+import { mergeExtensionProperties } from '../utils/store';
 
 // TODO(vojtech): support code refs at any level within the properties object
 
@@ -125,4 +127,18 @@ export const resolveCodeRefProperties = async <E extends Extension<P>, P = Exten
   );
 
   return resolvedValues as ResolvedCodeRefProperties<P>;
+};
+
+/**
+ * Returns an extension with its `CodeRef` properties replaced with referenced objects.
+ */
+export const resolveExtension = async <
+  E extends Extension<P>,
+  P = ExtensionProperties<E>,
+  R = UpdateExtensionProperties<E, ResolvedCodeRefProperties<P>, P>
+>(
+  extension: E,
+): Promise<R> => {
+  const resolvedProperties = await resolveCodeRefProperties<E, P>(extension);
+  return (mergeExtensionProperties(extension, resolvedProperties) as unknown) as R;
 };

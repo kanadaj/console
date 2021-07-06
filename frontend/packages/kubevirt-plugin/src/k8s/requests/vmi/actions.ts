@@ -1,13 +1,19 @@
 import { coFetch } from '@console/internal/co-fetch';
-import { resourceURL, k8sKill, apiVersionForModel } from '@console/internal/module/k8s';
-import { getName, getNamespace } from '@console/shared';
+import { groupVersionFor, k8sKill, resourceURL } from '@console/internal/module/k8s';
+import { getAPIVersion, getName, getNamespace } from '@console/shared';
 import { VirtualMachineInstanceModel } from '../../../models';
+import {
+  getKubevirtAvailableModel,
+  getKubevirtModelAvailableAPIVersion,
+  kubevirtReferenceForModel,
+} from '../../../models/kubevirtReferenceForModel';
 import { K8sResourceWithModel } from '../../../types/k8s-resource-with-model';
 import { VMIKind } from '../../../types/vm';
 import { freeOwnedResources } from '../free-owned-resources';
 
 export enum VMIActionType {
   Unpause = 'unpause',
+  Pause = 'pause',
 }
 
 const VMIActionRequest = async (vmi: VMIKind, action: VMIActionType) => {
@@ -15,6 +21,7 @@ const VMIActionRequest = async (vmi: VMIKind, action: VMIActionType) => {
   let url = resourceURL(
     {
       ...VirtualMachineInstanceModel,
+      apiVersion: groupVersionFor(getAPIVersion(vmi)).version,
       apiGroup: `subresources.${VirtualMachineInstanceModel.apiGroup}`,
     },
     {
@@ -32,6 +39,7 @@ const VMIActionRequest = async (vmi: VMIKind, action: VMIActionType) => {
 };
 
 export const unpauseVMI = async (vmi: VMIKind) => VMIActionRequest(vmi, VMIActionType.Unpause);
+export const pauseVMI = async (vmi: VMIKind) => VMIActionRequest(vmi, VMIActionType.Pause);
 
 export const deleteVMI = async (
   vmi: VMIKind,
@@ -48,12 +56,12 @@ export const deleteVMI = async (
       ownedVolumeResources,
       {
         name: getName(vmi),
-        kind: VirtualMachineInstanceModel.kind,
-        apiVersion: apiVersionForModel(VirtualMachineInstanceModel),
+        kind: kubevirtReferenceForModel(VirtualMachineInstanceModel),
+        apiVersion: getKubevirtModelAvailableAPIVersion(VirtualMachineInstanceModel),
       } as any,
       false,
     );
   }
 
-  await k8sKill(VirtualMachineInstanceModel, vmi);
+  await k8sKill(getKubevirtAvailableModel(VirtualMachineInstanceModel), vmi);
 };

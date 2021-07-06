@@ -5,14 +5,19 @@ import * as _ from 'lodash-es';
 import { NavItem } from '@patternfly/react-core';
 import { connect } from 'react-redux';
 import {
-  NavItem as PluginNavItem,
+  NavItem as GenericNavItem,
   isNavItem,
   isHrefNavItem,
   isResourceNSNavItem,
   isResourceClusterNavItem,
-} from '@console/plugin-sdk';
-import { formatNamespacedRouteForResource } from '@console/shared/src/utils';
-import { referenceForModel, K8sKind } from '../../module/k8s';
+} from '@console/dynamic-plugin-sdk';
+import { LoadedExtension } from '@console/dynamic-plugin-sdk/src/types';
+import {
+  formatNamespacedRouteForResource,
+  formatNamespacedRouteForHref,
+} from '@console/shared/src/utils';
+import { ExtensionK8sModel } from '@console/dynamic-plugin-sdk/src/api/common-types';
+import { referenceForModel, referenceForExtensionModel } from '../../module/k8s';
 import { stripBasePath } from '../utils';
 import { featureReducerName } from '../../reducers/features';
 import { RootState } from '../../redux';
@@ -24,6 +29,8 @@ export const matchesPath = (resourcePath, prefix) =>
   resourcePath === prefix || _.startsWith(resourcePath, `${prefix}/`);
 export const matchesModel = (resourcePath, model) =>
   model && matchesPath(resourcePath, referenceForModel(model));
+export const matchesExtensionModel = (resourcePath, model) =>
+  model && matchesPath(resourcePath, referenceForExtensionModel(model));
 
 export const stripNS = (href) => {
   href = stripBasePath(href);
@@ -76,6 +83,7 @@ class NavLink<P extends NavLinkProps> extends React.PureComponent<P> {
       testID,
       children,
       className,
+      dataAttributes,
       'data-tour-id': dataTourId,
       'data-quickstart-id': dataQuickStartId,
     } = this.props;
@@ -96,6 +104,7 @@ class NavLink<P extends NavLinkProps> extends React.PureComponent<P> {
           data-tour-id={dataTourId}
           data-quickstart-id={dataQuickStartId}
           data-test="nav"
+          {...dataAttributes}
         >
           {name}
           {children}
@@ -107,13 +116,23 @@ class NavLink<P extends NavLinkProps> extends React.PureComponent<P> {
 
 export class ResourceNSLink extends NavLink<ResourceNSLinkProps> {
   static isActive(props, resourcePath, activeNamespace) {
+    if (props.model) {
+      return matchesExtensionModel(resourcePath, props.model);
+    }
     const href = stripNS(formatNamespacedRouteForResource(props.resource, activeNamespace));
-    return matchesPath(resourcePath, href) || matchesModel(resourcePath, props.model);
+    return matchesPath(resourcePath, href);
   }
 
   get to() {
-    const { resource, activeNamespace } = this.props;
+    const { resource, activeNamespace, model } = this.props;
     const lastNamespace = sessionStorage.getItem(LAST_NAMESPACE_NAME_LOCAL_STORAGE_KEY);
+
+    if (model) {
+      return formatNamespacedRouteForResource(
+        referenceForExtensionModel(model),
+        lastNamespace === ALL_NAMESPACES_KEY ? lastNamespace : activeNamespace,
+      );
+    }
     return formatNamespacedRouteForResource(
       resource,
       lastNamespace === ALL_NAMESPACES_KEY ? lastNamespace : activeNamespace,
@@ -123,6 +142,13 @@ export class ResourceNSLink extends NavLink<ResourceNSLinkProps> {
 
 export class ResourceClusterLink extends NavLink<ResourceClusterLinkProps> {
   static isActive(props, resourcePath) {
+    if (props.model) {
+      return (
+        resourcePath === `/k8s/cluster/${referenceForExtensionModel(props.model)}` ||
+        _.startsWith(resourcePath, `/k8s/cluster/${referenceForExtensionModel(props.model)}`) ||
+        matchesExtensionModel(resourcePath, props.model)
+      );
+    }
     return (
       resourcePath === props.resource ||
       _.startsWith(resourcePath, `${props.resource}/`) ||
@@ -131,6 +157,10 @@ export class ResourceClusterLink extends NavLink<ResourceClusterLinkProps> {
   }
 
   get to() {
+    const { model } = this.props;
+    if (model) {
+      return `/k8s/cluster/${referenceForExtensionModel(model)}`;
+    }
     return `/k8s/cluster/${this.props.resource}`;
   }
 }
@@ -142,7 +172,14 @@ export class HrefLink extends NavLink<HrefLinkProps> {
   }
 
   get to() {
-    return this.props.href;
+    const { href, namespaced, prefixNamespaced, activeNamespace } = this.props;
+    if (namespaced) {
+      return formatNamespacedRouteForHref(href, activeNamespace);
+    }
+    if (prefixNamespaced) {
+      return formatNamespacedRouteForResource(stripNS(href), activeNamespace);
+    }
+    return href;
   }
 }
 
@@ -158,30 +195,37 @@ export type NavLinkProps = {
   activePath?: string;
   tipText?: string;
   testID?: string;
+  dataAttributes?: { [key: string]: string };
   'data-tour-id'?: string;
   'data-quickstart-id'?: string;
 };
 
 export type ResourceNSLinkProps = NavLinkProps & {
   resource: string;
-  model?: K8sKind;
+  model?: ExtensionK8sModel;
   activeNamespace?: string;
 };
 
 export type ResourceClusterLinkProps = NavLinkProps & {
   resource: string;
-  model?: K8sKind;
+  model?: ExtensionK8sModel;
 };
 
 export type HrefLinkProps = NavLinkProps & {
   href: string;
+  namespaced?: boolean;
+  prefixNamespaced?: string;
+  activeNamespace?: string;
 };
 
 export type NavLinkComponent<T extends NavLinkProps = NavLinkProps> = React.ComponentType<T> & {
   isActive: (props: T, resourcePath: string, activeNamespace: string) => boolean;
 };
 
-export const createLink = (item: PluginNavItem, rootNavLink = false): React.ReactElement => {
+export const createLink = (
+  item: LoadedExtension<GenericNavItem>,
+  rootNavLink = false,
+): React.ReactElement => {
   if (isNavItem(item)) {
     let Component: NavLinkComponent = null;
     if (isHrefNavItem(item)) {
@@ -194,13 +238,11 @@ export const createLink = (item: PluginNavItem, rootNavLink = false): React.Reac
       Component = ResourceClusterLink;
     }
     if (Component) {
-      const { id } = item.properties;
-      const key = item.properties.componentProps.name;
-      const props = item.properties.componentProps;
+      const { id, name, ...props } = item.properties;
       if (rootNavLink) {
-        return <RootNavLink id={id} {...props} key={key} component={Component} />;
+        return <RootNavLink name={name} id={id} key={item.uid} component={Component} {...props} />;
       }
-      return <Component id={id} {...props} key={key} />;
+      return <Component name={name} id={id} key={item.uid} {...props} />;
     }
   }
   return undefined;

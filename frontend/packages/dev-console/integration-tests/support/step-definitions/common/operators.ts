@@ -1,15 +1,16 @@
 import { Given } from 'cypress-cucumber-preprocessor/steps';
-import { nav } from '../../../../../integration-tests-cypress/views/nav';
-import { operators, switchPerspective } from '../../constants/global';
-import { perspectiveName } from '../../constants/staticText/global-text';
-import { perspective } from '../../pages/app';
-import { operatorsPage } from '../../pages/operators-page';
-import { operatorsPO } from '@console/dev-console/integration-tests/support/pageObjects/operators-po';
-import { installOperator } from '@console/dev-console/integration-tests/support/pages/functions/installOperatorOnCluster';
+import { operatorsPO } from '@console/dev-console/integration-tests/support/pageObjects';
+import { operators, switchPerspective } from '../../constants';
+import {
+  perspective,
+  operatorsPage,
+  installOperator,
+  verifyAndInstallKnativeOperator,
+  verifyAndInstallPipelinesOperator,
+} from '../../pages';
 
 Given('user has installed Web Terminal operator', () => {
   perspective.switchTo(switchPerspective.Administrator);
-  nav.sidenav.switcher.shouldHaveText(perspectiveName.administrator);
   operatorsPage.navigateToInstallOperatorsPage();
   cy.get(operatorsPO.installOperators.search)
     .should('be.visible')
@@ -24,4 +25,12 @@ Given('user has installed Web Terminal operator', () => {
       cy.log('Serverless operator is installed in cluster');
     }
   });
+});
+
+Given('user has installed OpenShift Serverless Operator', () => {
+  verifyAndInstallKnativeOperator();
+});
+
+Given('user has installed OpenShift Pipelines Operator', () => {
+  verifyAndInstallPipelinesOperator();
 });

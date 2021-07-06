@@ -4,21 +4,29 @@ import * as _ from 'lodash-es';
 import { Converter } from 'showdown';
 import * as sanitizeHtml from 'sanitize-html';
 import { useTranslation } from 'react-i18next';
+import { useForceRender } from '@console/shared';
 
 import './_markdown-view.scss';
 
 const tableTags = ['table', 'thead', 'tbody', 'tr', 'th', 'td'];
 
-const markdownConvert = (markdown, extensions?: string[]) => {
-  const unsafeHtml = new Converter({
+type ShowdownExtension = {
+  type: string;
+  regex?: RegExp;
+  replace?: (...args: any[]) => string;
+};
+
+const markdownConvert = (markdown, extensions: ShowdownExtension[]) => {
+  const converter = new Converter({
     tables: true,
     openLinksInNewWindow: true,
     strikethrough: true,
     emoji: true,
-    extensions,
-  }).makeHtml(markdown);
+  });
 
-  return sanitizeHtml(unsafeHtml, {
+  extensions && converter.addExtension(extensions);
+
+  return sanitizeHtml(converter.makeHtml(markdown), {
     allowedTags: [
       'b',
       'i',
@@ -39,11 +47,19 @@ const markdownConvert = (markdown, extensions?: string[]) => {
       'code',
       'pre',
       'button',
+      'span',
+      'div',
       ...tableTags,
     ],
     allowedAttributes: {
-      a: ['href', 'target', 'rel', 'data-*'],
-      button: ['class', 'data-*'],
+      a: ['href', 'target', 'rel'],
+      button: ['class'],
+      i: ['class'],
+      div: ['class'],
+      span: ['class'],
+      pre: ['class'],
+      code: ['class'],
+      '*': ['data-*'],
     },
     allowedSchemes: ['http', 'https', 'mailto'],
     transformTags: {
@@ -57,7 +73,7 @@ type SyncMarkdownProps = {
   emptyMsg?: string;
   exactHeight?: boolean;
   truncateContent?: boolean;
-  extensions?: string[];
+  extensions?: ShowdownExtension[];
   renderExtension?: (contentDocument: HTMLDocument, rootSelector: string) => React.ReactNode;
   inline?: boolean;
 };
@@ -96,6 +112,43 @@ export const SyncMarkdownView: React.FC<SyncMarkdownProps> = ({
   return inline ? <InlineMarkdownView {...innerProps} /> : <IFrameMarkdownView {...innerProps} />;
 };
 
+type RenderExtensionProps = {
+  renderExtension: (contentDocument: HTMLDocument, rootSelector: string) => React.ReactNode;
+  selector: string;
+  markup: string;
+  docContext?: HTMLDocument;
+};
+
+const RenderExtension: React.FC<RenderExtensionProps> = ({
+  renderExtension,
+  selector,
+  markup,
+  docContext,
+}) => {
+  const forceRender = useForceRender();
+  const markupRef = React.useRef<string>(null);
+  const shouldRenderExtension = React.useCallback(() => {
+    if (markupRef.current === markup) {
+      return true;
+    }
+    markupRef.current = markup;
+    return false;
+  }, [markup]);
+  /**
+   * During a render cycle in which markup changes, renderExtension receives an old copy of document
+   * because react is still updating the dom using `dangerouslySetInnerHTML` with latest markdown markup
+   * which causes the component rendered by renderExtension to receive old copy of document
+   * use forceRender to delay the rendering of extension by one render cycle
+   */
+  React.useEffect(() => {
+    renderExtension && forceRender();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markup]);
+  return (
+    <>{shouldRenderExtension() ? renderExtension?.(docContext ?? document, selector) : null}</>
+  );
+};
+
 const InlineMarkdownView: React.FC<InnerSyncMarkdownProps> = ({
   markup,
   isEmpty,
@@ -105,7 +158,7 @@ const InlineMarkdownView: React.FC<InnerSyncMarkdownProps> = ({
   return (
     <div className={cx('co-markdown-view', { ['is-empty']: isEmpty })} id={id}>
       <div dangerouslySetInnerHTML={{ __html: markup }} />
-      {renderExtension && renderExtension(document, `#${id}`)}
+      <RenderExtension renderExtension={renderExtension} selector={`#${id}`} markup={markup} />
     </div>
   );
 };
@@ -196,7 +249,14 @@ const IFrameMarkdownView: React.FC<InnerSyncMarkdownProps> = ({
         ref={(r) => setFrame(r)}
         onLoad={() => onLoad()}
       />
-      {loaded && frame && renderExtension && renderExtension(frame.contentDocument, '')}
+      {loaded && frame && (
+        <RenderExtension
+          markup={markup}
+          selector={''}
+          renderExtension={renderExtension}
+          docContext={frame.contentDocument}
+        />
+      )}
     </>
   );
 };

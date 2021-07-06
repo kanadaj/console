@@ -1,17 +1,18 @@
 import * as React from 'react';
+import { Formik } from 'formik';
 import Helmet from 'react-helmet';
 import { useTranslation } from 'react-i18next';
 import { RouteComponentProps } from 'react-router';
-import { Formik } from 'formik';
-import { K8sResourceKind } from '@console/internal/module/k8s';
 import {
   FirehoseResource,
   LoadingBox,
   history,
   PageHeading,
 } from '@console/internal/components/utils';
-import { ImageStreamModel } from '@console/internal/models';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { ImageStreamModel } from '@console/internal/models';
+import { K8sResourceKind } from '@console/internal/module/k8s';
+import { SAMPLE_APPLICATION_GROUP } from '../../const';
 import {
   normalizeBuilderImages,
   NormalizedBuilderImages,
@@ -20,18 +21,17 @@ import {
   getSampleContextDir,
 } from '../../utils/imagestream-utils';
 import NamespacedPage, { NamespacedPageVariants } from '../NamespacedPage';
-import { detectGitType, validationSchema } from './import-validation-utils';
+import { getBaseInitialValues } from './form-initial-values';
 import { createOrUpdateResources } from './import-submit-utils';
 import { BaseFormData, GitImportFormData } from './import-types';
+import { detectGitType, validationSchema } from './import-validation-utils';
 import ImportSampleForm from './ImportSampleForm';
-import { getBaseInitialValues } from './form-initial-values';
 
 type ImportSamplePageProps = RouteComponentProps<{ ns?: string; is?: string; isNs?: string }>;
 
 const ImportSamplePage: React.FC<ImportSamplePageProps> = ({ match }) => {
   const { t } = useTranslation();
   const { ns: namespace, is: imageStreamName, isNs: imageStreamNamespace } = match.params;
-  const defaultApplicationGroup = 'sample-app';
 
   const imageStreamResource: FirehoseResource = React.useMemo(
     () => ({
@@ -59,14 +59,14 @@ const ImportSamplePage: React.FC<ImportSamplePageProps> = ({ match }) => {
   const gitDir = getSampleContextDir(tag);
   const gitType = detectGitType(gitUrl);
 
-  const initialBaseValues: BaseFormData = getBaseInitialValues(namespace, defaultApplicationGroup);
+  const initialBaseValues: BaseFormData = getBaseInitialValues(namespace, SAMPLE_APPLICATION_GROUP);
   const initialValues: GitImportFormData = {
     ...initialBaseValues,
     name: `${imageName}-sample`,
     application: {
-      initial: defaultApplicationGroup,
-      name: defaultApplicationGroup,
-      selectedKey: defaultApplicationGroup,
+      initial: SAMPLE_APPLICATION_GROUP,
+      name: SAMPLE_APPLICATION_GROUP,
+      selectedKey: SAMPLE_APPLICATION_GROUP,
     },
     git: {
       url: gitUrl,

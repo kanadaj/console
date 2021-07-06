@@ -8,16 +8,16 @@ import { OAuthModel } from '../../models';
 import { IdentityProvider, OAuthKind, referenceForModel } from '../../module/k8s';
 import { DetailsPage } from '../factory';
 import { EmptyBox, Kebab, ResourceSummary, SectionHeading, history, navFactory } from '../utils';
-import { formatDuration } from '../utils/datetime';
+import { formatPrometheusDuration } from '../utils/datetime';
 
 const { common } = Kebab.factory;
 const menuActions = [...Kebab.getExtensionsActionsForKind(OAuthModel), ...common];
 
 const oAuthReference = referenceForModel(OAuthModel);
 
-// Convert to ms for formatDuration
+// Convert to ms for formatPrometheusDuration
 const tokenDuration = (seconds: number) =>
-  _.isNil(seconds) ? '-' : formatDuration(seconds * 1000);
+  _.isNil(seconds) ? '-' : formatPrometheusDuration(seconds * 1000);
 
 const IdentityProviders: React.FC<IdentityProvidersProps> = ({ identityProviders }) => {
   const { t } = useTranslation();
@@ -47,15 +47,6 @@ const IdentityProviders: React.FC<IdentityProvidersProps> = ({ identityProviders
   );
 };
 
-// t('public~Basic Authentication')
-// t('public~GitHub')
-// t('public~GitLab')
-// t('public~Google')
-// t('public~HTPasswd')
-// t('public~Keystone')
-// t('public~LDAP')
-// t('public~OpenID Connect')
-// t('public~Request Header')
 export const addIDPItems = Object.freeze({
   basicauth: 'Basic Authentication',
   github: 'GitHub',
@@ -73,17 +64,43 @@ const OAuthDetails: React.FC<OAuthDetailsProps> = ({ obj }: { obj: OAuthKind }) 
   const { identityProviders, tokenConfig } = obj.spec;
   const { t } = useTranslation();
 
-  const IDPDropdownItems = _.keys(addIDPItems).map((idp) => {
-    const label = t('public~{{label}}', { label: addIDPItems[idp] });
+  const getAddIDPItemLabels = (type: string) => {
+    switch (type) {
+      case 'Basic Authentication':
+        return t('public~Basic Authentication');
+      case 'GitHub':
+        return t('public~GitHub');
+      case 'GitLab':
+        return t('public~GitLab');
+      case 'Google':
+        return t('public~Google');
+      case 'HTPasswd':
+        return t('public~HTPasswd');
+      case 'Keystone':
+        return t('public~Keystone');
+      case 'LDAP':
+        return t('public~LDAP');
+      case 'OpenID Connect':
+        return t('public~OpenID Connect');
+      case 'Request Header':
+        return t('public~Request Header');
+      default:
+        return type;
+    }
+  };
+
+  const IDPDropdownItems = Object.entries(addIDPItems).map((idp) => {
+    const [key, value] = idp;
+
     return (
       <DropdownItem
-        key={`idp-${addIDPItems[idp]}`}
+        key={`idp-${key}`}
         component="button"
-        id={idp}
-        data-test-id={idp}
+        id={key}
+        data-test-id={key}
         onClick={(e) => history.push(`/settings/idp/${e.currentTarget.id}`)}
       >
-        {label}
+        {getAddIDPItemLabels(value)}
       </DropdownItem>
     );
   });
@@ -91,7 +108,7 @@ const OAuthDetails: React.FC<OAuthDetailsProps> = ({ obj }: { obj: OAuthKind }) 
   return (
     <>
       <div className="co-m-pane__body">
-        <SectionHeading text={t('public~{{resource}} details', { resource: OAuthModel.label })} />
+        <SectionHeading text={t('public~OAuth details')} />
         <div className="row">
           <div className="col-md-6">
             <ResourceSummary resource={obj}>

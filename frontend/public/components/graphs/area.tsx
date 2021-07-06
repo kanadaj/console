@@ -14,7 +14,7 @@ import {
 import { global_warning_color_100 as warningColor } from '@patternfly/react-tokens/dist/js/global_warning_color_100';
 import { global_danger_color_100 as dangerColor } from '@patternfly/react-tokens/dist/js/global_danger_color_100';
 import { processFrame, ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
-import { twentyFourHourTime } from '../utils/datetime';
+import { timeFormatter } from '../utils/datetime';
 import { humanizeNumber, useRefWidth, Humanize } from '../utils';
 import { PrometheusEndpoint } from './helpers';
 import { PrometheusGraph, PrometheusGraphLink } from './prometheus-graph';
@@ -31,7 +31,7 @@ import { GraphEmpty } from './graph-empty';
 import { ChartLegendTooltip } from './tooltip';
 
 const DEFAULT_HEIGHT = 180;
-const DEFAULT_TICK_COUNT = 3;
+const DEFAULT_TICK_COUNT = 2;
 
 export enum AreaChartStatus {
   ERROR = 'ERROR',
@@ -47,7 +47,7 @@ export const chartStatusColors = {
 export const AreaChart: React.FC<AreaChartProps> = ({
   className,
   data = [],
-  formatDate = twentyFourHourTime,
+  formatDate = timeFormatter.format,
   height = DEFAULT_HEIGHT,
   humanize = humanizeNumber,
   loading = true,
@@ -140,8 +140,8 @@ export const AreaChart: React.FC<AreaChartProps> = ({
 
   return (
     <PrometheusGraph className={className} ref={containerRef} title={title}>
-      {processedData?.length ? (
-        <PrometheusGraphLink query={query} ariaChartLinkLabel={ariaChartLinkLabel}>
+      <PrometheusGraphLink query={query} ariaChartLinkLabel={ariaChartLinkLabel}>
+        {processedData?.length ? (
           <Chart
             ariaTitle={ariaChartTitle || title}
             containerComponent={container}
@@ -166,10 +166,10 @@ export const AreaChart: React.FC<AreaChartProps> = ({
               ))}
             </ChartGroup>
           </Chart>
-        </PrometheusGraphLink>
-      ) : (
-        <GraphEmpty height={height} loading={loading} />
-      )}
+        ) : (
+          <GraphEmpty height={height} loading={loading} />
+        )}
+      </PrometheusGraphLink>
     </PrometheusGraph>
   );
 };
@@ -215,7 +215,7 @@ export const Area: React.FC<AreaProps> = ({
       chartStyle={chartStyle}
       data={data}
       loading={loading}
-      query={query}
+      query={[query, limitQuery, requestedQuery]}
       mainDataName="usage"
       {...rest}
     />
@@ -229,7 +229,7 @@ export type AreaChartProps = {
   humanize?: Humanize;
   height?: number;
   loading?: boolean;
-  query?: string;
+  query?: string | string[];
   theme?: any; // TODO figure out the best way to import VictoryThemeDefinition
   tickCount?: number;
   title?: string;

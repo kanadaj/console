@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Tooltip, Button } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 import QuickSearchIcon from './QuickSearchIcon';
 import './QuickSearchButton.scss';
 
@@ -16,7 +16,10 @@ const QuickSearchButton: React.FC<QuickSearchButtonProps> = ({ onClick }) => {
       <Button
         className="odc-quick-search-button"
         variant="plain"
-        onClick={onClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
         aria-label={t('topology~Quick search button')}
       >
         <QuickSearchIcon />

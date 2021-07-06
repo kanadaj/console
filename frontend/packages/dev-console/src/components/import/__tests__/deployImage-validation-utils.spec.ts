@@ -1,8 +1,8 @@
-import { cloneDeep } from 'lodash';
 import { TFunction } from 'i18next';
+import { cloneDeep } from 'lodash';
 import { CREATE_APPLICATION_KEY, UNASSIGNED_KEY } from '@console/topology/src/const';
-import { deployValidationSchema } from '../deployImage-validation-utils';
 import { mockDeployImageFormData } from '../__mocks__/deployImage-validation-mock';
+import { deployValidationSchema } from '../deployImage-validation-utils';
 import { serverlessCommonTests } from './serverless-common-tests';
 
 const t = (key): TFunction => key;
@@ -25,7 +25,7 @@ describe('Deploy Image ValidationUtils', () => {
       await deployValidationSchema(t)
         .validate(mockData)
         .catch((err) => {
-          expect(err.message).toBe('Required');
+          expect(err.message).toBe('console-shared~Required');
           expect(err.type).toBe('required');
         });
     });
@@ -40,7 +40,7 @@ describe('Deploy Image ValidationUtils', () => {
         .validate(mockData)
         .catch((err) => {
           expect(err.message).toBe(
-            'Name must consist of lower-case letters, numbers and hyphens. It must start with a letter and end with a letter or number.',
+            'console-shared~Name must consist of lower-case letters, numbers and hyphens. It must start with a letter and end with a letter or number.',
           );
         });
     });

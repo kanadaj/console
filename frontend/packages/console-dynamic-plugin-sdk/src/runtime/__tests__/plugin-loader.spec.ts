@@ -1,24 +1,36 @@
 import { Simulate } from 'react-dom/test-utils';
-import { Extension } from '@console/plugin-sdk/src/typings/base';
 import { PluginStore } from '@console/plugin-sdk/src/store';
-import {
-  scriptIDPrefix,
-  getPluginID,
-  getScriptElementID,
-  loadDynamicPlugin,
-  registerPluginEntryCallback,
-  getPluginEntryCallback,
-  getStateForTestPurposes,
-  resetStateAndEnvForTestPurposes,
-} from '../plugin-loader';
+import { Extension } from '@console/plugin-sdk/src/typings/base';
 import { ConsolePluginManifestJSON } from '../../schema/plugin-manifest';
 import {
   getPluginManifest,
   getExecutableCodeRefMock,
   getEntryModuleMocks,
 } from '../../utils/test-utils';
+import * as pluginLoaderModule from '../plugin-loader';
+import * as pluginManifestModule from '../plugin-manifest';
+
+const {
+  scriptIDPrefix,
+  getPluginID,
+  getScriptElementID,
+  loadDynamicPlugin,
+  getPluginEntryCallback,
+  registerPluginEntryCallback,
+  loadPluginFromURL,
+  loadAndEnablePlugin,
+  getStateForTestPurposes,
+  resetStateAndEnvForTestPurposes,
+} = pluginLoaderModule;
+
+const fetchPluginManifest = jest.spyOn(pluginManifestModule, 'fetchPluginManifest');
+const loadDynamicPluginMock = jest.spyOn(pluginLoaderModule, 'loadDynamicPlugin');
+const loadPluginFromURLMock = jest.spyOn(pluginLoaderModule, 'loadPluginFromURL');
 
 beforeEach(() => {
+  [fetchPluginManifest, loadDynamicPluginMock, loadPluginFromURLMock].forEach((mock) =>
+    mock.mockReset(),
+  );
   resetStateAndEnvForTestPurposes();
 });
 
@@ -120,7 +132,7 @@ describe('loadDynamicPlugin', () => {
 
 describe('registerPluginEntryCallback', () => {
   it('adds loadPluginEntry function to window global object', () => {
-    const pluginStore = new PluginStore([]);
+    const pluginStore = new PluginStore();
     expect(window.loadPluginEntry).toBeUndefined();
 
     registerPluginEntryCallback(pluginStore);
@@ -130,7 +142,7 @@ describe('registerPluginEntryCallback', () => {
 
 describe('window.loadPluginEntry', () => {
   it('marks the plugin as loaded, resolves its extensions and adds it to plugin store', () => {
-    const pluginStore = new PluginStore([]);
+    const pluginStore = new PluginStore();
     const addDynamicPlugin = jest.spyOn(pluginStore, 'addDynamicPlugin');
 
     const extensions: Extension[] = [
@@ -184,7 +196,7 @@ describe('window.loadPluginEntry', () => {
   });
 
   it('does nothing if the plugin ID is not registered', () => {
-    const pluginStore = new PluginStore([]);
+    const pluginStore = new PluginStore();
     const addDynamicPlugin = jest.spyOn(pluginStore, 'addDynamicPlugin');
 
     const [, entryModule] = getEntryModuleMocks({});
@@ -206,7 +218,7 @@ describe('window.loadPluginEntry', () => {
   });
 
   it('does nothing if called a second time for the same plugin', () => {
-    const pluginStore = new PluginStore([]);
+    const pluginStore = new PluginStore();
     const addDynamicPlugin = jest.spyOn(pluginStore, 'addDynamicPlugin');
 
     const manifest = getPluginManifest('Test', '1.2.3');
@@ -237,7 +249,7 @@ describe('window.loadPluginEntry', () => {
   });
 
   it('does nothing if overriding shared modules throws an error', () => {
-    const pluginStore = new PluginStore([]);
+    const pluginStore = new PluginStore();
     const addDynamicPlugin = jest.spyOn(pluginStore, 'addDynamicPlugin');
 
     const manifest = getPluginManifest('Test', '1.2.3');
@@ -261,5 +273,62 @@ describe('window.loadPluginEntry', () => {
     expect(overrideSharedModules).toHaveBeenCalledWith(entryModule);
     expect(resolveEncodedCodeRefs).not.toHaveBeenCalled();
     expect(addDynamicPlugin).not.toHaveBeenCalled();
+  });
+});
+
+describe('loadPluginFromURL', () => {
+  it('fetches the manifest and loads the plugin from the given URL', async () => {
+    const baseURL = 'http://example.com/test/';
+    const manifest = getPluginManifest('Test', '1.2.3');
+
+    fetchPluginManifest.mockImplementation(() => Promise.resolve(manifest));
+    loadDynamicPluginMock.mockImplementation(() => Promise.resolve('Test@1.2.3'));
+
+    expect(await loadPluginFromURL(baseURL)).toBe('Test@1.2.3');
+    expect(fetchPluginManifest).toHaveBeenCalledWith(baseURL);
+    expect(loadDynamicPluginMock).toHaveBeenCalledWith(baseURL, manifest);
+  });
+});
+
+describe('loadAndEnablePlugin', () => {
+  let pluginStore: PluginStore;
+  let setDynamicPluginEnabled: jest.SpyInstance<typeof pluginStore.setDynamicPluginEnabled>;
+
+  beforeEach(() => {
+    pluginStore = new PluginStore();
+    setDynamicPluginEnabled = jest.spyOn(pluginStore, 'setDynamicPluginEnabled');
+    setDynamicPluginEnabled.mockImplementation(() => {});
+  });
+
+  it('loads the plugin from URL /api/plugins/{pluginName}/', async () => {
+    loadPluginFromURLMock.mockImplementation(() => Promise.resolve('Test@1.2.3'));
+
+    await loadAndEnablePlugin('Test', pluginStore);
+
+    expect(loadPluginFromURLMock).toHaveBeenCalledWith(
+      `${window.SERVER_FLAGS.basePath}api/plugins/Test/`,
+    );
+  });
+
+  it('enables the plugin if it was loaded successfully', async () => {
+    const onError = jest.fn();
+
+    loadPluginFromURLMock.mockImplementation(() => Promise.resolve('Test@1.2.3'));
+
+    await loadAndEnablePlugin('Test', pluginStore, onError);
+
+    expect(setDynamicPluginEnabled).toHaveBeenCalledWith('Test@1.2.3', true);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('calls the provided error handler upon a load error', async () => {
+    const onError = jest.fn();
+
+    loadPluginFromURLMock.mockImplementation(() => Promise.reject(new Error('boom')));
+
+    await loadAndEnablePlugin('Test', pluginStore, onError);
+
+    expect(setDynamicPluginEnabled).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith();
   });
 });

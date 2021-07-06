@@ -1,24 +1,17 @@
 import * as _ from 'lodash';
-import {
-  ModelDefinition,
-  CustomFeatureFlag,
-  HrefNavItem,
-  RoutePage,
-  Plugin,
-} from '@console/plugin-sdk';
 import { NamespaceRedirect } from '@console/internal/components/utils/namespace-redirect';
+import { ModelDefinition, CustomFeatureFlag, RoutePage, Plugin } from '@console/plugin-sdk';
+import { FLAG_OPENSHIFT_HELM } from './const';
+import * as models from './models';
 import {
   HelmTopologyConsumedExtensions,
   helmTopologyPlugin,
 } from './topology/helm-topology-plugin';
 import { detectHelmChartRepositories } from './utils/helm-detection-utils';
-import { FLAG_OPENSHIFT_HELM } from './const';
-import * as models from './models';
 
 type ConsumedExtensions =
   | ModelDefinition
   | CustomFeatureFlag
-  | HrefNavItem
   | RoutePage
   | HelmTopologyConsumedExtensions;
 
@@ -33,25 +26,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     type: 'FeatureFlag/Custom',
     properties: {
       detect: detectHelmChartRepositories,
-    },
-  },
-  {
-    type: 'NavItem/Href',
-    properties: {
-      id: 'helm',
-      perspective: 'dev',
-      section: 'resources',
-      insertBefore: 'project',
-      componentProps: {
-        // t('helm-plugin~Helm')
-        name: '%helm-plugin~Helm%',
-        href: '/helm-releases',
-        testID: 'helm-releases-header',
-        'data-quickstart-id': 'qs-nav-helm',
-      },
-    },
-    flags: {
-      required: [FLAG_OPENSHIFT_HELM],
     },
   },
   {

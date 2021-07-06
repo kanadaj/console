@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { ResourceLink } from '@console/internal/components/utils';
 import { referenceForModel } from '@console/internal/module/k8s';
 import { TriggerTemplateModel } from '../../../models';
-import { EventListenerKindTrigger } from '../resource-types';
 import DynamicResourceLinkList, {
   ResourceModelLink,
 } from '../resource-overview/DynamicResourceLinkList';
+import { EventListenerKindTrigger } from '../resource-types';
 import { getEventListenerTriggerBindingNames } from '../utils/triggers';
 import './EventListenerTriggers.scss';
 
@@ -18,7 +18,7 @@ interface EventListenerTriggersProps {
 
 const EventListenerTriggers: React.FC<EventListenerTriggersProps> = ({ namespace, triggers }) => {
   const { t } = useTranslation();
-  const triggerTemplates = triggers.filter((tr) => tr.template?.name);
+  const triggerTemplates = triggers.filter((tr) => tr.template?.ref || tr.template?.name);
   if (triggerTemplates.length === 0) {
     return null;
   }
@@ -28,7 +28,7 @@ const EventListenerTriggers: React.FC<EventListenerTriggersProps> = ({ namespace
       <dd>
         {triggerTemplates.map((trigger) => {
           const triggerTemplateKind = referenceForModel(TriggerTemplateModel);
-          const triggerTemplateName = trigger.template.name;
+          const triggerTemplateName = trigger.template?.ref || trigger.template?.name;
           const bindings: ResourceModelLink[] = getEventListenerTriggerBindingNames(
             trigger.bindings,
           );

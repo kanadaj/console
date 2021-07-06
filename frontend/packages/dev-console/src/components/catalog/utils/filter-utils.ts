@@ -1,5 +1,5 @@
-import { CatalogItem } from '@console/dynamic-plugin-sdk';
 import * as _ from 'lodash';
+import { CatalogItem } from '@console/dynamic-plugin-sdk';
 import { keywordCompare } from './catalog-utils';
 import { CatalogFilter, CatalogFilterCounts, CatalogFilters } from './types';
 
@@ -62,7 +62,7 @@ export const filterBySearchKeyword = (
   items: CatalogItem[],
   searchKeyword: string,
 ): CatalogItem[] => {
-  return searchKeyword ? items.filter((item) => keywordCompare(searchKeyword, item)) : items;
+  return keywordCompare(searchKeyword, items);
 };
 
 export const filterByCategory = (

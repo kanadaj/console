@@ -253,6 +253,31 @@ func addCustomization(fs *flag.FlagSet, customization *Customization) {
 			klog.Fatalf("Could not marshal ConsoleConfig customization.developerCatalog.categories field: %v", err)
 		}
 	}
+
+	if customization.QuickStarts.Disabled != nil {
+		quickStarts, err := json.Marshal(customization.QuickStarts)
+		if err == nil {
+			fs.Set("quick-starts", string(quickStarts))
+		} else {
+			klog.Fatalf("Could not marshal ConsoleConfig customization.quickStarts field: %v", err)
+		}
+	}
+
+	addPage, err := json.Marshal(customization.AddPage)
+	if err == nil {
+		fs.Set("add-page", string(addPage))
+	} else {
+		klog.Fatalf("Could not marshal ConsoleConfig customization.addPage field: %v", err)
+	}
+
+	if customization.ProjectAccess.AvailableClusterRoles != nil {
+		projectAccessClusterRoles, err := json.Marshal(customization.ProjectAccess.AvailableClusterRoles)
+		if err != nil {
+			klog.Fatalf("Could not marshal ConsoleConfig customization.projectAccess field: %v", err)
+		} else {
+			fs.Set("project-access-cluster-roles", string(projectAccessClusterRoles))
+		}
+	}
 }
 
 func isAlreadySet(fs *flag.FlagSet, name string) bool {

@@ -1,7 +1,7 @@
 import { K8sResourceKind } from '@console/internal/module/k8s';
-import { KnativeItem } from '../utils/get-knative-resources';
 import { OverviewItem, PodControllerOverviewItem } from '@console/shared/src';
 import { TopologyDataObject } from '@console/topology/src/topology-types';
+import { KnativeItem } from '../utils/get-knative-resources';
 
 export enum NodeType {
   EventSource = 'event-source',
@@ -9,12 +9,15 @@ export enum NodeType {
   Revision = 'knative-revision',
   PubSub = 'event-pubsub',
   SinkUri = 'sink-uri',
+  EventSourceKafka = 'event-source-kafka',
+  Kafka = 'knative-kafka',
 }
 
 export enum EdgeType {
   Traffic = 'revision-traffic',
   EventSource = 'event-source-link',
   EventPubSubLink = 'event-pubsub-link',
+  EventSourceKafkaLink = 'event-source-kafka-link',
 }
 
 export type RevK8sResourceKind = K8sResourceKind & {

@@ -1,40 +1,41 @@
 import * as React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { ActionGroup, Alert, Button, Stack, StackItem } from '@patternfly/react-core';
 import { TFunction } from 'i18next';
-import { k8sCreate, TemplateKind } from '@console/internal/module/k8s';
-import {
-  ModalComponentProps,
-  ModalTitle,
-  ModalBody,
-  createModalLauncher,
-  ModalFooter,
-} from '@console/internal/components/factory';
-import { Alert, Button, ActionGroup, Stack, StackItem } from '@patternfly/react-core';
-import { useAccessReview2, LoadingBox } from '@console/internal/components/utils';
+import { Trans, useTranslation } from 'react-i18next';
 import { coFetch } from '@console/internal/co-fetch';
-
 import {
-  UploadPVCFormStatus,
-  uploadErrorType,
-} from '../../cdi-upload-provider/upload-pvc-form/upload-pvc-form-status';
-import { createUploadPVC } from '../../../k8s/requests/cdi-upload/cdi-upload-requests';
+  createModalLauncher,
+  ModalBody,
+  ModalComponentProps,
+  ModalFooter,
+  ModalTitle,
+} from '@console/internal/components/factory';
+import { LoadingBox, useAccessReview2 } from '@console/internal/components/utils';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { StorageClassModel } from '@console/internal/models';
+import { k8sCreate, StorageClassResourceKind, TemplateKind } from '@console/internal/module/k8s';
 import {
   TEMPLATE_BASE_IMAGE_NAME_PARAMETER,
   TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER,
 } from '../../../constants';
-import { getParameterValue } from '../../../selectors/selectors';
-import { DataVolumeModel } from '../../../models';
-import { CDIUploadContextProps } from '../../cdi-upload-provider/cdi-upload-provider';
-import { bootFormReducer, initBootFormState } from '../../create-vm/forms/boot-source-form-reducer';
-import { BootSourceForm } from '../../create-vm/forms/boot-source-form';
-import { getRootDataVolume } from '../../../k8s/requests/vm/create/simple-create';
 import { ProvisionSource } from '../../../constants/vm/provision-source';
 import { useErrorTranslation } from '../../../hooks/use-error-translation';
+import { createUploadPVC } from '../../../k8s/requests/cdi-upload/cdi-upload-requests';
+import { getRootDataVolume } from '../../../k8s/requests/vm/create/simple-create';
+import { DataVolumeModel } from '../../../models';
+import { getParameterValue } from '../../../selectors/selectors';
+import { CDIUploadContextProps } from '../../cdi-upload-provider/cdi-upload-provider';
 import {
-  CDI_UPLOAD_URL_BUILDER,
   CDI_BIND_REQUESTED_ANNOTATION,
+  CDI_UPLOAD_URL_BUILDER,
 } from '../../cdi-upload-provider/consts';
 import { uploadErrorMessage } from '../../cdi-upload-provider/upload-pvc-form/upload-pvc-form';
+import {
+  uploadErrorType,
+  UploadPVCFormStatus,
+} from '../../cdi-upload-provider/upload-pvc-form/upload-pvc-form-status';
+import { BootSourceForm } from '../../create-vm/forms/boot-source-form';
+import { bootFormReducer, initBootFormState } from '../../create-vm/forms/boot-source-form-reducer';
 
 const getAction = (t: TFunction, dataSource: string): string => {
   switch (ProvisionSource.fromString(dataSource)) {
@@ -103,6 +104,23 @@ export const AddTemplateSourceModal: React.FC<ModalComponentProps &
     verb: 'create',
   });
 
+  const [scAllowed, scAllowedLoading] = useAccessReview2({
+    group: StorageClassModel.apiGroup,
+    resource: StorageClassModel.plural,
+    verb: 'list',
+  });
+
+  const [storageClasses, scLoaded] = useK8sWatchResource<StorageClassResourceKind[]>(
+    scAllowed
+      ? {
+          kind: StorageClassModel.kind,
+          isList: true,
+          namespaced: false,
+        }
+      : null,
+  );
+  const isSCAvailable = storageClasses?.length > 0;
+  const withUpload = true; // to be dynamic in future?
   const { dataSource, file, isValid } = state;
 
   const onSubmit = async () => {
@@ -200,7 +218,7 @@ export const AddTemplateSourceModal: React.FC<ModalComponentProps &
         </ModalFooter>
       </>
     );
-  } else if (uploadAllowedLoading) {
+  } else if (uploadAllowedLoading || scAllowedLoading) {
     body = <LoadingBox />;
   } else if (!uploadAllowed) {
     body = <PermissionsError close={close} />;
@@ -221,10 +239,26 @@ export const AddTemplateSourceModal: React.FC<ModalComponentProps &
                 <BootSourceForm
                   state={state}
                   dispatch={dispatch}
-                  withUpload
+                  withUpload={withUpload}
                   disabled={isCheckingCert}
+                  storageClasses={storageClasses}
+                  storageClassesLoaded={scLoaded}
+                  scAllowed={scAllowed}
+                  scAllowedLoading={scAllowedLoading}
+                  baseImageName={baseImageName}
                 />
               </StackItem>
+              {!isSCAvailable && scLoaded && (
+                <StackItem>
+                  <Alert
+                    variant="danger"
+                    isInline
+                    title={t(
+                      'kubevirt-plugin~Adding source is disabled because no storage classes were found in the cluster.',
+                    )}
+                  />
+                </StackItem>
+              )}
               <StackItem>
                 <Alert
                   variant="info"
@@ -234,7 +268,7 @@ export const AddTemplateSourceModal: React.FC<ModalComponentProps &
                   )}
                 >
                   {t(
-                    "kubevirt-plugin~For customizing boot source, select 'Customize boot source' from the template actions menu.",
+                    'kubevirt-plugin~For customizing boot source, select "Customize boot source" from the template actions menu.',
                   )}
                 </Alert>
               </StackItem>
@@ -263,7 +297,9 @@ export const AddTemplateSourceModal: React.FC<ModalComponentProps &
             </Button>
             <Button
               variant="primary"
-              isDisabled={!isValid || isSubmitting}
+              isDisabled={
+                !isValid || isSubmitting || !isSCAvailable || (withUpload && !state?.provider)
+              }
               data-test="confirm-action"
               id="confirm-action"
               onClick={onSubmit}

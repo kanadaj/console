@@ -1,24 +1,24 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Bullseye, Stack, StackItem, Tooltip, TooltipPosition } from '@patternfly/react-core';
+import { StarIcon } from '@patternfly/react-icons';
+import { info, sortable } from '@patternfly/react-table';
 import { TFunction } from 'i18next';
-import { Stack, StackItem } from '@patternfly/react-core';
-import { sortable, info } from '@patternfly/react-table';
+import { useTranslation } from 'react-i18next';
 import { RowFunction, Table } from '@console/internal/components/factory';
-import { dimensifyHeader } from '@console/shared';
 import { FirehoseResult } from '@console/internal/components/utils';
 import { PersistentVolumeClaimKind, PodKind, TemplateKind } from '@console/internal/module/k8s';
-
-import { usePinnedTemplates } from '../../../hooks/use-pinned-templates';
+import { dimensifyHeader } from '@console/shared';
 import { useBaseImages } from '../../../hooks/use-base-images';
-import { getTemplateName, getTemplateProvider } from '../../../selectors/vm-template/basic';
-import VMTemplateRow from './VMTemplateRow';
-import VMCustomizeRow from './VMCustomizeRow';
-import { tableColumnClasses } from './utils';
-import { VirtualMachineTemplateBundle } from './types';
-import VMTemplateSupport from '../VMTemplateSupport';
-import { V1alpha1DataVolume } from '../../../types/api';
 import { useNamespace } from '../../../hooks/use-namespace';
+import { usePinnedTemplates } from '../../../hooks/use-pinned-templates';
+import { getTemplateName, getTemplateProvider } from '../../../selectors/vm-template/basic';
 import { VMIKind } from '../../../types';
+import { V1alpha1DataVolume } from '../../../types/api';
+import VMTemplateSupport from '../VMTemplateSupport';
+import { VirtualMachineTemplateBundle } from './types';
+import { tableColumnClasses } from './utils';
+import VMCustomizeRow from './VMCustomizeRow';
+import VMTemplateRow from './VMTemplateRow';
 
 import './vm-template-table.scss';
 
@@ -26,12 +26,29 @@ const vmTemplateTableHeader = (showNamespace: boolean, t: TFunction) =>
   dimensifyHeader(
     [
       {
+        title: '',
+        transforms: [
+          () => ({
+            children: (
+              <Tooltip
+                position={TooltipPosition.top}
+                content={t('kubevirt-plugin~Favorite templates are pinned to the top of the list')}
+              >
+                <Bullseye>
+                  <StarIcon className="kv-pin-row-icon" />
+                </Bullseye>
+              </Tooltip>
+            ),
+          }),
+        ],
+      },
+      {
         title: t('kubevirt-plugin~Name'),
         sortFunc: 'vmTemplateName',
         transforms: [sortable],
       },
       {
-        title: t('kubevirt-plugin~Provider'),
+        title: t('kubevirt-plugin~Template Provider'),
         sortFunc: 'vmTemplateProvider',
         transforms: [sortable],
       },
@@ -49,6 +66,9 @@ const vmTemplateTableHeader = (showNamespace: boolean, t: TFunction) =>
             ),
           }),
         ],
+      },
+      {
+        title: '',
       },
       {
         title: '',

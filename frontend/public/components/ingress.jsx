@@ -37,12 +37,12 @@ const getHosts = (ingress) => {
   return <div className="text-muted">No hosts</div>;
 };
 
-const TLSCert = (ingress) => {
+const TLSCert = ({ ingress }) => {
   const { t } = useTranslation();
   if (!_.has(ingress.spec, 'tls')) {
     return (
       <div>
-        <span>{t('ingress~Not configured')}</span>
+        <span>{t('public~Not configured')}</span>
       </div>
     );
   }
@@ -58,10 +58,10 @@ const TLSCert = (ingress) => {
 };
 
 const tableColumnClasses = [
-  classNames('col-md-3', 'col-sm-4', 'col-xs-6'),
-  classNames('col-md-3', 'col-sm-4', 'col-xs-6'),
-  classNames('col-md-3', 'col-sm-4', 'hidden-xs'),
-  classNames('col-md-3', 'hidden-sm', 'hidden-xs'),
+  '',
+  '',
+  'pf-m-hidden pf-m-visible-on-md',
+  'pf-m-hidden pf-m-visible-on-lg',
   Kebab.columnClass,
 ];
 
@@ -75,18 +75,13 @@ const IngressTableRow = ({ obj: ingress, index, key, style }) => {
           kind={kind}
           name={ingress.metadata.name}
           namespace={ingress.metadata.namespace}
-          title={ingress.metadata.uid}
         />
       </TableData>
       <TableData
         className={classNames(tableColumnClasses[1], 'co-break-word')}
         columnID="namespace"
       >
-        <ResourceLink
-          kind="Namespace"
-          name={ingress.metadata.namespace}
-          title={ingress.metadata.namespace}
-        />
+        <ResourceLink kind="Namespace" name={ingress.metadata.namespace} />
       </TableData>
       <TableData className={tableColumnClasses[2]}>
         <LabelList kind={kind} labels={ingress.metadata.labels} />
@@ -103,10 +98,10 @@ const RulesHeader = () => {
   const { t } = useTranslation();
   return (
     <div className="row co-m-table-grid__head">
-      <div className="col-xs-3">{t('ingress~Host')}</div>
-      <div className="col-xs-3">{t('ingress~Path')}</div>
-      <div className="col-xs-3">{t('ingress~Service')}</div>
-      <div className="col-xs-2">{t('ingress~Service port')}</div>
+      <div className="col-xs-3">{t('public~Host')}</div>
+      <div className="col-xs-3">{t('public~Path')}</div>
+      <div className="col-xs-3">{t('public~Service')}</div>
+      <div className="col-xs-2">{t('public~Service port')}</div>
     </div>
   );
 };
@@ -174,11 +169,11 @@ const Details = ({ obj: ingress }) => {
   return (
     <>
       <div className="co-m-pane__body">
-        <SectionHeading text={t('ingress~Ingress details')} />
+        <SectionHeading text={t('public~Ingress details')} />
         <div className="row">
           <div className="col-md-6">
             <ResourceSummary resource={ingress}>
-              <dt>{t('ingress~TLS certificate')}</dt>
+              <dt>{t('public~TLS certificate')}</dt>
               <dd>
                 <TLSCert ingress={ingress} />
               </dd>
@@ -187,10 +182,10 @@ const Details = ({ obj: ingress }) => {
         </div>
       </div>
       <div className="co-m-pane__body">
-        <SectionHeading text={t('ingress~Ingress rules')} />
+        <SectionHeading text={t('public~Ingress rules')} />
         <p className="co-m-pane__explanation">
           {t(
-            'ingress~These rules are handled by a routing layer (Ingress Controller) which is updated as the rules are modified. The Ingress controller implementation defines how headers and other metadata are forwarded or manipulated',
+            'public~These rules are handled by a routing layer (Ingress Controller) which is updated as the rules are modified. The Ingress controller implementation defines how headers and other metadata are forwarded or manipulated',
           )}
         </p>
         <div className="co-m-table-grid co-m-table-grid--bordered">
@@ -213,26 +208,26 @@ const IngressesList = (props) => {
   const IngressTableHeader = () => {
     return [
       {
-        title: t('ingress~Name'),
+        title: t('public~Name'),
         sortField: 'metadata.name',
         transforms: [sortable],
         props: { className: tableColumnClasses[0] },
       },
       {
-        title: t('ingress~Namespace'),
+        title: t('public~Namespace'),
         sortField: 'metadata.namespace',
         transforms: [sortable],
         props: { className: tableColumnClasses[1] },
         id: 'namespace',
       },
       {
-        title: t('ingress~Labels'),
+        title: t('public~Labels'),
         sortField: 'metadata.labels',
         transforms: [sortable],
         props: { className: tableColumnClasses[2] },
       },
       {
-        title: t('ingress~Hosts'),
+        title: t('public~Hosts'),
         sortFunc: 'ingressValidHosts',
         transforms: [sortable],
         props: { className: tableColumnClasses[3] },
@@ -246,7 +241,7 @@ const IngressesList = (props) => {
   return (
     <Table
       {...props}
-      aria-label={t('ingress~Ingresses')}
+      aria-label={t('public~Ingresses')}
       Header={IngressTableHeader}
       Row={IngressTableRow}
       virtualize

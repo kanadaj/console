@@ -1,18 +1,20 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import * as _ from 'lodash';
-import * as cx from 'classnames';
 import { FocusTrap, Tooltip } from '@patternfly/react-core';
 import { CaretDownIcon } from '@patternfly/react-icons';
 import { useHover } from '@patternfly/react-topology';
-import Popper from '@console/shared/src/components/popper/Popper';
+import * as cx from 'classnames';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
 import {
   KebabItem,
   KebabOption,
   ResourceIcon,
   truncateMiddle,
 } from '@console/internal/components/utils';
+import { referenceForModel } from '@console/internal/module/k8s';
+import Popper from '@console/shared/src/components/popper/Popper';
 import { TaskKind } from '../../../types';
+import { getResourceModelFromTaskKind } from '../../../utils/pipeline-augment';
 import { NewTaskNodeCallback } from './types';
 
 type KeyedKebabOption = KebabOption & { key: string };
@@ -26,7 +28,7 @@ const taskToOption = (task: TaskKind, callback: NewTaskNodeCallback): KeyedKebab
   return {
     key: `${name}-${kind}`,
     label: name,
-    icon: <ResourceIcon kind={kind} />,
+    icon: <ResourceIcon kind={referenceForModel(getResourceModelFromTaskKind(kind))} />,
     callback: () => {
       callback(task);
     },
@@ -50,7 +52,7 @@ const TaskList: React.FC<any> = ({
     listOptions.map((task) => taskToOption(task, onNewTask)),
     (o) => o.label,
   );
-  const unselectedTaskText = unselectedText || t('pipelines-plugin~Select Task');
+  const unselectedTaskText = unselectedText || t('pipelines-plugin~Select task');
 
   const truncatedTaskText = React.useMemo(
     () =>
@@ -69,6 +71,7 @@ const TaskList: React.FC<any> = ({
   return (
     <>
       <g
+        data-test="task-list"
         ref={hoverRef}
         className="odc-task-list-node__trigger"
         onClick={() => setMenuOpen(!isMenuOpen)}
@@ -83,7 +86,7 @@ const TaskList: React.FC<any> = ({
         />
         {options.length === 0 ? (
           <text className="odc-task-list-node__trigger-disabled" x={width / 2} y={height / 2 + 1}>
-            {t('pipelines-plugin~No Tasks')}
+            {t('pipelines-plugin~No tasks')}
           </text>
         ) : (
           <g>
@@ -142,7 +145,7 @@ const TaskList: React.FC<any> = ({
                   </li>
                   <li>
                     <KebabItem
-                      option={{ label: t('pipelines-plugin~Delete Task'), callback: onRemoveTask }}
+                      option={{ label: t('pipelines-plugin~Delete task'), callback: onRemoveTask }}
                       onClick={onRemoveTask}
                     />
                   </li>

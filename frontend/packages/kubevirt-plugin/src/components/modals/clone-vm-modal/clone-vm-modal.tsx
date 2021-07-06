@@ -1,15 +1,21 @@
 import * as React from 'react';
-import { connect } from 'react-redux';
-import { useTranslation } from 'react-i18next';
 import {
+  Checkbox,
   Form,
   FormGroup,
-  TextArea,
-  TextInput,
-  Checkbox,
   FormSelect,
   FormSelectOption,
+  TextArea,
+  TextInput,
 } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
+import { connect } from 'react-redux';
+import {
+  createModalLauncher,
+  ModalBody,
+  ModalComponentProps,
+  ModalTitle,
+} from '@console/internal/components/factory';
 import {
   Firehose,
   FirehoseResource,
@@ -17,38 +23,34 @@ import {
   HandlePromiseProps,
   withHandlePromise,
 } from '@console/internal/components/utils';
-import {
-  createModalLauncher,
-  ModalTitle,
-  ModalBody,
-  ModalComponentProps,
-} from '@console/internal/components/factory';
-import { ModalFooter } from '../modal/modal-footer';
-import { K8sResourceKind, PersistentVolumeClaimKind } from '@console/internal/module/k8s';
 import { NamespaceModel, PersistentVolumeClaimModel, ProjectModel } from '@console/internal/models';
+import { K8sResourceKind, PersistentVolumeClaimKind } from '@console/internal/module/k8s';
 import { getName, getNamespace, ValidationErrorType } from '@console/shared';
-import { VMKind } from '../../../types';
-import { getDescription } from '../../../selectors/selectors';
-import { getLoadedData, getLoadError, prefixedID } from '../../../utils';
-import { DataVolumeModel, VirtualMachineModel } from '../../../models';
 import { cloneVM } from '../../../k8s/requests/vm/clone';
-import { validateVmLikeEntityName } from '../../../utils/validations/vm';
+import { DataVolumeModel, VirtualMachineModel } from '../../../models';
+import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
+import { getDescription } from '../../../selectors/selectors';
 import {
   getVolumeDataVolumeName,
   getVolumePersistentVolumeClaimName,
   getVolumes,
   isVMExpectedRunning,
 } from '../../../selectors/vm';
-import { Errors } from '../../errors/errors';
-import { COULD_NOT_LOAD_DATA } from '../../../utils/strings';
-import { ConfigurationSummary } from './configuration-summary';
+import { VMKind, VMIKind } from '../../../types';
 import { V1alpha1DataVolume } from '../../../types/api';
+import { getLoadedData, getLoadError, prefixedID } from '../../../utils';
+import { COULD_NOT_LOAD_DATA } from '../../../utils/strings';
+import { validateVmLikeEntityName } from '../../../utils/validations/vm';
+import { Errors } from '../../errors/errors';
+import { ModalFooter } from '../modal/modal-footer';
+import { ConfigurationSummary } from './configuration-summary';
 
 import './_clone-vm-modal.scss';
 
 export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
   const {
     vm,
+    vmi,
     namespace,
     onNamespaceChanged,
     namespaces,
@@ -100,6 +102,7 @@ export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
     const promise = cloneVM(
       {
         vm,
+        vmi,
         dataVolumes: dataVolumesData,
         persistentVolumeClaims: persistentVolumeClaimsData,
       },
@@ -114,7 +117,7 @@ export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
   };
 
   const vmRunningWarning =
-    isVMExpectedRunning(vm) &&
+    isVMExpectedRunning(vm, vmi) &&
     t('kubevirt-plugin~The VM {{vmName}} is still running. It will be powered off while cloning.', {
       vmName: getName(vm),
     });
@@ -257,7 +260,7 @@ const CloneVMModalFirehose: React.FC<CloneVMModalFirehoseProps> = (props) => {
       prop: 'namespaces',
     },
     {
-      kind: VirtualMachineModel.kind,
+      kind: kubevirtReferenceForModel(VirtualMachineModel),
       namespace,
       isList: true,
       prop: 'virtualMachines',
@@ -275,7 +278,7 @@ const CloneVMModalFirehose: React.FC<CloneVMModalFirehoseProps> = (props) => {
 
   if (requestsDataVolumes) {
     resources.push({
-      kind: DataVolumeModel.kind,
+      kind: kubevirtReferenceForModel(DataVolumeModel),
       namespace: vmNamespace,
       isList: true,
       prop: 'dataVolumes',
@@ -297,6 +300,7 @@ const CloneVMModalFirehose: React.FC<CloneVMModalFirehoseProps> = (props) => {
 
 type CloneVMModalFirehoseProps = ModalComponentProps & {
   vm: VMKind;
+  vmi: VMIKind;
   useProjects: boolean;
 };
 

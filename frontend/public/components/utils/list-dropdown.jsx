@@ -13,13 +13,13 @@ import { ResourceName } from './resource-icon';
 import { useAccessReview } from '@console/internal/components/utils';
 import { createNamespaceModal, createProjectModal } from '../modals';
 import { NamespaceModel, ProjectModel } from '@console/internal/models';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, withTranslation } from 'react-i18next';
 
 const getKey = (key, keyKind) => {
   return keyKind ? `${key}-${keyKind}` : key;
 };
 
-class ListDropdown_ extends React.Component {
+class ListDropdownWithTranslation extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -67,7 +67,11 @@ class ListDropdown_ extends React.Component {
     this.setState((currentState) => {
       if (loadError) {
         return {
-          title: <div className="cos-error-title">Error Loading {desc}</div>,
+          title: (
+            <div className="cos-error-title">
+              {this.props.t('public~Error loading {{desc}}', desc)}
+            </div>
+          ),
         };
       }
 
@@ -121,7 +125,7 @@ class ListDropdown_ extends React.Component {
   }
 
   render() {
-    const { desc, fixed, placeholder, id, loaded, disabled } = this.props;
+    const { desc, fixed, placeholder, id, loaded, disabled, t } = this.props;
     const items = {};
 
     _.keys(this.state.items).forEach((key) => {
@@ -153,18 +157,22 @@ class ListDropdown_ extends React.Component {
     return (
       <div>
         {Component}
-        {loaded && _.isEmpty(items) && (
+        {loaded && _.isEmpty(items) && (desc || this.props.selectedKeyKind) && (
           <Alert
             isInline
             className="co-alert pf-c-alert--top-margin"
             variant="info"
-            title={`No ${desc} found or defined`}
+            title={t('public~No {{selection}} found', {
+              selection: desc || this.props.selectedKeyKind,
+            })}
           />
         )}
       </div>
     );
   }
 }
+
+const ListDropdown_ = withTranslation()(ListDropdownWithTranslation);
 
 export const ListDropdown = (props) => {
   const resources = _.map(props.resources, (resource) =>
@@ -227,7 +235,9 @@ export const NsDropdown = (props) => {
     model && canCreate
       ? [
           {
-            actionTitle: `Create ${model.label}`,
+            actionTitle: t('public~Create {{resourceKindLabel}}', {
+              resourceKindLabel: model.labelKey ? t(model.labelKey) : model.label,
+            }),
             actionKey: `Create_${model.label}`,
           },
         ]
@@ -259,13 +269,23 @@ export const NsDropdown = (props) => {
     }
   };
 
+  const getPlaceholder = (placeholderModel) => {
+    if (!placeholderModel.kind) {
+      return t('public~Select item');
+    }
+
+    return t('public~Select {{kindLabel}}', {
+      kindLabel: placeholderModel.labelKey ? t(placeholderModel.labelKey) : placeholderModel.label,
+    });
+  };
+
   return model ? (
     <ListDropdown
       {...props}
       actionItems={actionItems}
       desc={model.plural}
       onChange={onChange}
-      placeholder={t('public~Select {{item}}', { item: model.kind ?? 'item' })}
+      placeholder={getPlaceholder(model)}
       resources={[{ kind: `${model.kind}` }]}
       selectedKeyKind={model.kind}
       selectedKey={selectedKey}

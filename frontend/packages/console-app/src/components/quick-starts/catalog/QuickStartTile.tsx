@@ -3,9 +3,8 @@ import { CatalogTile } from '@patternfly/react-catalog-view-extension';
 import { RocketIcon } from '@patternfly/react-icons';
 import { FallbackImg } from '@console/shared';
 import { QuickStartStatus, QuickStart } from '../utils/quick-start-types';
-import QuickStartTileHeader from './QuickStartTileHeader';
 import QuickStartTileDescription from './QuickStartTileDescription';
-import QuickStartTileFooter from './QuickStartTileFooter';
+import QuickStartTileHeader from './QuickStartTileHeader';
 
 import './QuickStartTile.scss';
 
@@ -23,15 +22,17 @@ const QuickStartTile: React.FC<QuickStartTileProps> = ({
   onClick,
 }) => {
   const {
-    metadata: { name: id },
-    spec: { icon, tasks, displayName, description, durationMinutes, prerequisites },
+    metadata: { name },
+    spec: { icon, displayName, description, durationMinutes, prerequisites },
   } = quickStart;
 
   const quickStartIcon = (
     <FallbackImg
       className="co-catalog-item-icon__img--large"
       src={icon}
+      alt={displayName}
       fallback={<RocketIcon />}
+      aria-hidden
     />
   );
 
@@ -42,11 +43,10 @@ const QuickStartTile: React.FC<QuickStartTileProps> = ({
       featured={isActive}
       title={<QuickStartTileHeader name={displayName} status={status} duration={durationMinutes} />}
       onClick={onClick}
-      description={
-        <QuickStartTileDescription description={description} prerequisites={prerequisites} />
-      }
-      footer={<QuickStartTileFooter quickStartId={id} status={status} totalTasks={tasks.length} />}
-    />
+      data-test={`tile ${name}`}
+    >
+      <QuickStartTileDescription description={description} prerequisites={prerequisites} />
+    </CatalogTile>
   );
 };
 

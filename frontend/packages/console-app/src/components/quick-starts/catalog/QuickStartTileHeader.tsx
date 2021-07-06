@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import { StatusIcon } from '@console/shared';
 import { Label, Title } from '@patternfly/react-core';
 import { OutlinedClockIcon } from '@patternfly/react-icons';
+import { useTranslation } from 'react-i18next';
+import { StatusIcon } from '@console/shared';
 import { QuickStartStatus } from '../utils/quick-start-types';
 import './QuickStartTileHeader.scss';
 
@@ -29,7 +29,9 @@ const QuickStartTileHeader: React.FC<QuickStartTileHeaderProps> = ({ status, dur
 
   return (
     <div className="co-quick-start-tile-header">
-      <Title headingLevel="h3">{name}</Title>
+      <Title headingLevel="h3" data-test="title">
+        {name}
+      </Title>
       <div className="co-quick-start-tile-header__status">
         {status !== QuickStartStatus.NOT_STARTED && (
           <Label
@@ -37,6 +39,7 @@ const QuickStartTileHeader: React.FC<QuickStartTileHeaderProps> = ({ status, dur
             variant="outline"
             color={statusColorMap[status]}
             icon={<StatusIcon status={status} />}
+            data-test="status"
           >
             {statusLocaleMap[status]}
           </Label>

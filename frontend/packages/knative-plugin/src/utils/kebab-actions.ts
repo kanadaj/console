@@ -1,15 +1,18 @@
 import * as _ from 'lodash';
-import { K8sKind, referenceForModel } from '@console/internal/module/k8s';
-import { KebabAction } from '@console/internal/components/utils';
-import { EditApplication } from '@console/topology/src/actions/modify-application';
+import { EditResourceLimits } from '@console/app/src/actions/edit-resource-limits';
 import { AddHealthChecks, EditHealthChecks } from '@console/app/src/actions/modify-health-checks';
+import { KebabAction } from '@console/internal/components/utils';
 import { DeploymentConfigModel, DeploymentModel } from '@console/internal/models';
-import { setTrafficDistribution } from '../actions/traffic-splitting';
-import { setKnatify } from '../actions/knatify';
-import { addTrigger } from '../actions/add-trigger';
-import { addSubscription } from '../actions/add-subscription';
-import { setSinkSource } from '../actions/sink-source';
-import { setSinkPubsub } from '../actions/sink-pubsub';
+import { K8sKind, referenceForModel } from '@console/internal/module/k8s';
+import {
+  setTrafficDistribution,
+  setKnatify,
+  addTrigger,
+  addSubscription,
+  setSinkSource,
+  setSinkPubsub,
+  EditKsvc,
+} from '../actions';
 import {
   ServiceModel,
   EventingSubscriptionModel,
@@ -27,7 +30,13 @@ export const getKebabActionsForKind = (resourceKind: K8sKind): KebabAction[] => 
   const eventSourceModelrefs: string[] = getDynamicEventSourcesModelRefs();
   if (resourceKind) {
     if (referenceForModel(resourceKind) === referenceForModel(ServiceModel)) {
-      menuActions.push(setTrafficDistribution, AddHealthChecks, EditApplication, EditHealthChecks);
+      menuActions.push(
+        setTrafficDistribution,
+        AddHealthChecks,
+        EditKsvc,
+        EditHealthChecks,
+        EditResourceLimits,
+      );
     }
     if (
       _.includes(eventSourceModelrefs, referenceForModel(resourceKind)) ||

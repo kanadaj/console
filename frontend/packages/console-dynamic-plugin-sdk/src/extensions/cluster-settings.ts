@@ -1,27 +1,19 @@
-import { Extension } from '@console/plugin-sdk/src/typings/base';
+import { ExtensionK8sModel } from '../api/common-types';
+import { Extension, ExtensionDeclaration } from '../types';
 
-namespace ExtensionProperties {
-  export type ClusterGlobalConfig = {
+export type ClusterGlobalConfig = ExtensionDeclaration<
+  'console.global-config',
+  {
     /** Unique identifier for the cluster config resource instance. */
     id: string;
     /** The name of the cluster config resource instance. */
     name: string;
     /** The model which refers to a cluster config resource. */
-    model: {
-      group: string;
-      version: string;
-      kind: string;
-    };
+    model: ExtensionK8sModel;
     /** The namespace of the cluster config resource instance. */
     namespace: string;
-  };
-}
-
-// Extension types
-
-export type ClusterGlobalConfig = Extension<ExtensionProperties.ClusterGlobalConfig> & {
-  type: 'console.global-config';
-};
+  }
+>;
 
 // Type guards
 

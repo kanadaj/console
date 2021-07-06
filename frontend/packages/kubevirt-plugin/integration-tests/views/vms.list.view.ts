@@ -1,15 +1,15 @@
 import { last } from 'lodash';
 import { $, browser, ExpectedConditions as until } from 'protractor';
 import { click } from '@console/shared/src/test-utils/utils';
-import { PAGE_LOAD_TIMEOUT_SECS } from '../tests/utils/constants/common';
 import { Status } from '../tests/types/types';
+import { PAGE_LOAD_TIMEOUT_SECS } from '../tests/utils/constants/common';
 
 export const virtualizationTitle = $('[data-test-id="cluster-settings-page-heading"]');
 export const vmLinkByName = (vmName) => $(`[data-test-id="${vmName}"]`);
 export const restrictedAccessBlock = $('.cos-status-box__title');
 export const hintBlockTitle = $('.co-hint-block__title.h4');
 
-export const filterToggle = $('[data-test-id="filter-dropdown-toggle"]');
+export const filterToggle = $('[data-test-id="filter-dropdown-toggle"] button');
 
 const filterItem = async (status: Status) => {
   const statusElement = $(`#${status}`);

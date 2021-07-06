@@ -1,6 +1,8 @@
 import * as React from 'react';
+import { Button, Level, LevelItem, Stack, StackItem } from '@patternfly/react-core';
+import { StarIcon } from '@patternfly/react-icons';
 import { useTranslation } from 'react-i18next';
-import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
+import { RowFunction, TableData, TableRow } from '@console/internal/components/factory';
 import {
   FirehoseResult,
   history,
@@ -8,23 +10,21 @@ import {
   LoadingInline,
   ResourceLink,
 } from '@console/internal/components/utils';
-import { dimensifyRow, PendingStatus } from '@console/shared';
-import { PersistentVolumeClaimKind, PodKind, TemplateKind } from '@console/internal/module/k8s';
 import { NamespaceModel } from '@console/internal/models';
+import { PersistentVolumeClaimKind, PodKind, TemplateKind } from '@console/internal/module/k8s';
+import { dimensifyRow, PendingStatus } from '@console/shared';
 import { SuccessStatus } from '@console/shared/src/components/status/statuses';
-import { Level, LevelItem, Button, Stack, StackItem } from '@patternfly/react-core';
-
-import { VMIKind, VMKind } from '../../../types';
-import { tableColumnClasses } from './utils';
-import { VMTemplateRowProps } from './types';
 import { getTemplateProvider } from '../../../selectors/vm-template/basic';
-import { customizeTemplateActions } from '../menu-actions';
 import { isVMIRunning } from '../../../selectors/vmi';
-import { getTemplateOSIcon } from '../os-icons';
-import cancelCustomizationModal from '../../modals/template-customization/CancelCustomizationModal';
-import RowActions from './RowActions';
+import { VMIKind, VMKind } from '../../../types';
 import { V1alpha1DataVolume } from '../../../types/api';
+import cancelCustomizationModal from '../../modals/template-customization/CancelCustomizationModal';
+import { customizeTemplateActions } from '../menu-actions';
+import { getTemplateOSIcon } from '../os-icons';
 import CustomizeVMTStatus from './CustomizeVMTStatus';
+import RowActions from './RowActions';
+import { VMTemplateRowProps } from './types';
+import { tableColumnClasses } from './utils';
 
 import './vm-template-table.scss';
 
@@ -60,7 +60,7 @@ const VMCustomizeStatus: React.FC<VMCustomizeStatusProps> = ({
           )}
           <br />{' '}
           {t(
-            'kubevirt-plugin~While customizing this template will not be available for virtual machine creation.',
+            'kubevirt-plugin~While customizing, this template will not be available for virtual machine creation.',
           )}
         </StackItem>
         <StackItem>
@@ -122,6 +122,16 @@ const VMCustomizeRow: RowFunction<{ vm: VMKind; template: TemplateKind }, VMTemp
       style={style}
     >
       <TableData className={dimensify()}>
+        <Button
+          className={'kv-pin-customize-btn'}
+          variant="plain"
+          aria-label="pin-templte-action"
+          isDisabled
+        >
+          <StarIcon />
+        </Button>
+      </TableData>
+      <TableData className={dimensify()}>
         <img src={getTemplateOSIcon(template)} alt="" className="kubevirt-vm-template-logo" />
         {template.metadata.name}
       </TableData>
@@ -129,17 +139,15 @@ const VMCustomizeRow: RowFunction<{ vm: VMKind; template: TemplateKind }, VMTemp
         {getTemplateProvider(t, template)}
       </TableData>
       <TableData className={dimensify()}>
-        <ResourceLink
-          kind={NamespaceModel.kind}
-          name={template.metadata.namespace}
-          title={template.metadata.namespace}
-        />
+        <ResourceLink kind={NamespaceModel.kind} name={template.metadata.namespace} />
       </TableData>
       <TableData className={dimensify()} data-test="template-source">
         <VMCustomizeStatus vmis={vmis} vm={vm} pods={pods} pvcs={pvcs} dataVolumes={dataVolumes} />
       </TableData>
       <TableData className={dimensify(true)}>
         <RowActions template={template} sourceStatus={null} namespace={namespace} disableCreate />
+      </TableData>
+      <TableData className={dimensify(true)}>
         <Kebab
           options={customizeTemplateActions(vm)}
           key={`kebab-for-${vm.metadata.uid}`}

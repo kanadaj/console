@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { TextInputTypes } from '@patternfly/react-core';
-import { MultiColumnField, InputField } from '@console/shared';
+import { MultiColumnField } from '@console/shared';
+import OptionalableWorkspace from './OptionalableWorkspace';
 
 type PipelineWorkspacesParam = {
   addLabel?: string;
@@ -18,21 +18,20 @@ const PipelineWorkspaces: React.FC<PipelineWorkspacesParam> = (props) => {
   } = props;
   const emptyMessage = t('pipelines-plugin~No workspaces are associated with this pipeline.');
   return (
-    <MultiColumnField
-      name={fieldName}
-      addLabel={addLabel}
-      headers={[t('pipelines-plugin~Name')]}
-      emptyValues={{ name: '' }}
-      emptyMessage={emptyMessage}
-      isReadOnly={isReadOnly}
-    >
-      <InputField
-        name="name"
-        type={TextInputTypes.text}
-        placeholder={t('pipelines-plugin~Name')}
+    <div className="co-m-pane__form">
+      <MultiColumnField
+        data-test="pipeline-workspaces"
+        name={fieldName}
+        addLabel={addLabel}
+        headers={[{ name: t('pipelines-plugin~Name'), required: true }]}
+        emptyValues={{ name: '', optional: false }}
+        emptyMessage={emptyMessage}
         isReadOnly={isReadOnly}
-      />
-    </MultiColumnField>
+        complexFields={[true]}
+      >
+        <OptionalableWorkspace />
+      </MultiColumnField>
+    </div>
   );
 };
 

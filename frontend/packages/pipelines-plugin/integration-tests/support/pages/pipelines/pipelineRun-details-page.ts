@@ -1,19 +1,18 @@
-import { detailsPage } from '../../../../../integration-tests-cypress/views/details-page';
-import { modal } from '../../../../../integration-tests-cypress/views/modal';
+import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
+import { modal } from '@console/cypress-integration-tests/views/modal';
 import { pageTitle } from '@console/dev-console/integration-tests/support/constants/pageTitle';
+import { pipelineActions } from '../../constants';
 import {
   pipelineDetailsPO,
   pipelineRunDetailsPO,
   pipelineRunsPO,
 } from '../../page-objects/pipelines-po';
+import { actionsDropdownMenu } from '../functions/common';
 
 export const pipelineRunDetailsPage = {
   verifyTitle: () => {
-    cy.get(pipelineRunDetailsPO.details.sectionTitle).should(
-      'have.text',
-      pageTitle.PipelineRunDetails,
-    );
-    cy.testA11y('Pipeline Run Details page');
+    cy.contains(pageTitle.PipelineRunDetails).should('be.visible');
+    cy.testA11y(`${pageTitle.PipelineRunDetails} page`);
   },
   verifyPipelineRunStatus: (status: string) =>
     cy.get(pipelineRunDetailsPO.pipelineRunStatus).should('have.text', status),
@@ -24,29 +23,29 @@ export const pipelineRunDetailsPage = {
       .next('dd')
       .should('have.text', expectedFieldValue),
   selectFromActionsDropdown: (action: string) => {
-    cy.get(pipelineRunDetailsPO.actions).click();
+    actionsDropdownMenu.clickActionMenu();
     switch (action) {
       case 'Rerun': {
-        cy.byTestActionID('Rerun').click();
+        cy.byTestActionID(pipelineActions.Rerun).click();
         cy.get(pipelineRunDetailsPO.details.sectionTitle).should('be.visible');
         break;
       }
       case 'Delete Pipeline Run': {
-        cy.byTestActionID('Delete Pipeline Run').click();
+        cy.byTestActionID(pipelineActions.DeletePipelineRun).click();
         modal.modalTitleShouldContain('Delete Pipeline?');
         break;
       }
       default: {
-        throw new Error('operator is not available');
+        throw new Error(`${action} is not available in dropdown menu`);
       }
     }
   },
   verifyTabs: () => {
-    cy.get(pipelineRunDetailsPO.detailsTab).should('have.text', 'Details');
-    cy.get(pipelineRunDetailsPO.yamlTab).should('have.text', 'YAML');
-    cy.get(pipelineRunDetailsPO.taskRunsTab).should('have.text', 'Task Runs');
-    cy.get(pipelineRunDetailsPO.logsTab).should('have.text', 'Logs');
-    cy.get(pipelineRunDetailsPO.eventsTab).should('have.text', 'Events');
+    cy.get(pipelineRunDetailsPO.detailsTab).should('be.visible');
+    cy.get(pipelineRunDetailsPO.yamlTab).should('be.visible');
+    cy.get(pipelineRunDetailsPO.taskRunsTab).should('be.visible');
+    cy.get(pipelineRunDetailsPO.logsTab).should('be.visible');
+    cy.get(pipelineRunDetailsPO.eventsTab).should('be.visible');
   },
   verifyFields: () => {
     cy.get('[data-test-id="resource-summary"]').within(() => {
@@ -69,7 +68,6 @@ export const pipelineRunDetailsPage = {
         .should('have.text', 'Triggered by:');
     });
   },
-  verifyActionsDropdown: () => cy.get(pipelineRunDetailsPO.actions).should('be.visible'),
   selectPipeline: () => cy.get(pipelineRunDetailsPO.details.pipelineLink).click(),
   clickOnDownloadLink: () => cy.byButtonText('Download').click(),
   clickOnExpandLink: () => cy.byButtonText('Expand').click(),
@@ -90,15 +88,30 @@ export const pipelineRunDetailsPage = {
         cy.get(pipelineRunDetailsPO.logs.logPage).should('be.visible');
         break;
       }
+      case 'Events': {
+        cy.get(pipelineRunDetailsPO.eventsTab).click();
+        cy.url().should('include', 'events');
+        break;
+      }
+      case 'Task Runs': {
+        cy.get(pipelineRunDetailsPO.taskRunsTab).click();
+        cy.url().should('include', 'task-runs');
+        break;
+      }
       default: {
         throw new Error('operator is not available');
       }
     }
   },
+  verifyWorkspacesSection: () => {
+    cy.get(pipelineRunDetailsPO.details.workspacesSection)
+      .scrollIntoView()
+      .should('be.visible');
+  },
 };
 
 export const pipelineRunsPage = {
-  verifyTitle: () => detailsPage.titleShouldContain('Pipeline Runs'),
+  verifyTitle: () => detailsPage.titleShouldContain(pageTitle.PipelineRuns),
   search: (pipelineRunName: string) => cy.byLegacyTestID('item-filter').type(pipelineRunName),
   selectKebabMenu: (pipelineRunName: string) => {
     cy.get(pipelineRunsPO.pipelineRunsTable.table).should('exist');
@@ -115,7 +128,9 @@ export const pipelineRunsPage = {
   verifyPipelineRunsTableDisplay: () =>
     cy.get(pipelineRunsPO.pipelineRunsTable.table).should('be.visible'),
   filterByStatus: (status: string = 'Succeeded') => {
-    cy.byLegacyTestID('filter-dropdown-toggle').click();
+    cy.byLegacyTestID('filter-dropdown-toggle')
+      .find('button')
+      .click();
     switch (status) {
       case 'Succeeded': {
         cy.get('#Succeeded').click();
@@ -137,7 +152,9 @@ export const pipelineRunsPage = {
         throw new Error('operator is not available');
       }
     }
-    cy.byButtonText('Clear all filters').should('be.visible');
+    cy.byLegacyTestID('filter-dropdown-toggle')
+      .find('button')
+      .click();
   },
   verifyStatusInPipelineRunsTable: (status: string) => {
     cy.get(pipelineRunsPO.pipelineRunsTable.status).should('have.text', status);

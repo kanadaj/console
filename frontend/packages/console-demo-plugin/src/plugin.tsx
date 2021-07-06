@@ -1,17 +1,14 @@
 import * as React from 'react';
 import * as _ from 'lodash';
+// TODO(vojtech): internal code needed by plugins should be moved to console-shared package
+import { PodModel, RouteModel, NodeModel } from '@console/internal/models';
 import {
   Plugin,
   ModelDefinition,
   ModelFeatureFlag,
-  HrefNavItem,
-  ResourceNSNavItem,
-  ResourceClusterNavItem,
   ResourceListPage,
   ResourceDetailsPage,
   Perspective,
-  NavSection,
-  YAMLTemplate,
   RoutePage,
   DashboardsOverviewHealthPrometheusSubsystem,
   DashboardsOverviewHealthURLSubsystem,
@@ -19,33 +16,22 @@ import {
   DashboardsTab,
   DashboardsOverviewInventoryItem,
   DashboardsInventoryItemGroup,
-  DashboardsOverviewUtilizationItem,
   DashboardsOverviewResourceActivity,
   DashboardsOverviewPrometheusActivity,
   HorizontalNavTab,
 } from '@console/plugin-sdk';
-// TODO(vojtech): internal code needed by plugins should be moved to console-shared package
-import { PodModel, RouteModel, NodeModel } from '@console/internal/models';
-import { FLAGS } from '@console/shared';
 import { GridPosition } from '@console/shared/src/components/dashboard/DashboardGrid';
-import { OverviewQuery } from '@console/shared/src/promql/cluster-dashboard';
-import { FooBarModel } from './models';
-import { yamlTemplates } from './yaml-templates';
-import TestIcon from './components/test-icon';
 import { getFooHealthState, getBarHealthState } from './components/dashboards/health';
 import { DemoGroupIcon } from './components/dashboards/inventory';
+import TestIcon from './components/test-icon';
+import { FooBarModel } from './models';
 
 type ConsumedExtensions =
   | ModelDefinition
   | ModelFeatureFlag
-  | HrefNavItem
-  | ResourceNSNavItem
-  | ResourceClusterNavItem
   | ResourceListPage
   | ResourceDetailsPage
   | Perspective
-  | NavSection
-  | YAMLTemplate
   | RoutePage
   | DashboardsOverviewHealthPrometheusSubsystem
   | DashboardsOverviewHealthURLSubsystem
@@ -53,7 +39,6 @@ type ConsumedExtensions =
   | DashboardsCard
   | DashboardsOverviewInventoryItem
   | DashboardsInventoryItemGroup
-  | DashboardsOverviewUtilizationItem
   | DashboardsOverviewResourceActivity
   | DashboardsOverviewPrometheusActivity
   | HorizontalNavTab;
@@ -72,55 +57,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       model: PodModel,
       flag: TEST_MODEL_FLAG,
-    },
-  },
-  {
-    type: 'Nav/Section',
-    properties: {
-      id: 'home',
-      name: 'Home',
-    },
-  },
-  {
-    type: 'NavItem/Href',
-    properties: {
-      id: 'testhreflink',
-      section: 'home',
-      componentProps: {
-        name: 'Test Href Link',
-        href: '/test',
-      },
-    },
-    flags: {
-      required: [TEST_MODEL_FLAG],
-    },
-  },
-  {
-    type: 'NavItem/ResourceNS',
-    properties: {
-      id: 'testresourcens',
-      section: 'home',
-      componentProps: {
-        name: 'Test ResourceNS Link',
-        resource: 'pods',
-      },
-    },
-    flags: {
-      required: [TEST_MODEL_FLAG],
-    },
-  },
-  {
-    type: 'NavItem/ResourceCluster',
-    properties: {
-      id: 'testresourcecluster',
-      section: 'home',
-      componentProps: {
-        name: 'Test ResourceCluster Link',
-        resource: 'projects',
-      },
-    },
-    flags: {
-      required: [FLAGS.OPENSHIFT, TEST_MODEL_FLAG],
     },
   },
   {
@@ -155,13 +91,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
-    type: 'YAMLTemplate',
-    properties: {
-      model: FooBarModel,
-      template: yamlTemplates.getIn([FooBarModel, 'default']),
-    },
-  },
-  {
     type: 'Dashboards/Overview/Health/URL',
     properties: {
       title: 'Foo system',
@@ -190,36 +119,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
-    type: 'NavItem/Href',
-    properties: {
-      id: 'testhome',
-      perspective: 'test',
-      componentProps: {
-        name: 'Test Home',
-        href: '/test',
-      },
-    },
-  },
-  {
-    type: 'Nav/Section',
-    properties: {
-      id: 'advanced',
-      name: 'Advanced',
-    },
-  },
-  {
-    type: 'NavItem/ResourceCluster',
-    properties: {
-      id: 'testprojects',
-      perspective: 'test',
-      section: 'advanced',
-      componentProps: {
-        name: 'Test Projects',
-        resource: 'projects',
-      },
-    },
-  },
-  {
     type: 'Page/Route',
     properties: {
       exact: true,
@@ -231,6 +130,7 @@ const plugin: Plugin<ConsumedExtensions> = [
     type: 'Dashboards/Tab',
     properties: {
       id: 'foo-tab',
+      navSection: 'home',
       title: 'Foo',
     },
     flags: {
@@ -273,17 +173,6 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       id: 'demo-inventory-group',
       icon: <DemoGroupIcon />,
-    },
-    flags: {
-      required: [TEST_MODEL_FLAG],
-    },
-  },
-  {
-    type: 'Dashboards/Overview/Utilization/Item',
-    properties: {
-      id: OverviewQuery.STORAGE_UTILIZATION,
-      query: 'barQuery',
-      totalQuery: 'fooQuery',
     },
     flags: {
       required: [TEST_MODEL_FLAG],

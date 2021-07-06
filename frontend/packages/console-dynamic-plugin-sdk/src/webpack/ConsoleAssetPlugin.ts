@@ -1,18 +1,18 @@
-import * as webpack from 'webpack';
 import * as path from 'path';
-import { ConsolePackageJSON } from '../schema/plugin-package';
+import * as webpack from 'webpack';
+import { extensionsFile, pluginManifestFile } from '../constants';
 import { ConsoleExtensionsJSON } from '../schema/console-extensions';
 import { ConsolePluginManifestJSON } from '../schema/plugin-manifest';
-import { SchemaValidator } from '../validation/SchemaValidator';
-import { ExtensionValidator } from '../validation/ExtensionValidator';
-import { extensionsFile, pluginManifestFile } from '../constants';
+import { ConsolePackageJSON } from '../schema/plugin-package';
 import { parseJSONC } from '../utils/jsonc';
+import { ExtensionValidator } from '../validation/ExtensionValidator';
+import { SchemaValidator } from '../validation/SchemaValidator';
 
 export const validateExtensionsFileSchema = (
   ext: ConsoleExtensionsJSON,
   description = extensionsFile,
 ) => {
-  const schema = require('../../dist/schema/console-extensions').default;
+  const schema = require('../../schema/console-extensions').default;
   return new SchemaValidator(description).validate(schema, ext);
 };
 

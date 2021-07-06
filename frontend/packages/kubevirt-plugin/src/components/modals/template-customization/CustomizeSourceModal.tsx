@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Checkbox, Stack, StackItem } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 import {
   createModalLauncher,
   ModalBody,
@@ -43,7 +43,7 @@ const CustomizeSourceModal: React.FC<CustomizeSourceModalProps> = ({ close, onCo
           </StackItem>
           <StackItem>
             {t(
-              'kubevirt-plugin~The original template will be available for virtual machines creation and remain intact through the entire process except when boot source is being cloned.',
+              'kubevirt-plugin~The original template will be available for virtual machines creation and remain intact through the entire process except when the boot source is being cloned.',
             )}
           </StackItem>
           <StackItem>

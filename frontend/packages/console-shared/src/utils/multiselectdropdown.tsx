@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Select, SelectOption, SelectVariant } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 
 export const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
   onChange,
@@ -20,6 +21,9 @@ export const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
     setSelected(cSelected);
     onChange(cSelected);
   };
+
+  const { t } = useTranslation();
+
   const items: JSX.Element[] = options.map((item) => {
     return <SelectOption key={item} value={item} />;
   });
@@ -27,13 +31,14 @@ export const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
     <div>
       <Select
         variant={SelectVariant.typeaheadMulti}
-        aria-label="Select Input"
+        aria-label={t('console-shared~Select input')}
         onToggle={setOpen}
         onSelect={onSelect}
         selections={selected}
         isOpen={isOpen}
-        placeholderText={placeholder || 'Select options'}
+        placeholderText={placeholder || t('console-shared~Select options')}
         aria-labelledby={id}
+        noResultsFoundText={t('console-shared~No results found')}
       >
         {items}
       </Select>

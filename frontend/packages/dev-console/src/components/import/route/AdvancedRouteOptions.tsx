@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Alert } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 import { ExpandCollapse } from '@console/internal/components/utils';
 import { Resources } from '../import-types';
 import FormSection from '../section/FormSection';
@@ -38,7 +38,7 @@ const AdvancedRouteOptions: React.FC<AdvancedRouteOptionsProps> = ({
             variant="info"
             isInline
             title={t(
-              "devconsole~Select the checkbox 'Create a route to the application' to edit advanced routing options",
+              'devconsole~Select the checkbox "Create a route to the application" to edit advanced routing options',
             )}
           />
         )}

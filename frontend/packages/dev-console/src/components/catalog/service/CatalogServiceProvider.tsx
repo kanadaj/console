@@ -6,8 +6,8 @@ import {
   CatalogItem,
   CatalogItemType,
 } from '@console/dynamic-plugin-sdk';
-import { keywordCompare } from '../utils/catalog-utils';
 import useCatalogExtensions from '../hooks/useCatalogExtensions';
+import { keywordCompare } from '../utils/catalog-utils';
 import CatalogExtensionHookResolver from './CatalogExtensionHookResolver';
 
 export type CatalogService = {
@@ -22,11 +22,13 @@ export type CatalogService = {
 
 type CatalogServiceProviderProps = {
   namespace: string;
+  catalogId: string;
   catalogType?: string;
   children: (service: CatalogService) => React.ReactNode;
 };
 
 const CatalogServiceProvider: React.FC<CatalogServiceProviderProps> = ({
+  catalogId,
   catalogType,
   children,
   namespace,
@@ -37,7 +39,7 @@ const CatalogServiceProvider: React.FC<CatalogServiceProviderProps> = ({
     catalogProviderExtensions,
     catalogFilterExtensions,
     extensionsResolved,
-  ] = useCatalogExtensions(catalogType);
+  ] = useCatalogExtensions(catalogId, catalogType);
 
   const [extItemsMap, setExtItemsMap] = React.useState<{ [uid: string]: CatalogItem[] }>({});
   const [loadError, setLoadError] = React.useState<any>();
@@ -72,7 +74,7 @@ const CatalogServiceProvider: React.FC<CatalogServiceProviderProps> = ({
 
   const searchCatalog = React.useCallback(
     (query: string) => {
-      return catalogItems.filter((item) => keywordCompare(query, item));
+      return keywordCompare(query, catalogItems);
     },
     [catalogItems],
   );

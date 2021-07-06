@@ -1,10 +1,10 @@
 import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
-import { pipelinesPage, startPipelineInPipelinesPage } from '../../pages/pipelines/pipelines-page';
-import { pipelineBuilderPage } from '../../pages/pipelines/pipelineBuilder-page';
-import { navigateTo } from '@console/dev-console/integration-tests/support/pages/app';
-import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants/global';
-import { modal } from '../../../../../integration-tests-cypress/views/modal';
+import { modal } from '@console/cypress-integration-tests/views/modal';
+import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants';
+import { navigateTo } from '@console/dev-console/integration-tests/support/pages';
+import { pipelineActions } from '../../constants';
 import { pipelinesPO } from '../../page-objects/pipelines-po';
+import { pipelinesPage, startPipelineInPipelinesPage, pipelineBuilderPage } from '../../pages';
 
 Given('user has created pipeline {string} with git resources', (pipelineName: string) => {
   pipelinesPage.clickOnCreatePipeline();
@@ -35,8 +35,8 @@ Then(
 
 Given('user is at Start Pipeline modal for pipeline {string}', (pipelineName: string) => {
   navigateTo(devNavigationMenu.Pipelines);
-  pipelinesPage.selectKebabMenu(pipelineName);
-  cy.byTestActionID('Start').click();
+  pipelinesPage.search(pipelineName);
+  pipelinesPage.selectActionForPipeline(pipelineName, pipelineActions.Start);
   modal.modalTitleShouldContain('Start Pipeline');
 });
 
@@ -78,7 +78,14 @@ When('user clicks on tick mark', () => {
 });
 
 Then('{string} is added under secrets section', (secretName: string) => {
-  cy.byLegacyTestID(secretName).should('be.visible');
+  cy.get(pipelinesPO.startPipeline.advancedOptions.tickIcon).should('not.exist');
+  cy.get('.odc-secrets-list').then(($secretsList) => {
+    // eslint-disable-next-line cypress/no-unnecessary-waiting
+    cy.wait(3000);
+    if ($secretsList.find('span.co-resource-item').length) {
+      cy.byLegacyTestID(secretName).should('be.visible');
+    }
+  });
   startPipelineInPipelinesPage.clickCancel();
 });
 

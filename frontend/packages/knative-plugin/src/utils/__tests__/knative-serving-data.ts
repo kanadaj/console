@@ -1,8 +1,9 @@
-import { K8sResourceKind, K8sKind, apiVersionForModel } from '@console/internal/module/k8s';
+import { healthChecksProbeInitialData } from '@console/dev-console/src/components/health-checks/health-checks-probe-utils';
 import {
   DeployImageFormData,
   Resources,
 } from '@console/dev-console/src/components/import/import-types';
+import { K8sResourceKind, K8sKind, apiVersionForModel } from '@console/internal/module/k8s';
 import {
   EventSourceSyncFormData,
   SinkType,
@@ -10,7 +11,6 @@ import {
   EventSources,
 } from '../../components/add/import-types';
 import { RevisionModel, ServiceModel, KafkaModel } from '../../models';
-import { healthChecksProbeInitialData } from '@console/dev-console/src/components/health-checks/health-checks-probe-utils';
 import { getChannelKind, getChannelData } from '../create-channel-utils';
 
 export const defaultData: DeployImageFormData = {
@@ -118,6 +118,11 @@ export const defaultData: DeployImageFormData = {
       defaultLimitUnit: 'Mi',
     },
   },
+  fileUpload: {
+    name: 'python',
+    value: '',
+    javaArgs: '',
+  },
   healthChecks: healthChecksProbeInitialData,
 };
 
@@ -187,6 +192,71 @@ export const deploymentData: K8sResourceKind = {
         lastTransitionTime: '2019-09-24T11:24:57Z',
         reason: 'MinimumReplicasAvailable',
         message: 'Deployment has minimum availability.',
+      },
+    ],
+  },
+};
+
+export const hpaData: K8sResourceKind = {
+  kind: 'HorizontalPodAutoscaler',
+  apiVersion: 'autoscaling/v2beta2',
+  metadata: {
+    name: 'example',
+    namespace: 'testproject3',
+    uid: 'c5c6e70e-5a95-4851-9027-ece28739378a',
+    resourceVersion: '36526',
+    creationTimestamp: '2021-03-25T05:23:38Z',
+  },
+  spec: {
+    scaleTargetRef: { kind: 'Deployment', name: 'overlayimage', apiVersion: 'apps/v1' },
+    minReplicas: 1,
+    maxReplicas: 3,
+    metrics: [
+      {
+        type: 'Resource',
+        resource: { name: 'memory', target: { type: 'Utilization', averageUtilization: 70 } },
+      },
+      {
+        type: 'Resource',
+        resource: { name: 'cpu', target: { type: 'Utilization', averageUtilization: 70 } },
+      },
+    ],
+  },
+  status: {
+    currentReplicas: 1,
+    desiredReplicas: 1,
+    currentMetrics: [
+      {
+        type: 'Resource',
+        resource: { name: 'memory', current: { averageValue: '1630208', averageUtilization: 0 } },
+      },
+      {
+        type: 'Resource',
+        resource: { name: 'cpu', current: { averageValue: '0', averageUtilization: 0 } },
+      },
+    ],
+    conditions: [
+      {
+        type: 'AbleToScale',
+        status: 'True',
+        lastTransitionTime: '2021-03-25T05:23:53Z',
+        reason: 'ReadyForNewScale',
+        message: 'recommended size matches current size',
+      },
+      {
+        type: 'ScalingActive',
+        status: 'True',
+        lastTransitionTime: '2021-03-25T05:24:23Z',
+        reason: 'ValidMetricFound',
+        message:
+          'the HPA was able to successfully calculate a replica count from cpu resource utilization (percentage of request)',
+      },
+      {
+        type: 'ScalingLimited',
+        status: 'True',
+        lastTransitionTime: '2021-03-25T05:28:54Z',
+        reason: 'TooFewReplicas',
+        message: 'the desired replica count is less than the minimum replica count',
       },
     ],
   },
@@ -558,6 +628,66 @@ export const Kafkas: K8sResourceKind[] = [
         },
       ],
       observedGeneration: 1,
+    },
+  },
+  {
+    apiVersion: 'rhoas.redhat.com/v1alpha1',
+    kind: 'KafkaConnection',
+    metadata: {
+      resourceVersion: '8324966',
+      name: 'ajay-test',
+      uid: 'bc6c508f-0167-48a3-9a13-96f2aeb7aff2',
+      creationTimestamp: '2021-03-30T08:28:59Z',
+      generation: 1,
+      namespace: 'div',
+      finalizers: ['kafkaconnections.rhoas.redhat.com/finalizer'],
+    },
+    spec: {
+      accessTokenSecretName: 'rh-cloud-services-api-accesstoken',
+      credentials: {
+        serviceAccountSecretName: 'rh-cloud-services-service-account',
+      },
+      kafkaId: '1qCXzgiGqva0D5bXIB0Gn9g23Ni',
+    },
+    status: {
+      bootstrapServerHost: 'jai-test--qcxzgigqva-d-bxib-gn-g--ni.kafka.devshift.org:443',
+      conditions: [
+        {
+          lastTransitionGeneration: 1,
+          lastTransitionTime: '2021-03-30T08:29:00.092273Z',
+          message: '',
+          reason: '',
+          status: 'True',
+          type: 'AcccesTokenSecretValid',
+        },
+        {
+          lastTransitionGeneration: 1,
+          lastTransitionTime: '2021-03-30T08:29:00.092277Z',
+          message: '',
+          reason: '',
+          status: 'True',
+          type: 'FoundKafkaById',
+        },
+        {
+          lastTransitionGeneration: 1,
+          lastTransitionTime: '2021-03-30T08:29:00.092278Z',
+          message: '',
+          reason: '',
+          status: 'True',
+          type: 'Finished',
+        },
+      ],
+      message: 'Created',
+      metadata: {
+        cloudUI:
+          'https://cloud.redhat.com/beta/application-services/openshift-streams/kafkas/1qCXzgiGqva0D5bXIB0Gn9g23Ni',
+        provider: 'rhoas',
+        saslMechanism: 'PLAIN',
+        securityProtocol: 'SASL_SSL',
+        type: 'kafka',
+      },
+      serviceAccountSecretName: 'rh-cloud-services-service-account',
+      updated: '2021-03-30T08:29:00.092250Z',
     },
   },
 ];

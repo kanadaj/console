@@ -41,9 +41,7 @@ export const CephAlerts = withDashboardResources(
       <AlertsBody error={!_.isEmpty(loadError)}>
         {loaded &&
           alerts.length > 0 &&
-          alerts.map((alert) => (
-            <AlertItem key={alertURL(alert, alert.rule.id)} alert={alert} hideLink />
-          ))}
+          alerts.map((alert) => <AlertItem key={alertURL(alert, alert.rule.id)} alert={alert} />)}
       </AlertsBody>
     );
   },
@@ -86,7 +84,7 @@ export const StatusCard: React.FC<DashboardItemProps> = ({
           <Gallery className="co-overview-status__health" hasGutter>
             <GalleryItem>
               <HealthItem
-                title={t('ceph-storage-plugin~OCS Cluster')}
+                title={t('ceph-storage-plugin~Storage Cluster')}
                 state={cephHealthState.state}
                 details={cephHealthState.message}
               />

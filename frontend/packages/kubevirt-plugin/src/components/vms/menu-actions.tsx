@@ -1,6 +1,10 @@
 import * as React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { Tooltip } from '@patternfly/react-core';
 import { ExternalLinkAltIcon } from '@patternfly/react-icons';
+import cn from 'classnames';
+import * as copy from 'copy-to-clipboard';
+import { Trans, useTranslation } from 'react-i18next';
+import { confirmModal } from '@console/internal/components/modals';
 import { asAccessReview, Kebab, KebabOption } from '@console/internal/components/utils';
 import {
   K8sKind,
@@ -9,31 +13,33 @@ import {
   PodKind,
 } from '@console/internal/module/k8s';
 import { getName, getNamespace, YellowExclamationTriangleIcon } from '@console/shared';
-import { confirmModal } from '@console/internal/components/modals';
-import { VMIKind, VMKind } from '../../types/vm';
+import { StatusGroup } from '../../constants/status-group';
+import { VMStatus } from '../../constants/vm/vm-status';
+import useSSHCommand from '../../hooks/use-ssh-command';
+import useSSHService from '../../hooks/use-ssh-service';
+import { restartVM, startVM, stopVM } from '../../k8s/requests/vm';
+import { startVMIMigration } from '../../k8s/requests/vmi';
+import { pauseVMI, unpauseVMI } from '../../k8s/requests/vmi/actions';
+import { cancelMigration } from '../../k8s/requests/vmim';
+import { cancelVMImport } from '../../k8s/requests/vmimport';
+import { VMImportWrappper } from '../../k8s/wrapper/vm-import/vm-import-wrapper';
+import { VirtualMachineImportModel, VirtualMachineInstanceMigrationModel } from '../../models';
 import {
   isVMCreated,
   isVMExpectedRunning,
   isVMRunningOrExpectedRunning,
 } from '../../selectors/vm/selectors';
-import { getMigrationVMIName } from '../../selectors/vmi-migration';
-import { VirtualMachineImportModel, VirtualMachineInstanceMigrationModel } from '../../models';
-import { restartVM, startVM, stopVM } from '../../k8s/requests/vm';
-import { startVMIMigration } from '../../k8s/requests/vmi';
-import { cancelMigration } from '../../k8s/requests/vmim';
-import { cloneVMModal } from '../modals/clone-vm-modal';
-import { getVMStatus } from '../../statuses/vm/vm-status';
 import { isVMIPaused } from '../../selectors/vmi';
-import { unpauseVMI } from '../../k8s/requests/vmi/actions';
-import { VMImportKind } from '../../types/vm-import/ovirt/vm-import';
-import { V1alpha1DataVolume } from '../../types/api';
+import { getMigrationVMIName } from '../../selectors/vmi-migration';
 import { VMStatusBundle } from '../../statuses/vm/types';
+import { getVMStatus } from '../../statuses/vm/vm-status';
+import { V1alpha1DataVolume } from '../../types/api';
+import { VMIKind, VMKind } from '../../types/vm';
+import { VMImportKind } from '../../types/vm-import/ovirt/vm-import';
+import { cloneVMModal } from '../modals/clone-vm-modal';
 import { confirmVMIModal } from '../modals/menu-actions-modals/confirm-vmi-modal';
 import { deleteVMModal } from '../modals/menu-actions-modals/delete-vm-modal';
 import { deleteVMIModal } from '../modals/menu-actions-modals/delete-vmi-modal';
-import { VMImportWrappper } from '../../k8s/wrapper/vm-import/vm-import-wrapper';
-import { StatusGroup } from '../../constants/status-group';
-import { cancelVMImport } from '../../k8s/requests/vmimport';
 import { ActionMessage } from './constants';
 
 import './menu-actions.scss';
@@ -102,7 +108,7 @@ export const menuActionDeleteVMImport = (
 export const menuActionStart = (
   kindObj: K8sKind,
   vm: VMKind,
-  { vmStatusBundle }: ActionArgs,
+  { vmi, vmStatusBundle }: ActionArgs,
 ): KebabOption => {
   const StartMessage: React.FC = () => {
     const name = getName(vm);
@@ -120,7 +126,7 @@ export const menuActionStart = (
   };
 
   return {
-    hidden: vmStatusBundle?.status?.isMigrating() || isVMRunningOrExpectedRunning(vm),
+    hidden: vmStatusBundle?.status?.isMigrating() || isVMRunningOrExpectedRunning(vm, vmi),
     // t('kubevirt-plugin~Start Virtual Machine')
     labelKey: 'kubevirt-plugin~Start Virtual Machine',
     callback: () => {
@@ -147,9 +153,10 @@ const menuActionStop = (
   { vmi, vmStatusBundle }: ActionArgs,
 ): KebabOption => {
   const isImporting = vmStatusBundle?.status?.isImporting();
+  const isPending = vmStatusBundle?.status?.isPending();
   return {
     isDisabled: isImporting,
-    hidden: !isImporting && !isVMExpectedRunning(vm),
+    hidden: isPending || (!isImporting && !isVMExpectedRunning(vm, vmi)),
     // t('kubevirt-plugin~Stop Virtual Machine')
     labelKey: 'kubevirt-plugin~Stop Virtual Machine',
     callback: () =>
@@ -178,7 +185,7 @@ const menuActionRestart = (
     hidden:
       vmStatusBundle?.status?.isImporting() ||
       vmStatusBundle?.status?.isMigrating() ||
-      !isVMExpectedRunning(vm) ||
+      !isVMExpectedRunning(vm, vmi) ||
       !isVMCreated(vm),
     // t('kubevirt-plugin~Restart Virtual Machine')
     labelKey: 'kubevirt-plugin~Restart Virtual Machine',
@@ -217,6 +224,24 @@ const menuActionUnpause = (kindObj: K8sKind, vm: VMKind, { vmi }: ActionArgs): K
   };
 };
 
+const menuActionPause = (kindObj: K8sKind, vm: VMKind, { vmi }: ActionArgs): KebabOption => {
+  return {
+    hidden: isVMIPaused(vmi),
+    // t('kubevirt-plugin~Pause Virtual Machine')
+    labelKey: 'kubevirt-plugin~Pause Virtual Machine',
+    callback: () =>
+      confirmModal({
+        // t('kubevirt-plugin~Pause Virtual Machine')
+        titleKey: 'kubevirt-plugin~Pause Virtual Machine',
+        // t('kubevirt-plugin~pause')
+        message: <ActionMessage obj={vmi} actionKey="kubevirt-plugin~pause" />,
+        // t('kubevirt-plugin~Pause')
+        btnTextKey: 'kubevirt-plugin~Pause',
+        executeFn: () => pauseVMI(vmi),
+      }),
+  };
+};
+
 const menuActionMigrate = (
   kindObj: K8sKind,
   vm: VMKind,
@@ -236,7 +261,7 @@ const menuActionMigrate = (
       vmStatusBundle?.status?.isMigrating() ||
       vmStatusBundle?.status?.isError() ||
       vmStatusBundle?.status?.isInProgress() ||
-      !isVMRunningOrExpectedRunning(vm),
+      !isVMRunningOrExpectedRunning(vm, vmi),
     // t('kubevirt-plugin~Migrate Virtual Machine')
     labelKey: 'kubevirt-plugin~Migrate Virtual Machine',
     callback: () =>
@@ -289,13 +314,13 @@ const menuActionCancelMigration = (
 const menuActionClone = (
   kindObj: K8sKind,
   vm: VMKind,
-  { vmStatusBundle }: ActionArgs,
+  { vmi, vmStatusBundle }: ActionArgs,
 ): KebabOption => {
   return {
     hidden: vmStatusBundle?.status?.isImporting(),
     // t('kubevirt-plugin~Clone Virtual Machine')
     labelKey: 'kubevirt-plugin~Clone Virtual Machine',
-    callback: () => cloneVMModal({ vm }),
+    callback: () => cloneVMModal({ vm, vmi }),
     accessReview: asAccessReview(kindObj, vm, 'patch'),
   };
 };
@@ -342,7 +367,7 @@ export const menuActionOpenConsole = (kindObj: K8sKind, vmi: VMIKind): KebabOpti
     return (
       <>
         {t('kubevirt-plugin~Open Console')}
-        <span className="kubevirt-menu-actions__ext-link-icon">
+        <span className="kubevirt-menu-actions__icon-spacer">
           <ExternalLinkAltIcon />
         </span>
       </>
@@ -360,15 +385,64 @@ export const menuActionOpenConsole = (kindObj: K8sKind, vmi: VMIKind): KebabOpti
   };
 };
 
+export const menuActionCopySSHCommand = (
+  kindObj: K8sKind,
+  vm: VMIKind,
+  { vmStatusBundle },
+): KebabOption => {
+  let sshCommand = '';
+  let isDisabled = false;
+  const CopySSHCommand: React.FC = () => {
+    const { sshServices } = useSSHService(vm);
+    const { command } = useSSHCommand(vm);
+    const [showTooltip, setShowToolTip] = React.useState(false);
+    const { t } = useTranslation();
+    sshCommand = command;
+    isDisabled = !sshServices?.running || !(vmStatusBundle?.status === VMStatus.RUNNING);
+    return (
+      <div
+        id="SSHMenuLabel"
+        onMouseEnter={() => setShowToolTip(true)}
+        onMouseLeave={() => setShowToolTip(false)}
+        className={cn({ 'CopySSHCommand-disabled': isDisabled })}
+      >
+        {t('kubevirt-plugin~Copy SSH Command')}
+        {isDisabled && (
+          <Tooltip
+            reference={() => document.getElementById('SSHMenuLabel')}
+            position="left"
+            trigger="manual"
+            isVisible={showTooltip}
+            content={t('kubevirt-plugin~Manage SSH access in the virtual machine details page')}
+          />
+        )}
+        <div className="kubevirt-menu-actions__secondary-title">
+          {isDisabled
+            ? t('kubevirt-plugin~Requires SSH Service')
+            : t('kubevirt-plugin~copy to clipboard')}
+        </div>
+      </div>
+    );
+  };
+
+  return {
+    label: <CopySSHCommand />,
+    callback: () => !isDisabled && copy(sshCommand),
+    isDisabled,
+  };
+};
+
 export const vmMenuActions = [
   menuActionStart,
   menuActionStop,
   menuActionRestart,
   menuActionUnpause,
+  menuActionPause,
   menuActionMigrate,
   menuActionCancelMigration,
   menuActionClone,
   menuActionOpenConsole,
+  menuActionCopySSHCommand,
   Kebab.factory.ModifyLabels,
   Kebab.factory.ModifyAnnotations,
   menuActionDeleteVMorCancelImport,

@@ -39,8 +39,8 @@ export const OCSServiceModel: K8sKind = {
 };
 
 export const CephBlockPoolModel: K8sKind = {
-  label: 'Ceph Block Pool',
-  labelPlural: 'Ceph Block Pools',
+  label: 'BlockPool',
+  labelPlural: 'BlockPools',
   apiVersion: 'v1',
   apiGroup: 'ceph.rook.io',
   plural: 'cephblockpools',
@@ -88,6 +88,20 @@ export const NooBaaBackingStoreModel: K8sKind = {
   namespaced: true,
   kind: 'BackingStore',
   id: 'noobaabackingstore',
+  crd: true,
+  legacyPluralURL: true,
+};
+
+export const NooBaaNamespaceStoreModel: K8sKind = {
+  label: 'Namespace Store',
+  labelPlural: 'Namespace Stores',
+  apiVersion: 'v1alpha1',
+  apiGroup: 'noobaa.io',
+  plural: 'namespacestores',
+  abbr: 'NNS',
+  namespaced: true,
+  kind: 'NamespaceStore',
+  id: 'noobaanamespacestore',
   crd: true,
   legacyPluralURL: true,
 };

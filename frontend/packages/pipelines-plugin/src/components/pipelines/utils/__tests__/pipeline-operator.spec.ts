@@ -1,6 +1,7 @@
+import { SemVer } from 'semver';
 import { k8sList } from '@console/internal/module/k8s';
 import { ClusterServiceVersionKind } from '@console/operator-lifecycle-manager';
-import { getPipelineOperatorVersion } from '../pipeline-operator';
+import { getPipelineOperatorVersion, isGAVersionInstalled } from '../pipeline-operator';
 
 jest.mock('@console/internal/module/k8s', () => ({
   k8sList: jest.fn(),
@@ -11,6 +12,20 @@ beforeEach(() => {
 });
 
 const k8sListMock = k8sList as jest.Mock;
+
+describe('isGAVersionInstalled', () => {
+  it('should return false if the operator is not identified', () => {
+    expect(isGAVersionInstalled(null)).toBe(false);
+  });
+
+  it('should return true if the installed operator is below 1.4.0', () => {
+    expect(isGAVersionInstalled(new SemVer('1.3.1'))).toBe(false);
+  });
+
+  it('should return true if the installed operator is above 1.4.0', () => {
+    expect(isGAVersionInstalled(new SemVer('1.5.1'))).toBe(true);
+  });
+});
 
 describe('getPipelineOperatorVersion', () => {
   it('should fetch the ClusterServiceVersion from the api', async () => {
@@ -101,6 +116,50 @@ describe('getPipelineOperatorVersion', () => {
     ];
     k8sListMock.mockReturnValueOnce(Promise.resolve(csvs));
     await expect(getPipelineOperatorVersion('unit-test')).resolves.toBe(null);
+    expect(k8sList).toHaveBeenCalledTimes(1);
+  });
+
+  it('should return the installed version for the old name of pipeline ClusterServiceVersion', async () => {
+    const csvs = [
+      {
+        metadata: { name: 'redhat-openshift-pipelines.v1.3.1' },
+        spec: { version: '1.3.1' },
+        status: { phase: 'Deleting' },
+      } as ClusterServiceVersionKind,
+      {
+        metadata: { name: 'openshift-pipelines-operator.v1.1.1' },
+        spec: { version: '1.1.1' },
+        status: { phase: 'Succeeded' },
+      } as ClusterServiceVersionKind,
+    ];
+    k8sListMock.mockReturnValueOnce(Promise.resolve(csvs));
+    const version = await getPipelineOperatorVersion('unit-test');
+    expect(version.raw).toBe('1.1.1');
+    expect(version.major).toBe(1);
+    expect(version.minor).toBe(1);
+    expect(version.patch).toBe(1);
+    expect(k8sList).toHaveBeenCalledTimes(1);
+  });
+
+  it('should return installed version for the new name of pipeline ClusterServiceVersion', async () => {
+    const csvs = [
+      {
+        metadata: { name: 'redhat-openshift-pipelines.v1.3.1' },
+        spec: { version: '1.3.1' },
+        status: { phase: 'Succeeded' },
+      } as ClusterServiceVersionKind,
+      {
+        metadata: { name: 'openshift-pipelines-operator.v1.1.1' },
+        spec: { version: '1.1.1' },
+        status: { phase: 'Deleting' },
+      } as ClusterServiceVersionKind,
+    ];
+    k8sListMock.mockReturnValueOnce(Promise.resolve(csvs));
+    const version = await getPipelineOperatorVersion('unit-test');
+    expect(version.raw).toBe('1.3.1');
+    expect(version.major).toBe(1);
+    expect(version.minor).toBe(3);
+    expect(version.patch).toBe(1);
     expect(k8sList).toHaveBeenCalledTimes(1);
   });
 

@@ -1,19 +1,19 @@
 import * as React from 'react';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { usePodsWatcher } from '@console/shared';
-import {
-  K8sResourceKind,
-  referenceForGroupVersionKind,
-  groupVersionFor,
-} from '@console/internal/module/k8s';
+import { PodsOverview } from '@console/internal/components/overview/pods-overview';
 import {
   ResourceLink,
   ExternalLink,
   SidebarSectionHeading,
 } from '@console/internal/components/utils';
 import { PodModel } from '@console/internal/models';
-import { PodsOverview } from '@console/internal/components/overview/pods-overview';
+import {
+  K8sResourceKind,
+  referenceForGroupVersionKind,
+  groupVersionFor,
+} from '@console/internal/module/k8s';
+import { usePodsWatcher } from '@console/shared';
 import EventSourceOwnedList from './EventSourceOwnedList';
 
 type EventSourceResourcesProps = {
@@ -73,7 +73,7 @@ const EventSourceResources: React.FC<EventSourceResourcesProps> = ({ obj, ownedS
       {podData?.pods?.length > 0 && <PodsOverview obj={obj} allPodsLink={linkUrl} />}
       {deploymentData?.name && (
         <>
-          <SidebarSectionHeading text="Deployment" />
+          <SidebarSectionHeading text={t('knative-plugin~Deployment')} />
           <ul className="list-group">
             <li className="list-group-item">
               <ResourceLink

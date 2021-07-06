@@ -1,11 +1,14 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import { TFunction } from 'i18next';
-import * as classNames from 'classnames';
-import { useTranslation } from 'react-i18next';
+import { ChartDonut } from '@patternfly/react-charts';
 import { EmptyState, EmptyStateVariant, Title, Tooltip } from '@patternfly/react-core';
-import { sortable } from '@patternfly/react-table';
 import { SecurityIcon } from '@patternfly/react-icons';
+import { sortable } from '@patternfly/react-table';
+import * as classNames from 'classnames';
+import { TFunction } from 'i18next';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
+import { match } from 'react-router';
+import { DefaultList } from '@console/internal/components/default-resource';
 import {
   MultiListPage,
   Table,
@@ -15,9 +18,7 @@ import {
   ListPage,
   RowFunction,
 } from '@console/internal/components/factory';
-import { EmptyStateResourceBadge, GreenCheckCircleIcon } from '@console/shared/';
-import { referenceForModel, PodKind, ContainerStatus } from '@console/internal/module/k8s';
-import { match } from 'react-router';
+import { ContainerLink } from '@console/internal/components/pod';
 import {
   ResourceLink,
   ExternalLink,
@@ -29,14 +30,13 @@ import {
   FirehoseResult,
   Loading,
 } from '@console/internal/components/utils';
-import { ChartDonut } from '@patternfly/react-charts';
-import { DefaultList } from '@console/internal/components/default-resource';
-import { ContainerLink } from '@console/internal/components/pod';
+import { referenceForModel, PodKind, ContainerStatus } from '@console/internal/module/k8s';
+import { EmptyStateResourceBadge, GreenCheckCircleIcon } from '@console/shared/';
 import { vulnPriority, totalFor, priorityFor } from '../const';
-import { ImageManifestVuln } from '../types';
 import { ImageManifestVulnModel } from '../models';
-import { quayURLFor } from './summary';
+import { ImageManifestVuln } from '../types';
 import ImageVulnerabilitiesList from './ImageVulnerabilitiesList';
+import { quayURLFor } from './summary';
 import './image-manifest-vuln.scss';
 
 const shortenImage = (img: string) =>
@@ -53,6 +53,9 @@ export const totalCount = (obj: ImageManifestVuln) => {
 };
 export const affectedPodsCount = (obj: ImageManifestVuln) =>
   Object.keys(obj.status.affectedPods).length;
+
+export const highestSeverityIndex = (obj: ImageManifestVuln) =>
+  priorityFor(obj.status.highestSeverity).index;
 
 export const ImageManifestVulnDetails: React.FC<ImageManifestVulnDetailsProps> = (props) => {
   const { t } = useTranslation();
@@ -254,7 +257,7 @@ export const ImageManifestVulnTableHeader = (t: TFunction) => () => [
   },
   {
     title: t('container-security~Highest severity'),
-    sortField: 'status.highestSeverity',
+    sortFunc: 'highestSeverityOrder',
     transforms: [sortable],
     props: { className: tableColumnClasses[2] },
   },
@@ -301,6 +304,7 @@ export const ImageManifestVulnList: React.FC<ImageManifestVulnListProps> = (prop
       customSorts={{
         totalOrder: totalCount,
         affectedPodsOrder: affectedPodsCount,
+        highestSeverityOrder: highestSeverityIndex,
       }}
       aria-label={t('container-security~Image Manifest Vulnerabilities')}
       Header={ImageManifestVulnTableHeader(t)}
@@ -314,7 +318,7 @@ export const ImageManifestVulnList: React.FC<ImageManifestVulnListProps> = (prop
 export const ImageManifestVulnPage: React.FC<ImageManifestVulnPageProps> = (props) => {
   const { t } = useTranslation();
   const { showTitle = true, hideNameLabelFilters = true } = props;
-  const namespace = props.namespace || props.match.params.ns || props.match.params.name;
+  const namespace = props.namespace || props.match?.params?.ns || props.match?.params?.name;
   return (
     <MultiListPage
       {...props}
@@ -396,7 +400,6 @@ export const ContainerVulnerabilities: React.FC<ContainerVulnerabilitiesProps> =
                           kind={referenceForModel(ImageManifestVulnModel)}
                           name={vuln.metadata.name}
                           namespace={props.pod.metadata.namespace}
-                          title={vuln.metadata.uid}
                           displayName={`${totalFor(
                             vulnPriority.findKey(
                               ({ title }) => _.get(vuln.status, 'highestSeverity') === title,

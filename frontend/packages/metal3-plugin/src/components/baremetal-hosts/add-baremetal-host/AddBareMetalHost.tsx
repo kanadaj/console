@@ -1,21 +1,24 @@
 import * as React from 'react';
+import { Formik, FormikHelpers } from 'formik';
+import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import * as Yup from 'yup';
-import * as _ from 'lodash';
-import { Formik, FormikHelpers } from 'formik';
 import {
   history,
   resourcePathFromModel,
   LoadingBox,
   LoadError,
 } from '@console/internal/components/utils';
-import { nameValidationSchema } from '@console/dev-console/src/components/import/validation-schema';
-import { getName } from '@console/shared/src';
-import { usePrevious } from '@console/shared/src/hooks/previous';
+import {
+  useK8sWatchResource,
+  WatchK8sResource,
+} from '@console/internal/components/utils/k8s-watch-hook';
+import { SecretModel } from '@console/internal/models';
 import { referenceForModel, SecretKind } from '@console/internal/module/k8s';
+import { getName, nameValidationSchema } from '@console/shared';
+import { usePrevious } from '@console/shared/src/hooks/previous';
 import { createBareMetalHost, updateBareMetalHost } from '../../../k8s/requests/bare-metal-host';
 import { BareMetalHostModel } from '../../../models';
-import { BareMetalHostKind } from '../../../types';
 import {
   getHostBMCAddress,
   getHostBootMACAddress,
@@ -24,14 +27,10 @@ import {
   isHostOnline,
 } from '../../../selectors';
 import { getSecretPassword, getSecretUsername } from '../../../selectors/secret';
+import { BareMetalHostKind } from '../../../types';
 import AddBareMetalHostForm from './AddBareMetalHostForm';
 import { AddBareMetalHostFormValues } from './types';
 import { MAC_REGEX, BMC_ADDRESS_REGEX } from './utils';
-import {
-  useK8sWatchResource,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
-import { SecretModel } from '@console/internal/models';
 
 const getInitialValues = (
   host: BareMetalHostKind,
@@ -136,7 +135,7 @@ const AddBareMetalHost: React.FC<AddBareMetalHostProps> = ({
           t('metal3-plugin~Name "${value}" is already taken.'), // eslint-disable-line no-template-curly-in-string
           (value) => !hostNames.includes(value),
         )
-        .concat(nameValidationSchema),
+        .concat(nameValidationSchema(t)),
       BMCAddress: enablePowerManagement
         ? Yup.string()
             .matches(
@@ -170,13 +169,11 @@ const AddBareMetalHost: React.FC<AddBareMetalHostProps> = ({
         )
       : createBareMetalHost(opts);
 
-    promise
+    return promise
       .then(() => {
-        actions.setSubmitting(false);
         history.push(resourcePathFromModel(BareMetalHostModel, values.name, namespace));
       })
       .catch((error) => {
-        actions.setSubmitting(false);
         actions.setStatus({ submitError: error.message });
       });
   };

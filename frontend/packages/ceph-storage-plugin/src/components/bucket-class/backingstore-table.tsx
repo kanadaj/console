@@ -16,7 +16,12 @@ import {
 import { Table, ListPage, getFilteredRows } from '@console/internal/components/factory';
 import { ResourceLink } from '@console/internal/components/utils';
 import { referenceForModel } from '@console/internal/module/k8s';
-import { getBucketName, getRegion, getBackingStoreType, getBSLabel } from '../../utils';
+import {
+  getBucketName,
+  getRegion,
+  getBackingStoreType,
+  getBSLabel,
+} from '../../utils/noobaa-utils';
 import CreateBackingStoreFormModal from '../create-backingstore-page/create-bs-modal';
 import { NooBaaBackingStoreModel } from '../../models';
 import { BackingStoreKind, PlacementPolicy } from '../../types';
@@ -121,7 +126,7 @@ const BackingStoreTable: React.FC<BackingStoreTableProps> = (props) => {
       virtualize={false}
       Header={getColumns}
       Rows={(rowProps) => getRows(rowProps, selectedRows)}
-      aria-label={t('ceph-storage-plugin~Backing Store Table')}
+      aria-label={t('ceph-storage-plugin~BackingStore Table')}
     />
   );
 };
@@ -180,16 +185,18 @@ const BackingStoreSelection: React.FC<BackingStoreSelectionProps> = (props) => {
             className="co-alert"
             variant="info"
             title={t(
-              'ceph-storage-plugin~Each backing store can be used for one tier at a time. Selecting a backing store in one tier will remove the resource from the second tier option and vice versa.',
+              'ceph-storage-plugin~Each BackingStore can be used for one tier at a time. Selecting a BackingStore in one tier will remove the resource from the second tier option and vice versa.',
             )}
-            aria-label={t('ceph-storage-plugin~Bucket created for OCS Service')}
+            aria-label={t(
+              "ceph-storage-plugin~Bucket created for OpenShift Container Storage's Service",
+            )}
             isInline
           />
         )}
         <Title headingLevel="h3" size="xl" className="nb-bc-step-page-form__title">
           <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }}>
             <Title headingLevel="h3" size="xl">
-              {t('ceph-storage-plugin~Tier 1 - Backing Stores')}{' '}
+              {t('ceph-storage-plugin~Tier 1 - BackingStores')}{' '}
               {tier1Policy ? `(${tier1Policy})` : ''}
             </Title>
             {!hideCreateBackingStore && (
@@ -199,7 +206,7 @@ const BackingStoreSelection: React.FC<BackingStoreSelectionProps> = (props) => {
                   onClick={openModal}
                   className="nb-bc-step-page-form__modal-launcher"
                 >
-                  <PlusCircleIcon /> {t('ceph-storage-plugin~Create Backing Store')}
+                  <PlusCircleIcon /> {t('ceph-storage-plugin~Create BackingStore ')}
                 </Button>
               </FlexItem>
             )}
@@ -220,7 +227,7 @@ const BackingStoreSelection: React.FC<BackingStoreSelectionProps> = (props) => {
           />
         </FormGroup>
         <p className="nb-create-bc-step-page-form__element--light-text">
-          {t('ceph-storage-plugin~{{bs, number}} Backing Store', {
+          {t('ceph-storage-plugin~{{bs, number}} BackingStore ', {
             bs: selectedTierA.length,
             count: selectedTierA.length,
           })}{' '}
@@ -230,7 +237,7 @@ const BackingStoreSelection: React.FC<BackingStoreSelectionProps> = (props) => {
       {!!tier2Policy && (
         <Form className="nb-bc-step-page-form">
           <Title headingLevel="h3" size="xl">
-            {t('ceph-storage-plugin~Tier 2 - Backing Stores')}{' '}
+            {t('ceph-storage-plugin~Tier 2 - BackingStores')}{' '}
             {tier2Policy ? `(${tier2Policy})` : ''}
           </Title>
           <FormGroup
@@ -247,7 +254,7 @@ const BackingStoreSelection: React.FC<BackingStoreSelectionProps> = (props) => {
             />
           </FormGroup>
           <p className="nb-create-bc-step-page-form__element--light-text">
-            {t('ceph-storage-plugin~{{bs, number}} Backing Store', {
+            {t('ceph-storage-plugin~{{bs, number}} BackingStore ', {
               bs: selectedTierB.length,
               count: selectedTierB.length,
             })}{' '}

@@ -1,19 +1,19 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { safeLoad } from 'js-yaml';
+import { useTranslation } from 'react-i18next';
+import { ExtensionHook, CatalogItem } from '@console/dynamic-plugin-sdk';
 import { coFetch } from '@console/internal/co-fetch';
-import { APIError } from '@console/shared';
-import { CatalogExtensionHook, CatalogItem } from '@console/dynamic-plugin-sdk';
 import {
   useK8sWatchResource,
   WatchK8sResource,
 } from '@console/internal/components/utils/k8s-watch-hook';
 import { K8sResourceKind, referenceForModel } from '@console/internal/module/k8s';
+import { APIError } from '@console/shared';
+import { HelmChartRepositoryModel } from '../../models';
 import { HelmChartEntries } from '../../types/helm-types';
 import { normalizeHelmCharts } from '../utils/catalog-utils';
-import { HelmChartRepositoryModel } from '../../models';
 
-const useHelmCharts: CatalogExtensionHook<CatalogItem[]> = ({
+const useHelmCharts: ExtensionHook<CatalogItem[]> = ({
   namespace,
 }): [CatalogItem[], boolean, any] => {
   const { t } = useTranslation();
@@ -30,13 +30,19 @@ const useHelmCharts: CatalogExtensionHook<CatalogItem[]> = ({
   );
 
   React.useEffect(() => {
+    let mounted = true;
     coFetch('/api/helm/charts/index.yaml')
       .then(async (res) => {
-        const yaml = await res.text();
-        const json = safeLoad(yaml);
-        setHelmCharts(json.entries);
+        if (mounted) {
+          const yaml = await res.text();
+          const json = safeLoad(yaml);
+          setHelmCharts(json.entries);
+        }
       })
-      .catch(setLoadedError);
+      .catch((err) => {
+        if (mounted) setLoadedError(err);
+      });
+    return () => (mounted = false);
   }, []);
 
   const normalizedHelmCharts: CatalogItem[] = React.useMemo(

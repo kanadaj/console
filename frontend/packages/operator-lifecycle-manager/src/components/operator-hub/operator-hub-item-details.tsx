@@ -1,19 +1,19 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import * as classNames from 'classnames';
 import { PropertiesSidePanel, PropertyItem } from '@patternfly/react-catalog-view-extension';
 import { CheckCircleIcon } from '@patternfly/react-icons';
+import * as classNames from 'classnames';
+import * as _ from 'lodash';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ExternalLink, HintBlock, Timestamp } from '@console/internal/components/utils';
-import { RH_OPERATOR_SUPPORT_POLICY_LINK } from '@console/shared';
-import { MarkdownView } from '../clusterserviceversion';
-import { OperatorHubItem } from './index';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { referenceForModel } from '@console/internal/module/k8s';
+import { RH_OPERATOR_SUPPORT_POLICY_LINK } from '@console/shared';
+import { DefaultCatalogSource } from '../../const';
 import { ClusterServiceVersionModel } from '../../models';
 import { ClusterServiceVersionKind, SubscriptionKind } from '../../types';
-import { Trans, useTranslation } from 'react-i18next';
-import { DefaultCatalogSource } from '../../const';
+import { MarkdownView } from '../clusterserviceversion';
+import { OperatorHubItem } from './index';
 
 // t('olm~Basic Install'),
 // t('olm~Seamless Upgrades'),
@@ -217,7 +217,7 @@ export const OperatorHubItemDetails: React.FC<OperatorHubItemDetailsProps> = ({
                 value={catalogSourceDisplayName || notAvailable}
               />
               <PropertyItem label={t('olm~Provider')} value={provider || notAvailable} />
-              {infraFeatures && (
+              {!_.isEmpty(infraFeatures) && (
                 <PropertyItem
                   label={t('olm~Infrastructure features')}
                   value={mappedInfraFeatures}
@@ -229,10 +229,21 @@ export const OperatorHubItemDetails: React.FC<OperatorHubItemDetailsProps> = ({
                   value={mappedValidSubscription}
                 />
               )}
-              <PropertyItem label={t('olm~Repository')} value={repository || notAvailable} />
+              <PropertyItem
+                label={t('olm~Repository')}
+                value={
+                  repository ? <ExternalLink href={repository} text={repository} /> : notAvailable
+                }
+              />
               <PropertyItem
                 label={t('olm~Container image')}
-                value={containerImage || notAvailable}
+                value={
+                  containerImage ? (
+                    <div className="co-break-all co-select-to-copy">{containerImage}</div>
+                  ) : (
+                    notAvailable
+                  )
+                }
               />
               <PropertyItem label={t('olm~Created at')} value={created || notAvailable} />
               <PropertyItem

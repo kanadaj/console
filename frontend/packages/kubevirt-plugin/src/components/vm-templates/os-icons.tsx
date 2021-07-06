@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { TemplateKind } from '@console/internal/module/k8s';
 import { StarIcon } from '@patternfly/react-icons';
-
+import { TemplateKind } from '@console/internal/module/k8s';
 import { ANNOTATION_ICON } from '../../constants';
 
 import './os-icons.scss';
@@ -35,3 +34,5 @@ export const getTemplateOSIcon = (template: TemplateKind): string => {
 };
 
 export const PinnedIcon = () => <StarIcon className="kv-pin-icon" />;
+
+export const RemovePinnedIcon = () => <StarIcon className="kv-remove-pin-icon" />;

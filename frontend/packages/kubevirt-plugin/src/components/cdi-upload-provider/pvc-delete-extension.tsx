@@ -1,17 +1,18 @@
 import * as React from 'react';
-import { k8sKill, PersistentVolumeClaimKind, TemplateKind } from '@console/internal/module/k8s';
-import { DataVolumeModel } from '../../models';
+import { Alert, AlertVariant } from '@patternfly/react-core';
 import {
   useK8sWatchResource,
   WatchK8sResource,
 } from '@console/internal/components/utils/k8s-watch-hook';
 import { TemplateModel } from '@console/internal/models';
+import { k8sKill, PersistentVolumeClaimKind, TemplateKind } from '@console/internal/module/k8s';
 import {
   TEMPLATE_TYPE_BASE,
   TEMPLATE_TYPE_LABEL,
   TEMPLATE_VM_COMMON_NAMESPACE,
 } from '../../constants';
 import { useBaseImages } from '../../hooks/use-base-images';
+import { DataVolumeModel } from '../../models';
 
 export const killCDIBoundPVC = (pvc: PersistentVolumeClaimKind) =>
   k8sKill(DataVolumeModel, {
@@ -41,7 +42,7 @@ export const PVCDeleteAlertExtension: React.FC<{ pvc: PersistentVolumeClaimKind 
   );
 
   return (
-    <>
+    <Alert isInline variant={AlertVariant.warning} title="PVC Delete">
       <p>
         Deleting this PVC will also delete{' '}
         <strong className="co-break-word">{pvc?.metadata?.name}</strong> Data Volume
@@ -54,6 +55,6 @@ export const PVCDeleteAlertExtension: React.FC<{ pvc: PersistentVolumeClaimKind 
           system image. New VMs will not be able to clone this image
         </p>
       )}
-    </>
+    </Alert>
   );
 };

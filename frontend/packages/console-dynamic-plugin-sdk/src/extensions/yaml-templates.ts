@@ -1,25 +1,18 @@
-import { Extension } from '@console/plugin-sdk/src/typings/base';
+import { ExtensionK8sModel } from '../api/common-types';
+import { Extension, ExtensionDeclaration, CodeRef } from '../types';
 
-namespace ExtensionProperties {
-  export type YAMLTemplate = {
+/** YAML templates for editing resources via the yaml editor. */
+export type YAMLTemplate = ExtensionDeclaration<
+  'console.yaml-template',
+  {
     /** Model associated with the template. */
-    model: {
-      group: string;
-      version: string;
-      kind: string;
-    };
+    model: ExtensionK8sModel;
     /** The YAML template. */
-    template: string;
+    template: CodeRef<string>;
     /** The name of the template. Use the name `default` to mark this as the default template. */
     name: string | 'default';
-  };
-}
-
-// Extension types
-
-export type YAMLTemplate = Extension<ExtensionProperties.YAMLTemplate> & {
-  type: 'console.yaml-template';
-};
+  }
+>;
 
 // Type guards
 

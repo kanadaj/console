@@ -1,24 +1,25 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
-import { RouteComponentProps } from 'react-router';
-import { Helmet } from 'react-helmet';
 import {
   ActionGroup,
   Alert,
   Button,
-  TextInput,
+  Checkbox,
+  Divider,
+  Form,
   Grid,
   GridItem,
-  Form,
-  Title,
-  TextArea,
-  SelectVariant,
   SelectOption,
-  Divider,
+  SelectVariant,
   Stack,
   StackItem,
-  Checkbox,
+  TextArea,
+  TextInput,
+  Title,
 } from '@patternfly/react-core';
+import { Helmet } from 'react-helmet';
+import { useTranslation } from 'react-i18next';
+import { RouteComponentProps } from 'react-router';
+import { dropdownUnits } from '@console/internal/components/storage/shared';
 import {
   convertToBaseValue,
   history,
@@ -28,33 +29,36 @@ import {
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { PersistentVolumeClaimModel, TemplateModel } from '@console/internal/models';
 import { PersistentVolumeClaimKind, TemplateKind } from '@console/internal/module/k8s';
-
-import { useBaseImages } from '../../../hooks/use-base-images';
-import { getTemplateSourceStatus } from '../../../statuses/template/template-source-status';
-import { ProjectDropdown } from '../../form/project-dropdown';
-import { FormRow } from '../../form/form-row';
-import { validateVmLikeEntityName } from '../../../utils/validations';
-import { dropdownUnits } from '@console/internal/components/storage/shared';
-import { isTemplateSourceError } from '../../../statuses/template/types';
-import { preventDefault } from '../../form/utils';
-import { VMTemplateWrapper } from '../../../k8s/wrapper/vm/vm-template-wrapper';
-import { CloudInitDataHelper } from '../../../k8s/wrapper/vm/cloud-init-data-helper';
-import { filterTemplates } from '../utils';
+import { VMKind } from '@console/kubevirt-plugin/src/types';
 import {
-  TEMPLATE_TYPE_BASE,
-  TEMPLATE_TYPE_VM,
-  TEMPLATE_TYPE_LABEL,
   TEMPLATE_PROVIDER_ANNOTATION,
   TEMPLATE_SUPPORT_LEVEL,
+  TEMPLATE_TYPE_BASE,
+  TEMPLATE_TYPE_LABEL,
+  TEMPLATE_TYPE_VM,
+  VM_CUSTOMIZE_LABEL,
 } from '../../../constants';
-import { FormPFSelect } from '../../form/form-pf-select';
-import { getTemplateFlavorData, getTemplateMemory } from '../../../selectors/vm-template/advanced';
-import { getCPU, vCPUCount } from '../../../selectors/vm';
-import { selectVM } from '../../../selectors/vm-template/basic';
-import { createVMForCustomization } from '../../../k8s/requests/vmtemplate/customize';
-import { formReducer, initFormState, FORM_ACTION_TYPE } from './customize-source-form-reducer';
-import { getAnnotation } from '../../../selectors/selectors';
 import { TemplateSupport } from '../../../constants/vm-templates/support';
+import { TEMPLATE_CUSTOMIZED_ANNOTATION } from '../../../constants/vm/constants';
+import { useBaseImages } from '../../../hooks/use-base-images';
+import { createVMForCustomization } from '../../../k8s/requests/vmtemplate/customize';
+import { CloudInitDataHelper } from '../../../k8s/wrapper/vm/cloud-init-data-helper';
+import { VMTemplateWrapper } from '../../../k8s/wrapper/vm/vm-template-wrapper';
+import { VirtualMachineModel } from '../../../models/index';
+import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
+import { getAnnotation } from '../../../selectors/selectors';
+import { getCPU, vCPUCount } from '../../../selectors/vm';
+import { getTemplateFlavorData, getTemplateMemory } from '../../../selectors/vm-template/advanced';
+import { selectVM } from '../../../selectors/vm-template/basic';
+import { getTemplateSourceStatus } from '../../../statuses/template/template-source-status';
+import { isTemplateSourceError } from '../../../statuses/template/types';
+import { validateVmLikeEntityName } from '../../../utils/validations';
+import { FormPFSelect } from '../../form/form-pf-select';
+import { FormRow } from '../../form/form-row';
+import { ProjectDropdown } from '../../form/project-dropdown';
+import { preventDefault } from '../../form/utils';
+import { filterTemplates } from '../utils';
+import { FORM_ACTION_TYPE, formReducer, initFormState } from './customize-source-form-reducer';
 
 import './customize-source.scss';
 
@@ -85,6 +89,29 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
       ],
     },
   });
+
+  const [
+    vmWithCustomBootSource,
+    loadvmWithCutomBootSource,
+    vmWithCustomBootSourceError,
+  ] = useK8sWatchResource<VMKind[]>({
+    kind: kubevirtReferenceForModel(VirtualMachineModel),
+    isList: true,
+    namespace,
+    selector: {
+      matchLabels: {
+        [VM_CUSTOMIZE_LABEL]: 'true',
+      },
+    },
+  });
+
+  const templatesFromVms = React.useMemo(
+    () =>
+      vmWithCustomBootSource.map(({ metadata }) =>
+        JSON.parse(metadata?.annotations?.[TEMPLATE_CUSTOMIZED_ANNOTATION]),
+      ),
+    [vmWithCustomBootSource],
+  );
 
   const template = React.useMemo(
     () => filterTemplates(templates).find((tmp) => tmp.metadata.name === templateName),
@@ -133,11 +160,16 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
     pods: [],
   });
 
-  const nameValidation = validateVmLikeEntityName(name, namespace, templates, {
-    // t('kubevirt-plugin~Name is already used by another virtual machine template in this namespace')
-    existsErrorMessage:
-      'kubevirt-plugin~Name is already used by another virtual machine template in this namespace',
-  });
+  const nameValidation = validateVmLikeEntityName(
+    name,
+    namespace,
+    [...templates, ...templatesFromVms],
+    {
+      // t('kubevirt-plugin~Name is already used by another virtual machine template in this namespace')
+      existsErrorMessage:
+        'kubevirt-plugin~Name is already used by another virtual machine template in this namespace',
+    },
+  );
 
   React.useEffect(() => {
     if (selectedTemplate) {
@@ -224,11 +256,11 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
         <Divider component="div" />
         <GridItem span={6} className="kv-customize-source">
           <StatusBox
-            loaded={loaded && imagesLoaded && pvcsLoaded}
-            loadError={loadError || error || pvcsError}
+            loaded={loaded && imagesLoaded && pvcsLoaded && loadvmWithCutomBootSource}
+            loadError={loadError || error || pvcsError || vmWithCustomBootSourceError}
             data={selectedTemplate}
           >
-            <Stack hasGutter>
+            <Stack hasGutter className="kv-customize-source__form-body">
               <StackItem>
                 <Form onSubmit={preventDefault}>
                   <Stack hasGutter>
@@ -237,7 +269,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                     </StackItem>
                     <StackItem className="text-muted">
                       {t(
-                        'kubevirt-plugin~Boot source customization will apply to a boot source copy, saved on a new template. This template will be a clone of the original boot source template {{templateName}}. The customized boot source will be saved to the new template.',
+                        'kubevirt-plugin~Boot source customization will apply to a boot source copy saved on a new template. This template will be a clone of the original boot source template {{templateName}}. The customized boot source will be saved to the new template.',
                         { templateName },
                       )}
                     </StackItem>
@@ -382,7 +414,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                         >
                           <div className="pf-c-form__helper-text" aria-live="polite">
                             {t(
-                              'kubevirt-plugin~This boot source is marked as CD-ROM, and requires allocated resources (disk) to customize it. Please allocate Persistent Volume Claim for customization process.',
+                              'kubevirt-plugin~This boot source is marked as CD-ROM, and requires allocated resources (disk) to customize it. Please allocate a PersistentVolumeClaim for the customization process.',
                             )}
                           </div>
                         </RequestSizeInput>
@@ -428,7 +460,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                 </StackItem>
               )}
             </Stack>
-            <ActionGroup className="pf-c-form">
+            <ActionGroup className="pf-c-form kv-customize-source__footer">
               <Button
                 data-test="start-customize"
                 isDisabled={creatingVM || !namespace || !name || !!nameValidation || !provider}

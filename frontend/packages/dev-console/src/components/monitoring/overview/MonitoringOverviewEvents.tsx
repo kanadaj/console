@@ -1,12 +1,12 @@
 import * as React from 'react';
+import { Flex, FlexItem } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Flex, FlexItem } from '@patternfly/react-core';
-import { twentyFourHourTime } from '@console/internal/components/utils/datetime';
-import { YellowExclamationTriangleIcon } from '@console/shared';
-import { referenceFor, EventKind } from '@console/internal/module/k8s';
-import { ResourceLink } from '@console/internal/components/utils';
 import { getLastTime } from '@console/internal/components/events';
+import { ResourceLink } from '@console/internal/components/utils';
+import { timeFormatter } from '@console/internal/components/utils/datetime';
+import { referenceFor, EventKind } from '@console/internal/module/k8s';
+import { YellowExclamationTriangleIcon } from '@console/shared';
 import './MonitoringOverviewEvents.scss';
 
 interface MonitoringOverviewEventsProps {
@@ -23,7 +23,7 @@ const MonitoringOverviewEvents: React.FC<MonitoringOverviewEventsProps> = ({ eve
             <div className="odc-monitoring-events__event-item" key={e.metadata.uid}>
               <Flex alignSelf={{ default: 'alignSelfBaseline' }}>
                 <FlexItem title={e.lastTimestamp} className="text-secondary">
-                  {twentyFourHourTime(new Date(getLastTime(e)))}
+                  {timeFormatter.format(new Date(getLastTime(e)))}
                 </FlexItem>
                 {e.type === 'Warning' && (
                   <FlexItem>

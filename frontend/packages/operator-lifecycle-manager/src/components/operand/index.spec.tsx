@@ -1,22 +1,32 @@
 import * as React from 'react';
-import { match as RouterMatch } from 'react-router-dom';
 import { shallow, ShallowWrapper, mount, ReactWrapper } from 'enzyme';
 import * as _ from 'lodash';
-import * as extensionHooks from '@console/plugin-sdk';
 import { Provider } from 'react-redux';
-import * as k8sModels from '@console/internal/module/k8s';
+import { match as RouterMatch } from 'react-router-dom';
 import { Table, DetailsPage, MultiListPage, ListPage } from '@console/internal/components/factory';
-import { Timestamp, LabelList, StatusBox, ResourceKebab } from '@console/internal/components/utils';
+import {
+  Timestamp,
+  LabelList,
+  StatusBox,
+  ResourceKebab,
+  FirehoseResourcesResult,
+} from '@console/internal/components/utils';
+import * as k8sModels from '@console/internal/module/k8s';
 import store from '@console/internal/redux';
-
+import * as extensionHooks from '@console/plugin-sdk';
+import { referenceForProvidedAPI } from '..';
 import {
   testCRD,
   testResourceInstance,
   testClusterServiceVersion,
   testOwnedResourceInstance,
   testModel,
+  testConditionsDescriptor,
 } from '../../../mocks';
 import { ClusterServiceVersionModel } from '../../models';
+import { DescriptorDetailsItem, DescriptorDetailsItemList } from '../descriptors';
+import { Resources } from '../k8s-resource';
+import { OperandLink } from './operand-link';
 import {
   OperandList,
   OperandListProps,
@@ -33,10 +43,6 @@ import {
   OperandStatus,
   OperandStatusProps,
 } from '.';
-import { Resources } from '../k8s-resource';
-import { referenceForProvidedAPI } from '..';
-import { OperandLink } from './operand-link';
-import { DescriptorDetailsItem, DescriptorDetailsItemList } from '../descriptors';
 
 jest.mock('react-i18next', () => {
   const reactI18next = require.requireActual('react-i18next');
@@ -67,7 +73,26 @@ jest.mock('@console/shared/src/hooks/useK8sModels', () => ({
   ],
 }));
 
-const i18nNS = 'details-page';
+jest.mock('@console/shared/src/hooks/useK8sModel', () => ({
+  useK8sModel: () => [
+    {
+      abbr: 'TR',
+      apiGroup: 'testapp.coreos.com',
+      apiVersion: 'v1alpha1',
+      crd: true,
+      kind: 'TestResource',
+      label: 'Test Resource',
+      labelPlural: 'Test Resources',
+      namespaced: true,
+      plural: 'testresources',
+      verbs: ['create'],
+    },
+    false,
+    null,
+  ],
+}));
+
+const i18nNS = 'public';
 
 describe(OperandTableRow.displayName, () => {
   let wrapper: ShallowWrapper<OperandTableRowProps>;
@@ -177,7 +202,10 @@ describe(OperandDetails.displayName, () => {
   });
 
   it('renders description title', () => {
-    const title = wrapper.find('SectionHeading').prop('text');
+    const title = wrapper
+      .find('SectionHeading')
+      .first()
+      .prop('text');
     expect(title).toEqual('olm~{{kind}} overview');
   });
 
@@ -234,6 +262,27 @@ describe(OperandDetails.displayName, () => {
         .shallow()
         .find(DescriptorDetailsItem).length,
     ).toEqual(csv.spec.customresourcedefinitions.required[0].specDescriptors.length);
+  });
+
+  it('renders a Condtions table', () => {
+    expect(
+      wrapper
+        .find('SectionHeading')
+        .at(1)
+        .prop('text'),
+    ).toEqual('public~Conditions');
+
+    expect(wrapper.find('Conditions').prop('conditions')).toEqual(
+      testResourceInstance.status.conditions,
+    );
+  });
+
+  it('renders a DescriptorConditions component for conditions descriptor', () => {
+    expect(wrapper.find('DescriptorConditions').prop('descriptor')).toEqual(
+      testConditionsDescriptor,
+    );
+    expect(wrapper.find('DescriptorConditions').prop('obj')).toEqual(testResourceInstance);
+    expect(wrapper.find('DescriptorConditions').prop('schema')).toEqual({});
   });
 });
 
@@ -397,24 +446,38 @@ describe(OperandDetailsPage.displayName, () => {
       kind: 'Pod',
       metadata: {
         uid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-        ownerReferences: [{ uid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' }],
+        ownerReferences: [
+          {
+            uid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            name: 'foo',
+            kind: 'fooKind',
+            apiVersion: 'fooVersion',
+          },
+        ],
       },
     };
     const deployment = {
       kind: 'Deployment',
       metadata: {
         uid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-        ownerReferences: [{ uid: testResourceInstance.metadata.uid }],
+        ownerReferences: [
+          {
+            uid: testResourceInstance.metadata.uid,
+            name: 'foo',
+            kind: 'fooKind',
+            apiVersion: 'fooVersion',
+          },
+        ],
       },
     };
     const secret = {
       kind: 'Secret',
       metadata: { uid: 'cccccccc-cccc-cccc-cccc-cccccccccccc' },
     };
-    const resources = {
-      Deployment: { data: [deployment] },
-      Secret: { data: [secret] },
-      Pod: { data: [pod] },
+    const resources: FirehoseResourcesResult = {
+      Deployment: { data: [deployment], loaded: true, loadError: undefined },
+      Secret: { data: [secret], loaded: true, loadError: undefined },
+      Pod: { data: [pod], loaded: true, loadError: undefined },
     };
     const data = flatten(resources);
 
@@ -501,12 +564,16 @@ describe(ProvidedAPIsPage.displayName, () => {
   it('passes `flatten` function which removes `required` resources with owner references to items not in the same list', () => {
     const otherResourceInstance = _.cloneDeep(testOwnedResourceInstance);
     otherResourceInstance.metadata.ownerReferences[0].uid = 'abfcd938-b991-11e7-845d-0eb774f2814a';
-    const resources = {
+    const resources: FirehoseResourcesResult = {
       TestOwnedResource: {
         data: [testOwnedResourceInstance, otherResourceInstance],
+        loaded: true,
+        loadError: undefined,
       },
       TestResource: {
         data: [testResourceInstance],
+        loaded: true,
+        loadError: undefined,
       },
     };
 

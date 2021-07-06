@@ -1,31 +1,26 @@
 import * as React from 'react';
 import { shallow } from 'enzyme';
-import * as hookUtils from '../../hooks';
-import PipelineMetrics from '../PipelineMetrics';
+import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
 import {
   DataState,
   PipelineExampleNames,
   pipelineTestData,
 } from '../../../../test-data/pipeline-data';
+import * as hookUtils from '../../hooks';
+import { MetricsQueryPrefix } from '../pipeline-metrics-utils';
+import PipelineMetrics from '../PipelineMetrics';
 import PipelineMetricsEmptyState from '../PipelineMetricsEmptyState';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import PipelineSuccessRatioDonut from '../PipelineSuccessRatioDonut';
+import PipelineMetricsRefreshDropdown from '../PipelineMetricsRefreshDropdown';
+import PipelineMetricsTimeRangeDropdown from '../PipelineMetricsTimeRangeDropdown';
 import PipelineRunCount from '../PipelineRunCount';
 import PipelineRunDurationGraph from '../PipelineRunDurationGraph';
 import PipelineRunTaskRunGraph from '../PipelineRunTaskRunGraph';
-import PipelineMetricsTimeRangeDropdown from '../PipelineMetricsTimeRangeDropdown';
-import PipelineMetricsRefreshDropdown from '../PipelineMetricsRefreshDropdown';
+import PipelineSuccessRatioDonut from '../PipelineSuccessRatioDonut';
 
 jest.mock('@console/internal/components/utils/k8s-get-hook', () => ({
   useK8sGet: jest.fn(),
 }));
-jest.mock('react-i18next', () => {
-  const reactI18next = require.requireActual('react-i18next');
-  return {
-    ...reactI18next,
-    useTranslation: () => ({ t: (key) => key }),
-  };
-});
+
 const latestPipelineRunSpy = jest.spyOn(hookUtils, 'useLatestPipelineRun');
 
 const mockData = pipelineTestData[PipelineExampleNames.WORKSPACE_PIPELINE];
@@ -39,6 +34,10 @@ describe('Pipeline Metrics', () => {
   beforeEach(() => {
     PipelineMetricsProps = {
       obj: pipeline,
+      customData: {
+        templateNames: [],
+        queryPrefix: MetricsQueryPrefix.TEKTON_PIPELINES_CONTROLLER,
+      },
     };
   });
 

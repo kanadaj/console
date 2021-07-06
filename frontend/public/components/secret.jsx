@@ -19,6 +19,7 @@ import {
 } from './utils';
 import { SecretType } from './secrets/create-secret';
 import { configureAddSecretToWorkloadModal } from './modals/add-secret-to-workload';
+import { DetailsItem } from './utils/details-item';
 
 export const WebHookSecretKey = 'WebHookSecretKey';
 
@@ -56,11 +57,11 @@ const menuActions = [
 const kind = 'Secret';
 
 const tableColumnClasses = [
-  classNames('col-md-3', 'col-sm-4', 'col-xs-6'),
-  classNames('col-md-3', 'col-sm-4', 'col-xs-6'),
-  classNames('col-md-3', 'col-sm-4', 'hidden-xs'),
-  classNames('col-lg-1', 'hidden-md', 'hidden-sm', 'hidden-xs'),
-  classNames('col-md-3', 'hidden-sm', 'hidden-xs'),
+  '',
+  '',
+  'pf-m-hidden pf-m-visible-on-md',
+  'pf-m-hidden pf-m-visible-on-xl pf-u-w-8-on-xl',
+  'pf-m-hidden pf-m-visible-on-lg',
   Kebab.columnClass,
 ];
 
@@ -73,18 +74,13 @@ const SecretTableRow = ({ obj: secret, index, key, style }) => {
           kind="Secret"
           name={secret.metadata.name}
           namespace={secret.metadata.namespace}
-          title={secret.metadata.uid}
         />
       </TableData>
       <TableData
         className={classNames(tableColumnClasses[1], 'co-break-word')}
         columnID="namespace"
       >
-        <ResourceLink
-          kind="Namespace"
-          name={secret.metadata.namespace}
-          title={secret.metadata.namespace}
-        />
+        <ResourceLink kind="Namespace" name={secret.metadata.namespace} />
       </TableData>
       <TableData className={classNames(tableColumnClasses[2], 'co-break-word')}>
         {secret.type}
@@ -102,6 +98,7 @@ const SecretTableRow = ({ obj: secret, index, key, style }) => {
 
 const SecretDetails = ({ obj: secret }) => {
   const { t } = useTranslation();
+  const { data, type } = secret;
   return (
     <>
       <div className="co-m-pane__body">
@@ -110,10 +107,17 @@ const SecretDetails = ({ obj: secret }) => {
           <div className="col-md-6">
             <ResourceSummary resource={secret} />
           </div>
+          {type && (
+            <div className="col-md-6">
+              <dl data-test-id="resource-type" className="co-m-pane__details">
+                <DetailsItem label={t('public~Type')} obj={secret} path="type" />
+              </dl>
+            </div>
+          )}
         </div>
       </div>
       <div className="co-m-pane__body">
-        <SecretData data={secret.data} type={secret.type} />
+        <SecretData data={data} type={type} />
       </div>
     </>
   );

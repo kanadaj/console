@@ -28,7 +28,7 @@ import {
   alertStateOrder,
   silenceFiringAlertsOrder,
   silenceStateOrder,
-} from '../../reducers/monitoring';
+} from '../monitoring/utils';
 import { ingressValidHosts } from '../ingress';
 import { convertToBaseValue, EmptyBox, StatusBox, WithScrollContainer } from '../utils';
 import {
@@ -792,7 +792,7 @@ export const Table = connect<
               role={virtualize ? 'presentation' : 'grid'}
               aria-label={virtualize ? null : ariaLabel}
             >
-              <TableHeader />
+              <TableHeader role="rowgroup" />
               {!virtualize && <TableBody />}
             </PfTable>
             {virtualize &&

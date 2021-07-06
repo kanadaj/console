@@ -1,16 +1,17 @@
 import * as React from 'react';
 import axios, { Canceler } from 'axios';
 import {
-  WatchK8sResource,
   useK8sWatchResource,
+  WatchK8sResource,
 } from '@console/internal/components/utils/k8s-watch-hook';
 import { K8sResourceKind } from '@console/internal/module/k8s';
-import { CDI_UPLOAD_URL_BUILDER, UPLOAD_STATUS } from './consts';
 import { CDIConfigModel } from '../../models';
+import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
 import { getUploadProxyURL } from '../../selectors/cdi';
+import { CDI_UPLOAD_URL_BUILDER, UPLOAD_STATUS } from './consts';
 
 const resource: WatchK8sResource = {
-  kind: CDIConfigModel.kind,
+  kind: kubevirtReferenceForModel(CDIConfigModel),
   isList: false,
   namespaced: false,
   name: 'config',
@@ -20,6 +21,8 @@ export const CDIUploadContext = React.createContext<CDIUploadContextProps>({
   uploads: [],
   uploadData: () => {},
 });
+
+export const CDIUploadProvider = CDIUploadContext.Provider;
 
 export const useCDIUploadHook = (): CDIUploadContextProps => {
   const [cdiConfig, configLoaded, configError] = useK8sWatchResource<K8sResourceKind>(resource);

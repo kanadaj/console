@@ -1,11 +1,11 @@
+import { applyCodeRefSymbol } from '@console/dynamic-plugin-sdk/src/coderefs/coderef-resolver';
 import { Plugin } from '@console/plugin-sdk';
-import { getExecutableCodeRef } from '@console/dynamic-plugin-sdk/src/coderefs/coderef-utils';
-import { WatchK8sResources } from '@console/internal/components/utils/k8s-watch-hook';
 import {
   TopologyComponentFactory,
   TopologyDataModelFactory,
   TopologyDisplayFilters,
 } from '@console/topology/src/extensions/topology';
+import { getHelmWatchedResources } from './helmResources';
 import {
   getHelmComponentFactory,
   getHelmTopologyDataModel,
@@ -19,22 +19,11 @@ export type HelmTopologyConsumedExtensions =
   | TopologyDataModelFactory
   | TopologyDisplayFilters;
 
-const getHelmWatchedResources = (namespace: string): WatchK8sResources<any> => {
-  return {
-    secrets: {
-      isList: true,
-      kind: 'Secret',
-      namespace,
-      optional: true,
-    },
-  };
-};
-
 export const helmTopologyPlugin: Plugin<HelmTopologyConsumedExtensions> = [
   {
     type: 'Topology/ComponentFactory',
     properties: {
-      getFactory: getHelmComponentFactory,
+      getFactory: applyCodeRefSymbol(getHelmComponentFactory),
     },
   },
   {
@@ -42,16 +31,16 @@ export const helmTopologyPlugin: Plugin<HelmTopologyConsumedExtensions> = [
     properties: {
       id: 'helm-topology-model-factory',
       priority: 400,
-      getDataModel: getHelmTopologyDataModel,
+      getDataModel: applyCodeRefSymbol(getHelmTopologyDataModel),
       resources: getHelmWatchedResources,
-      isResourceDepicted: getIsHelmResource,
+      isResourceDepicted: applyCodeRefSymbol(getIsHelmResource),
     },
   },
   {
     type: 'Topology/DisplayFilters',
     properties: {
-      getTopologyFilters: getExecutableCodeRef(getTopologyFilters),
-      applyDisplayOptions: getExecutableCodeRef(applyDisplayOptions),
+      getTopologyFilters: applyCodeRefSymbol(getTopologyFilters),
+      applyDisplayOptions: applyCodeRefSymbol(applyDisplayOptions),
     },
   },
 ];

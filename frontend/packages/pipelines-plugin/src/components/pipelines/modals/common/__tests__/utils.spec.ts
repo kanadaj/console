@@ -1,10 +1,11 @@
-import { PipelineRunKind, PipelineKind } from '../../../../../types';
 import {
-  pipelineTestData,
-  PipelineExampleNames,
   DataState,
+  PipelineExampleNames,
+  pipelineTestData,
 } from '../../../../../test-data/pipeline-data';
-import { TektonResourceLabel, preferredNameAnnotation } from '../../../const';
+import { PipelineKind, PipelineRunKind } from '../../../../../types';
+import { preferredNameAnnotation, TektonResourceLabel, VolumeTypes } from '../../../const';
+import { CommonPipelineModalFormikValues } from '../types';
 import {
   convertPipelineToModalData,
   getPipelineName,
@@ -12,7 +13,6 @@ import {
   getPipelineRunFromForm,
   migratePipelineRun,
 } from '../utils';
-import { CommonPipelineModalFormikValues } from '../types';
 
 const samplePipeline = pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE].pipeline;
 const samplePipelineRun =
@@ -110,8 +110,14 @@ describe('getPipelineName', () => {
 
 describe('PipelineAction testing getPipelineRunData', () => {
   it('expect null to be returned when no arguments are passed', () => {
+    // Suppress the error log when we don't have pipeline or pipeline run
+    jest.spyOn(console, 'error').mockImplementation(jest.fn());
+
     const runData = getPipelineRunData();
     expect(runData).toBeNull();
+
+    // eslint-disable-next-line no-console
+    (console.error as any).mockRestore();
   });
 
   it('expect pipeline run data to be returned when only Pipeline argument is passed', () => {
@@ -247,6 +253,7 @@ describe('PipelineAction testing getPipelineRunFromForm', () => {
           name: 'ParameterA',
           default: 'Default value',
           description: 'Description',
+          value: 'Updated value',
         },
       ],
       resources: [],
@@ -267,7 +274,7 @@ describe('PipelineAction testing getPipelineRunFromForm', () => {
         params: [
           {
             name: 'ParameterA',
-            value: 'Default value',
+            value: 'Updated value',
           },
         ],
         resources: [],
@@ -330,12 +337,22 @@ describe('convertPipelineToModalData', () => {
 
   it('expect to return workspaces with type EmptyDirectory, if preselect PVC argument is not passed', () => {
     const { workspaces } = convertPipelineToModalData(workspacePipeline);
-    expect(workspaces.filter((workspace) => workspace.type === 'EmptyDirectory')).toHaveLength(3);
+    expect(
+      workspaces.filter((workspace) => workspace.type === VolumeTypes.EmptyDirectory),
+    ).toHaveLength(2);
+    expect(
+      workspaces.filter((workspace) => workspace.type === VolumeTypes.NoWorkspace),
+    ).toHaveLength(1);
   });
 
   it('expect to return workspaces with type PVC, if preselect PVC argument is passed', () => {
     const { workspaces } = convertPipelineToModalData(workspacePipeline, false, 'test-pvc');
-    expect(workspaces.filter((workspace) => workspace.type === 'EmptyDirectory')).toHaveLength(0);
-    expect(workspaces.filter((workspace) => workspace.type === 'PVC')).toHaveLength(3);
+    expect(
+      workspaces.filter((workspace) => workspace.type === VolumeTypes.EmptyDirectory),
+    ).toHaveLength(0);
+    expect(workspaces.filter((workspace) => workspace.type === VolumeTypes.PVC)).toHaveLength(2);
+    expect(
+      workspaces.filter((workspace) => workspace.type === VolumeTypes.NoWorkspace),
+    ).toHaveLength(1);
   });
 });

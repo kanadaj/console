@@ -1,10 +1,10 @@
-import { getRandomChars } from '@console/shared';
-import { apiVersionForModel, RouteKind } from '@console/internal/module/k8s';
+import { SemVer } from 'semver';
 import { RouteModel } from '@console/internal/models';
+import { apiVersionForModel, RouteKind } from '@console/internal/module/k8s';
+import { getRandomChars } from '@console/shared';
 import { EventListenerModel, TriggerTemplateModel } from '../../../../models';
 import { PipelineKind, PipelineRunKind } from '../../../../types';
 import { PIPELINE_SERVICE_ACCOUNT } from '../../const';
-import { getPipelineOperatorVersion } from '../../utils/pipeline-operator';
 import {
   EventListenerKind,
   EventListenerKindBindingReference,
@@ -12,6 +12,7 @@ import {
   TriggerTemplateKind,
   TriggerTemplateKindParam,
 } from '../../resource-types';
+import { isGAVersionInstalled } from '../../utils/pipeline-operator';
 
 export const createTriggerTemplate = (
   pipeline: PipelineKind,
@@ -31,13 +32,11 @@ export const createTriggerTemplate = (
   };
 };
 
-export const createEventListener = async (
-  namespace: string,
+export const createEventListener = (
   triggerBindings: TriggerBindingKind[],
   triggerTemplate: TriggerTemplateKind,
-): Promise<EventListenerKind> => {
-  const pipelineOperatorVersion = await getPipelineOperatorVersion(namespace);
-
+  pipelineOperatorVersion: SemVer,
+): EventListenerKind => {
   const mapTriggerBindings: (
     triggerBinding: TriggerBindingKind,
   ) => EventListenerKindBindingReference = (triggerBinding: TriggerBindingKind) => {
@@ -57,6 +56,14 @@ export const createEventListener = async (
       ref: triggerBinding.metadata.name,
     };
   };
+  const getTriggerTemplate = (name: string) => {
+    if (!isGAVersionInstalled(pipelineOperatorVersion)) {
+      return {
+        name,
+      };
+    }
+    return { ref: name };
+  };
 
   return {
     apiVersion: apiVersionForModel(EventListenerModel),
@@ -69,7 +76,7 @@ export const createEventListener = async (
       triggers: [
         {
           bindings: triggerBindings.map(mapTriggerBindings),
-          template: { name: triggerTemplate.metadata.name },
+          template: getTriggerTemplate(triggerTemplate.metadata.name),
         },
       ],
     },

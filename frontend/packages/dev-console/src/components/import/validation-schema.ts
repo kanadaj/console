@@ -1,14 +1,13 @@
-import * as yup from 'yup';
-import * as _ from 'lodash';
 import { TFunction } from 'i18next';
-import { CREATE_APPLICATION_KEY } from '@console/topology/src/const';
+import * as _ from 'lodash';
+import * as yup from 'yup';
 import { convertToBaseValue } from '@console/internal/components/utils';
+import { CREATE_APPLICATION_KEY } from '@console/topology/src/const';
 import { isInteger } from '../../utils/yup-validation-util';
 import { Resources } from './import-types';
 
 const hostnameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$/;
 const pathRegex = /^\/.*$/;
-export const nameRegex = /^([a-z]([-a-z0-9]*[a-z0-9])?)*$/;
 const projectNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 
 export const gitUrlRegex = /^((((ssh|git|https?:?):\/\/:?)(([^\s@]+@|[^@]:?)[-\w.]+(:\d\d+:?)?(\/[-\w.~/?[\]!$&'()*+,;=:@%]*:?)?:?))|([^\s@]+@[-\w.]+:[-\w.~/?[\]!$&'()*+,;=:@%]*?:?))$/;
@@ -26,16 +25,6 @@ const convertToSec = (value: number, unit: string): number => {
     }
   }
 };
-
-export const nameValidationSchema = yup
-  .string()
-  .matches(nameRegex, {
-    message:
-      'Name must consist of lower-case letters, numbers and hyphens. It must start with a letter and end with a letter or number.',
-    excludeEmptyString: true,
-  })
-  .max(253, 'Cannot be longer than 253 characters.')
-  .required('Required');
 
 export const projectNameValidationSchema = yup.object().shape({
   name: yup
@@ -188,8 +177,8 @@ export const routeValidationSchema = (t: TFunction) =>
     }),
     unknownTargetPort: yup
       .number()
-      .typeError(t('devconsole~Port must be an Integer.'))
-      .integer(t('devconsole~Port must be an Integer.'))
+      .typeError(t('devconsole~Port must be an integer.'))
+      .integer(t('devconsole~Port must be an integer.'))
       .min(1, t('devconsole~Port must be between 1 and 65535.'))
       .max(65535, t('devconsole~Port must be between 1 and 65535.')),
   });

@@ -2,11 +2,33 @@ import * as React from 'react';
 // FIXME upgrading redux types is causing many errors at this time
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
 // @ts-ignore
-import { connect } from 'react-redux';
-import * as _ from 'lodash';
 import { sortable } from '@patternfly/react-table';
-import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
+import { connect } from 'react-redux';
+import { NodeMetrics, setNodeMetrics } from '@console/internal/actions/ui';
+import { coFetchJSON } from '@console/internal/co-fetch';
+import {
+  Table,
+  TableRow,
+  TableData,
+  ListPage,
+  RowFunctionArgs,
+} from '@console/internal/components/factory';
+import { PROMETHEUS_BASE_PATH } from '@console/internal/components/graphs';
+import { getPrometheusURL, PrometheusEndpoint } from '@console/internal/components/graphs/helpers';
+import {
+  Kebab,
+  ResourceKebab,
+  ResourceLink,
+  Timestamp,
+  humanizeBinaryBytes,
+  formatCores,
+  LabelList,
+} from '@console/internal/components/utils';
+import { NodeModel, MachineModel } from '@console/internal/models';
+import { NodeKind, referenceForModel } from '@console/internal/module/k8s';
 import {
   getName,
   getUID,
@@ -18,33 +40,10 @@ import {
   withUserSettingsCompatibility,
   COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
   COLUMN_MANAGEMENT_CONFIGMAP_KEY,
-  useUserSettingsCompatibility,
 } from '@console/shared';
-import { NodeModel, MachineModel } from '@console/internal/models';
-import { NodeKind, referenceForModel } from '@console/internal/module/k8s';
-import {
-  Table,
-  TableRow,
-  TableData,
-  ListPage,
-  RowFunctionArgs,
-} from '@console/internal/components/factory';
-import {
-  Kebab,
-  ResourceKebab,
-  ResourceLink,
-  Timestamp,
-  humanizeBinaryBytes,
-  formatCores,
-  LabelList,
-} from '@console/internal/components/utils';
-import { NodeMetrics, setNodeMetrics } from '@console/internal/actions/ui';
-import { PROMETHEUS_BASE_PATH } from '@console/internal/components/graphs';
-import { coFetchJSON } from '@console/internal/co-fetch';
-import { getPrometheusURL, PrometheusEndpoint } from '@console/internal/components/graphs/helpers';
 import { nodeStatus } from '../../status/node';
-import NodeRoles from './NodeRoles';
 import { menuActions } from './menu-actions';
+import NodeRoles from './NodeRoles';
 import NodeStatus from './NodeStatus';
 import MarkAsSchedulablePopover from './popovers/MarkAsSchedulablePopover';
 
@@ -250,13 +249,8 @@ const NodesTableRow = connect<NodesRowMapFromStateProps, null, NodesTableRowProp
     rowKey,
     style,
     metrics,
+    tableColumns,
   }: NodesTableRowProps & NodesRowMapFromStateProps) => {
-    const [tableColumns, , loaded] = useUserSettingsCompatibility(
-      COLUMN_MANAGEMENT_CONFIGMAP_KEY,
-      COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
-      undefined,
-      true,
-    );
     const nodeName = getName(node);
     const nodeUID = getUID(node);
     const usedMem = metrics?.usedMemory?.[nodeName];
@@ -283,9 +277,7 @@ const NodesTableRow = connect<NodesRowMapFromStateProps, null, NodesTableRowProp
     const labels = getLabels(node);
     const zone = node.metadata.labels?.['topology.kubernetes.io/zone'];
     const columns: Set<string> =
-      loaded && tableColumns?.[columnManagementID]?.length > 0
-        ? new Set(tableColumns[columnManagementID])
-        : getSelectedColumns();
+      tableColumns?.length > 0 ? new Set(tableColumns) : getSelectedColumns();
     return (
       <TableRow id={nodeUID} index={index} trKey={rowKey} style={style}>
         <TableData className={nodeColumnInfo.name.classes}>
@@ -398,6 +390,7 @@ type NodesTableRowProps = {
   index: number;
   rowKey: string;
   style: object;
+  tableColumns: string[];
 };
 
 const NodesTable: React.FC<NodesTableProps &
@@ -410,6 +403,7 @@ const NodesTable: React.FC<NodesTableProps &
           index={rowArgs.index}
           rowKey={rowArgs.key}
           style={rowArgs.style}
+          tableColumns={rowArgs.customData?.tableColumns}
         />
       ),
       [],
@@ -428,6 +422,7 @@ const NodesTable: React.FC<NodesTableProps &
         showNamespaceOverride
         Header={NodeTableHeader}
         Row={Row}
+        customData={{ tableColumns: tableColumns?.[columnManagementID] }}
         virtualize
       />
     );
@@ -461,11 +456,12 @@ const fetchNodeMetrics = (): Promise<NodeMetrics> => {
     {
       key: 'usedStorage',
       query:
-        'sum by (instance) (node_filesystem_size_bytes{mountpoint="/"} - node_filesystem_free_bytes{mountpoint="/"})',
+        'sum by (instance) ((max by (device, instance) (node_filesystem_size_bytes{device=~"/.*"})) - (max by (device, instance) (node_filesystem_free_bytes{device=~"/.*"})))',
     },
     {
       key: 'totalStorage',
-      query: 'sum by (instance) (node_filesystem_size_bytes{mountpoint="/"})',
+      query:
+        'sum by (instance) (max by (device, instance) (node_filesystem_size_bytes{device=~"/.*"}))',
     },
     {
       key: 'cpu',

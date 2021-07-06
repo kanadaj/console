@@ -1,19 +1,21 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
+import * as fuzzy from 'fuzzysearch';
 import { FormGroup, Checkbox, Radio } from '@patternfly/react-core';
 import { FieldLevelHelp, Firehose } from '@console/internal/components/utils';
 import { getName, ResourceDropdown, useFlag } from '@console/shared';
 import { NetworkAttachmentDefinitionKind } from '@console/network-attachment-definition-plugin/src/types';
 import { NetworkAttachmentDefinitionModel } from '@console/network-attachment-definition-plugin';
-import { referenceForModel } from '@console/internal/module/k8s';
+import { referenceForModel, K8sResourceCommon } from '@console/internal/module/k8s';
 import { InternalClusterState, InternalClusterAction, ActionType } from '../internal-mode/reducer';
 import { State, Action } from '../attached-devices-mode/reducer';
 import { KMSConfigure } from '../../kms-config/kms-config';
-import { NetworkType } from '../../../types';
+import { NetworkType, NADSelectorType } from '../../../types';
 import { ValidationMessage, ValidationType } from '../../../utils/common-ocs-install-el';
 import { GUARDED_FEATURES } from '../../../features';
 import { setEncryptionDispatch } from '../../kms-config/utils';
 import { AdvancedSubscription } from '../subscription-icon';
+import { CEPH_STORAGE_NAMESPACE } from '../../../constants';
 import './install-wizard.scss';
 import './_configure.scss';
 
@@ -23,7 +25,7 @@ const StorageClassEncryptionLabel: React.FC = () => {
   return (
     <div className="ocs-install-encryption__pv-title">
       <span className="ocs-install-encryption__pv-title--padding">
-        {t('ceph-storage-plugin~Storage class encryption')}
+        {t('ceph-storage-plugin~StorageClass encryption')}
       </span>
       <AdvancedSubscription />
     </div>
@@ -34,8 +36,14 @@ const resources = [
   {
     isList: true,
     kind: referenceForModel(NetworkAttachmentDefinitionModel),
-    namespace: 'openshift-storage',
-    prop: 'ocsDevices',
+    namespace: CEPH_STORAGE_NAMESPACE,
+    prop: 'openshift-storage-nad',
+  },
+  {
+    isList: true,
+    kind: referenceForModel(NetworkAttachmentDefinitionModel),
+    namespace: 'default',
+    prop: 'default-nad',
   },
 ];
 
@@ -53,7 +61,7 @@ export const EncryptionFormGroup: React.FC<EncryptionFormGroupProps> = ({
   );
 
   const encryptionTooltip = t(
-    'ceph-storage-plugin~The storage cluster encryption level can be set to include all components under the cluster (including storage class and PVs) or to include only storage class encryption. PV encryption can use an auth token that will be used with the KMS configuration to allow multi-tenancy.',
+    'ceph-storage-plugin~The StorageCluster encryption level can be set to include all components under the cluster (including StorageClass and PVs) or to include only StorageClass encryption. PV encryption can use an auth token that will be used with the KMS configuration to allow multi-tenancy.',
   );
 
   React.useEffect(() => {
@@ -155,9 +163,9 @@ export const EncryptionFormGroup: React.FC<EncryptionFormGroupProps> = ({
               id="storage-class-encryption"
               isChecked={encryption.storageClass}
               label={<StorageClassEncryptionLabel />}
-              aria-label={t('ceph-storage-plugin~Storage class encryption')}
+              aria-label={t('ceph-storage-plugin~StorageClass encryption')}
               description={t(
-                'ceph-storage-plugin~A new storage class will be created with encryption enabled. Encryption key for each Persistent volume (block only) will be generated.',
+                'ceph-storage-plugin~An encryption key will be generated for each persistent volume (block) created using an encryption enabled StorageClass.',
               )}
               onChange={toggleStorageClassEncryption}
               className="ocs-install-encryption__form-checkbox"
@@ -200,20 +208,36 @@ export const NetworkFormGroup: React.FC<NetworkFormGroupProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const clusterNetworkName = React.useMemo(() => clusterNetwork?.split('/')?.[1], [clusterNetwork]);
+  const publicNetworkName = React.useMemo(() => publicNetwork?.split('/')?.[1], [publicNetwork]);
+
   const filterForPublicDevices = React.useCallback(
-    (device: NetworkAttachmentDefinitionKind) => clusterNetwork !== getName(device),
-    [clusterNetwork],
+    (device: NetworkAttachmentDefinitionKind) => clusterNetworkName !== getName(device),
+    [clusterNetworkName],
   );
 
   const filterForClusterDevices = React.useCallback(
-    (device: NetworkAttachmentDefinitionKind) => publicNetwork !== getName(device),
-    [publicNetwork],
+    (device: NetworkAttachmentDefinitionKind) => publicNetworkName !== getName(device),
+    [publicNetworkName],
   );
+
+  const autoCompleteFilter = (strText: string, item: React.ReactElement): boolean =>
+    fuzzy(strText, item?.props?.name);
+
   return (
     <>
       <FormGroup
         fieldId="configure-networking"
-        label={t('ceph-storage-plugin~Network')}
+        label={
+          <>
+            {t('ceph-storage-plugin~Network')}
+            <FieldLevelHelp>
+              {t(
+                'ceph-storage-plugin~The default SDN networking uses a single network for all data operations such read/write and also for control plane, such as data replication. Multus allows a network separation between the data operations and the control plane operations.',
+              )}
+            </FieldLevelHelp>
+          </>
+        }
         className="ceph__install-radio--inline"
       >
         <Radio
@@ -238,17 +262,20 @@ export const NetworkFormGroup: React.FC<NetworkFormGroupProps> = ({
           <FormGroup
             fieldId="configure-multus"
             label={t('ceph-storage-plugin~Public Network Interface')}
-            isRequired
           >
             <Firehose resources={resources}>
               <ResourceDropdown
                 dropDownClassName="ceph__multus-dropdown"
                 buttonClassName="ceph__multus-dropdown-button"
-                selectedKey={publicNetwork}
+                selectedKey={publicNetworkName}
                 placeholder={t('ceph-storage-plugin~Select a network')}
                 dataSelector={['metadata', 'name']}
-                onChange={(key, name) => setNetwork('Public', name)}
+                onChange={(_key, _name, selectedResource) =>
+                  setNetwork(NADSelectorType.PUBLIC, selectedResource)
+                }
                 resourceFilter={filterForPublicDevices}
+                autocompleteFilter={autoCompleteFilter}
+                showBadge
               />
             </Firehose>
           </FormGroup>
@@ -260,11 +287,15 @@ export const NetworkFormGroup: React.FC<NetworkFormGroupProps> = ({
               <ResourceDropdown
                 dropDownClassName="ceph__multus-dropdown"
                 buttonClassName="ceph__multus-dropdown-button"
-                selectedKey={clusterNetwork}
+                selectedKey={clusterNetworkName}
                 placeholder={t('ceph-storage-plugin~Select a network')}
                 dataSelector={['metadata', 'name']}
-                onChange={(key, name) => setNetwork('Cluster', name)}
+                onChange={(_key, _name, selectedResource) =>
+                  setNetwork(NADSelectorType.CLUSTER, selectedResource)
+                }
                 resourceFilter={filterForClusterDevices}
+                autocompleteFilter={autoCompleteFilter}
+                showBadge
               />
             </Firehose>
           </FormGroup>
@@ -285,5 +316,5 @@ type NetworkFormGroupProps = {
   networkType: NetworkType;
   publicNetwork: string;
   clusterNetwork: string;
-  setNetwork: any;
+  setNetwork: (type: NADSelectorType, resource: K8sResourceCommon) => void;
 };

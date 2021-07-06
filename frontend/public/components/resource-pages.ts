@@ -1,8 +1,11 @@
 import { Map as ImmutableMap } from 'immutable';
 import { ResourceDetailsPage, ResourcePage, ResourceListPage } from '@console/plugin-sdk';
-
+import {
+  ResourceDetailsPage as DynamicResourceDetailsPage,
+  ResourceListPage as DynamicResourceListPage,
+} from '@console/dynamic-plugin-sdk';
 import { ReportReference, ReportGenerationQueryReference } from './chargeback';
-import { referenceForModel, GroupVersionKind } from '../module/k8s';
+import { referenceForModel, GroupVersionKind, referenceForExtensionModel } from '../module/k8s';
 import {
   AlertmanagerModel,
   BuildConfigModel,
@@ -61,6 +64,7 @@ import {
   UserModel,
   VolumeSnapshotModel,
   VolumeSnapshotClassModel,
+  ClusterRoleBindingModel,
 } from '../models';
 
 const addResourcePage = (
@@ -75,8 +79,19 @@ const addResourcePage = (
   }
 };
 
+const addDynamicResourcePage = (
+  map: ImmutableMap<ResourceMapKey, ResourceMapValue>,
+  page: DynamicResourcePage,
+) => {
+  const key = referenceForExtensionModel(page.properties.model);
+  if (!map.has(key)) {
+    map.set(key, page.properties.component);
+  }
+};
+
 type ResourceMapKey = GroupVersionKind | string;
 type ResourceMapValue = () => Promise<React.ComponentType<any>>;
+type DynamicResourcePage = DynamicResourceListPage | DynamicResourceDetailsPage;
 
 export const baseDetailsPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
   .set(referenceForModel(ClusterServiceClassModel), () =>
@@ -229,6 +244,11 @@ export const baseDetailsPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
   .set(referenceForModel(RoleModel), () =>
     import('./RBAC/role' /* webpackChunkName: "role" */).then((m) => m.RolesDetailsPage),
   )
+  .set(referenceForModel(ClusterRoleBindingModel), () =>
+    import('./RBAC/role' /* webpackChunkName: "role" */).then(
+      (m) => m.ClusterRoleBindingsDetailsPage,
+    ),
+  )
   .set(referenceForModel(UserModel), () =>
     import('./user' /* webpackChunkName: "user" */).then((m) => m.UserDetailsPage),
   )
@@ -324,12 +344,18 @@ export const baseDetailsPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
     ).then((m) => m.default),
   );
 
-export const getResourceDetailsPages = (pluginPages: ResourceDetailsPage[] = []) =>
+export const getResourceDetailsPages = (
+  pluginPages: ResourceDetailsPage[] = [],
+  dynamicPluginPages: DynamicResourceDetailsPage[] = [],
+) =>
   ImmutableMap<ResourceMapKey, ResourceMapValue>()
     .merge(baseDetailsPages)
     .withMutations((map) => {
       pluginPages.forEach((page) => {
         addResourcePage(map, page);
+      });
+      dynamicPluginPages.forEach((page) => {
+        addDynamicResourcePage(map, page);
       });
     });
 
@@ -548,11 +574,17 @@ export const baseListPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
     ).then((m) => m.default),
   );
 
-export const getResourceListPages = (pluginPages: ResourceListPage[] = []) =>
+export const getResourceListPages = (
+  pluginPages: ResourceListPage[] = [],
+  dynamicPluginPages: DynamicResourceListPage[] = [],
+) =>
   ImmutableMap<ResourceMapKey, ResourceMapValue>()
     .merge(baseListPages)
     .withMutations((map) => {
       pluginPages.forEach((page) => {
         addResourcePage(map, page);
+      });
+      dynamicPluginPages.forEach((page) => {
+        addDynamicResourcePage(map, page);
       });
     });

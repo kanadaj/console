@@ -1,16 +1,18 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import { connect } from 'react-redux';
-import {
-  ResourceIcon,
-  SimpleTabNav,
-  ActionsMenu,
-  resourcePathFromModel,
-} from '@console/internal/components/utils';
-import * as UIActions from '@console/internal/actions/ui';
 import { observer } from '@patternfly/react-topology';
-import { modelFor } from '@console/internal/module/k8s';
+import { useTranslation } from 'react-i18next';
+import { connect } from 'react-redux';
+import { Link } from 'react-router-dom';
+import * as UIActions from '@console/internal/actions/ui';
+import {
+  ActionsMenu,
+  ResourceIcon,
+  resourcePathFromModel,
+  SimpleTabNav,
+} from '@console/internal/components/utils';
 import { getResource } from '@console/topology/src/utils';
+import { VirtualMachineModel } from '../models';
+import { getKubevirtAvailableModel } from '../models/kubevirtReferenceForModel';
 import { vmActions } from './components/kubevirtComponentFactory';
 import { TopologyVmDetailsPanel } from './TopologyVmDetailsPanel';
 import { TopologyVmResourcesPanel } from './TopologyVmResourcesPanel';
@@ -42,6 +44,7 @@ export const ConnectedTopologyVmPanel: React.FC<TopologyVmPanelProps> = ({
   vmNode,
   onClickTab,
 }: TopologyVmPanelProps) => {
+  const { t } = useTranslation();
   const name = vmNode.getLabel();
   const vmData = vmNode.getData();
   const vmObj = getResource(vmNode);
@@ -56,7 +59,11 @@ export const ConnectedTopologyVmPanel: React.FC<TopologyVmPanelProps> = ({
             <ResourceIcon className="co-m-resource-icon--lg" kind={vmObj.kind} />
             {name && (
               <Link
-                to={resourcePathFromModel(modelFor(vmObj.kind), name, namespace)}
+                to={resourcePathFromModel(
+                  getKubevirtAvailableModel(VirtualMachineModel),
+                  name,
+                  namespace,
+                )}
                 className="co-resource-item__resource-name"
               >
                 {name}
@@ -73,8 +80,8 @@ export const ConnectedTopologyVmPanel: React.FC<TopologyVmPanelProps> = ({
       <SimpleTabNav
         onClickTab={onClickTab}
         tabs={[
-          { name: 'Details', component: TopologyVmDetailsPanel },
-          { name: 'Resources', component: TopologyVmResourcesPanel },
+          { name: t('kubevirt-plugin~Details'), component: TopologyVmDetailsPanel },
+          { name: t('kubevirt-plugin~Resources'), component: TopologyVmResourcesPanel },
         ]}
         tabProps={{ vmNode }}
         additionalClassNames="co-m-horizontal-nav__menu--within-sidebar co-m-horizontal-nav__menu--within-overview-sidebar"

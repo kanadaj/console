@@ -1,32 +1,29 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Flex, FlexItem, Grid, GridItem, Stack, StackItem } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
+import { parsePrometheusDuration } from '@console/internal/components/utils/datetime';
 import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
 import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
 import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
 import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import { parsePrometheusDuration } from '@console/internal/components/utils/datetime';
-import { PipelineKind } from '../../../types';
-import PipelineMetricsTimeRangeDropdown from './PipelineMetricsTimeRangeDropdown';
-import PipelineMetricsRefreshDropdown from './PipelineMetricsRefreshDropdown';
+import { PipelineDetailsTabProps } from '../detail-page-tabs/types';
+import { useLatestPipelineRun } from '../hooks';
+import { GraphData } from './pipeline-metrics-utils';
 import PipelineMetricsEmptyState from './PipelineMetricsEmptyState';
-import PipelineSuccessRatioDonut from './PipelineSuccessRatioDonut';
+import PipelineMetricsRefreshDropdown from './PipelineMetricsRefreshDropdown';
+import PipelineMetricsTimeRangeDropdown from './PipelineMetricsTimeRangeDropdown';
+import PipelineRunCount from './PipelineRunCount';
 import PipelineRunDurationGraph from './PipelineRunDurationGraph';
 import PipelineRunTaskRunGraph from './PipelineRunTaskRunGraph';
-import { GraphData } from './pipeline-metrics-utils';
-import PipelineRunCount from './PipelineRunCount';
-import { useLatestPipelineRun } from '../hooks';
+import PipelineSuccessRatioDonut from './PipelineSuccessRatioDonut';
 
 import './PipelineMetrics.scss';
 
-interface PipelineMeticsProps {
-  obj: PipelineKind;
-}
-
-const PipelineMetrics: React.FC<PipelineMeticsProps> = ({ obj }) => {
+const PipelineMetrics: React.FC<PipelineDetailsTabProps> = ({ obj, customData }) => {
   const {
     metadata: { name, namespace },
   } = obj;
+  const { queryPrefix } = customData;
   const { t } = useTranslation();
   const latestPipelineRun = useLatestPipelineRun(name, namespace);
   const [timespan, setTimespan] = React.useState(parsePrometheusDuration('1w'));
@@ -85,6 +82,7 @@ const PipelineMetrics: React.FC<PipelineMeticsProps> = ({ obj }) => {
                   pipeline={obj}
                   loaded={loaded}
                   onLoad={graphOnLoad}
+                  queryPrefix={queryPrefix}
                 />
               </DashboardCardBody>
             </DashboardCard>
@@ -93,7 +91,7 @@ const PipelineMetrics: React.FC<PipelineMeticsProps> = ({ obj }) => {
             <DashboardCard>
               <DashboardCardHeader>
                 <DashboardCardTitle>
-                  {t('pipelines-plugin~Number of Pipeline Runs')}
+                  {t('pipelines-plugin~Number of PipelineRuns')}
                 </DashboardCardTitle>
               </DashboardCardHeader>
               <DashboardCardBody>
@@ -103,6 +101,7 @@ const PipelineMetrics: React.FC<PipelineMeticsProps> = ({ obj }) => {
                   pipeline={obj}
                   loaded={loaded}
                   onLoad={graphOnLoad}
+                  queryPrefix={queryPrefix}
                 />
               </DashboardCardBody>
             </DashboardCard>
@@ -112,7 +111,7 @@ const PipelineMetrics: React.FC<PipelineMeticsProps> = ({ obj }) => {
             <DashboardCard>
               <DashboardCardHeader>
                 <DashboardCardTitle>
-                  {t('pipelines-plugin~Pipeline Run Duration')}
+                  {t('pipelines-plugin~PipelineRun Duration')}
                 </DashboardCardTitle>
               </DashboardCardHeader>
               <DashboardCardBody>
@@ -122,6 +121,7 @@ const PipelineMetrics: React.FC<PipelineMeticsProps> = ({ obj }) => {
                   timespan={timespan}
                   loaded={loaded}
                   onLoad={graphOnLoad}
+                  queryPrefix={queryPrefix}
                 />
               </DashboardCardBody>
             </DashboardCard>
@@ -129,7 +129,7 @@ const PipelineMetrics: React.FC<PipelineMeticsProps> = ({ obj }) => {
           <GridItem xl2={5} xl={12} lg={12} md={12} sm={12}>
             <DashboardCard>
               <DashboardCardHeader>
-                <DashboardCardTitle>{t('pipelines-plugin~Task Run Duration')}</DashboardCardTitle>
+                <DashboardCardTitle>{t('pipelines-plugin~TaskRun Duration')}</DashboardCardTitle>
               </DashboardCardHeader>
               <DashboardCardBody>
                 <PipelineRunTaskRunGraph
@@ -138,6 +138,7 @@ const PipelineMetrics: React.FC<PipelineMeticsProps> = ({ obj }) => {
                   pipeline={obj}
                   loaded={loaded}
                   onLoad={graphOnLoad}
+                  queryPrefix={queryPrefix}
                 />
               </DashboardCardBody>
             </DashboardCard>

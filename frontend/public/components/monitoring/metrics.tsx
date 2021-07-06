@@ -8,8 +8,6 @@ import {
   EmptyStateBody,
   EmptyStateIcon,
   EmptyStateVariant,
-  Pagination,
-  PaginationVariant,
   Switch,
   Title,
 } from '@patternfly/react-core';
@@ -45,11 +43,9 @@ import { RootState } from '../../redux';
 import { fuzzyCaseInsensitive } from '../factory/table-filters';
 import { PrometheusData, PrometheusLabels, PROMETHEUS_BASE_PATH } from '../graphs';
 import { getPrometheusURL, PrometheusEndpoint } from '../graphs/helpers';
-import { getPrometheusExpressionBrowserURL } from '../graphs/prometheus-graph';
 import {
   ActionsMenu,
   Dropdown,
-  ExternalLink,
   getURLSearchParams,
   Kebab,
   LoadingInline,
@@ -59,6 +55,7 @@ import {
 import { setAllQueryArguments } from '../utils/router';
 import IntervalDropdown from './poll-interval-dropdown';
 import { colors, Error, QueryObj, QueryBrowser } from './query-browser';
+import TablePagination from './table-pagination';
 import { PrometheusAPIError } from './types';
 
 const operators = [
@@ -186,30 +183,6 @@ const MetricsActionsMenu = connect(
     setAllExpanded: UIActions.queryBrowserSetAllExpanded,
   },
 )(MetricsActionsMenu_);
-
-const headerPrometheusLinkStateToProps = ({ UI }: RootState) => {
-  const liveQueries = UI.getIn(['queryBrowser', 'queries']).filter(
-    (q) => q.get('isEnabled') && q.get('query'),
-  );
-  const queryStrings = _.map(liveQueries.toJS(), 'query');
-  const url = window.SERVER_FLAGS.prometheusPublicURL;
-  return {
-    url:
-      getPrometheusExpressionBrowserURL(url, queryStrings) ||
-      window.SERVER_FLAGS.prometheusPublicURL,
-  };
-};
-
-const HeaderPrometheusLink_ = ({ url }) => {
-  const { t } = useTranslation();
-
-  return url ? (
-    <span className="monitoring-header-link">
-      <ExternalLink href={url} text={t('public~Platform Prometheus UI')} />
-    </span>
-  ) : null;
-};
-const HeaderPrometheusLink = connect(headerPrometheusLinkStateToProps)(HeaderPrometheusLink_);
 
 const graphStateToProps = ({ UI }: RootState) => ({
   hideGraphs: !!UI.getIn(['monitoring', 'hideGraphs']),
@@ -612,39 +585,6 @@ const queryTableStateToProps = ({ UI }: RootState, { index }) => ({
   series: UI.getIn(['queryBrowser', 'queries', index, 'series']),
 });
 
-const defaultPaginationOptions = [10, 20, 50, 100, 200, 500].map((n) => ({
-  title: n.toString(),
-  value: n,
-}));
-
-export const TablePagination = ({
-  itemCount,
-  page,
-  perPage,
-  setPage,
-  setPerPage,
-  paginationOptions = defaultPaginationOptions,
-}) => {
-  const onPerPageSelect = (e, v) => {
-    // When changing the number of results per page, keep the start row approximately the same
-    const firstRow = (page - 1) * perPage;
-    setPage(Math.floor(firstRow / v) + 1);
-    setPerPage(v);
-  };
-
-  return (
-    <Pagination
-      itemCount={itemCount}
-      onPerPageSelect={onPerPageSelect}
-      onSetPage={(e, v) => setPage(v)}
-      page={page}
-      perPage={perPage}
-      perPageOptions={paginationOptions}
-      variant={PaginationVariant.bottom}
-    />
-  );
-};
-
 const QueryTable_: React.FC<QueryTableProps> = ({
   index,
   isEnabled,
@@ -734,18 +674,21 @@ const QueryTable_: React.FC<QueryTableProps> = ({
 
   let columns, rows;
   if (data.resultType === 'scalar') {
-    columns = ['', { title: 'Value', ...cellProps }];
+    columns = ['', { title: t('public~Value'), ...cellProps }];
     rows = [[buttonCell({}), _.get(result, '[1]')]];
+  } else if (data.resultType === 'string') {
+    columns = [{ title: t('public~Value'), ...cellProps }];
+    rows = [[result?.[1]]];
   } else {
     const allLabelKeys = _.uniq(_.flatMap(result, ({ metric }) => Object.keys(metric))).sort();
 
     columns = [
       '',
       ...allLabelKeys.map((k) => ({
-        title: <span>{k === '__name__' ? 'Name' : k}</span>,
+        title: <span>{k === '__name__' ? t('public~Name') : k}</span>,
         ...cellProps,
       })),
-      { title: 'Value', ...cellProps },
+      { title: t('public~Value'), ...cellProps },
     ];
 
     let rowMapper;
@@ -1020,10 +963,7 @@ const QueryBrowserPage_: React.FC<QueryBrowserPageProps> = ({ deleteAll }) => {
       </Helmet>
       <div className="co-m-nav-title">
         <h1 className="co-m-pane__heading">
-          <span>
-            {t('public~Metrics')}
-            <HeaderPrometheusLink />
-          </span>
+          <span>{t('public~Metrics')}</span>
           <div className="co-actions">
             <PollIntervalDropdown />
             <MetricsActionsMenu />

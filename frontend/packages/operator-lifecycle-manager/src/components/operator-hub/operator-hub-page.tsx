@@ -1,8 +1,10 @@
 import * as React from 'react';
 import * as _ from 'lodash';
 import { Helmet } from 'react-helmet';
-import { Link } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import { match } from 'react-router';
+import { Link } from 'react-router-dom';
+import { ErrorBoundaryFallback } from '@console/internal/components/error';
 import {
   Firehose,
   PageHeading,
@@ -11,25 +13,24 @@ import {
   ExternalLink,
   skeletonCatalog,
 } from '@console/internal/components/utils';
-import { withFallback } from '@console/shared/src/components/error/error-boundary';
-import { ErrorBoundaryFallback } from '@console/internal/components/error';
 import { referenceForModel } from '@console/internal/module/k8s';
 import { fromRequirements } from '@console/internal/module/k8s/selector';
+import { withFallback } from '@console/shared/src/components/error/error-boundary';
+import { parseJSONAnnotation } from '@console/shared/src/utils/annotations';
+import { iconFor } from '..';
+import { OPERATOR_TYPE_ANNOTATION, NON_STANDALONE_ANNOTATION_VALUE } from '../../const';
 import { PackageManifestModel, OperatorGroupModel, SubscriptionModel } from '../../models';
 import { PackageManifestKind, OperatorGroupKind, SubscriptionKind } from '../../types';
-import { OPERATOR_TYPE_ANNOTATION, NON_STANDALONE_ANNOTATION_VALUE } from '../../const';
-import { iconFor } from '..';
 import { installedFor, subscriptionFor } from '../operator-group';
-import { getCatalogSourceDisplayName } from './operator-hub-utils';
 import { OperatorHubTileView } from './operator-hub-items';
+import { getCatalogSourceDisplayName } from './operator-hub-utils';
 import {
   OperatorHubItem,
   OperatorHubCSVAnnotations,
   InstalledState,
   OperatorHubCSVAnnotationKey,
+  InfraFeatures,
 } from './index';
-import { parseJSONAnnotation } from '@console/shared/src/utils/annotations';
-import { Trans, useTranslation } from 'react-i18next';
 
 const ANNOTATIONS_WITH_JSON = [
   OperatorHubCSVAnnotationKey.infrastructureFeatures,
@@ -71,12 +72,17 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
           const { currentCSVDesc } = (channels || []).find(({ name }) => name === defaultChannel);
           const currentCSVAnnotations: OperatorHubCSVAnnotations =
             currentCSVDesc?.annotations ?? {};
-          const [infraFeatures, validSubscription] = ANNOTATIONS_WITH_JSON.map((annotationKey) => {
-            return parseJSONAnnotation(currentCSVAnnotations, annotationKey, () =>
-              // eslint-disable-next-line no-console
-              console.warn(`Error parsing annotation in PackageManifest ${pkg.metadata.name}`),
-            );
-          });
+          const [parsedInfraFeatures = [], validSubscription] = ANNOTATIONS_WITH_JSON.map(
+            (annotationKey) => {
+              return parseJSONAnnotation(currentCSVAnnotations, annotationKey, () =>
+                // eslint-disable-next-line no-console
+                console.warn(`Error parsing annotation in PackageManifest ${pkg.metadata.name}`),
+              );
+            },
+          );
+          const filteredInfraFeatures = _.uniq(
+            _.compact(_.map(parsedInfraFeatures, (key) => InfraFeatures[key])),
+          );
 
           const {
             certifiedLevel,
@@ -131,7 +137,7 @@ export const OperatorHubList: React.FC<OperatorHubListProps> = ({
             marketplaceRemoteWorkflow,
             marketplaceSupportWorkflow,
             validSubscription,
-            infraFeatures,
+            infraFeatures: filteredInfraFeatures,
             keywords: currentCSVDesc?.keywords ?? [],
           };
         },

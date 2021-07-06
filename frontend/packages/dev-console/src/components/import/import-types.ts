@@ -1,13 +1,12 @@
 import { ValidatedOptions } from '@patternfly/react-core';
-import { K8sResourceKind, ContainerPort } from '@console/internal/module/k8s';
-import { DeploymentModel, DeploymentConfigModel } from '@console/internal/models';
 import { WatchK8sResultsObject } from '@console/internal/components/utils/k8s-watch-hook';
-import { LazyLoader } from '@console/plugin-sdk';
-import { NameValuePair, NameValueFromPair } from '@console/shared';
-import { ServiceModel } from '@console/knative-plugin/src/models';
+import { DeploymentModel, DeploymentConfigModel } from '@console/internal/models';
+import { K8sResourceKind, ContainerPort } from '@console/internal/module/k8s';
 import { PipelineData } from '@console/pipelines-plugin/src/components/import/import-types';
+import { LazyLoader } from '@console/plugin-sdk';
+import { NameValuePair, NameValueFromPair, LimitsData } from '@console/shared';
 import { NormalizedBuilderImages } from '../../utils/imagestream-utils';
-import { HealthCheckProbe } from '../health-checks/health-checks-types';
+import { HealthCheckFormProbe } from '../health-checks/health-checks-types';
 
 export interface DeployImageFormProps {
   builderImages?: NormalizedBuilderImages;
@@ -83,12 +82,14 @@ export interface DeployImageFormData {
   serverless?: ServerlessData;
   pipeline?: PipelineData;
   labels: { [name: string]: string };
+  annotations?: { [name: string]: string };
   env?: { [name: string]: string };
   route: RouteData;
   build: BuildData;
   deployment: DeploymentData;
   limits: LimitsData;
-  healthChecks: HealthChecksData;
+  healthChecks: HealthChecksFormData;
+  fileUpload?: FileUploadData;
 }
 
 export type FileUploadData = {
@@ -112,7 +113,7 @@ export interface BaseFormData {
   deployment: DeploymentData;
   labels: { [name: string]: string };
   limits: LimitsData;
-  healthChecks: HealthChecksData;
+  healthChecks: HealthChecksFormData;
 }
 export interface UploadJarFormData extends BaseFormData {
   fileUpload: FileUploadData;
@@ -174,6 +175,7 @@ export interface DockerData {
 type DevfileData = {
   devfilePath?: string;
   devfileContent?: string;
+  devfileSourceUrl?: string;
   devfileHasError: boolean;
   devfileSuggestedResources?: DevfileSuggestedResources;
 };
@@ -215,6 +217,7 @@ export interface BuildData {
   };
   env: (NameValuePair | NameValueFromPair)[];
   strategy: string;
+  source?: { type: string };
 }
 
 export interface DeploymentData {
@@ -268,9 +271,10 @@ export enum Resources {
 }
 
 export const ReadableResourcesNames = {
-  [Resources.OpenShift]: DeploymentConfigModel.label,
-  [Resources.Kubernetes]: DeploymentModel.label,
-  [Resources.KnativeService]: `Knative ${ServiceModel.label}`,
+  [Resources.OpenShift]: DeploymentConfigModel.labelKey,
+  [Resources.Kubernetes]: DeploymentModel.labelKey,
+  // t('devconsole~Serverless Deployment')
+  [Resources.KnativeService]: `devconsole~Serverless Deployment`,
 };
 
 export interface ImportData {
@@ -295,20 +299,6 @@ export enum InsecureTrafficTypes {
 export enum PassthroughInsecureTrafficTypes {
   None = 'None',
   Redirect = 'Redirect',
-}
-
-export interface LimitsData {
-  cpu: ResourceType;
-  memory: ResourceType;
-}
-
-export interface ResourceType {
-  request: number | string;
-  requestUnit: string;
-  defaultRequestUnit: string;
-  limit: number | string;
-  limitUnit: string;
-  defaultLimitUnit: string;
 }
 
 export interface AutoscaleWindowType {
@@ -340,10 +330,11 @@ export enum ImportOptions {
   HELMCHARTS = 'HELMCHARTS',
   SAMPLES = 'SAMPLES',
   EVENTCHANNEL = 'EVENTCHANNEL',
+  UPLOADJAR = 'UPLOADJAR',
 }
 
-export interface HealthChecksData {
-  readinessProbe: HealthCheckProbe;
-  livenessProbe: HealthCheckProbe;
-  startupProbe?: HealthCheckProbe;
+export interface HealthChecksFormData {
+  readinessProbe: HealthCheckFormProbe;
+  livenessProbe: HealthCheckFormProbe;
+  startupProbe?: HealthCheckFormProbe;
 }

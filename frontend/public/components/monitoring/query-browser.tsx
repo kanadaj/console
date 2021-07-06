@@ -49,19 +49,23 @@ import {
   useSafeFetch,
 } from '../utils';
 import {
+  dateFormatterNoYear,
+  dateTimeFormatterWithSeconds,
   formatPrometheusDuration,
-  getLocaleDate,
   parsePrometheusDuration,
-  twentyFourHourTime,
+  timeFormatter,
+  timeFormatterWithSeconds,
 } from '../utils/datetime';
 import { PrometheusAPIError } from './types';
 import { ONE_MINUTE } from '@console/shared/src/constants/time';
 
 const spans = ['5m', '15m', '30m', '1h', '2h', '6h', '12h', '1d', '2d', '1w', '2w'];
 const dropdownItems = _.zipObject(spans, spans);
-// Note: Victory incorrectly typed ThemeBaseProps.padding as number instead of PaddingProps
-// @ts-ignore
-const theme = getCustomTheme(ChartThemeColor.multi, ChartThemeVariant.light, queryBrowserTheme);
+const theme = getCustomTheme(
+  ChartThemeColor.multiUnordered,
+  ChartThemeVariant.light,
+  queryBrowserTheme,
+);
 export const colors = theme.line.colorScale;
 
 // Use exponential notation for small or very large numbers to avoid labels with too many characters
@@ -194,7 +198,9 @@ const Tooltip_: React.FC<TooltipProps> = ({ activePoints, center, height, style,
             <div className="query-browser__tooltip-arrow" />
             <div className="query-browser__tooltip">
               <div className="query-browser__tooltip-group">
-                <div className="query-browser__tooltip-time">{twentyFourHourTime(time, true)}</div>
+                <div className="query-browser__tooltip-time">
+                  {dateTimeFormatterWithSeconds.format(time)}
+                </div>
               </div>
               {allSeries.map((s, i) => (
                 <div className="query-browser__tooltip-group" key={i}>
@@ -249,10 +255,19 @@ const formatLabels = (labels: PrometheusLabels) => {
 
 type GraphSeries = GraphDataPoint[] | null;
 
-const getXDomain = (endTime, span): AxisDomain => [endTime - span, endTime];
+const getXDomain = (endTime: number, span: number): AxisDomain => [endTime - span, endTime];
 
 const Graph: React.FC<GraphProps> = React.memo(
-  ({ allSeries, disabledSeries, formatLegendLabel, isStack, span, width, fixedXDomain }) => {
+  ({
+    allSeries,
+    disabledSeries,
+    fixedXDomain,
+    formatSeriesTitle,
+    isStack,
+    showLegend,
+    span,
+    width,
+  }) => {
     const data: GraphSeries[] = [];
     const tooltipSeriesNames: string[] = [];
     const legendData: { name: string }[] = [];
@@ -271,8 +286,8 @@ const Graph: React.FC<GraphProps> = React.memo(
       _.each(series, ([metric, values]) => {
         // Ignore any disabled series
         data.push(_.some(disabledSeries[i], (s) => _.isEqual(s, metric)) ? null : values);
-        if (formatLegendLabel) {
-          const name = formatLegendLabel(metric, i);
+        if (formatSeriesTitle) {
+          const name = formatSeriesTitle(metric, i);
           legendData.push({ name });
           tooltipSeriesNames.push(name);
         } else {
@@ -319,10 +334,16 @@ const Graph: React.FC<GraphProps> = React.memo(
 
     const xAxisTickCount = Math.round(width / 100);
     const xAxisTickShowSeconds = span < xAxisTickCount * ONE_MINUTE;
-    const xAxisTickFormat =
-      span > parsePrometheusDuration('1d')
-        ? (d) => `${getLocaleDate(d, { month: 'short', day: 'numeric' })}\n${twentyFourHourTime(d)}`
-        : (d) => twentyFourHourTime(d, xAxisTickShowSeconds);
+    const xAxisTickFormat = (d) => {
+      if (span > parsePrometheusDuration('1d')) {
+        // Add a newline between the date and time so tick labels don't overlap.
+        return `${dateFormatterNoYear.format(d)}\n${timeFormatter.format(d)}`;
+      }
+      if (xAxisTickShowSeconds) {
+        return timeFormatterWithSeconds.format(d);
+      }
+      return timeFormatter.format(d);
+    };
 
     const GroupComponent = isStack ? ChartStack : ChartGroup;
     const ChartComponent = isStack ? ChartArea : ChartLine;
@@ -369,7 +390,7 @@ const Graph: React.FC<GraphProps> = React.memo(
             );
           })}
         </GroupComponent>
-        {!_.isEmpty(legendData) && (
+        {showLegend && !_.isEmpty(legendData) && (
           <ChartLegend
             data={legendData}
             groupComponent={<LegendContainer />}
@@ -445,9 +466,10 @@ const ZoomableGraph: React.FC<ZoomableGraphProps> = ({
   allSeries,
   disabledSeries,
   fixedXDomain,
-  formatLegendLabel,
+  formatSeriesTitle,
   isStack,
   onZoom,
+  showLegend,
   span,
   width,
 }) => {
@@ -516,8 +538,9 @@ const ZoomableGraph: React.FC<ZoomableGraphProps> = ({
         allSeries={allSeries}
         disabledSeries={disabledSeries}
         fixedXDomain={fixedXDomain}
-        formatLegendLabel={formatLegendLabel}
+        formatSeriesTitle={formatSeriesTitle}
         isStack={isStack}
+        showLegend={showLegend}
         span={span}
         width={width}
       />
@@ -531,7 +554,8 @@ const Loading = () => (
   </div>
 );
 
-const getMaxSamplesForSpan = (span) => _.clamp(Math.round(span / minStep), minSamples, maxSamples);
+const getMaxSamplesForSpan = (span: number) =>
+  _.clamp(Math.round(span / minStep), minSamples, maxSamples);
 
 const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   defaultSamples,
@@ -540,7 +564,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   disableZoom,
   filterLabels,
   fixedEndTime,
-  formatLegendLabel,
+  formatSeriesTitle,
   GraphLink,
   hideControls,
   isStack = false,
@@ -548,11 +572,12 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   onZoom,
   pollInterval,
   queries,
+  showLegend,
   showStackedControl = false,
   timespan,
+  wrapperClassName,
 }) => {
   const { t } = useTranslation();
-
   const hideGraphs = useSelector(({ UI }: RootState) => !!UI.getIn(['monitoring', 'hideGraphs']));
   const tickInterval = useSelector(
     ({ UI }: RootState) => pollInterval ?? UI.getIn(['queryBrowser', 'pollInterval']),
@@ -563,7 +588,6 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   // For the default time span, use the first of the suggested span options that is at least as long
   // as defaultTimespan
   const defaultSpanText = spans.find((s) => parsePrometheusDuration(s) >= defaultTimespan);
-
   // If we have both `timespan` and `defaultTimespan`, `timespan` takes precedence
   const [span, setSpan] = React.useState(timespan || parsePrometheusDuration(defaultSpanText));
 
@@ -601,6 +625,12 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
       setXDomain(getXDomain(fixedEndTime, span));
     }
   }, [fixedEndTime, span]);
+
+  React.useEffect(() => {
+    if (!fixedEndTime) {
+      setXDomain(undefined);
+    }
+  }, [fixedEndTime]);
 
   // Clear any existing series data when the namespace is changed
   React.useEffect(() => {
@@ -688,7 +718,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
 
   // Don't poll if an end time was set (because the latest data is not displayed) or if the graph is
   // hidden. Otherwise use a polling interval relative to the graph's timespan.
-  let delay;
+  let delay: number;
   if (endTime || hideGraphs || tickInterval === null) {
     delay = null;
   } else if (tickInterval > 0) {
@@ -733,17 +763,26 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
 
   if (isRangeVector) {
     return (
-      <GraphEmptyState title="Ungraphable results">
-        Query results include range vectors, which cannot be graphed. Try adding a function to
-        transform the data.
+      <GraphEmptyState title={t('public~Ungraphable results')}>
+        {t(
+          'public~Query results include range vectors, which cannot be graphed. Try adding a function to transform the data.',
+        )}
+      </GraphEmptyState>
+    );
+  }
+
+  if (error?.json?.error?.match(/invalid expression type "string"/)) {
+    return (
+      <GraphEmptyState title={t('public~Ungraphable results')}>
+        {t('public~Query result is a string, which cannot be graphed.')}
       </GraphEmptyState>
     );
   }
 
   if (isDatasetTooBig) {
     return (
-      <GraphEmptyState title="Ungraphable results">
-        The resulting dataset is too large to graph.
+      <GraphEmptyState title={t('public~Ungraphable results')}>
+        {t('public~The resulting dataset is too large to graph.')}
       </GraphEmptyState>
     );
   }
@@ -760,7 +799,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
 
   return (
     <div
-      className={classNames('query-browser__wrapper', {
+      className={classNames('query-browser__wrapper', wrapperClassName, {
         'graph-empty-state': isGraphDataEmpty,
         'graph-empty-state__loaded': isGraphDataEmpty && !updating,
       })}
@@ -794,13 +833,13 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
             <Alert
               isInline
               className="co-alert"
-              title="Displaying with reduced resolution due to large dataset."
+              title={t('public~Displaying with reduced resolution due to large dataset.')}
               variant="info"
             />
           )}
           <div
             className={classNames('graph-wrapper graph-wrapper--query-browser', {
-              'graph-wrapper--query-browser--with-legend': !!formatLegendLabel,
+              'graph-wrapper--query-browser--with-legend': showLegend && !!formatSeriesTitle,
             })}
           >
             <div ref={containerRef} style={{ width: '100%' }}>
@@ -811,8 +850,9 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
                       allSeries={graphData}
                       disabledSeries={disabledSeries}
                       fixedXDomain={xDomain}
-                      formatLegendLabel={formatLegendLabel}
+                      formatSeriesTitle={formatSeriesTitle}
                       isStack={canStack && isStacked}
+                      showLegend={showLegend}
                       span={span}
                       width={width}
                     />
@@ -821,9 +861,10 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
                       allSeries={graphData}
                       disabledSeries={disabledSeries}
                       fixedXDomain={xDomain}
-                      formatLegendLabel={formatLegendLabel}
+                      formatSeriesTitle={formatSeriesTitle}
                       isStack={canStack && isStacked}
                       onZoom={zoomableGraphOnZoom}
+                      showLegend={showLegend}
                       span={span}
                       width={width}
                     />
@@ -857,7 +898,7 @@ export type QueryObj = {
   text?: string;
 };
 
-export type FormatLegendLabel = (labels: PrometheusLabels, i?: number) => string;
+export type FormatSeriesTitle = (labels: PrometheusLabels, i?: number) => string;
 
 type ErrorProps = {
   error: PrometheusAPIError;
@@ -873,8 +914,9 @@ type GraphProps = {
   allSeries: Series[][];
   disabledSeries?: PrometheusLabels[][];
   fixedXDomain?: AxisDomain;
-  formatLegendLabel?: FormatLegendLabel;
+  formatSeriesTitle?: FormatSeriesTitle;
   isStack?: boolean;
+  showLegend?: boolean;
   span: number;
   width: number;
 };
@@ -890,7 +932,7 @@ export type QueryBrowserProps = {
   disableZoom?: boolean;
   filterLabels?: PrometheusLabels;
   fixedEndTime?: number;
-  formatLegendLabel?: FormatLegendLabel;
+  formatSeriesTitle?: FormatSeriesTitle;
   GraphLink?: React.ComponentType<{}>;
   hideControls?: boolean;
   isStack?: boolean;
@@ -898,8 +940,10 @@ export type QueryBrowserProps = {
   onZoom?: GraphOnZoom;
   pollInterval?: number;
   queries: string[];
+  showLegend?: boolean;
   showStackedControl?: boolean;
   timespan?: number;
+  wrapperClassName?: string;
 };
 
 type SpanControlsProps = {

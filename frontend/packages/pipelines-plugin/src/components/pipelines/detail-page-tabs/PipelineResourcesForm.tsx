@@ -1,8 +1,8 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import { FormikProps, FormikValues, getIn } from 'formik';
-import { useTranslation } from 'react-i18next';
 import { Form } from '@patternfly/react-core';
+import { FormikProps, FormikValues, getIn } from 'formik';
+import * as _ from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { useAccessReview } from '@console/internal/components/utils';
 import { FormFooter } from '@console/shared';
 import PipelineResources from './PipelineResources';
@@ -30,22 +30,22 @@ const PipelineResourcesForm: React.FC<PipelineResourcesFormProps> = ({
   const disableSubmit = !dirty || !_.isEmpty(_.compact(getIn(errors, 'resources')));
   return (
     <Form onSubmit={handleSubmit}>
-      <div className="co-m-pane__form">
+      <div className="co-m-pane__body">
         <PipelineResources fieldName="resources" isReadOnly={!pipelineResourceAccess} />
-        <hr />
-        {pipelineResourceAccess && (
-          <FormFooter
-            handleReset={handleReset}
-            isSubmitting={isSubmitting}
-            errorMessage={status && status.submitError}
-            successMessage={status && !dirty && status.success}
-            disableSubmit={disableSubmit}
-            showAlert={!disableSubmit}
-            submitLabel={t('pipelines-plugin~Save')}
-            resetLabel={t('pipelines-plugin~Reload')}
-          />
-        )}
       </div>
+      {pipelineResourceAccess && (
+        <FormFooter
+          handleReset={handleReset}
+          isSubmitting={isSubmitting}
+          errorMessage={status && status.submitError}
+          successMessage={status && !dirty && status.success}
+          disableSubmit={disableSubmit}
+          showAlert={!disableSubmit}
+          submitLabel={t('pipelines-plugin~Save')}
+          resetLabel={t('pipelines-plugin~Reload')}
+          sticky
+        />
+      )}
     </Form>
   );
 };

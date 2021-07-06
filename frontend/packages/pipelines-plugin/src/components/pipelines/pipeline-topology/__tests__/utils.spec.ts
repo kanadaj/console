@@ -1,5 +1,13 @@
 import { PipelineExampleNames, pipelineTestData } from '../../../../test-data/pipeline-data';
-import { getLastRegularTasks, getTopologyNodesEdges, getFinallyTaskHeight } from '../utils';
+import {
+  getLastRegularTasks,
+  getTopologyNodesEdges,
+  getFinallyTaskHeight,
+  hasWhenExpression,
+  getFinallyTaskWidth,
+  taskHasWhenExpression,
+  nodesHasWhenExpression,
+} from '../utils';
 
 const pipelineData = pipelineTestData[PipelineExampleNames.COMPLEX_PIPELINE];
 const { pipeline } = pipelineData;
@@ -58,6 +66,76 @@ describe('getFinallyTaskHeight', () => {
     const numberOfTasks = 5;
     const disableBuilder = true;
     expect(getFinallyTaskHeight(numberOfTasks, disableBuilder)).toBe(290);
-    expect(getFinallyTaskHeight(numberOfTasks, !disableBuilder)).toBe(320);
+    expect(getFinallyTaskHeight(numberOfTasks, !disableBuilder)).toBe(340);
+  });
+});
+
+describe('getFinallyTaskWidth', () => {
+  it('expect to return larger width if any nodes present in finally section', () => {
+    const numberOfTasks = 5;
+    expect(getFinallyTaskWidth(numberOfTasks)).toBe(205);
+  });
+
+  it('expect to return smaller width if nodes are not present in finally section', () => {
+    const numberOfTasks = 0;
+    expect(getFinallyTaskWidth(numberOfTasks)).toBe(180);
+  });
+});
+
+describe('taskHasWhenExpression', () => {
+  const conditionalPipeline = pipelineTestData[PipelineExampleNames.CONDITIONAL_PIPELINE];
+
+  it('expect to return false if the task does not contain when expressions', () => {
+    const taskWithoutWhenExpression = conditionalPipeline.pipeline.spec.tasks[0];
+    expect(taskHasWhenExpression(taskWithoutWhenExpression)).toBe(false);
+  });
+
+  it('expect to return true if the task contains when expressions', () => {
+    const taskWithWhenExpression = conditionalPipeline.pipeline.spec.tasks[1];
+    expect(taskHasWhenExpression(taskWithWhenExpression)).toBe(true);
+  });
+});
+
+describe('nodesHasWhenExpression', () => {
+  const conditionalPipeline = pipelineTestData[PipelineExampleNames.CONDITIONAL_PIPELINE];
+  const { pipeline: pipelineWithWhenExpression } = conditionalPipeline;
+
+  it('expect to return false if the nodes does not contain when expressions', () => {
+    const { nodes } = getTopologyNodesEdges({
+      ...pipelineWithWhenExpression,
+      spec: {
+        ...pipelineWithWhenExpression.spec,
+        tasks: [pipelineWithWhenExpression.spec.tasks[0]],
+      },
+    });
+    expect(nodesHasWhenExpression(nodes)).toBe(false);
+  });
+
+  it('expect to return true if the node contains when expressions', () => {
+    const { nodes } = getTopologyNodesEdges(pipelineWithWhenExpression);
+    expect(nodesHasWhenExpression(nodes)).toBe(true);
+  });
+});
+
+describe('hasWhenExpression', () => {
+  const conditionalPipeline = pipelineTestData[PipelineExampleNames.CONDITIONAL_PIPELINE];
+  const { pipeline: pipelineWithWhen } = conditionalPipeline;
+  const pipelineWithWhenAndFinally = {
+    ...pipelineWithWhen,
+    spec: {
+      ...pipelineWithWhen.spec,
+      finally: [{ ...pipelineWithWhen.spec.tasks[0], name: 'finally-task-with-when' }],
+    },
+  };
+  it('expect to return false if the pipeline does not contain when expression', () => {
+    expect(hasWhenExpression(pipeline)).toBe(false);
+  });
+
+  it('expect to return true if the regular tasks in the pipeline contains when expression', () => {
+    expect(hasWhenExpression(pipelineWithWhen)).toBe(true);
+  });
+
+  it('expect to return true if the finally tasks in the pipeline contains when expression', () => {
+    expect(hasWhenExpression(pipelineWithWhenAndFinally)).toBe(true);
   });
 });

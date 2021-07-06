@@ -1,12 +1,12 @@
-import { getPVCJSON } from '../helpers/pvc';
 import { checkErrors } from '../../../integration-tests-cypress/support';
+import { getPVCJSON } from '../helpers/pvc';
 
 describe('Check OCS Dashboards', () => {
   before(() => {
     cy.login();
     cy.visit('/');
     cy.install();
-    cy.visit('/dashboards/persistent-storage');
+    cy.visit('/ocs-dashboards');
   });
 
   afterEach(() => {

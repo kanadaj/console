@@ -1,27 +1,28 @@
 import * as React from 'react';
-import { useTranslation } from 'react-i18next';
 import { CardActions } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
+import {
+  DashboardItemProps,
+  withDashboardResources,
+} from '@console/internal/components/dashboard/with-dashboard-resources';
+import { FirehoseResource, FirehoseResult, resourcePath } from '@console/internal/components/utils';
+import { EventModel } from '@console/internal/models';
+import { EventKind } from '@console/internal/module/k8s';
+import { getName, getNamespace } from '@console/shared';
+import ActivityBody, {
+  PauseButton,
+  RecentEventsBodyContent,
+} from '@console/shared/src/components/dashboard/activity-card/ActivityBody';
 import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
 import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
 import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
 import DashboardCardLink from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardLink';
 import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import ActivityBody, {
-  RecentEventsBodyContent,
-  PauseButton,
-} from '@console/shared/src/components/dashboard/activity-card/ActivityBody';
-import { getName, getNamespace } from '@console/shared';
-import { resourcePath, FirehoseResource, FirehoseResult } from '@console/internal/components/utils';
-import { EventModel } from '@console/internal/models';
-import { EventKind } from '@console/internal/module/k8s';
-import {
-  withDashboardResources,
-  DashboardItemProps,
-} from '@console/internal/components/dashboard/with-dashboard-resources';
-import { VirtualMachineModel, VirtualMachineInstanceModel } from '../../../models';
+import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../../models';
+import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
 import { getVmEventsFilters } from '../../../selectors/event';
-import { VMDashboardContext } from '../../vms/vm-dashboard-context';
 import { VMILikeEntityKind } from '../../../types/vmLike';
+import { VMDashboardContext } from '../../vms/vm-dashboard-context';
 
 import './vm-activity.scss';
 
@@ -69,7 +70,9 @@ export const VMActivityCard: React.FC = () => {
   const name = getName(vmiLike);
   const namespace = getNamespace(vmiLike);
   const viewEventsLink = `${resourcePath(
-    vm ? VirtualMachineModel.kind : VirtualMachineInstanceModel.kind,
+    vm
+      ? kubevirtReferenceForModel(VirtualMachineModel)
+      : kubevirtReferenceForModel(VirtualMachineInstanceModel),
     name,
     namespace,
   )}/events`;

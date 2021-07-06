@@ -1,14 +1,12 @@
 import { PipelineModel, PipelineRunModel } from '../../models';
+import { pipelineTestData, PipelineExampleNames, DataState } from '../../test-data/pipeline-data';
 import {
   stopPipelineRun,
   rerunPipelineAndRedirect,
   reRunPipelineRun,
   startPipeline,
   getPipelineKebabActions,
-  editPipeline,
 } from '../pipeline-actions';
-import { mockPipelinesJSON } from './pipeline-test-data';
-import { pipelineTestData, PipelineExampleNames, DataState } from '../../test-data/pipeline-data';
 
 const samplePipeline = pipelineTestData[PipelineExampleNames.SIMPLE_PIPELINE].pipeline;
 const samplePipelineRun =
@@ -36,6 +34,13 @@ describe('PipelineAction testing startPipeline create correct labels and callbac
     const rerunAction = startPipeline(PipelineModel, samplePipeline);
     expect(rerunAction.labelKey).toBe(`${i18nNS}~Start`);
     expect(rerunAction.callback).not.toBeNull();
+  });
+});
+
+describe('PipelineAction testing startPipeline to check the pipelinerun access review', () => {
+  it('expect access review check on pipelinerun resource', () => {
+    const pipeline = startPipeline(PipelineModel, samplePipeline);
+    expect(pipeline.accessReview.resource).toBe(PipelineRunModel.plural);
   });
 });
 
@@ -93,11 +98,5 @@ describe('getPipelineKebabActions', () => {
     expect(pipelineKebabActions[1](PipelineRunModel, samplePipelineRun).labelKey).not.toBe(
       `${i18nNS}~Start last run`,
     );
-  });
-  it('expect Edit Pipeline option should be hidden when pipeline has inline taskSpec', () => {
-    const editPipelineAction = editPipeline(PipelineModel, mockPipelinesJSON[2]);
-    expect(editPipelineAction.labelKey).toBe(`${i18nNS}~Edit Pipeline`);
-    expect(editPipelineAction.callback).not.toBeNull();
-    expect(editPipelineAction.hidden).toBeTruthy();
   });
 });

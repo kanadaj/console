@@ -1,21 +1,22 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { match as Rmatch } from 'react-router-dom';
-import { referenceForModel } from '@console/internal/module/k8s';
-import { Page } from '@console/internal/components/utils';
-import { TechPreviewBadge, MenuAction, MenuActions, MultiTabListPage } from '@console/shared';
 import NamespacedPage, {
   NamespacedPageVariants,
 } from '@console/dev-console/src/components/NamespacedPage';
+import { DefaultPage } from '@console/internal/components/default-resource';
+import { Page } from '@console/internal/components/utils';
+import { referenceForModel } from '@console/internal/module/k8s';
+import { MenuAction, MenuActions, MultiTabListPage } from '@console/shared';
 import {
   PipelineModel,
   PipelineResourceModel,
   ConditionModel,
   PipelineRunModel,
 } from '../../models';
-import PipelineRunsResourceList from '../pipelineruns/PipelineRunsResourceList';
-import { DefaultPage } from '@console/internal/components/default-resource';
+import { usePipelineTechPreviewBadge } from '../../utils/hooks';
 import PipelineResourcesListPage from '../pipeline-resources/list-page/PipelineResourcesListPage';
+import PipelineRunsResourceList from '../pipelineruns/PipelineRunsResourceList';
 import PipelinesList from '../pipelines/list-page/PipelinesList';
 
 interface PipelinesListPageProps {
@@ -27,41 +28,38 @@ const PipelinesListPage: React.FC<PipelinesListPageProps> = ({ match }) => {
   const {
     params: { ns: namespace },
   } = match;
+  const badge = usePipelineTechPreviewBadge(namespace);
   const [showTitle, hideBadge, canCreate] = [false, true, false];
   const menuActions: MenuActions = {
     pipeline: {
-      label: t('pipelines-plugin~Pipeline'),
       model: PipelineModel,
       onSelection: (key: string, action: MenuAction, url: string) => `${url}/builder`,
     },
-    pipelineRun: { label: t('pipelines-plugin~Pipeline Run'), model: PipelineRunModel },
-    pipelineResource: {
-      label: t('pipelines-plugin~Pipeline Resource'),
-      model: PipelineResourceModel,
-    },
-    condition: { label: t('pipelines-plugin~Condition'), model: ConditionModel },
+    pipelineRun: { model: PipelineRunModel },
+    pipelineResource: { model: PipelineResourceModel },
+    condition: { model: ConditionModel },
   };
   const pages: Page[] = [
     {
       href: '',
-      name: t('pipelines-plugin~Pipelines'),
+      name: t(PipelineModel.labelPluralKey),
       component: PipelinesList,
     },
     {
       href: 'pipeline-runs',
-      name: t('pipelines-plugin~Pipeline Runs'),
+      name: t(PipelineRunModel.labelPluralKey),
       component: PipelineRunsResourceList,
       pageData: { showTitle, hideBadge, canCreate },
     },
     {
       href: 'pipeline-resources',
-      name: t('pipelines-plugin~Pipeline Resources'),
+      name: t(PipelineResourceModel.labelPluralKey),
       component: PipelineResourcesListPage,
       pageData: { showTitle, hideBadge },
     },
     {
       href: 'conditions',
-      name: t('pipelines-plugin~Conditions'),
+      name: t(ConditionModel.labelPluralKey),
       component: DefaultPage,
       pageData: {
         kind: referenceForModel(ConditionModel),
@@ -78,7 +76,7 @@ const PipelinesListPage: React.FC<PipelinesListPageProps> = ({ match }) => {
         pages={pages}
         match={match}
         title={t('pipelines-plugin~Pipelines')}
-        badge={<TechPreviewBadge />}
+        badge={badge}
         menuActions={menuActions}
       />
     </NamespacedPage>

@@ -1,4 +1,9 @@
+import { Edge, EdgeModel, Model, Node, NodeModel, NodeShape } from '@patternfly/react-topology';
+import i18next from 'i18next';
 import * as _ from 'lodash';
+import { getImageForIconClass } from '@console/internal/components/catalog/catalog-item-icon';
+import { WatchK8sResultsObject } from '@console/internal/components/utils/k8s-watch-hook';
+import { DeploymentModel, PodModel } from '@console/internal/models';
 import {
   K8sResourceKind,
   apiVersionForModel,
@@ -7,9 +12,8 @@ import {
   k8sUpdate,
   kindForReference,
 } from '@console/internal/module/k8s';
+import { RootState } from '@console/internal/redux';
 import { getOwnedResources, OverviewItem } from '@console/shared';
-import { Edge, EdgeModel, Model, Node, NodeModel, NodeShape } from '@patternfly/react-topology';
-import { TopologyDataResources, TopologyDataObject } from '@console/topology/src/topology-types';
 import { NODE_WIDTH, NODE_HEIGHT, NODE_PADDING } from '@console/topology/src/const';
 import {
   getTopologyGroupItems,
@@ -18,36 +22,36 @@ import {
   mergeGroup,
   WorkloadModelProps,
 } from '@console/topology/src/data-transforms/transform-utils';
+import { TopologyDataResources, TopologyDataObject } from '@console/topology/src/topology-types';
 import {
   filterBasedOnActiveApplication,
   getTopologyResourceObject,
   getResource,
 } from '@console/topology/src/utils/topology-utils';
-import { getImageForIconClass } from '@console/internal/components/catalog/catalog-item-icon';
-import { DeploymentModel, PodModel } from '@console/internal/models';
-import { RootState } from '@console/internal/redux';
 import {
   FLAG_KNATIVE_EVENTING,
   CAMEL_SOURCE_INTEGRATION,
   SERVERLESS_FUNCTION_LABEL,
 } from '../const';
-import { KnativeItem } from '../utils/get-knative-resources';
-import {
-  KNATIVE_GROUP_NODE_HEIGHT,
-  KNATIVE_GROUP_NODE_PADDING,
-  KNATIVE_GROUP_NODE_WIDTH,
-} from './const';
-import {
-  getDynamicEventSourcesModelRefs,
-  getDynamicChannelModelRefs,
-} from '../utils/fetch-dynamic-eventsources-utils';
 import {
   EventingBrokerModel,
   EventSourceCamelModel,
   EventingTriggerModel,
   CamelKameletBindingModel,
   EventSourceSinkBindingModel,
+  EventSourceKafkaModel,
 } from '../models';
+import {
+  getDynamicEventSourcesModelRefs,
+  getDynamicChannelModelRefs,
+} from '../utils/fetch-dynamic-eventsources-utils';
+import { KnativeItem } from '../utils/get-knative-resources';
+import {
+  KNATIVE_GROUP_NODE_HEIGHT,
+  KNATIVE_GROUP_NODE_PADDING,
+  KNATIVE_GROUP_NODE_WIDTH,
+  URI_KIND,
+} from './const';
 import {
   NodeType,
   Subscriber,
@@ -826,6 +830,40 @@ export const getSubscriptionTopologyEdgeItems = (
   return edges;
 };
 
+export const getKnSourceKafkaTopologyEdgeItems = (
+  kafkaSource: K8sResourceKind,
+  kafkaConnections: WatchK8sResultsObject<K8sResourceKind[]>,
+): EdgeModel[] => {
+  if (!kafkaConnections?.data) {
+    return [];
+  }
+  const { data } = kafkaConnections;
+  const edges = data.reduce((acc, kafkaConnection) => {
+    const kcServiceAccountSecretName = kafkaConnection?.spec?.credentials?.serviceAccountSecretName;
+    const kafkaSourcePasswordSecretKeyRefName =
+      kafkaSource.spec?.net?.sasl?.password?.secretKeyRef?.name;
+    const kafkaSourceUserSecretKeyRefName = kafkaSource.spec?.net?.sasl?.user?.secretKeyRef?.name;
+    const kcBootstrapServerHost = kafkaConnection.status?.bootstrapServerHost;
+    if (
+      kcServiceAccountSecretName &&
+      kcServiceAccountSecretName === kafkaSourcePasswordSecretKeyRefName &&
+      kcServiceAccountSecretName === kafkaSourceUserSecretKeyRefName &&
+      kcBootstrapServerHost &&
+      kafkaSource.spec?.bootstrapServers.includes(kcBootstrapServerHost)
+    ) {
+      const edgeId = `${kafkaSource?.metadata?.uid}_${kafkaConnection?.metadata?.uid}`;
+      acc.push({
+        id: edgeId,
+        type: EdgeType.EventSourceKafkaLink,
+        source: kafkaSource.metadata?.uid,
+        target: kafkaConnection.metadata?.uid,
+      });
+    }
+    return acc;
+  }, []);
+  return edges;
+};
+
 /**
  * Form Edge data for service sources with traffic data
  */
@@ -944,6 +982,52 @@ const getOwnedEventSourceData = (
   };
 };
 
+const sinkURIDataModel = (
+  resource: K8sResourceKind,
+  resources: TopologyDataResources,
+  data: TopologyDataObject,
+  knDataModel: Model,
+) => {
+  // form node data for sink uri
+  const sinkUri = resource.spec?.sink?.uri;
+  let sinkTargetUid = getSinkTargetUid(knDataModel.nodes, sinkUri);
+  if (sinkUri) {
+    if (!sinkTargetUid) {
+      sinkTargetUid = encodeURIComponent(sinkUri);
+      const eventSourcesData = getEventSourcesData(sinkUri, resources);
+      const sinkUriObj = {
+        metadata: {
+          uid: sinkTargetUid,
+          namespace: data.resources.obj.metadata.namespace || '',
+        },
+        spec: { sinkUri },
+        kind: URI_KIND,
+      };
+      const sinkData: KnativeTopologyDataObject<KnativeServiceOverviewItem> = {
+        id: sinkTargetUid,
+        name: 'URI',
+        type: NodeType.SinkUri,
+        resources: { ...data.resources, obj: sinkUriObj, eventSources: eventSourcesData },
+        data: { ...data.data, sinkUri },
+        resource: sinkUriObj,
+      };
+      knDataModel.nodes.push(
+        ...getSinkUriTopologyNodeItems(NodeType.SinkUri, sinkTargetUid, sinkData),
+      );
+    }
+    knDataModel.edges.push(...getSinkUriTopologyEdgeItems(resource, sinkTargetUid));
+  }
+  // form connections for channels
+  if (!isInternalResource(resource)) {
+    const channelResourceProps = getDynamicChannelModelRefs();
+    _.forEach(channelResourceProps, (currentProp) => {
+      resources[currentProp] &&
+        knDataModel.edges.push(...getEventTopologyEdgeItems(resource, resources[currentProp]));
+    });
+  }
+  knDataModel.edges.push(...getEventTopologyEdgeItems(resource, resources.brokers));
+};
+
 export const transformKnNodeData = (
   knResourcesData: K8sResourceKind[],
   type: string,
@@ -951,7 +1035,6 @@ export const transformKnNodeData = (
   utils?: KnativeUtil[],
 ): Model => {
   const knDataModel: Model = { nodes: [], edges: [] };
-
   _.forEach(knResourcesData, (res) => {
     const item = createKnativeDeploymentItems(res, resources, utils);
     switch (type) {
@@ -966,45 +1049,7 @@ export const transformKnNodeData = (
           const itemData = getOwnedEventSourceData(res, data, resources);
           knDataModel.nodes.push(...getKnativeTopologyNodeItems(res, type, itemData, resources));
           knDataModel.edges.push(...getEventTopologyEdgeItems(res, resources.ksservices));
-          // form node data for sink uri
-          const sinkUri = res.spec?.sink?.uri;
-          let sinkTargetUid = getSinkTargetUid(knDataModel.nodes, sinkUri);
-          if (sinkUri) {
-            if (!sinkTargetUid) {
-              sinkTargetUid = encodeURIComponent(sinkUri);
-              const eventSourcesData = getEventSourcesData(sinkUri, resources);
-              const sinkUriObj = {
-                metadata: {
-                  uid: sinkTargetUid,
-                  namespace: data.resources.obj.metadata.namespace || '',
-                },
-                spec: { sinkUri },
-                type: { nodeType: NodeType.SinkUri },
-                kind: 'URI',
-              };
-              const sinkData: KnativeTopologyDataObject<KnativeServiceOverviewItem> = {
-                id: sinkTargetUid,
-                name: 'URI',
-                type: NodeType.SinkUri,
-                resources: { ...data.resources, obj: sinkUriObj, eventSources: eventSourcesData },
-                data: { ...data.data, sinkUri },
-                resource: sinkUriObj,
-              };
-              knDataModel.nodes.push(
-                ...getSinkUriTopologyNodeItems(NodeType.SinkUri, sinkTargetUid, sinkData),
-              );
-            }
-            knDataModel.edges.push(...getSinkUriTopologyEdgeItems(res, sinkTargetUid));
-          }
-          // form connections for channels
-          if (!isInternalResource(res)) {
-            const channelResourceProps = getDynamicChannelModelRefs();
-            _.forEach(channelResourceProps, (currentProp) => {
-              resources[currentProp] &&
-                knDataModel.edges.push(...getEventTopologyEdgeItems(res, resources[currentProp]));
-            });
-          }
-          knDataModel.edges.push(...getEventTopologyEdgeItems(res, resources.brokers));
+          sinkURIDataModel(res, resources, data, knDataModel);
           const newGroup = getTopologyGroupItems(res);
           mergeGroup(newGroup, knDataModel.nodes);
         }
@@ -1031,6 +1076,23 @@ export const transformKnNodeData = (
           const newGroup = getTopologyGroupItems(res);
           mergeGroup(newGroup, knDataModel.nodes);
         }
+        break;
+      }
+      case NodeType.EventSourceKafka: {
+        const data = createTopologyNodeData(
+          res,
+          item,
+          type,
+          getImageForIconClass(`icon-openshift`),
+        );
+        knDataModel.nodes.push(...getKnativeTopologyNodeItems(res, type, data, resources));
+        knDataModel.edges.push(
+          ...getKnSourceKafkaTopologyEdgeItems(res, resources.kafkaConnections),
+          ...getEventTopologyEdgeItems(res, resources.ksservices),
+        );
+        sinkURIDataModel(res, resources, data, knDataModel);
+        const newGroup = getTopologyGroupItems(res);
+        mergeGroup(newGroup, knDataModel.nodes);
         break;
       }
       default:
@@ -1075,7 +1137,7 @@ export const createKnativeEventSourceSink = (
   }
   const eventSourceObj = _.omit(source, 'status');
   let sink = {};
-  if (NodeType.SinkUri === target.type?.nodeType) {
+  if (target.kind === URI_KIND) {
     sink = {
       uri: target?.spec?.sinkUri,
     };
@@ -1136,6 +1198,47 @@ export const createEventingPubSubSink = (subObj: K8sResourceKind, target: K8sRes
   return k8sUpdate(modelFor(referenceFor(subscriptionObj)), updatePayload);
 };
 
+export const createEventSourceKafkaConnection = (
+  source: Node,
+  target: Node,
+): Promise<K8sResourceKind> => {
+  if (!source || !target || source === target) {
+    return Promise.reject();
+  }
+  const sourceObj = getResource(source);
+  const targetObj = getResource(target);
+  const mkcBoostrapServer = targetObj?.status?.bootstrapServerHost;
+  const mkcServiceAccountSecretName = targetObj?.spec?.credentials?.serviceAccountSecretName;
+  const knKafkaSourceObj = _.omit(sourceObj, 'status');
+
+  if (!mkcBoostrapServer || !mkcServiceAccountSecretName) {
+    return Promise.reject(
+      new Error(
+        i18next.t(
+          'knative-plugin~Unable to create kafka connector as bootstrapServerHost or secret is not available in target resource.',
+        ),
+      ),
+    );
+  }
+
+  const updatedObjPayload = {
+    ...knKafkaSourceObj,
+    spec: {
+      ...knKafkaSourceObj.spec,
+      bootstrapServers: [mkcBoostrapServer],
+      net: {
+        sasl: {
+          enable: true,
+          user: { secretKeyRef: { name: mkcServiceAccountSecretName, key: 'client-id' } },
+          password: { secretKeyRef: { name: mkcServiceAccountSecretName, key: 'client-secret' } },
+        },
+        tls: { enable: true },
+      },
+    },
+  };
+  return k8sUpdate(EventSourceKafkaModel, updatedObjPayload);
+};
+
 export const createSinkPubSubConnection = (
   connector: Edge,
   targetNode: Node,
@@ -1149,13 +1252,12 @@ export const createSinkPubSubConnection = (
   return createEventingPubSubSink(resources.obj, targetObj);
 };
 
-export const isServerlessFunction = (element: Node): boolean => {
+export const isServerlessFunction = (element: K8sResourceKind): boolean => {
   if (!element) {
     return false;
   }
-
   const {
     metadata: { labels },
-  } = getResource(element);
+  } = element;
   return !!labels?.[SERVERLESS_FUNCTION_LABEL];
 };

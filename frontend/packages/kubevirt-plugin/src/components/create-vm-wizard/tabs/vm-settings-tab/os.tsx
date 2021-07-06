@@ -1,41 +1,41 @@
 import * as React from 'react';
-import { Checkbox, Text, Button, ButtonVariant, SelectOption } from '@patternfly/react-core';
+import { Button, ButtonVariant, Checkbox, SelectOption, Text } from '@patternfly/react-core';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ValidationErrorType, asValidationObject } from '@console/shared/src/utils/validation';
-import {
-  iGet,
-  iGetIsLoaded,
-  iGetLoadedData,
-  immutableListToShallowJS,
-  iGetLoadError,
-  toShallowJS,
-} from '../../../../utils/immutable';
-import { FormFieldRow } from '../../form/form-field-row';
-import { FormField, FormFieldType } from '../../form/form-field';
+import { ResourceLink, useAccessReview } from '@console/internal/components/utils';
+import { PersistentVolumeClaimModel } from '@console/internal/models';
+import { asValidationObject, ValidationErrorType } from '@console/shared/src/utils/validation';
+import { getPVCUploadURL } from '../../../../constants';
+import { operatingSystemsNative } from '../../../../constants/vm-templates/os';
+import { iGetAnnotation } from '../../../../selectors/immutable/common';
+import { getTemplateOperatingSystems } from '../../../../selectors/vm-template/advanced';
 import {
   getFlavors,
   getWorkloadProfiles,
 } from '../../../../selectors/vm-template/combined-dependent';
-import { flavorSort, ignoreCaseSort } from '../../../../utils/sort';
-import { VMSettingsField } from '../../types';
-import { iGetFieldValue } from '../../selectors/immutable/field';
-import { getFieldId } from '../../utils/renderable-field-utils';
-import { nullOnEmptyChange } from '../../utils/utils';
-import { operatingSystemsNative } from '../../../../constants/vm-templates/os';
 import { OperatingSystemRecord } from '../../../../types';
-import { iGetAnnotation } from '../../../../selectors/immutable/common';
-import { iGetName, iGetNamespace } from '../../selectors/immutable/selectors';
-import { getPVCUploadURL } from '../../../../constants';
+import {
+  iGet,
+  iGetIsLoaded,
+  iGetLoadedData,
+  iGetLoadError,
+  immutableListToShallowJS,
+  toShallowJS,
+} from '../../../../utils/immutable';
+import { flavorSort, ignoreCaseSort } from '../../../../utils/sort';
 import {
   CDI_UPLOAD_OS_URL_PARAM,
   CDI_UPLOAD_POD_ANNOTATION,
-  CDI_UPLOAD_RUNNING,
+  CDI_PVC_PHASE_RUNNING,
 } from '../../../cdi-upload-provider/consts';
-import { getTemplateOperatingSystems } from '../../../../selectors/vm-template/advanced';
 import { FormPFSelect } from '../../../form/form-pf-select';
-import { ResourceLink, useAccessReview } from '@console/internal/components/utils';
-import { PersistentVolumeClaimModel } from '@console/internal/models';
-import { Trans, useTranslation } from 'react-i18next';
+import { FormField, FormFieldType } from '../../form/form-field';
+import { FormFieldRow } from '../../form/form-field-row';
+import { iGetFieldValue } from '../../selectors/immutable/field';
+import { iGetName, iGetNamespace } from '../../selectors/immutable/selectors';
+import { VMSettingsField } from '../../types';
+import { getFieldId } from '../../utils/renderable-field-utils';
+import { nullOnEmptyChange } from '../../utils/utils';
 
 export const OS: React.FC<OSProps> = React.memo(
   ({
@@ -43,6 +43,7 @@ export const OS: React.FC<OSProps> = React.memo(
     commonTemplates,
     operatinSystemField,
     cloneBaseDiskImageField,
+    isCreateTemplate,
     mountWindowsGuestToolsField,
     flavor,
     workloadProfile,
@@ -134,7 +135,8 @@ export const OS: React.FC<OSProps> = React.memo(
           (pvc) => iGetName(pvc) === pvcName && iGetNamespace(pvc) === pvcNamespace,
         );
         const isBaseImageUploading =
-          iGetAnnotation(baseImageFoundInCluster, CDI_UPLOAD_POD_ANNOTATION) === CDI_UPLOAD_RUNNING;
+          iGetAnnotation(baseImageFoundInCluster, CDI_UPLOAD_POD_ANNOTATION) ===
+          CDI_PVC_PHASE_RUNNING;
         const osField: any = {
           id: operatingSystem.id,
           name: operatingSystem.name,
@@ -263,7 +265,7 @@ export const OS: React.FC<OSProps> = React.memo(
           fieldType={FormFieldType.INLINE_CHECKBOX}
           loadingResources={loadingResources}
         >
-          <FormField>
+          <FormField isCreateTemplate={isCreateTemplate}>
             <Checkbox
               id={getFieldId(cloneBaseDiskImageField)}
               onChange={(v) => onChange(VMSettingsField.CLONE_COMMON_BASE_DISK_IMAGE, v)}
@@ -309,6 +311,7 @@ type OSProps = {
   commonTemplateName: string;
   operatinSystemField: any;
   cloneBaseDiskImageField: any;
+  isCreateTemplate: boolean;
   mountWindowsGuestToolsField: any;
   workloadProfile: string;
   cnvBaseImages: any;

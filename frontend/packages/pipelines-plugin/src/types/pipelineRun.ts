@@ -1,17 +1,24 @@
 import { K8sResourceCommon, ObjectMetadata } from '@console/internal/module/k8s';
+import { TektonResultsRun, TektonTaskSpec } from './coreTekton';
 import { PipelineKind, PipelineSpec } from './pipeline';
-import { TektonResultsRun } from './coreTekton';
 
 export type PLRTaskRunStep = {
   container: string;
-  imageID: string;
+  imageID?: string;
   name: string;
+  waiting?: {
+    reason: string;
+  };
+  running?: {
+    startedAt: string;
+  };
   terminated?: {
     containerID: string;
     exitCode: number;
     finishedAt: string;
     reason: string;
     startedAt: string;
+    message?: string;
   };
 };
 
@@ -24,6 +31,8 @@ export type PLRTaskRunData = {
     podName: string;
     startTime: string;
     steps?: PLRTaskRunStep[];
+    taskSpec?: TektonTaskSpec;
+    taskResults?: { name: string; value: string }[];
   };
 };
 
@@ -59,7 +68,7 @@ export type VolumeClaimTemplateType = {
   volumeClaimTemplate: VolumeTypeClaim;
 };
 export type VolumeTypeClaim = {
-  metadata: ObjectMetadata;
+  metadata?: ObjectMetadata;
   spec: {
     accessModes: string[];
     resources: {
@@ -67,6 +76,8 @@ export type VolumeTypeClaim = {
         storage: string;
       };
     };
+    storageClassName?: string;
+    volumeMode?: string;
   };
 };
 
@@ -78,11 +89,11 @@ export type Condition = {
   lastTransitionTime?: string;
 };
 
-export type PipelineRunInlineResourceParam = { name: string; value: string };
-export type PipelineRunInlineResource = {
+export type PipelineRunEmbeddedResourceParam = { name: string; value: string };
+export type PipelineRunEmbeddedResource = {
   name: string;
   resourceSpec: {
-    params: PipelineRunInlineResourceParam[];
+    params: PipelineRunEmbeddedResourceParam[];
     type: string;
   };
 };
@@ -92,7 +103,7 @@ export type PipelineRunReferenceResource = {
     name: string;
   };
 };
-export type PipelineRunResource = PipelineRunReferenceResource | PipelineRunInlineResource;
+export type PipelineRunResource = PipelineRunReferenceResource | PipelineRunEmbeddedResource;
 
 export type PipelineRunWorkspace = {
   name: string;
@@ -124,7 +135,7 @@ export type PipelineRunKind = K8sResourceCommon & {
     serviceAccountName?: string;
     timeout?: string;
     // Only used in a single case - cancelling a pipeline; should not be copied between PLRs
-    status?: 'PipelineRunCancelled';
+    status?: 'PipelineRunCancelled' | 'PipelineRunPending';
   };
   status?: {
     succeededCondition?: string;

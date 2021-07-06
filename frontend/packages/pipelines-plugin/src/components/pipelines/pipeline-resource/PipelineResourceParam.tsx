@@ -1,8 +1,9 @@
 import * as React from 'react';
 import FormSection from '@console/dev-console/src/components/import/section/FormSection';
+import { PipelineResourceType } from '../const';
+import PipelineClusterOptions from './PipelineClusterOptions';
 import PipelineGitOptions from './PipelineGitOptions';
 import PipelineImageOptions from './PipelineImageOptions';
-import PipelineClusterOptions from './PipelineClusterOptions';
 import PipelineStorageOptions from './PipelineStorageOptions';
 
 export interface PipelineResourceParamProps {
@@ -15,13 +16,13 @@ const PipelineResourceParam: React.FC<PipelineResourceParamProps> = (props) => {
 
   const renderTypeFields = () => {
     switch (type) {
-      case 'git':
+      case PipelineResourceType.git:
         return <PipelineGitOptions prefixName={name} />;
-      case 'image':
+      case PipelineResourceType.image:
         return <PipelineImageOptions prefixName={name} />;
-      case 'cluster':
+      case PipelineResourceType.cluster:
         return <PipelineClusterOptions prefixName={name} />;
-      case 'storage':
+      case PipelineResourceType.storage:
         return <PipelineStorageOptions prefixName={name} />;
       default:
         return null;

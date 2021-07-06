@@ -1,15 +1,20 @@
 import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
-import { pipelinesPage } from '../../pages/pipelines/pipelines-page';
-import { pipelineBuilderPage } from '../../pages/pipelines/pipelineBuilder-page';
-import { pipelineDetailsPage } from '../../pages/pipelines/pipelineDetails-page';
-import { pipelineRunDetailsPage } from '../../pages/pipelines/pipelineRun-details-page';
-import { navigateTo } from '@console/dev-console/integration-tests/support/pages/app';
-import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants/global';
-import { topologySidePane } from '@console/dev-console/integration-tests/support/pages/topology/topology-side-pane-page';
-import { modal } from '../../../../../integration-tests-cypress/views/modal';
+import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
+import { modal } from '@console/cypress-integration-tests/views/modal';
+import {
+  devNavigationMenu,
+  adminNavigationMenu,
+} from '@console/dev-console/integration-tests/support/constants';
+import { navigateTo, topologySidePane } from '@console/dev-console/integration-tests/support/pages';
+import { pipelineActions } from '../../constants';
 import { pipelineBuilderPO, pipelinesPO } from '../../page-objects/pipelines-po';
-import { detailsPage } from '../../../../../integration-tests-cypress/views/details-page';
-import { adminNavigationMenu } from '@console/dev-console/integration-tests/support/constants/staticText/global-text';
+import {
+  pipelinesPage,
+  pipelineBuilderPage,
+  pipelineDetailsPage,
+  pipelineRunDetailsPage,
+} from '../../pages';
+import { actionsDropdownMenu } from '../../pages/functions/common';
 
 Given('pipeline run is available for {string}', (pipelineName: string) => {
   // TODO: implement step
@@ -25,8 +30,7 @@ Given('pipeline with task {string} is present on Pipelines page', (pipelineName:
 When(
   'user selects {string} option from kebab menu of {string}',
   (kebabMenuOption: string, pipelineName: string) => {
-    pipelinesPage.selectKebabMenu(pipelineName);
-    cy.byTestActionID(kebabMenuOption).click();
+    pipelinesPage.selectActionForPipeline(pipelineName, kebabMenuOption);
   },
 );
 
@@ -99,7 +103,7 @@ Then(
 );
 
 When('user clicks Actions menu in pipeline Details page', () => {
-  pipelineDetailsPage.clickActionMenu();
+  actionsDropdownMenu.clickActionMenu();
 });
 
 When('user clicks pipeline run of pipeline {string}', (pipelineName: string) => {
@@ -114,7 +118,7 @@ When(
 );
 
 When('user selects option {string} from Actions menu drop down', (action: string) => {
-  pipelineDetailsPage.selectFromActionsDropdown(action);
+  actionsDropdownMenu.selectAction(action);
 });
 
 When('user clicks Delete button on Delete Pipeline modal', () => {
@@ -127,8 +131,7 @@ When(
   'user selects {string} from the kebab menu for {string}',
   (option: string, pipelineName: string) => {
     pipelinesPage.search(pipelineName);
-    pipelinesPage.selectKebabMenu(pipelineName);
-    cy.byTestActionID(option).click();
+    pipelinesPage.selectActionForPipeline(pipelineName, option);
   },
 );
 
@@ -139,19 +142,19 @@ When('user clicks kebab menu for the pipeline {string}', (pipelineName: string) 
 Then(
   'kebab menu displays with options Start, Add Trigger, Remove Trigger, Edit Pipeline, Delete Pipeline',
   () => {
-    cy.byTestActionID('Start').should('be.visible');
-    cy.byTestActionID('Add Trigger').should('be.visible');
-    cy.byTestActionID('Remove Trigger').should('be.visible');
-    cy.byTestActionID('Edit Pipeline').should('be.visible');
-    cy.byTestActionID('Delete Pipeline').should('be.visible');
+    cy.byTestActionID(pipelineActions.Start).should('be.visible');
+    cy.byTestActionID(pipelineActions.AddTrigger).should('be.visible');
+    cy.byTestActionID(pipelineActions.RemoveTrigger).should('be.visible');
+    cy.byTestActionID(pipelineActions.EditPipeline).should('be.visible');
+    cy.byTestActionID(pipelineActions.DeletePipeline).should('be.visible');
   },
 );
 
 Then('kebab menu displays with options Start, Add Trigger, Edit Pipeline, Delete Pipeline', () => {
-  cy.byTestActionID('Start').should('be.visible');
-  cy.byTestActionID('Add Trigger').should('be.visible');
-  cy.byTestActionID('Edit Pipeline').should('be.visible');
-  cy.byTestActionID('Delete Pipeline').should('be.visible');
+  cy.byTestActionID(pipelineActions.Start).should('be.visible');
+  cy.byTestActionID(pipelineActions.AddTrigger).should('be.visible');
+  cy.byTestActionID(pipelineActions.EditPipeline).should('be.visible');
+  cy.byTestActionID(pipelineActions.DeletePipeline).should('be.visible');
 });
 
 Then(
@@ -176,14 +179,14 @@ Then(
 );
 
 Then('Actions dropdown display in the top right corner of the page', () => {
-  cy.byLegacyTestID('actions-menu-button').should('be.visible');
+  actionsDropdownMenu.verifyActionsMenu();
 });
 
 Then('Actions menu display with options Start, Add Trigger, Edit Pipeline, Delete Pipeline', () => {
-  cy.byTestActionID('Start').should('be.visible');
-  cy.byTestActionID('Add Trigger').should('be.visible');
-  cy.byTestActionID('Edit Pipeline').should('be.visible');
-  cy.byTestActionID('Delete Pipeline').should('be.visible');
+  cy.byTestActionID(pipelineActions.Start).should('be.visible');
+  cy.byTestActionID(pipelineActions.AddTrigger).should('be.visible');
+  cy.byTestActionID(pipelineActions.EditPipeline).should('be.visible');
+  cy.byTestActionID(pipelineActions.DeletePipeline).should('be.visible');
 });
 
 Then('Pipeline run details page is displayed', () => {
@@ -202,7 +205,7 @@ Then(
 );
 
 Then('Name field will be disabled', () => {
-  cy.get('#form-input-formData-name-field').should('be.disabled');
+  cy.get(pipelineBuilderPO.formView.name).should('be.disabled');
 });
 
 Then('Add Parameters, Add Resources, Task should be displayed', () => {
@@ -217,7 +220,6 @@ Then('Add Parameters, Add Resources, Task should be displayed', () => {
 
 Then('{string} is not displayed on Pipelines page', (pipelineName: string) => {
   cy.get(pipelinesPO.search)
-    .should('be.visible')
     .clear()
     .type(pipelineName);
   cy.byTestID('empty-message').should('be.visible');
@@ -225,6 +227,7 @@ Then('{string} is not displayed on Pipelines page', (pipelineName: string) => {
 
 Then('user will be redirected to Pipeline Run Details page', () => {
   pipelineRunDetailsPage.verifyTitle();
+  pipelineRunDetailsPage.selectTab('Details');
 });
 
 Then('user is able to see pipeline run in topology side bar', () => {
@@ -233,4 +236,8 @@ Then('user is able to see pipeline run in topology side bar', () => {
 
 Then('user will be redirected to Pipelines page', () => {
   detailsPage.titleShouldContain(adminNavigationMenu.pipelines);
+});
+
+When('user clicks Save button on Pipeline Builder page', () => {
+  pipelineBuilderPage.clickSaveButton();
 });

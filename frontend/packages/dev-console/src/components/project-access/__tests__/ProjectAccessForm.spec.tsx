@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { shallow } from 'enzyme';
 import { MultiColumnField, InputField, DropdownField, FormFooter } from '@console/shared';
+import { defaultAccessRoles } from '../project-access-form-utils';
 import ProjectAccessForm from '../ProjectAccessForm';
 
 type ProjectAccessFormProps = React.ComponentProps<typeof ProjectAccessForm>;
@@ -15,10 +16,26 @@ jest.mock('react-i18next', () => {
 });
 
 describe('Project Access Form', () => {
-  const projectAccessForm = shallow(<ProjectAccessForm {...formProps} />);
+  const projectAccessForm = shallow(
+    <ProjectAccessForm {...formProps} roles={defaultAccessRoles} />,
+  );
   beforeEach(() => {
     formProps = {
       values: {
+        projectAccess: [
+          {
+            roleBindingName: 'abc-admin',
+            user: 'abc',
+            role: 'admin',
+          },
+          {
+            roleBindingName: 'xyz-edit',
+            user: 'xyz',
+            role: 'edit',
+          },
+        ],
+      },
+      roleBindings: {
         projectAccess: [
           {
             roleBindingName: 'abc-admin',
@@ -80,6 +97,7 @@ describe('Project Access Form', () => {
       getFieldMeta: jest.fn(),
       validateOnBlur: true,
       validateOnChange: true,
+      roles: {},
     };
   });
   it('should load the correct Project Access Form structure', () => {
@@ -87,7 +105,7 @@ describe('Project Access Form', () => {
     const formWrapper = projectAccessForm.find(MultiColumnField);
     expect(formWrapper.getElements()[0].props.name).toBe('projectAccess');
     expect(formWrapper.getElements()[0].props.headers).toEqual(['Name', 'Role']);
-    expect(formWrapper.getElements()[0].props.addLabel).toEqual('Add Access');
+    expect(formWrapper.getElements()[0].props.addLabel).toEqual('Add access');
     expect(formWrapper.children()).toHaveLength(2);
     expect(
       formWrapper

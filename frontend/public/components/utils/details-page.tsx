@@ -12,7 +12,13 @@ import { ResourceLink } from './resource-link';
 import { Selector } from './selector';
 import { Timestamp } from './timestamp';
 import { useAccessReview } from './rbac';
-import { K8sResourceKind, modelFor, referenceFor, Toleration } from '../../module/k8s';
+import {
+  K8sResourceCommon,
+  K8sResourceKind,
+  modelFor,
+  referenceFor,
+  Toleration,
+} from '../../module/k8s';
 import { labelsModal } from '../modals';
 
 const editLabelsModal = (e, props) => {
@@ -49,32 +55,34 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
   showAnnotations = true,
   showTolerations = false,
   showLabelEditor = true,
+  canUpdateResource = true,
   podSelector = 'spec.selector',
   nodeSelector = 'spec.template.spec.nodeSelector',
 }) => {
   const { t } = useTranslation();
-  const { metadata, type } = resource;
+  const { metadata } = resource;
   const reference = referenceFor(resource);
   const model = modelFor(reference);
   const tolerationsPath = getTolerationsPath(resource);
   const tolerations: Toleration[] = _.get(resource, tolerationsPath);
-  const canUpdate = useAccessReview({
+  const canUpdateAccess = useAccessReview({
     group: model.apiGroup,
     resource: model.plural,
     verb: 'patch',
     name: metadata.name,
     namespace: metadata.namespace,
   });
+  const canUpdate = canUpdateAccess && canUpdateResource;
 
   return (
     <dl data-test-id="resource-summary" className="co-m-pane__details">
       <DetailsItem
-        label={t('details-page~Name')}
+        label={t('public~Name')}
         obj={resource}
         path={customPathName || 'metadata.name'}
       />
       {metadata.namespace && (
-        <DetailsItem label={t('details-page~Namespace')} obj={resource} path="metadata.namespace">
+        <DetailsItem label={t('public~Namespace')} obj={resource} path="metadata.namespace">
           <ResourceLink
             kind="Namespace"
             name={metadata.namespace}
@@ -83,10 +91,8 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
           />
         </DetailsItem>
       )}
-      {type ? <dt>{t('details-page~Type')}</dt> : null}
-      {type ? <dd>{type}</dd> : null}
       <DetailsItem
-        label={t('details-page~Labels')}
+        label={t('public~Labels')}
         obj={resource}
         path="metadata.labels"
         valueClassName="details-item__value--labels"
@@ -97,7 +103,7 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
         <LabelList kind={reference} labels={metadata.labels} />
       </DetailsItem>
       {showPodSelector && (
-        <DetailsItem label={t('details-page~Pod selector')} obj={resource} path={podSelector}>
+        <DetailsItem label={t('public~Pod selector')} obj={resource} path={podSelector}>
           <Selector
             selector={_.get(resource, podSelector)}
             namespace={_.get(resource, 'metadata.namespace')}
@@ -105,12 +111,12 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
         </DetailsItem>
       )}
       {showNodeSelector && (
-        <DetailsItem label={t('details-page~Node selector')} obj={resource} path={nodeSelector}>
-          <Selector kind={t('details-page~Node')} selector={_.get(resource, nodeSelector)} />
+        <DetailsItem label={t('public~Node selector')} obj={resource} path={nodeSelector}>
+          <Selector kind={t('public~Node')} selector={_.get(resource, nodeSelector)} />
         </DetailsItem>
       )}
       {showTolerations && (
-        <DetailsItem label={t('details-page~Tolerations')} obj={resource} path={tolerationsPath}>
+        <DetailsItem label={t('public~Tolerations')} obj={resource} path={tolerationsPath}>
           {canUpdate ? (
             <Button
               type="button"
@@ -118,20 +124,16 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
               onClick={Kebab.factory.ModifyTolerations(model, resource).callback}
               variant="link"
             >
-              {t('details-page~{{count}} toleration', { count: _.size(tolerations) })}
+              {t('public~{{count}} toleration', { count: _.size(tolerations) })}
               <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
             </Button>
           ) : (
-            t('details-page~{{count}} toleration', { count: _.size(tolerations) })
+            t('public~{{count}} toleration', { count: _.size(tolerations) })
           )}
         </DetailsItem>
       )}
       {showAnnotations && (
-        <DetailsItem
-          label={t('details-page~Annotations')}
-          obj={resource}
-          path="metadata.annotations"
-        >
+        <DetailsItem label={t('public~Annotations')} obj={resource} path="metadata.annotations">
           {canUpdate ? (
             <Button
               data-test="edit-annotations"
@@ -140,23 +142,19 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
               onClick={Kebab.factory.ModifyAnnotations(model, resource).callback}
               variant="link"
             >
-              {t('details-page~{{count}} annotation', { count: _.size(metadata.annotations) })}
+              {t('public~{{count}} annotation', { count: _.size(metadata.annotations) })}
               <PencilAltIcon className="co-icon-space-l pf-c-button-icon--plain" />
             </Button>
           ) : (
-            t('details-page~{{count}} annotation', { count: _.size(metadata.annotations) })
+            t('public~{{count}} annotation', { count: _.size(metadata.annotations) })
           )}
         </DetailsItem>
       )}
       {children}
-      <DetailsItem
-        label={t('details-page~Created at')}
-        obj={resource}
-        path="metadata.creationTimestamp"
-      >
+      <DetailsItem label={t('public~Created at')} obj={resource} path="metadata.creationTimestamp">
         <Timestamp timestamp={metadata.creationTimestamp} />
       </DetailsItem>
-      <DetailsItem label={t('details-page~Owner')} obj={resource} path="metadata.ownerReferences">
+      <DetailsItem label={t('public~Owner')} obj={resource} path="metadata.ownerReferences">
         <OwnerReferences resource={resource} />
       </DetailsItem>
     </dl>
@@ -166,20 +164,32 @@ export const ResourceSummary: React.FC<ResourceSummaryProps> = ({
 export const ResourcePodCount: React.SFC<ResourcePodCountProps> = ({ resource }) => {
   const { t } = useTranslation();
   return (
-    <dl>
+    <>
       <DetailsItem
-        label={t('details-page~Current count')}
+        label={t('public~Current count')}
         obj={resource}
         path="status.replicas"
         defaultValue="0"
       />
       <DetailsItem
-        label={t('details-page~Desired count')}
+        label={t('public~Desired count')}
         obj={resource}
         path="spec.replicas"
         defaultValue="0"
       />
-    </dl>
+    </>
+  );
+};
+
+export const RuntimeClass: React.FC<RuntimeClassProps> = ({ obj, path }) => {
+  const { t } = useTranslation();
+  return (
+    <DetailsItem
+      label={t('public~Runtime class')}
+      obj={obj}
+      path={path || 'spec.template.spec.runtimeClassName'}
+      hideEmpty
+    />
   );
 };
 
@@ -190,6 +200,7 @@ export type ResourceSummaryProps = {
   showAnnotations?: boolean;
   showTolerations?: boolean;
   showLabelEditor?: boolean;
+  canUpdateResource?: boolean;
   podSelector?: string;
   nodeSelector?: string;
   children?: React.ReactNode;
@@ -198,6 +209,11 @@ export type ResourceSummaryProps = {
 
 export type ResourcePodCountProps = {
   resource: K8sResourceKind;
+};
+
+export type RuntimeClassProps = {
+  obj: K8sResourceCommon;
+  path?: string;
 };
 
 ResourceSummary.displayName = 'ResourceSummary';

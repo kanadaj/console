@@ -1,6 +1,4 @@
 import * as React from 'react';
-import * as cx from 'classnames';
-import { useTranslation } from 'react-i18next';
 import {
   AngleDoubleRightIcon,
   BanIcon,
@@ -10,6 +8,7 @@ import {
   HourglassHalfIcon,
   SyncAltIcon,
 } from '@patternfly/react-icons';
+import * as cx from 'classnames';
 import { getRunStatusColor, runStatus } from '../../../../utils/pipeline-augment';
 
 interface StatusIconProps {
@@ -47,13 +46,12 @@ export const StatusIcon: React.FC<StatusIconProps> = ({ status, disableSpin, ...
 };
 
 export const ColoredStatusIcon: React.FC<StatusIconProps> = ({ status, ...others }) => {
-  const { t } = useTranslation();
   return (
     <div
       style={{
         color: status
-          ? getRunStatusColor(status, t).pftoken.value
-          : getRunStatusColor(runStatus.Cancelled, t).pftoken.value,
+          ? getRunStatusColor(status).pftoken.value
+          : getRunStatusColor(runStatus.Cancelled).pftoken.value,
       }}
     >
       <StatusIcon status={status} {...others} />

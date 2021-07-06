@@ -1,10 +1,10 @@
 import * as React from 'react';
-import MonacoEditor from 'react-monaco-editor';
 import { JSONSchema6 } from 'json-schema';
-import { K8sKind } from '@console/internal/module/k8s';
+import MonacoEditor from 'react-monaco-editor';
 import { ResourceSidebar } from '@console/internal/components/sidebars/resource-sidebar';
+import { K8sKind } from '@console/internal/module/k8s';
 import { Sample } from '../../utils';
-import { downloadYaml } from './yaml-editor-utils';
+import { downloadYaml } from './yaml-download-utils';
 
 type YAMLEditorSidebarProps = {
   editorRef: React.MutableRefObject<MonacoEditor>;
@@ -45,22 +45,21 @@ const YAMLEditorSidebar: React.FC<YAMLEditorSidebarProps> = ({
       const indentSize = new Array(selection.startColumn).join(' ');
       const lines = yaml.split('\n');
       const lineCount = lines.length;
-      const indentedText = lines
-        .map((line, i) => {
-          if (i === 0) {
-            // Already indented, leave it alone
-            return line;
-          }
-          return `${indentSize}${line}`;
-        })
-        .join('\n');
+      const indentedLines = lines.map((line, i) => {
+        if (i === 0) {
+          // Already indented, leave it alone
+          return line;
+        }
+        return `${indentSize}${line}`;
+      });
+      const indentedText = indentedLines.join('\n');
 
       // Grab the selection size of what we are about to add
       const newContentSelection = new window.monaco.Selection(
         selection.startLineNumber,
-        0,
+        selection.startColumn,
         selection.startLineNumber + lineCount - 1,
-        lines[lines.length - 1].length,
+        selection.startColumn + indentedLines[indentedLines.length - 1].length,
       );
 
       const op = { range, text: indentedText, forceMoveMarkers: true };

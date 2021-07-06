@@ -1,17 +1,24 @@
 import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
-import { gitPage } from '@console/dev-console/integration-tests/support/pages/add-flow/git-page';
-import { navigateTo } from '@console/dev-console/integration-tests/support/pages/app';
-import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants/global';
-import { addOptions } from '@console/dev-console/integration-tests/support/constants/add';
-import { topologyPage } from '@console/dev-console/integration-tests/support/pages/topology/topology-page';
-import { topologySidePane } from '@console/dev-console/integration-tests/support/pages/topology/topology-side-pane-page';
-import { pipelinesPage } from '../../pages/pipelines/pipelines-page';
-import { catalogPage } from '@console/dev-console/integration-tests/support/pages/add-flow/catalog-page';
-import { pipelineRunDetailsPage } from '../../pages/pipelines/pipelineRun-details-page';
-import { addPage } from '@console/dev-console/integration-tests/support/pages/add-flow/add-page';
-import { detailsPage } from '../../../../../integration-tests-cypress/views/details-page';
+import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
+import {
+  devNavigationMenu,
+  addOptions,
+  messages,
+} from '@console/dev-console/integration-tests/support/constants';
+import { gitPO } from '@console/dev-console/integration-tests/support/pageObjects';
+import {
+  topologyPage,
+  topologySidePane,
+  navigateTo,
+  gitPage,
+  catalogPage,
+  addPage,
+  createGitWorkload,
+  dockerfilePage,
+} from '@console/dev-console/integration-tests/support/pages';
+import { pipelineActions } from '../../constants';
 import { pipelineRunDetailsPO } from '../../page-objects/pipelines-po';
-import { createGitWorkload } from '@console/dev-console/integration-tests/support/pages/functions/createGitWorkload';
+import { pipelinesPage, pipelineRunDetailsPage } from '../../pages';
 
 Given('user is at Add page', () => {
   navigateTo(devNavigationMenu.Add);
@@ -44,12 +51,27 @@ Then('pipeline section is displayed with message {string}', (message: string) =>
 
 When('user enters Git Repo url in docker file as {string}', (gitRepoUrl: string) => {
   gitPage.enterGitUrl(gitRepoUrl);
-  gitPage.verifyValidatedMessage();
+  cy.get(gitPO.gitSection.validatedMessage).should('not.have.text', 'Validating...');
+  cy.get('body').then(($body) => {
+    if (
+      $body
+        .find(gitPO.gitSection.validatedMessage)
+        .text()
+        .includes(messages.addFlow.privateGitRepoMessage) ||
+      $body
+        .find(gitPO.gitSection.validatedMessage)
+        .text()
+        .includes(messages.addFlow.rateLimitExceeded) ||
+      $body.find('[aria-label="Warning Alert"]').length
+    ) {
+      gitPage.enterGitUrl(gitRepoUrl);
+    }
+  });
 });
 
 When('user enters Git Repo url in builder image as {string}', (gitRepoUrl: string) => {
   gitPage.enterGitUrl(gitRepoUrl);
-  gitPage.verifyValidatedMessage();
+  cy.get(gitPO.gitSection.validatedMessage).should('not.have.text', 'Validating...');
 });
 
 When('user clicks From Dockerfile card on the Add page', () => {
@@ -67,17 +89,16 @@ Then('Add pipeline section is displayed', () => {
 
 Given('pipeline {string} is executed for 5 times', (pipelineName: string) => {
   pipelinesPage.search(pipelineName);
-  pipelinesPage.selectKebabMenu(pipelineName);
-  cy.byTestActionID('Start').click();
+  pipelinesPage.selectActionForPipeline(pipelineName, pipelineActions.Start);
   pipelineRunDetailsPage.verifyTitle();
   cy.get(pipelineRunDetailsPO.pipelineRunStatus).should('not.have.text', 'Running');
-  cy.selectActionsMenuOption('Rerun');
+  cy.selectActionsMenuOption(pipelineActions.Rerun);
   cy.get(pipelineRunDetailsPO.pipelineRunStatus).should('not.have.text', 'Running');
-  cy.selectActionsMenuOption('Rerun');
+  cy.selectActionsMenuOption(pipelineActions.Rerun);
   cy.get(pipelineRunDetailsPO.pipelineRunStatus).should('not.have.text', 'Running');
-  cy.selectActionsMenuOption('Rerun');
+  cy.selectActionsMenuOption(pipelineActions.Rerun);
   cy.get(pipelineRunDetailsPO.pipelineRunStatus).should('not.have.text', 'Running');
-  cy.selectActionsMenuOption('Rerun');
+  cy.selectActionsMenuOption(pipelineActions.Rerun);
   cy.get(pipelineRunDetailsPO.pipelineRunStatus).should('not.have.text', 'Running');
 });
 
@@ -88,6 +109,10 @@ Then('Add pipeline checkbox is displayed', () => {
 
 When('user enters Name as {string} in General section', (name: string) => {
   gitPage.enterComponentName(name);
+});
+
+When('user enters Name as {string} in General section of Dockerfile page', (name: string) => {
+  dockerfilePage.enterName(name);
 });
 
 When('user selects Add Pipeline checkbox in Pipelines section', () => {
@@ -123,11 +148,11 @@ Then('pipeline {string} is displayed in pipelines page', (pipelineName: string) 
   pipelinesPage.verifyNameInPipelinesTable(pipelineName);
 });
 
-Given('workload {string} is created from add page with pipeline', (pipelineName: string) => {
+Given('user created workload {string} from add page with pipeline', (pipelineName: string) => {
   navigateTo(devNavigationMenu.Add);
   addPage.selectCardFromOptions(addOptions.Git);
   gitPage.enterGitUrl('https://github.com/sclorg/nodejs-ex.git');
-  gitPage.verifyValidatedMessage();
+  gitPage.verifyValidatedMessage('https://github.com/sclorg/nodejs-ex.git');
   gitPage.enterComponentName(pipelineName);
   gitPage.selectAddPipeline();
   gitPage.clickCreate();
@@ -186,4 +211,8 @@ Then('user will be redirected to Import from Git form', () => {
 
 When('user selects resource type as {string}', (resourceType: string) => {
   gitPage.selectResource(resourceType);
+});
+
+Then('user can see sidebar opens with Resources tab selected by default', () => {
+  topologySidePane.verifySelectedTab('Resources');
 });

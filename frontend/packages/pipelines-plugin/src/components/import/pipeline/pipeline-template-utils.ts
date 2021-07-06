@@ -1,20 +1,21 @@
 import * as _ from 'lodash';
 import { k8sCreate, k8sUpdate } from '@console/internal/module/k8s';
-import { PipelineData } from '../import-types';
 import {
   PIPELINE_RUNTIME_LABEL,
   PIPELINE_RUNTIME_VERSION_LABEL,
   PIPELINE_STRATEGY_LABEL,
 } from '../../../const';
 import { PipelineModel } from '../../../models';
-import { PipelineKind, PipelineRunKind, PipelineWorkspace, TektonParam } from '../../../types';
-import { createPipelineResource } from '../../pipelines/pipeline-resource/pipelineResource-utils';
+import { PipelineKind, PipelineRunKind, TektonParam, TektonWorkspace } from '../../../types';
+import { VolumeTypes } from '../../pipelines/const';
 import {
   convertPipelineToModalData,
   getDefaultVolumeClaimTemplate,
 } from '../../pipelines/modals/common/utils';
 import { submitStartPipeline } from '../../pipelines/modals/start-pipeline/submit-utils';
 import { StartPipelineFormValues } from '../../pipelines/modals/start-pipeline/types';
+import { createPipelineResource } from '../../pipelines/pipeline-resource/pipelineResource-utils';
+import { PipelineData } from '../import-types';
 
 const getImageUrl = (name: string, namespace: string) => {
   return `image-registry.openshift-image-registry.svc:5000/${namespace}/${name}`;
@@ -95,6 +96,7 @@ export const createPipelineForImportFlow = async (
     labels: {
       ...template.metadata?.labels,
       'app.kubernetes.io/instance': name,
+      'app.kubernetes.io/name': name,
       ...(!isDockerPipeline(template) && {
         [PIPELINE_RUNTIME_VERSION_LABEL]: tag,
       }),
@@ -122,9 +124,9 @@ export const createPipelineRunForImportFlow = async (
 ): Promise<PipelineRunKind> => {
   const pipelineInitialValues: StartPipelineFormValues = {
     ...convertPipelineToModalData(pipeline),
-    workspaces: (pipeline.spec.workspaces || []).map((workspace: PipelineWorkspace) => ({
+    workspaces: (pipeline.spec.workspaces || []).map((workspace: TektonWorkspace) => ({
       ...workspace,
-      type: 'volumeClaimTemplate',
+      type: VolumeTypes.VolumeClaimTemplate,
       data: getDefaultVolumeClaimTemplate(pipeline?.metadata?.name),
     })),
     secretOpen: false,
@@ -159,6 +161,7 @@ export const updatePipelineForImportFlow = async (
         labels: {
           ...template.metadata?.labels,
           'app.kubernetes.io/instance': name,
+          'app.kubernetes.io/name': name,
           ...(!isDockerPipeline(template) && { [PIPELINE_RUNTIME_VERSION_LABEL]: tag }),
         },
       };

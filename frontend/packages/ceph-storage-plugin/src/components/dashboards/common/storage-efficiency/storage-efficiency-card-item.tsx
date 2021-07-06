@@ -13,7 +13,9 @@ export const EfficiencyItemBody: React.FC<EfficiencyItemBodyProps> = React.memo(
       status = <div className="skeleton-text ceph-storage-efficiency-card__item-body--loading" />;
     } else if (error || stats <= 0) {
       status = (
-        <span className="co-dashboard-text--small text-muted">{t('dashboard~Not available')}</span>
+        <span className="co-dashboard-text--small text-muted">
+          {t('ceph-storage-plugin~Not available')}
+        </span>
       );
     } else {
       status = <span className="ceph-storage-efficiency-card__item-text">{getStats()}</span>;
@@ -21,7 +23,10 @@ export const EfficiencyItemBody: React.FC<EfficiencyItemBodyProps> = React.memo(
     return (
       <div className="co-inventory-card__item">
         <div className="ceph-storage-efficiency-card__item-title">{title}</div>
-        <div className="ceph-storage-efficiency-card__item-status">
+        <div
+          className="ceph-storage-efficiency-card__item-status"
+          data-test={`${title}-efficiency-card-status`}
+        >
           {status}
           <FieldLevelHelp>{infoText}</FieldLevelHelp>
         </div>

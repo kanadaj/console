@@ -5,22 +5,22 @@ import { KebabOption } from '@console/internal/components/utils';
 import { referenceFor } from '@console/internal/module/k8s';
 import { MockResources } from '@console/shared/src/utils/__tests__/test-resource-data';
 import { UNASSIGNED_KEY } from '@console/topology/src/const';
+import { baseDataModelGetter } from '@console/topology/src/data-transforms/data-transformer';
+import { getWorkloadResources } from '@console/topology/src/data-transforms/transform-utils';
+import { TopologyDataResources } from '@console/topology/src/topology-types';
 import {
   getTopologyResourceObject,
   WORKLOAD_TYPES,
 } from '@console/topology/src/utils/topology-utils';
-import { baseDataModelGetter } from '@console/topology/src/data-transforms/data-transformer';
-import { getWorkloadResources } from '@console/topology/src/data-transforms/transform-utils';
-import { TopologyDataResources } from '@console/topology/src/topology-types';
+import { TEST_KINDS_MAP } from '../../../../topology/src/__tests__/topology-test-data';
+import { ImportOptions } from '../../components/import/import-types';
+import { INCONTEXT_ACTIONS_CONNECTS_TO } from '../../const';
 import {
   getMenuPath,
   getAddPageUrl,
   createKebabAction,
   KebabAction,
 } from '../add-resources-menu-utils';
-import { INCONTEXT_ACTIONS_CONNECTS_TO } from '../../const';
-import { ImportOptions } from '../../components/import/import-types';
-import { TEST_KINDS_MAP } from '../../../../topology/src/__tests__/topology-test-data';
 
 const getTopologyData = (mockData: TopologyDataResources, name: string) => {
   const model = { nodes: [], edges: [] };
@@ -132,6 +132,17 @@ describe('addResourceMenuUtils: ', () => {
     expect(url.searchParams.get('category')).toBe('databases');
     expect(url.searchParams.get('application')).toBe('application-1');
     expect(Array.from(url.searchParams.entries())).toHaveLength(2);
+  });
+
+  it('should return the page url with proper queryparams for upload JAR flow', async () => {
+    const resource = await getTopologyData(MockResources, 'analytics-deployment');
+    const url = new URL(
+      getAddPageUrl(resource, '', ImportOptions.UPLOADJAR, true),
+      'https://mock.test.com',
+    );
+    expect(url.pathname).toBe('/upload-jar/ns/testproject1');
+    expect(url.searchParams.get('application')).toBe('application-1');
+    expect(Array.from(url.searchParams.entries())).toHaveLength(1);
   });
 
   it('it should return a valid kebabAction on invoking createKebabAction with connectorSourceObj', async () => {

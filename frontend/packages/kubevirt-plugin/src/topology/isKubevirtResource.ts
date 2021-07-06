@@ -1,5 +1,5 @@
-import { K8sResourceKind } from '@console/internal/module/k8s';
 import { Model } from '@patternfly/react-topology';
+import { K8sResourceKind } from '@console/internal/module/k8s';
 import { OdcNodeModel } from '@console/topology/src/topology-types';
 import { TYPE_VIRTUAL_MACHINE } from './components/const';
 
