@@ -39,7 +39,6 @@ import { ErrorBoundaryFallback } from '../error';
 import { breadcrumbsForDetailsPage } from '../utils/breadcrumbs';
 import DetailsBreadcrumbResolver from './details-breadcrumb-resolver';
 import { useK8sModel } from '@console/shared/src/hooks/useK8sModel';
-import { NamespaceModel } from '@console/internal/models';
 
 const useBreadCrumbsForDetailPage = (
   kindObj: K8sKind,

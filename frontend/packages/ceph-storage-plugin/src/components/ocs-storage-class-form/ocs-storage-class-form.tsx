@@ -225,7 +225,7 @@ export const PoolResourceComponent: React.FC<ProvisionerProps> = ({
             isInline
           />
         )}
-      </div>
+      </>
     );
   }
   if (cephClusters[0]?.metadata.name === CEPH_EXTERNAL_CR_NAME) {
