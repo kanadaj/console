@@ -210,7 +210,7 @@
       "typeDescription": "%devconsole~**Builder Images** are container images that build source code for a particular language or framework.%"
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -221,7 +221,7 @@
       "provider": { "$codeRef": "catalog.builderImageProvider" }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -233,7 +233,7 @@
       "typeDescription": "%devconsole~**Templates** are sets of objects for creating services, build configurations, and anything you have permission to create within a Project.%"
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -244,7 +244,7 @@
       "provider": { "$codeRef": "catalog.templateProvider" }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -256,7 +256,7 @@
       "typeDescription": "%devconsole~**Devfiles** are sets of objects for creating services, build configurations, and anything you have permission to create within a Project.%"
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -267,7 +267,7 @@
       "provider": { "$codeRef": "catalog.devfileProvider" }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -277,7 +277,7 @@
       "title": "%devconsole~Samples%"
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -288,7 +288,7 @@
       "provider": { "$codeRef": "catalog.builderImageSamplesProvider" }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -299,7 +299,7 @@
       "provider": { "$codeRef": "catalog.devfileSamplesProvider" }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -324,7 +324,7 @@
       }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -342,7 +342,7 @@
       }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -360,7 +360,7 @@
       }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -379,7 +379,7 @@
       }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -397,7 +397,7 @@
       }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
@@ -419,7 +419,7 @@
       }
     },
     "flags": {
-      "required": ["OPENSHIFT"]
+      "required": []
     }
   },
   {
