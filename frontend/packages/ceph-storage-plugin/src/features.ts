@@ -10,7 +10,7 @@ import { FeatureDetector } from '@console/plugin-sdk';
 import { getAnnotations, getName } from '@console/shared/src/selectors/common';
 import { fetchK8s } from '@console/internal/graphql/client';
 import { StorageClassModel } from '@console/internal/models';
-import { OCSServiceModel, CephClusterModel, NooBaaSystemModel } from './models';
+import { CephClusterModel, NooBaaSystemModel } from './models';
 import {
   CEPH_STORAGE_NAMESPACE,
   OCS_SUPPORT_ANNOTATION,
@@ -19,7 +19,6 @@ import {
   OCS_OPERATOR,
   NOOBAA_PROVISIONER,
 } from './constants';
-import { StorageClusterKind } from './types';
 
 export const OCS_INDEPENDENT_FLAG = 'OCS_INDEPENDENT';
 export const OCS_CONVERGED_FLAG = 'OCS_CONVERGED';
@@ -121,22 +120,9 @@ export const detectRGW: FeatureDetector = async (dispatch) => {
 };
 
 export const detectOCS: FeatureDetector = async (dispatch) => {
-  try {
-    const storageClusters = await k8sList(OCSServiceModel, { ns: CEPH_STORAGE_NAMESPACE });
-    if (storageClusters?.length > 0) {
-      const storageCluster = storageClusters.find(
-        (sc: StorageClusterKind) => sc.status.phase !== 'Ignored',
-      );
-      const isInternal = _.isEmpty(storageCluster?.spec?.externalStorage);
-      dispatch(setFlag(OCS_CONVERGED_FLAG, isInternal));
-      dispatch(setFlag(OCS_INDEPENDENT_FLAG, !isInternal));
-      dispatch(setFlag(OCS_FLAG, true));
-    }
-  } catch (error) {
-    dispatch(setFlag(OCS_FLAG, false));
-    dispatch(setFlag(OCS_CONVERGED_FLAG, false));
-    dispatch(setFlag(OCS_INDEPENDENT_FLAG, false));
-  }
+  dispatch(setFlag(OCS_CONVERGED_FLAG, true));
+  dispatch(setFlag(OCS_INDEPENDENT_FLAG, false));
+  dispatch(setFlag(OCS_FLAG, true));
 };
 
 export const detectComponents: FeatureDetector = async (dispatch) => {

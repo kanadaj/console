@@ -62,8 +62,6 @@ type ConsumedExtensions =
 const apiObjectRef = referenceForModel(models.OCSServiceModel);
 const blockPoolRef = referenceForModel(models.CephBlockPoolModel);
 
-const OCS_MODEL_FLAG = 'OCS_MODEL';
-
 const plugin: Plugin<ConsumedExtensions> = [
   {
     type: 'ModelDefinition',
@@ -72,28 +70,15 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
   },
   {
-    type: 'FeatureFlag/Model',
-    properties: {
-      model: models.OCSServiceModel,
-      flag: OCS_MODEL_FLAG,
-    },
-  },
-  {
     type: 'FeatureFlag/Custom',
     properties: {
       detect: detectOCSSupportedFeatures,
-    },
-    flags: {
-      required: [OCS_MODEL_FLAG],
     },
   },
   {
     type: 'FeatureFlag/Custom',
     properties: {
       detect: detectOCS,
-    },
-    flags: {
-      required: [OCS_MODEL_FLAG],
     },
   },
   {
