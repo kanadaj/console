@@ -312,7 +312,7 @@ export const HorizontalNav = React.memo((props: HorizontalNavProps) => {
   ];
 
   const routes = pages.map((p) => {
-const path = `${_.trimEnd(props.match.path, '/')}/${p.path || p.href}`;
+    const path = `${_.trimEnd(props.match.path, '/')}/${p.path || p.href}`;
     const render = (params: RouteComponentProps) => {
       return (
         <ErrorBoundary FallbackComponent={ErrorBoundaryFallback}>
