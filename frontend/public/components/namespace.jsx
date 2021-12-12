@@ -116,7 +116,11 @@ const getFilters = () => [
     type: 'requester',
     reducer: (namespace) => {
       const name = namespace.metadata?.name;
-      const requester = namespace.metadata?.annotations['openshift.io/requester'];
+      const annotations = namespace.metadata?.annotations;
+      if (annotations === undefined) {
+        return;
+      }
+      const requester = annotations['openshift.io/requester'];
       if (isCurrentUser(requester)) {
         return REQUESTER_FILTER.ME;
       }
