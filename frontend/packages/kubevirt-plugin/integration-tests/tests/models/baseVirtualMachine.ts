@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import * as _ from 'lodash';
 import { browser, ExpectedConditions as until } from 'protractor';
 import { isLoaded, resourceTitle } from '@console/internal-integration-tests/views/crud.view';
-import { resolveTimeout, selectDropdownOption } from '@console/shared/src/test-utils/utils';
+import { resolveTimeout, selectDropdownOption } from '../../utils/shared-utils';
 import { nameInput as cloneDialogNameInput } from '../../views/dialogs/cloneVirtualMachineDialog.view';
 import * as vmView from '../../views/virtualMachine.view';
 import { Disk, Network } from '../types/types';
@@ -107,7 +107,7 @@ export class BaseVirtualMachine extends KubevirtUIResource<VMBuilderData> {
         );
         break;
       case VM_ACTION.Stop:
-        await this.waitForStatus(VM_STATUS.Off, resolveTimeout(timeout, VM_STOP_TIMEOUT_SECS));
+        await this.waitForStatus(VM_STATUS.Stopped, resolveTimeout(timeout, VM_STOP_TIMEOUT_SECS));
         break;
       case VM_ACTION.Clone:
         await browser.wait(

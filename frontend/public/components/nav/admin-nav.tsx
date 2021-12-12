@@ -1,13 +1,18 @@
 import * as React from 'react';
-import { connect } from 'react-redux';
-import { NavList, NavItemSeparator } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-
+// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// @ts-ignore
+import { useSelector } from 'react-redux';
+import {
+  NavItem as PluginNavItem,
+  NavSection as PluginNavSection,
+  Separator as PluginNavSeparator,
+} from '@console/dynamic-plugin-sdk/src';
+import { LoadedExtension } from '@console/dynamic-plugin-sdk/src/types';
 import { FLAGS, useActiveNamespace } from '@console/shared';
-import { formatNamespacedRouteForResource } from '@console/shared/src/utils';
-import { featureReducerName } from '../../reducers/features';
 import { ALL_NAMESPACES_KEY } from '@console/shared/src/constants/common';
-
+import { formatNamespacedRouteForResource } from '@console/shared/src/utils';
+import { NavItemSeparator, NavList } from '@patternfly/react-core';
 import {
   ChargebackReportModel,
   GroupModel,
@@ -18,12 +23,13 @@ import {
   MachineModel,
   MachineSetModel,
   UserModel,
-  VolumeSnapshotModel,
   VolumeSnapshotClassModel,
+  VolumeSnapshotModel,
 } from '../../models';
-
 import { referenceForModel } from '../../module/k8s';
-import { HrefLink, ResourceNSLink, ResourceClusterLink } from './items';
+import { featureReducerName } from '../../reducers/features';
+import { RootState } from '../../redux';
+import { HrefLink, PluginNavItems, ResourceClusterLink, ResourceNSLink } from './items';
 import { NavSection } from './section';
 
 type SeparatorProps = {
@@ -33,7 +39,7 @@ type SeparatorProps = {
 };
 
 // Wrap `NavItemSeparator` so we can use `required` without prop type errors.
-const Separator: React.FC<SeparatorProps> = ({ name, id }) => (
+export const Separator: React.FC<SeparatorProps> = ({ name, id }) => (
   <NavItemSeparator name={name} id={id} />
 );
 
@@ -59,13 +65,18 @@ const clusterSettingsStartsWith = [
 const meteringStartsWith = ['metering.openshift.io'];
 const apiExplorerStartsWith = ['api-explorer', 'api-resource'];
 
-const monitoringNavSectionStateToProps = (state) => ({
-  canAccess: !!state[featureReducerName].get(FLAGS.CAN_GET_NS),
-});
-
-const MonitoringNavSection_ = ({ canAccess }) => {
+const MonitoringNavSection: React.FC<{}> = () => {
   const { t } = useTranslation();
-  return canAccess && !!window.SERVER_FLAGS.prometheusBaseURL ? (
+
+  const canAccess = useSelector(
+    (state: RootState) => !!state[featureReducerName].get(FLAGS.CAN_GET_NS),
+  );
+
+  if (!canAccess || !window.SERVER_FLAGS.prometheusBaseURL) {
+    return null;
+  }
+
+  return (
     <NavSection id="observe" title={t('public~Observe')} data-quickstart-id="qs-nav-monitoring">
       <HrefLink
         id="monitoringalerts"
@@ -85,11 +96,14 @@ const MonitoringNavSection_ = ({ canAccess }) => {
         name={t('public~Dashboards')}
       />
     </NavSection>
-  ) : null;
+  );
 };
-const MonitoringNavSection = connect(monitoringNavSectionStateToProps)(MonitoringNavSection_);
 
-const AdminNav = () => {
+export type AdminNavProps = {
+  pluginNavItems: LoadedExtension<PluginNavSection | PluginNavItem | PluginNavSeparator>[];
+};
+
+const AdminNav: React.FC<AdminNavProps> = ({ pluginNavItems }) => {
   const lastNamespace = useActiveNamespace()[0];
   // In OpenShift, machines are created in the openshift-machine-api namespace.
   // Switch to that namespace so the list isn't empty.
@@ -162,8 +176,14 @@ const AdminNav = () => {
         />
       </NavSection>
 
-      {/* Temporary addition of Knative Serverless section until extensibility allows for section ordering
+      {/* Temporary addition of Knative Serverless and Virtualization section until extensibility allows for section ordering
           and admin-nav gets contributed through extensions. */}
+      <NavSection
+        id="virtualization"
+        title={t('public~Virtualization')}
+        data-quickstart-id="qs-nav-virtualization"
+      />
+
       <NavSection
         id="serverless"
         title={t('public~Serverless')}
@@ -403,6 +423,7 @@ const AdminNav = () => {
           required={FLAGS.CAN_LIST_CRD}
         />
       </NavSection>
+      <PluginNavItems items={pluginNavItems} />
     </NavList>
   );
 };

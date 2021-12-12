@@ -22,6 +22,7 @@ const ImageStreamTagDropdown: React.FC<{ disabled?: boolean; formContextField?: 
   formContextField,
 }) => {
   const { t } = useTranslation();
+  const unmounted = React.useRef(false);
   let imageStreamTagList = {};
   const { values, setFieldValue, initialValues, touched } = useFormikContext<FormikValues>();
   const {
@@ -47,6 +48,7 @@ const ImageStreamTagDropdown: React.FC<{ disabled?: boolean; formContextField?: 
       setFieldValue(`${fieldPrefix}isSearchingForImage`, true);
       k8sGet(ImageStreamTagModel, `${imageStream.image}:${selectedTag}`, imageStream.namespace)
         .then((imageStreamImport) => {
+          if (unmounted.current) return;
           const {
             image,
             tag,
@@ -67,8 +69,8 @@ const ImageStreamTagDropdown: React.FC<{ disabled?: boolean; formContextField?: 
           setFieldValue(`${fieldPrefix}isi.tag`, selectedTag);
           setFieldValue(`${fieldPrefix}isi.ports`, ports);
           setFieldValue(`${fieldPrefix}image.ports`, ports);
-          !resourceName &&
-            formType !== 'edit' &&
+          formType !== 'edit' &&
+            resourceName !== name &&
             setFieldValue(`${fieldPrefix}name`, getSuggestedName(name));
           application &&
             application.selectedKey !== UNASSIGNED_KEY &&
@@ -85,6 +87,7 @@ const ImageStreamTagDropdown: React.FC<{ disabled?: boolean; formContextField?: 
           setValidated(ValidatedOptions.success);
         })
         .catch((error) => {
+          if (unmounted.current) return;
           setFieldValue(`${fieldPrefix}isi`, {});
           setFieldValue(`${fieldPrefix}isi.status`, {
             metadata: {},
@@ -136,6 +139,12 @@ const ImageStreamTagDropdown: React.FC<{ disabled?: boolean; formContextField?: 
     fieldPrefix,
     touched,
   ]);
+
+  React.useEffect(() => {
+    return () => {
+      unmounted.current = true;
+    };
+  }, []);
 
   return (
     <DropdownField

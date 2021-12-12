@@ -16,6 +16,8 @@ export const TEMPLATE_FLAVOR_LABEL = 'flavor.template.kubevirt.io';
 export const TEMPLATE_OS_LABEL = 'os.template.kubevirt.io';
 export const TEMPLATE_PARAM_VM_NAME = 'NAME';
 export const TEMPLATE_PARAM_VM_NAME_DESC = 'Name for the new VM';
+export const TEMPLATE_PARAM_VM_PASSWORD = 'CLOUD_USER_PASSWORD';
+export const TEMPLATE_PARAM_VM_PASSWORD_DESC = 'Randomized password for the cloud-init user';
 export const TEMPLATE_TYPE_LABEL = 'template.kubevirt.io/type';
 export const TEMPLATE_VERSION_LABEL = 'template.kubevirt.io/version';
 export const TEMPLATE_DEFAULT_LABEL = 'template.kubevirt.io/default-os-variant';
@@ -70,7 +72,7 @@ export const VIRTIO_WIN_IMAGE = 'virtio-win-image';
 
 export const PENDING_RESTART_LABEL = '(pending restart)';
 export const getPVCUploadURL = (pvcNamespace: string): string =>
-  `/k8s/ns/${pvcNamespace}/persistentvolumeclaims/~new/upload-form`;
+  `/k8s/ns/${pvcNamespace}/persistentvolumeclaims/~new/data`;
 
 export const ROOT_DISK_NAME = 'rootdisk';
 export const ROOT_DISK_INSTALL_NAME = 'install';

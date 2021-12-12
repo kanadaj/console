@@ -40,7 +40,7 @@ const getKeys = (keyMap) => {
 
 export const NameKeyDropdownPair = ({
   name,
-  key,
+  pairKey,
   configMaps,
   secrets,
   serviceAccounts,
@@ -74,7 +74,7 @@ export const NameKeyDropdownPair = ({
   const saItems = {};
   const nameAutocompleteFilter = (text, item) => fuzzy(text, item.props.name);
   const keyAutocompleteFilter = (text, item) => fuzzy(text, item);
-  const keyTitle = _.isEmpty(key) ? t('public~Select a key') : key;
+  const keyTitle = _.isEmpty(pairKey) ? t('public~Select a key') : pairKey;
   const cmRefProperty = isKeyRef ? 'configMapKeyRef' : 'configMapRef';
   const secretRefProperty = isKeyRef ? 'secretKeyRef' : 'secretRef';
   const serviceAccountRefProperty = isKeyRef ? 'serviceAccountKeyRef' : 'serviceAccountRef';
@@ -130,7 +130,7 @@ export const NameKeyDropdownPair = ({
           const keyValuePair = _.split(val, ':');
           onChange({
             [keyValuePair[1]]: isKeyRef
-              ? { name: keyValuePair[0], key: '' }
+              ? { name: keyValuePair[0], pairKey: '' }
               : { name: keyValuePair[0] },
           });
         }}
@@ -142,7 +142,7 @@ export const NameKeyDropdownPair = ({
           autocompleteFilter={keyAutocompleteFilter}
           autocompletePlaceholder={t('public~Key')}
           items={itemKeys}
-          selectedKey={key}
+          selectedKey={pairKey}
           title={keyTitle}
           onChange={(val) => onChange({ [refProperty]: { name, key: val } })}
         />
@@ -191,17 +191,19 @@ const ConfigMapSecretKeyRef = ({
       </>
     );
   }
-  return NameKeyDropdownPair({
-    name,
-    key,
-    configMaps,
-    secrets,
-    serviceAccounts,
-    onChange,
-    kind,
-    nameTitle,
-    placeholderString,
-  });
+  return (
+    <NameKeyDropdownPair
+      pairKey={key}
+      name={name}
+      configMaps={configMaps}
+      secrets={secrets}
+      serviceAccounts={serviceAccounts}
+      onChange={onChange}
+      kind={kind}
+      nameTitle={nameTitle}
+      placeholderString={placeholderString}
+    />
+  );
 };
 
 const ConfigMapSecretRef = ({
@@ -236,18 +238,20 @@ const ConfigMapSecretRef = ({
       </div>
     );
   }
-  return NameKeyDropdownPair({
-    name,
-    key,
-    configMaps,
-    secrets,
-    serviceAccounts,
-    onChange,
-    kind,
-    nameTitle,
-    placeholderString,
-    isKeyRef,
-  });
+  return (
+    <NameKeyDropdownPair
+      pairKey={key}
+      name={name}
+      configMaps={configMaps}
+      secrets={secrets}
+      serviceAccounts={serviceAccounts}
+      onChange={onChange}
+      kind={kind}
+      nameTitle={nameTitle}
+      placeholderString={placeholderString}
+      isKeyRef={isKeyRef}
+    />
+  );
 };
 
 const ResourceFieldRef = ({ data: { containerName, resource } }) => (
@@ -318,8 +322,11 @@ export class ValueFromPair extends React.PureComponent {
     const { pair, configMaps, secrets, serviceAccounts, disabled } = this.props;
     const valueFromKey = Object.keys(this.props.pair)[0];
     const componentInfo = keyStringToComponent[valueFromKey];
-    const Component = componentInfo.component;
+    if (!componentInfo) {
+      return null;
+    }
 
+    const Component = componentInfo.component;
     return (
       <Component
         data={pair[valueFromKey]}

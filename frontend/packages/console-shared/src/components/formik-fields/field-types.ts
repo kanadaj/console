@@ -1,5 +1,10 @@
-import { ValidatedOptions, TextInputTypes, gridItemSpanValueShape } from '@patternfly/react-core';
-import { JSONSchema6 } from 'json-schema';
+import {
+  ValidatedOptions,
+  TextInputTypes,
+  gridItemSpanValueShape,
+  SelectVariant,
+} from '@patternfly/react-core';
+import { JSONSchema7 } from 'json-schema';
 import { K8sKind, K8sResourceKind } from '@console/internal/module/k8s';
 import { RowRendererProps } from './multi-column-field/MultiColumnFieldRow';
 
@@ -80,8 +85,7 @@ export type FormSelectFieldProps = FieldProps & {
 };
 
 export interface EnvironmentFieldProps extends FieldProps {
-  obj?: K8sResourceKind;
-  envPath: string[];
+  obj: K8sResourceKind;
   envs?: (NameValuePair | NameValueFromPair)[];
 }
 
@@ -105,8 +109,8 @@ export interface MultiColumnFieldProps extends FieldProps {
 
 export interface YAMLEditorFieldProps extends FieldProps {
   model?: K8sKind;
-  schema?: JSONSchema6;
-  onChange?: (value: string) => void;
+  schema?: JSONSchema7;
+  showSamples: boolean;
   onSave?: () => void;
 }
 
@@ -117,7 +121,7 @@ export interface NameValuePair {
 
 export interface NameValueFromPair {
   name: string;
-  valueForm: ConfigMapKeyRef | SecretKeyRef;
+  valueFrom: ConfigMapKeyRef | SecretKeyRef;
 }
 
 export interface ConfigMapKeyRef {
@@ -160,8 +164,13 @@ export interface SelectInputOption {
 }
 
 export interface SelectInputFieldProps extends FieldProps {
+  ariaLabel?: string;
   options: SelectInputOption[];
+  variant?: SelectVariant;
   placeholderText?: React.ReactNode;
   isCreatable?: boolean;
   hasOnCreateOption?: boolean;
+  isInputValuePersisted?: boolean;
+  noResultsFoundText?: string;
+  toggleOnSelection?: boolean;
 }

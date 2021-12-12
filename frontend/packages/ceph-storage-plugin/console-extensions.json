@@ -5,14 +5,8 @@
       "alert": "CephOSDDiskUnavailable",
       "text": "%ceph-storage-plugin~Troubleshoot%",
       "action": {
-        "$codeRef": "alert.getAlertActionPath"
+        "$codeRef": "alert.getDiskAlertActionPath"
       }
-    },
-    "flags": {
-      "required": [
-        "LSO_DEVICE_DISCOVERY",
-        "OCS_ATTACHED_DEVICES"
-      ]
     }
   },
   {
@@ -21,14 +15,8 @@
       "alert": "CephOSDDiskNotResponding",
       "text": "%ceph-storage-plugin~Troubleshoot%",
       "action": {
-        "$codeRef": "alert.getAlertActionPath"
+        "$codeRef": "alert.getDiskAlertActionPath"
       }
-    },
-    "flags": {
-      "required": [
-        "LSO_DEVICE_DISCOVERY",
-        "OCS_ATTACHED_DEVICES"
-      ]
     }
   },
   {
@@ -41,9 +29,7 @@
       }
     },
     "flags": {
-      "required": [
-        "OCS"
-      ]
+      "required": ["OCS"]
     }
   },
   {
@@ -56,9 +42,7 @@
       }
     },
     "flags": {
-      "required": [
-        "OCS"
-      ]
+      "required": ["OCS"]
     }
   },
   {
@@ -70,9 +54,7 @@
       }
     },
     "flags": {
-      "required": [
-        "OCS"
-      ]
+      "required": ["OCS"]
     }
   },
   {
@@ -88,9 +70,7 @@
       }
     },
     "flags": {
-      "required": [
-        "MCG"
-      ]
+      "required": ["MCG"]
     }
   },
   {
@@ -106,9 +86,7 @@
       }
     },
     "flags": {
-      "required": [
-        "MCG"
-      ]
+      "required": ["MCG"]
     }
   },
   {
@@ -121,9 +99,8 @@
       "href": "/ocs-dashboards"
     },
     "flags": {
-      "required": [
-        "OCS"
-      ]
+      "required": ["OCS"],
+      "disallowed": ["ODF_MANAGED", "ODF_MODEL"]
     }
   },
   {
@@ -136,12 +113,91 @@
       "href": "/ocs-dashboards"
     },
     "flags": {
-      "required": [
-        "MCG"
-      ],
-      "disallowed": [
-        "OCS"
-      ]
+      "required": ["MCG"],
+      "disallowed": ["OCS", "ODF_MODEL"]
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/odf/system/ocs.openshift.io~v1~StorageCluster/:systemName/ceph.rook.io~v1~CephBlockPool/create/~new",
+      "component": {
+        "$codeRef": "blockPoolCreatePage.default"
+      }
+    },
+    "flags": {
+      "required": ["OCS"]
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/odf/system/ocs.openshift.io~v1~StorageCluster/:systemName/ceph.rook.io~v1~CephBlockPool/:poolName",
+      "component": {
+        "$codeRef": "blockPoolDetailsPage.default"
+      }
+    },
+    "flags": {
+      "required": ["OCS"]
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "path": "/odf/resource/noobaa.io~v1alpha1~BackingStore/create/~new",
+      "exact": true,
+      "component": {
+        "$codeRef": "bsCreate.default"
+      }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "path": "/odf/resource/noobaa.io~v1alpha1~NamespaceStore/create/~new",
+      "exact": true,
+      "component": {
+        "$codeRef": "nssCreate.default"
+      }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "path": "/odf/resource/noobaa.io~v1alpha1~BucketClass/create/~new",
+      "exact": true,
+      "component": {
+        "$codeRef": "bcCreate.default"
+      }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "path": "/odf/resource/:resourceKind/:resourceName",
+      "exact": false,
+      "component": {
+        "$codeRef": "resourceDetailsPage.GenericDetailsPage"
+      }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "path": "/odf/system/ocs.openshift.io~v1~StorageCluster/:systemName",
+      "exact": false,
+      "component": {
+        "$codeRef": "odfSystemDashboard.default"
+      }
+    }
+  },
+  {
+    "type": "console.action/provider",
+    "properties": {
+      "contextId": "csv-actions",
+      "provider": { "$codeRef": "actions.useCsvActions" }
     }
   }
 ]

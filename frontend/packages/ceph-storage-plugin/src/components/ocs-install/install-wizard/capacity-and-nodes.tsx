@@ -19,24 +19,10 @@ import { StorageClassResourceKind, NodeKind, K8sResourceKind } from '@console/in
 import { useDeepCompareMemoize, getName } from '@console/shared';
 import { State, Action } from '../attached-devices-mode/reducer';
 import { scResource } from '../../../resources';
-import { arbiterText, MODES } from '../../../constants';
+import { arbiterText } from '../../../constants';
 import { getZone, isArbiterSC } from '../../../utils/install';
 import { AdvancedSubscription } from '../subscription-icon';
-import { ActionType, InternalClusterAction, InternalClusterState } from '../internal-mode/reducer';
 import './_capacity-and-nodes.scss';
-
-const EnableArbiterLabel: React.FC = () => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="ocs-enable-arbiter-label">
-      <span className="ocs-enable-arbiter-label__title--padding">
-        {t('ceph-storage-plugin~Enable arbiter')}
-      </span>
-      <AdvancedSubscription />
-    </div>
-  );
-};
 
 export const SelectNodesText: React.FC<SelectNodesTextProps> = React.memo(({ text }) => {
   const { t } = useTranslation();
@@ -47,7 +33,7 @@ export const SelectNodesText: React.FC<SelectNodesTextProps> = React.memo(({ tex
       <Text>
         <Trans t={t} ns="ceph-storage-plugin">
           If not labeled, the selected nodes are labeled <Label color="blue">{{ label }}</Label> to
-          make them target hosts for OpenShift Container Storage
+          make them target hosts for OpenShift Data Foundation
           {/* eslint-disable react/no-unescaped-entities */}'s components.
         </Trans>
       </Text>
@@ -84,7 +70,23 @@ type SelectNodesDetailsProps = {
   memory: number;
 };
 
-export const EnableTaintNodes: React.FC<EnableTaintNodesProps> = ({ state, dispatch, mode }) => {
+export const EnableArbiterLabel: React.FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="ocs-enable-arbiter-label">
+      <span className="ocs-enable-arbiter-label__title--padding">
+        {t('ceph-storage-plugin~Enable arbiter')}
+      </span>
+      <AdvancedSubscription />
+    </div>
+  );
+};
+
+export const EnableTaintNodes: React.FC<EnableTaintNodesProps> = ({
+  enableTaint,
+  setEnableTaint,
+}) => {
   const { t } = useTranslation();
 
   return (
@@ -106,20 +108,16 @@ export const EnableTaintNodes: React.FC<EnableTaintNodesProps> = ({ state, dispa
       )}
       className="ocs-enable-taint"
       id="taint-nodes"
-      isChecked={state.enableTaint}
-      onChange={() =>
-        mode === MODES.INTERNAL
-          ? dispatch({ type: ActionType.SET_ENABLE_TAINT, payload: !state.enableTaint })
-          : dispatch({ type: 'setEnableTaint', value: !state.enableTaint })
-      }
+      isChecked={enableTaint}
+      data-checked-state={enableTaint}
+      onChange={setEnableTaint}
     />
   );
 };
 
 type EnableTaintNodesProps = {
-  state: State | InternalClusterState;
-  dispatch: React.Dispatch<Action | InternalClusterAction>;
-  mode: string;
+  enableTaint: boolean;
+  setEnableTaint: () => void;
 };
 
 export const StretchClusterFormGroup: React.FC<StretchClusterFormGroupProps> = ({
@@ -179,6 +177,7 @@ export const StretchClusterFormGroup: React.FC<StretchClusterFormGroupProps> = (
         aria-label={t('ceph-storage-plugin~Enable arbiter')}
         id="arbiter-cluster"
         isChecked={stretchClusterChecked}
+        data-checked-state={stretchClusterChecked}
         label={<EnableArbiterLabel />}
         description={t(
           'ceph-storage-plugin~To support high availability when two data centers can be used, enable arbiter to get the valid quorum between two data centers.',

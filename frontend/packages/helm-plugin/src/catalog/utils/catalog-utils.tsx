@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Tooltip } from '@patternfly/react-core';
 import { TFunction } from 'i18next';
 import * as _ from 'lodash';
 import { CatalogItem } from '@console/dynamic-plugin-sdk';
@@ -15,6 +16,8 @@ import {
   PROVIDER_TYPE,
   PROVIDER_TYPE_ANNOTATION,
   PROVIDER_TYPE_KEYS,
+  PROVIDER_NAME_ANNOTATION,
+  SUPPORT_URL_ANNOTATION,
 } from './const';
 
 export const normalizeHelmCharts = (
@@ -34,7 +37,9 @@ export const normalizeHelmCharts = (
 
         const annotatedName = annotations?.[CHART_NAME_ANNOTATION] ?? '';
         const providerType = annotations?.[PROVIDER_TYPE_ANNOTATION] ?? '';
-        const displayName = annotatedName || `${toTitleCase(name)} v${version}`;
+        const providerName = annotations?.[PROVIDER_NAME_ANNOTATION] ?? '';
+        const supportUrl = annotations?.[SUPPORT_URL_ANNOTATION] ?? '';
+        const displayName = annotatedName || `${toTitleCase(name)}`;
         const imgUrl = chart.icon || getImageForIconClass('icon-helm');
         const chartURL = chart.urls[0];
         const encodedChartURL = encodeURIComponent(chartURL);
@@ -48,7 +53,13 @@ export const normalizeHelmCharts = (
           providerType === PROVIDER_TYPE.partner ? (
             <>
               <span style={{ verticalAlign: 'middle' }}>{displayName}</span>{' '}
-              <img src={certifiedIcon} alt={t('helm-plugin~Certified')} />
+              <Tooltip
+                content={t(
+                  'helm-plugin~This Helm Chart is provided by a trusted partner and has been verified for ease of integration.',
+                )}
+              >
+                <img src={certifiedIcon} alt={t('helm-plugin~Certified')} />
+              </Tooltip>
             </>
           ) : null;
 
@@ -71,16 +82,28 @@ export const normalizeHelmCharts = (
 
         const detailsProperties = [
           {
-            label: t('helm-plugin~Chart version'),
+            label: t('helm-plugin~Latest Chart version'),
             value: version,
           },
           {
-            label: t('helm-plugin~App version'),
+            label: t('helm-plugin~Product version'),
             value: appVersion,
+          },
+          {
+            label: t('helm-plugin~Source'),
+            value: translatedProviderType,
+          },
+          {
+            label: t('helm-plugin~Provider'),
+            value: providerName,
           },
           {
             label: t('helm-plugin~Home page'),
             value: homePage,
+          },
+          {
+            label: t('helm-plugin~Repository'),
+            value: chartRepositoryTitle,
           },
           {
             label: t('helm-plugin~Maintainers'),
@@ -103,7 +126,7 @@ export const normalizeHelmCharts = (
           name: displayName,
           title,
           description,
-          provider: chartRepositoryTitle,
+          provider: providerName,
           tags: keywords,
           creationTimestamp: created,
           attributes: {
@@ -124,6 +147,7 @@ export const normalizeHelmCharts = (
             properties: detailsProperties,
             descriptions: detailsDescriptions,
           },
+          supportUrl,
         };
 
         // group Helm chart with same name and different version together

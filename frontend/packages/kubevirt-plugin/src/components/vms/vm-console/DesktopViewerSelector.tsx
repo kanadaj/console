@@ -3,11 +3,13 @@ import { DesktopViewer } from '@patternfly/react-console';
 import { Alert, Form, FormGroup } from '@patternfly/react-core';
 import { Dropdown } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
-import { ServiceModel } from '@console/internal/models';
+import { PodModel, ServiceModel } from '@console/internal/models';
 import { K8sResourceKind, PodKind } from '@console/internal/module/k8s';
 import { DEFAULT_RDP_PORT, NetworkType, TEMPLATE_VM_NAME_LABEL } from '../../../constants';
+import { ConsoleType } from '../../../constants/vm/console-type';
+import { findVMIPod } from '../../../selectors/pod/selectors';
 import { getRdpAddressPort } from '../../../selectors/service';
-import { getNetworks } from '../../../selectors/vm';
+import { getNetworks } from '../../../selectors/vm/selectors';
 import { getVMIAvailableStatusInterfaces, isGuestAgentConnected } from '../../../selectors/vmi';
 import { VMIKind, VMKind } from '../../../types';
 
@@ -96,7 +98,18 @@ const RdpServiceNotConfigured: React.FC<RdpServiceNotConfiguredProps> = ({ vm })
 };
 
 const DesktopViewerSelector: React.FC<DesktopViewerSelectorProps> = (props) => {
-  const { vm, vmi, vmPod } = props;
+  const { setConsoleType, vm, vmi } = props;
+
+  const [pods] = useK8sWatchResource<PodKind[]>({
+    kind: PodModel.kind,
+    isList: true,
+  });
+
+  const vmPod = React.useMemo(() => findVMIPod(vmi, pods), [pods, vmi]);
+
+  React.useEffect(() => {
+    setConsoleType(ConsoleType.DESKTOP_VIEWER);
+  });
 
   // We probably can not simply match on labels but on Service's spec.selector.[kubevirt/vm] to achieve robust pairing VM-Service.
   // So read all services and filter on frontend.
@@ -111,7 +124,6 @@ const DesktopViewerSelector: React.FC<DesktopViewerSelectorProps> = (props) => {
   );
 
   const rdpServiceAddressPort = getRdpAddressPort(vmi, services, vmPod);
-
   const guestAgent = isGuestAgentConnected(vmi);
   const networks = React.useMemo(() => getVmRdpNetworks(vm, vmi), [vm, vmi]);
   const networkItems = networks.reduce((result, network) => {
@@ -186,7 +198,7 @@ DesktopViewerSelector.displayName = 'DesktopViewer';
 type DesktopViewerSelectorProps = {
   vm: VMKind;
   vmi: VMIKind;
-  vmPod: PodKind;
+  setConsoleType: (consoleType: ConsoleType) => void;
 };
 
 type RdpServiceNotConfiguredProps = {

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Formik } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
+import { getUser } from '@console/dynamic-plugin-sdk';
 import { ProjectRequestModel } from '@console/internal/models';
 import { k8sCreate, K8sKind } from '@console/internal/module/k8s';
 import { RootState } from '@console/internal/redux';
@@ -23,11 +24,13 @@ type Props = StateProps & {
   onSubmit?: (namespace: string) => void;
   onCancel?: () => void;
   workspaceModel: K8sKind;
+  operatorNamespace: string;
 };
 
 const CloudShellDeveloperSetup: React.FunctionComponent<Props> = ({
   activeNamespace,
   workspaceModel,
+  operatorNamespace,
   onSubmit,
   onCancel,
 }) => {
@@ -53,6 +56,7 @@ const CloudShellDeveloperSetup: React.FunctionComponent<Props> = ({
         newCloudShellWorkSpace(
           createCloudShellResourceName(),
           namespace,
+          operatorNamespace,
           workspaceModel.apiVersion,
         ),
       );
@@ -78,7 +82,7 @@ const CloudShellDeveloperSetup: React.FunctionComponent<Props> = ({
 };
 
 const mapStateToProps = (state: RootState): StateProps => ({
-  username: state.UI.get('user')?.metadata?.name || '',
+  username: getUser(state)?.metadata?.name || '',
   activeNamespace: state.UI.get('activeNamespace'),
 });
 

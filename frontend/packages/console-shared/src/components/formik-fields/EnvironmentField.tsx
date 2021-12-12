@@ -22,10 +22,12 @@ const EnvironmentField: React.FC<EnvironmentFieldProps> = ({
       metadata: { namespace },
     },
   } = props;
-  const { setFieldValue } = useFormikContext<FormikValues>();
+  const { setFieldValue, values } = useFormikContext<FormikValues>();
   const { t } = useTranslation();
   const fieldId = getFieldId(props.name, 'env-input');
-  const environmentVariables = !_.isEmpty(envs) ? envs.map((env) => _.values(env)) : [['', '']];
+  const environmentVariables = React.useMemo(() => {
+    return !_.isEmpty(envs) ? envs.map((env) => _.values(env)) : [['', '']];
+  }, [envs]);
   const [nameValue, setNameValue] = React.useState(environmentVariables);
   const [configMaps, setConfigMaps] = React.useState({});
   const [secrets, setSecrets] = React.useState({});
@@ -47,15 +49,27 @@ const EnvironmentField: React.FC<EnvironmentFieldProps> = ({
     },
     [props.name, setFieldValue],
   );
+
+  React.useEffect(() => {
+    if (values.formReloadCount) {
+      setNameValue(environmentVariables);
+    }
+    // this effect only handles reload, so we disable dep on environmentVariables
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.formReloadCount]);
+
   React.useEffect(() => {
     Promise.all([k8sGet(ConfigMapModel, null, namespace), k8sGet(SecretModel, null, namespace)])
       .then(([nsConfigMaps, nsSecrets]) => {
         setConfigMaps(nsConfigMaps);
         setSecrets(nsSecrets);
       })
-      .catch((err) => {
+      .catch(async (err) => {
         if (err?.response?.status !== 403) {
-          errorModal({ error: err?.message });
+          try {
+            await errorModal({ error: err?.message });
+            // eslint-disable-next-line no-empty
+          } catch (e) {}
         }
       });
   }, [namespace]);

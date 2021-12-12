@@ -49,7 +49,7 @@ export const VALIDATIONS = (type: keyof typeof ValidationType, t: TFunction): Va
           </div>
         ),
         text: t(
-          "ceph-storage-plugin~The selected nodes do not match the OpenShift Container Storage's StorageCluster requirement of an aggregated 30 CPUs and 72 GiB of RAM. If the selection cannot be modified a minimal cluster will be deployed.",
+          "ceph-storage-plugin~The selected nodes do not match OpenShift Data Foundation's StorageCluster requirement of an aggregated 30 CPUs and 72 GiB of RAM. If the selection cannot be modified a minimal cluster will be deployed.",
         ),
         actionLinkStep: CreateStepsSC.STORAGEANDNODES,
         actionLinkText: t('ceph-storage-plugin~Back to nodes selection'),
@@ -59,7 +59,7 @@ export const VALIDATIONS = (type: keyof typeof ValidationType, t: TFunction): Va
         variant: AlertVariant.danger,
         title: t('ceph-storage-plugin~Select a StorageClass to continue'),
         text: t(
-          'ceph-storage-plugin~This is a required field. The StorageClass will be used to request storage from the underlying infrastructure to create the backing PersistentVolumes that will be used to provide the OpenShift Container Storage service.',
+          'ceph-storage-plugin~This is a required field. The StorageClass will be used to request storage from the underlying infrastructure to create the backing PersistentVolumes that will be used to provide the OpenShift Data Foundation service.',
         ),
         link: '/k8s/cluster/storageclasses/~new/form',
         linkText: t('ceph-storage-plugin~Create new StorageClass'),
@@ -69,7 +69,7 @@ export const VALIDATIONS = (type: keyof typeof ValidationType, t: TFunction): Va
         variant: AlertVariant.danger,
         title: t('ceph-storage-plugin~Select a StorageClass to continue'),
         text: t(
-          'ceph-storage-plugin~This is a required field. The StorageClass will be used to request storage from the underlying infrastructure to create the backing persistent volumes that will be used to provide the OpenShift Container Storage service.',
+          'ceph-storage-plugin~This is a required field. The StorageClass will be used to request storage from the underlying infrastructure to create the backing persistent volumes that will be used to provide the OpenShift Data Foundation service.',
         ),
       };
     case ValidationType.ALLREQUIREDFIELDS:
@@ -85,7 +85,7 @@ export const VALIDATIONS = (type: keyof typeof ValidationType, t: TFunction): Va
         variant: AlertVariant.danger,
         title: t('ceph-storage-plugin~Minimum Node Requirement'),
         text: t(
-          'ceph-storage-plugin~The StorageCluster requires a minimum of 3 nodes for the initial deployment. Please choose a different StorageClass or go to create a new LocalvolumeSet that matches the minimum node requirement.',
+          'ceph-storage-plugin~The StorageCluster requires a minimum of 3 nodes for the initial deployment. Please choose a different StorageClass or go to create a new LocalVolumeSet that matches the minimum node requirement.',
         ),
         actionLinkText: t('ceph-storage-plugin~Create new volume set instance'),
         actionLinkStep: CreateStepsSC.DISCOVER,
@@ -149,12 +149,15 @@ export const ActionAlert: React.FC<ActionAlertProps> = ({
         title={title}
         isInline
         actionLinks={
-          <AlertActionLink onClick={() => goToStepById(actionLinkStep)}>
-            {actionLinkText}
-          </AlertActionLink>
+          actionLinkStep &&
+          actionLinkText && (
+            <AlertActionLink onClick={() => goToStepById(actionLinkStep)}>
+              {actionLinkText}
+            </AlertActionLink>
+          )
         }
       >
-        <p>{text}</p>
+        {text && <p>{text}</p>}
       </Alert>
     )}
   </WizardContextConsumer>

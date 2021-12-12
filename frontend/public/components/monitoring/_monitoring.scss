@@ -43,7 +43,7 @@ $tooltip-background-color: var(--pf-global--BackgroundColor--dark-100);
   height: calc(100% - 20px);
   margin: 0 0 20px 0;
 
-  .co-dashboard-card__body--dashboard-graph {
+  .co-dashboard-card__body--dashboard {
     // Add extra padding to the right. X-axis times with AM/PM at certain screen widths can overflow the card otherwise.
     padding: 10px 15px 10px 10px;
   }
@@ -61,8 +61,13 @@ $tooltip-background-color: var(--pf-global--BackgroundColor--dark-100);
   .query-browser__wrapper {
     border: 0;
     margin: 0;
+    min-height: 240px;
     padding: 0;
   }
+}
+
+.monitoring-dashboards__card-body-content {
+  height: 100%;
 }
 
 .monitoring-dashboards__card-header {
@@ -136,11 +141,13 @@ $tooltip-background-color: var(--pf-global--BackgroundColor--dark-100);
   }
 }
 
+.monitoring-dashboards__dropdowns {
+  display: flex;
+}
+
 .monitoring-dashboards__options {
   display: flex;
-  float: right;
   margin-right: -20px;
-  margin-top: -20px;
 }
 
 .monitoring-dashboards__panel {
@@ -195,7 +202,6 @@ $screen-phone-landscape-min-width: 567px;
 
 .monitoring-dashboards__single-stat {
   font-size: var(--pf-global--FontSize--3xl);
-  padding-bottom: 0;
 }
 
 .monitoring-dashboards__table {
@@ -207,14 +213,20 @@ $screen-phone-landscape-min-width: 567px;
   overflow-x: auto;
 }
 
-.monitoring-dashboards__variable-dropdown .pf-c-dropdown__menu {
-  max-height: 60vh;
-  overflow-y: auto;
+.monitoring-dashboards__variable-dropdown {
+  .pf-c-dropdown__menu, .pf-c-select__menu {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  .pf-m-search {
+    min-width: 140px;
+  }
 }
 
 .monitoring-dashboards__variables {
   display: flex;
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 $monitoring-line-height: 18px;
@@ -256,7 +268,7 @@ $monitoring-line-height: 18px;
 }
 
 .monitoring-query {
-  color: $color-pf-blue-400;
+  color: $pf-color-blue-400;
 }
 
 .monitoring-silence-alert {
@@ -266,14 +278,14 @@ $monitoring-line-height: 18px;
     align-items: baseline;
     display: flex;
     justify-content: space-between;
-    @media (min-width: $grid-float-breakpoint) {
+    @media (min-width: $pf-global--breakpoint--md) {
       padding-top: 26px;
     }
   }
 }
 
 .monitoring-state-icon--pending {
-  color: $color-pf-black-700;
+  color: $pf-color-black-700;
 }
 
 .monitoring-timestamp {
@@ -306,8 +318,8 @@ $monitoring-line-height: 18px;
   margin-bottom: 15px;
   width: 100%;
 
-  .pf-c-check__input {
-    margin-top: 0;
+  .pf-c-check {
+    --pf-c-check__input--MarginTop: 0;
   }
 }
 
@@ -445,10 +457,6 @@ $monitoring-line-height: 18px;
   padding: 10px 20px;
 }
 
-.query-browser__tech-preview {
-  margin: 0 10px;
-}
-
 .query-browser__toggle-graph {
   margin-bottom: 5px;
   float: right;
@@ -458,7 +466,7 @@ $monitoring-line-height: 18px;
   background-color: $tooltip-background-color;
   color: #eee;
   font-size: 12px;
-  overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px;
 }
 
@@ -470,8 +478,11 @@ $monitoring-line-height: 18px;
   width: 0;
 }
 
-.query-browser__tooltip-group {
-  align-items: stretch;
+.query-browser__tooltip-line {
+  stroke: $tooltip-background-color;
+}
+
+.query-browser__tooltip-series {
   display: flex;
 
   .query-browser__series-btn {
@@ -480,10 +491,6 @@ $monitoring-line-height: 18px;
     margin-top: 4px;
     margin-right: 3px;
   }
-}
-
-.query-browser__tooltip-line {
-  stroke: $tooltip-background-color;
 }
 
 .query-browser__tooltip-time {
@@ -526,12 +533,6 @@ $monitoring-line-height: 18px;
     margin: 0;
     padding-bottom: 0;
     padding-top: 0;
-  }
-
-  &.query-browser__resource-metrics-wrapper {
-    border: none;
-    margin: var(--pf-global--spacer--lg) 0 0 0;
-    padding: 0;
   }
 }
 

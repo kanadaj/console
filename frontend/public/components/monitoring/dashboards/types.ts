@@ -1,6 +1,6 @@
 export const MONITORING_DASHBOARDS_DEFAULT_TIMESPAN = 30 * 60 * 1000;
 
-export const MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY = 'VARIABLE_ALL_OPTION_KEY';
+export const MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY = 'ALL_OPTION_KEY';
 
 export type ColumnStyle = {
   alias?: string;
@@ -61,4 +61,37 @@ export type Panel = {
   valueFontSize?: string;
   valueMaps?: ValueMap[];
   yaxes: YAxis[];
+};
+
+export type TemplateVariable = {
+  hide: number;
+  includeAll: boolean;
+  name: string;
+  options: { selected: boolean; value: string }[];
+  query: string;
+  type: string;
+};
+
+export type Row = {
+  collapse?: boolean;
+  panels: Panel[];
+  showTitle?: boolean;
+  title?: string;
+};
+
+export type Board = {
+  data: {
+    panels: Panel[];
+    rows: Row[];
+    templating: {
+      list: TemplateVariable[];
+    };
+    tags: string[];
+    title: string;
+  };
+  name: string;
+};
+
+export type TimeDropdownsProps = {
+  namespace?: string;
 };

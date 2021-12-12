@@ -19,7 +19,7 @@ const KUBEADMIN_IDP = 'kube:admin';
 // ex: cy.login('my-idp', 'my-user', 'my-password')
 Cypress.Commands.add('login', (provider: string, username: string, password: string) => {
   // Check if auth is disabled (for a local development environment).
-  cy.visit(''); // visits baseUrl which is set in plugins/index.js
+  cy.visit('/'); // visits baseUrl which is set in plugins/index.js
   cy.window().then((win: any) => {
     if (win.SERVER_FLAGS?.authDisabled) {
       cy.task('log', '  skipping login, console is running with auth disabled');
@@ -55,7 +55,7 @@ Cypress.Commands.add('logout', () => {
     }
     cy.task('log', '  Logging out');
     cy.byTestID('user-dropdown').click();
-    cy.byTestID('log-out').click();
-    cy.byLegacyTestID('login').should('be.visible');
+    cy.byTestID('log-out').should('be.visible');
+    cy.byTestID('log-out').click({ force: true });
   });
 });

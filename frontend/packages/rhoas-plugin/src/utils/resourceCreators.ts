@@ -1,12 +1,12 @@
 import { SecretModel } from '@console/internal/models';
-import { k8sWaitForUpdate } from '@console/internal/module/k8s';
 import {
+  k8sWaitForUpdate,
   k8sCreate,
   k8sGet,
   k8sPatch,
   k8sUpdate,
   k8sKillByName,
-} from '@console/internal/module/k8s/resource';
+} from '@console/internal/module/k8s';
 import { getRandomChars } from '@console/shared';
 import {
   AccessTokenSecretName,
@@ -183,6 +183,9 @@ export const createKafkaConnection = async (
     metadata: {
       name: kafkaName,
       namespace: currentNamespace,
+      labels: {
+        'app.kubernetes.io/component': 'external-service',
+      },
     },
     spec: {
       kafkaId,

@@ -1,14 +1,21 @@
 import * as React from 'react';
-import { KEY_CODES, MenuItem, Tooltip } from '@patternfly/react-core';
+import {
+  KEY_CODES,
+  MenuItem,
+  Tooltip,
+  DropdownItemProps,
+  MenuItemProps,
+} from '@patternfly/react-core';
 import * as classNames from 'classnames';
 import * as _ from 'lodash';
 import { connect } from 'react-redux';
-import { Action } from '@console/dynamic-plugin-sdk';
+import { Action, ImpersonateKind } from '@console/dynamic-plugin-sdk';
 import { useAccessReview, history } from '@console/internal/components/utils';
 import { impersonateStateToProps } from '@console/internal/reducers/ui';
 
 export type ActionMenuItemProps = {
   action: Action;
+  component?: React.ComponentType<MenuItemProps | DropdownItemProps>;
   autoFocus?: boolean;
   onClick?: () => void;
   onEscape?: () => void;
@@ -20,8 +27,9 @@ const ActionItem: React.FC<ActionMenuItemProps & { isAllowed: boolean }> = ({
   onEscape,
   autoFocus,
   isAllowed,
+  component,
 }) => {
-  const { id, label, icon, disabled, cta } = action;
+  const { label, icon, disabled, cta } = action;
   const { href, external } = cta as { href: string; external?: boolean };
   const isDisabled = !isAllowed || disabled;
   const classes = classNames({ 'pf-m-disabled': isDisabled });
@@ -50,27 +58,31 @@ const ActionItem: React.FC<ActionMenuItemProps & { isAllowed: boolean }> = ({
       handleClick(event);
     }
   };
+  const Component = component ?? MenuItem;
+
+  const props = {
+    icon,
+    autoFocus,
+    isDisabled,
+    className: classes,
+    onClick: handleClick,
+    'data-test-action': label,
+  };
+
+  const extraProps = {
+    onKeyDown: handleKeyDown,
+    ...(external ? { to: href, isExternalLink: external } : {}),
+  };
 
   return (
-    <MenuItem
-      className={classes}
-      icon={icon}
-      autoFocus={autoFocus}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      isDisabled={isDisabled}
-      data-test-action={id}
-      tabIndex={0} // Override PF tabIndex -1 to make action items tabbable
-      translate="no" // Need to pass translate="no" as a workaround to a bug in @types/react.
-      {...(external ? { to: href, isExternalLink: external } : {})}
-    >
+    <Component {...props} {...(component ? {} : extraProps)}>
       {label}
-    </MenuItem>
+    </Component>
   );
 };
 
 const AccessReviewActionItem = connect(impersonateStateToProps)(
-  (props: ActionMenuItemProps & { impersonate: string }) => {
+  (props: ActionMenuItemProps & { impersonate: ImpersonateKind }) => {
     const { action, impersonate } = props;
     const isAllowed = useAccessReview(action.accessReview, impersonate);
     return <ActionItem {...props} isAllowed={isAllowed} />;

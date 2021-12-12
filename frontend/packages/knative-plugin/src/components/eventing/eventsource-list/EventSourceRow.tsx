@@ -1,24 +1,24 @@
 import * as React from 'react';
-import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
-import { Kebab, ResourceKebab, ResourceLink, Timestamp } from '@console/internal/components/utils';
+import { TableData, RowFunctionArgs } from '@console/internal/components/factory';
+import { Kebab, ResourceLink, Timestamp } from '@console/internal/components/utils';
 import { NamespaceModel } from '@console/internal/models';
 import { modelFor, referenceFor } from '@console/internal/module/k8s';
+import { LazyActionMenu } from '@console/shared';
 import { EventSourceKind, EventSourceConditionTypes } from '../../../types';
 import { getCondition, getConditionString } from '../../../utils/condition-utils';
 import { getDynamicEventSourceModel } from '../../../utils/fetch-dynamic-eventsources-utils';
 
-const EventSourceRow: RowFunction<EventSourceKind> = ({ obj, index, key, style }) => {
+const EventSourceRow: React.FC<RowFunctionArgs<EventSourceKind>> = ({ obj }) => {
   const {
     metadata: { name, namespace, creationTimestamp, uid },
   } = obj;
   const objReference = referenceFor(obj);
   const kind = getDynamicEventSourceModel(objReference) || modelFor(objReference);
-  const menuActions = [...Kebab.getExtensionsActionsForKind(kind), ...Kebab.factory.common];
   const readyCondition = obj.status
     ? getCondition(obj.status.conditions, EventSourceConditionTypes.Ready)
     : null;
   return (
-    <TableRow id={uid} index={index} trKey={key} style={style}>
+    <>
       <TableData>
         <ResourceLink kind={objReference} name={name} namespace={namespace} title={uid} />
       </TableData>
@@ -34,9 +34,9 @@ const EventSourceRow: RowFunction<EventSourceKind> = ({ obj, index, key, style }
         <Timestamp timestamp={creationTimestamp} />
       </TableData>
       <TableData className={Kebab.columnClass}>
-        <ResourceKebab actions={menuActions} kind={objReference} resource={obj} />
+        <LazyActionMenu context={{ 'event-source-actions': obj }} />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 

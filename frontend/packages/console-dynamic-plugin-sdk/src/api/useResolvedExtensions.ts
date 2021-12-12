@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { useExtensions } from '@console/plugin-sdk/src/api/useExtensions';
-import { Extension, ExtensionTypeGuard } from '@console/plugin-sdk/src/typings/base';
 import { resolveExtension } from '../coderefs/coderef-resolver';
-import { ResolvedExtension } from '../types';
-import { unwrapPromiseSettledResults } from '../utils/promise';
+import { UseResolvedExtensions } from '../extensions/console-types';
+import { Extension, ExtensionTypeGuard, ResolvedExtension } from '../types';
+import { settleAllPromises } from '../utils/promise';
 
 /**
  * React hook for consuming Console extensions with resolved `CodeRef` properties.
@@ -22,8 +22,7 @@ import { unwrapPromiseSettledResults } from '../utils/promise';
  * Example usage:
  *
  * ```ts
- * const navItemExtensions = useResolvedExtensions<NavItem>(isNavItem);
- * const [perspectiveExtensions] = useResolvedExtensions<Perspective>(isPerspective);
+ * const [navItemExtensions, navItemsResolved] = useResolvedExtensions<NavItem>(isNavItem);
  * // process adapted extensions and render your component
  * ```
  *
@@ -35,7 +34,7 @@ import { unwrapPromiseSettledResults } from '../utils/promise';
  * references, boolean flag indicating whether the resolution is complete, and a list
  * of errors detected during the resolution.
  */
-export const useResolvedExtensions = <E extends Extension>(
+export const useResolvedExtensions: UseResolvedExtensions = <E extends Extension>(
   ...typeGuards: ExtensionTypeGuard<E>[]
 ): [ResolvedExtension<E>[], boolean, any[]] => {
   const extensions = useExtensions<E>(...typeGuards);
@@ -47,13 +46,11 @@ export const useResolvedExtensions = <E extends Extension>(
   React.useEffect(() => {
     let disposed = false;
 
-    // The promise returned by Promise.allSettled() never rejects; no need for catch-or-return.
     // eslint-disable-next-line promise/catch-or-return
-    Promise.allSettled(
+    settleAllPromises(
       extensions.map((e) => resolveExtension<typeof e, any, ResolvedExtension<E>>(e)),
-    ).then((results) => {
+    ).then(([fulfilledValues, rejectedReasons]) => {
       if (!disposed) {
-        const [fulfilledValues, rejectedReasons] = unwrapPromiseSettledResults(results);
         setResolvedExtensions(fulfilledValues);
         setErrors(rejectedReasons);
         setResolved(true);

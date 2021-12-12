@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { Checkbox, Switch } from '@patternfly/react-core';
+import { WidgetProps } from '@rjsf/core';
+import { getSchemaType } from '@rjsf/core/dist/cjs/utils';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { WidgetProps } from 'react-jsonschema-form';
-import { getSchemaType } from 'react-jsonschema-form/lib/utils';
 import { RadioGroup } from '@console/internal/components/radio';
 import { NumberSpinner, ListDropdown, Dropdown } from '@console/internal/components/utils';
 import { K8sKind, GroupVersionKind, ImagePullPolicy } from '@console/internal/module/k8s';
@@ -75,6 +75,7 @@ export const CheckboxWidget: React.FC<WidgetProps> = ({ value = false, id, label
       id={id}
       key={id}
       isChecked={value}
+      data-checked-state={value}
       label={label}
       onChange={(checked) => onChange(checked)}
     />

@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/coreos/pkg/health"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/klog"
 
 	"github.com/openshift/console/pkg/auth"
 	"github.com/openshift/console/pkg/graphql/resolver"
@@ -54,9 +56,12 @@ const (
 	gitopsEndpoint                   = "/api/gitops/"
 	devfileEndpoint                  = "/api/devfile/"
 	devfileSamplesEndpoint           = "/api/devfile/samples/"
-	pluginsEndpoint                  = "/api/plugins/"
-
-	sha256Prefix = "sha256~"
+	pluginAssetsEndpoint             = "/api/plugins/"
+	pluginProxyEndpoint              = "/api/proxy/"
+	localesEndpoint                  = "/locales/resource.json"
+	updatesEndpoint                  = "/api/check-updates"
+	operandsListEndpoint             = "/api/list-operands/"
+	sha256Prefix                     = "sha256~"
 )
 
 type jsGlobals struct {
@@ -119,6 +124,7 @@ type Server struct {
 	InactivityTimeout    int
 	// Map that contains list of enabled plugins and their endpoints.
 	EnabledConsolePlugins map[string]string
+	PluginProxy           string
 	// A client with the correct TLS setup for communicating with the API server.
 	K8sClient                        *http.Client
 	ThanosProxyConfig                *proxy.Config
@@ -272,6 +278,7 @@ func (s *Server) HTTPHandler() http.Handler {
 
 	handle(terminal.ProxyEndpoint, authHandlerWithUser(terminalProxy.HandleProxy))
 	handleFunc(terminal.AvailableEndpoint, terminalProxy.HandleProxyEnabled)
+	handleFunc(terminal.InstalledNamespaceEndpoint, terminalProxy.HandleTerminalInstalledNamespace)
 
 	graphQLSchema, err := ioutil.ReadFile("pkg/graphql/schema.graphql")
 	if err != nil {
@@ -298,6 +305,7 @@ func (s *Server) HTTPHandler() http.Handler {
 			rulesSourcePath      = prometheusProxyEndpoint + "/api/v1/rules"
 			querySourcePath      = prometheusProxyEndpoint + "/api/v1/query"
 			queryRangeSourcePath = prometheusProxyEndpoint + "/api/v1/query_range"
+			targetsSourcePath    = prometheusProxyEndpoint + "/api/v1/targets"
 			targetAPIPath        = prometheusProxyEndpoint + "/api/"
 
 			tenancyQuerySourcePath      = prometheusTenancyProxyEndpoint + "/api/v1/query"
@@ -326,6 +334,13 @@ func (s *Server) HTTPHandler() http.Handler {
 			})),
 		)
 		handle(labelSourcePath, http.StripPrefix(
+			proxy.SingleJoiningSlash(s.BaseURL.Path, targetAPIPath),
+			authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
+				r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.Token))
+				thanosProxy.ServeHTTP(w, r)
+			})),
+		)
+		handle(targetsSourcePath, http.StripPrefix(
 			proxy.SingleJoiningSlash(s.BaseURL.Path, targetAPIPath),
 			authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
 				r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.Token))
@@ -406,6 +421,18 @@ func (s *Server) HTTPHandler() http.Handler {
 		)
 	}
 
+	// List operator operands endpoint
+	operandsListHandler := &OperandsListHandler{
+		APIServerURL: s.KubeAPIServerURL,
+		Client:       s.K8sClient,
+	}
+	handle(operandsListEndpoint, http.StripPrefix(
+		proxy.SingleJoiningSlash(s.BaseURL.Path, operandsListEndpoint),
+		authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
+			operandsListHandler.OperandsListHandler(user, w, r)
+		}),
+	))
+
 	handle("/api/console/monitoring-dashboard-config", authHandler(s.handleMonitoringDashboardConfigmaps))
 	handle("/api/console/knative-event-sources", authHandler(s.handleKnativeEventSourceCRDs))
 	handle("/api/console/knative-channels", authHandler(s.handleKnativeChannelCRDs))
@@ -422,28 +449,88 @@ func (s *Server) HTTPHandler() http.Handler {
 
 	helmHandlers := helmhandlerspkg.New(s.K8sProxyConfig.Endpoint.String(), s.K8sClient.Transport, s)
 
-	// No need to create plugins handler if no plugin is enabled.
-	if len(s.EnabledConsolePlugins) > 0 {
-		pluginsHandler := plugins.NewPluginsHandler(
-			&http.Client{
-				// 120 seconds matches the webpack require timeout.
-				// Plugins are loaded asynchronously, so this doesn't block page load.
-				Timeout:   120 * time.Second,
-				Transport: &http.Transport{TLSClientConfig: s.PluginsProxyTLSConfig},
-			},
-			s.ServiceAccountToken,
-			s.EnabledConsolePlugins,
-		)
+	pluginsHandler := plugins.NewPluginsHandler(
+		&http.Client{
+			// 120 seconds matches the webpack require timeout.
+			// Plugins are loaded asynchronously, so this doesn't block page load.
+			Timeout:   120 * time.Second,
+			Transport: &http.Transport{TLSClientConfig: s.PluginsProxyTLSConfig},
+		},
+		s.EnabledConsolePlugins,
+		s.PublicDir,
+	)
 
-		handle(pluginsEndpoint, http.StripPrefix(
-			proxy.SingleJoiningSlash(s.BaseURL.Path, pluginsEndpoint),
-			authHandler(func(w http.ResponseWriter, r *http.Request) {
-				pluginsHandler.HandlePlugins(w, r)
-			}),
-		))
+	handle(pluginAssetsEndpoint, http.StripPrefix(
+		proxy.SingleJoiningSlash(s.BaseURL.Path, pluginAssetsEndpoint),
+		authHandler(func(w http.ResponseWriter, r *http.Request) {
+			pluginsHandler.HandlePluginAssets(w, r)
+		}),
+	))
+
+	if len(s.PluginProxy) != 0 {
+		proxyConfig, err := plugins.ParsePluginProxyConfig(s.PluginProxy)
+		if err != nil {
+			klog.Fatalf("Error parsing plugin proxy config: %s", err)
+			os.Exit(1)
+		}
+		proxyServiceHandlers, err := plugins.GetPluginProxyServiceHandlers(proxyConfig, s.PluginsProxyTLSConfig, pluginProxyEndpoint)
+		if err != nil {
+			klog.Fatalf("Error getting plugin proxy handlers: %s", err)
+			os.Exit(1)
+		}
+		if len(proxyServiceHandlers) != 0 {
+			klog.Infoln("The following console endpoints are now proxied to these services:")
+		}
+		for _, proxyServiceHandler := range proxyServiceHandlers {
+			klog.Infof(" - %s -> %s\n", proxyServiceHandler.ConsoleEndpoint, proxyServiceHandler.ProxyConfig.Endpoint)
+			serviceProxy := proxy.NewProxy(proxyServiceHandler.ProxyConfig)
+			handle(proxyServiceHandler.ConsoleEndpoint, http.StripPrefix(
+				proxy.SingleJoiningSlash(s.BaseURL.Path, proxyServiceHandler.ConsoleEndpoint),
+				authHandlerWithUser(func(user *auth.User, w http.ResponseWriter, r *http.Request) {
+					if proxyServiceHandler.Authorize {
+						r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.Token))
+					}
+					serviceProxy.ServeHTTP(w, r)
+				})),
+			)
+		}
 	}
 
+	handle(updatesEndpoint, authHandler(pluginsHandler.HandleCheckUpdates))
+
+	// we need to create another instance of `PluginsHandler` with shorter timeout,
+	// so calls for plugins that doesnt contain locales will fail sooner
+	i18nPluginsHandler := plugins.NewPluginsHandler(
+		&http.Client{
+			Timeout:   10 * time.Second,
+			Transport: &http.Transport{TLSClientConfig: s.PluginsProxyTLSConfig},
+		},
+		s.EnabledConsolePlugins,
+		s.PublicDir,
+	)
+
+	handleFunc(localesEndpoint, func(w http.ResponseWriter, r *http.Request) {
+		i18nPluginsHandler.HandleI18nResources(w, r)
+	})
+
 	// Helm Endpoints
+	metricsHandler := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Requests from prometheus-k8s have the access token in headers instead of cookies.
+			// This allows metric requests with proper tokens in either headers or cookies.
+			if r.URL.Path == "/metrics" {
+				openshiftSessionCookieName := "openshift-session-token"
+				openshiftSessionCookieValue := r.Header.Get("Authorization")
+				r.AddCookie(&http.Cookie{Name: openshiftSessionCookieName, Value: openshiftSessionCookieValue})
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	handle("/metrics", metricsHandler(authHandler(func(w http.ResponseWriter, r *http.Request) {
+		promhttp.Handler().ServeHTTP(w, r)
+	})))
+
 	handle("/api/helm/template", authHandlerWithUser(helmHandlers.HandleHelmRenderManifests))
 	handle("/api/helm/releases", authHandlerWithUser(helmHandlers.HandleHelmList))
 	handle("/api/helm/chart", authHandlerWithUser(helmHandlers.HandleChartGet))
@@ -630,7 +717,7 @@ func tokenToObjectName(token string) string {
 
 func getMapKeys(m map[string]string) []string {
 	keys := []string{}
-	for key, _ := range m {
+	for key := range m {
 		keys = append(keys, key)
 	}
 	return keys

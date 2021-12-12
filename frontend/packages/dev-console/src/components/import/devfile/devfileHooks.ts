@@ -1,17 +1,15 @@
 import * as React from 'react';
 import { FormikValues, useFormikContext } from 'formik';
 import { useTranslation } from 'react-i18next';
-import { getGitService, GitProvider } from '@console/git-service';
 import { coFetchJSON } from '@console/internal/co-fetch';
-import { parseDevfile } from '@console/internal/module/k8s';
 import { getLimitsDataFromResource } from '@console/shared/src';
 import { SAMPLE_APPLICATION_GROUP } from '../../../const';
 import { DevfileSuggestedResources } from '../import-types';
-import { createComponentName, detectGitType } from '../import-validation-utils';
+import { createComponentName } from '../import-validation-utils';
 import { DevfileSample } from './devfile-types';
 
-const suffixSlash = (val: string) => (val.endsWith('/') ? val : `${val}/`);
-const prefixDotSlash = (val) => (val.startsWith('/') ? `.${val}` : val);
+export const suffixSlash = (val: string) => (val.endsWith('/') ? val : `${val}/`);
+export const prefixDotSlash = (val) => (val.startsWith('/') ? `.${val}` : val);
 
 export const useDevfileServer = (
   values: FormikValues,
@@ -26,6 +24,8 @@ export const useDevfileServer = (
     git: { url, ref, dir },
     devfile,
   } = values;
+  const smartSlashDir = prefixDotSlash(suffixSlash(dir));
+
   const { devfileContent, devfilePath } = devfile || {};
 
   const devfileData = React.useMemo(() => {
@@ -36,9 +36,9 @@ export const useDevfileServer = (
     return {
       name,
       git: { URL: url, ref, dir: prefixDotSlash(dir) },
-      devfile: { devfileContent, devfilePath },
+      devfile: { devfileContent, devfilePath: `${smartSlashDir}${devfilePath}` },
     };
-  }, [name, url, ref, dir, devfileContent, devfilePath]);
+  }, [name, url, devfileContent, ref, dir, smartSlashDir, devfilePath]);
 
   React.useEffect(() => {
     const setError = (msg) => {
@@ -56,7 +56,8 @@ export const useDevfileServer = (
     }
 
     setParsingDevfile(true);
-    parseDevfile(devfileData)
+    coFetchJSON
+      .post('/api/devfile/', devfileData)
       .then((value: DevfileSuggestedResources) => {
         setParsingDevfile(false);
         if (value) {
@@ -95,47 +96,22 @@ export const useDevfileServer = (
   return [parsingDevfile, devfileParseError];
 };
 
-/**
- * Devfile [Dev Preview] work around for not having a Dockerfile (and Devfile) path in the form
- */
-export const useDevfileDirectoryWatcher = (
-  values: FormikValues,
-  setFieldValue: (name: string, value: any) => void,
-) => {
-  const {
-    git: { dir },
-  } = values;
-  React.useEffect(() => {
-    const smartSlashDir = prefixDotSlash(suffixSlash(dir));
-
-    setFieldValue('devfile.devfilePath', `${smartSlashDir}devfile.yaml`);
-    setFieldValue('docker.dockerfilePath', `${smartSlashDir}Dockerfile`);
-  }, [dir, setFieldValue]);
-};
-
 export const useDevfileSource = () => {
   const searchParams = new URLSearchParams(window.location.search);
   const devfileSourceUrl = searchParams.get('gitRepo');
   const devfileName = searchParams.get('devfileName');
   const formType = searchParams.get('formType');
-  const { setFieldValue, setFieldTouched } = useFormikContext<FormikValues>();
+  const { values, setFieldValue, setFieldTouched } = useFormikContext<FormikValues>();
+  const {
+    import: { recommendedStrategy },
+    devfile,
+  } = values;
 
   React.useEffect(() => {
-    if (devfileSourceUrl) {
-      const gitType = detectGitType(devfileSourceUrl);
-      const gitService = getGitService({ url: devfileSourceUrl }, gitType as GitProvider);
+    if (devfileSourceUrl && !devfile.devfileContent) {
       setFieldValue('devfile.devfileSourceUrl', devfileSourceUrl);
-      gitService
-        .getDevfileContent()
-        .then((contents) => setFieldValue('devfile.devfileContent', contents))
-        .catch(() => {
-          setFieldValue('devfile.devfileContent', null);
-          setFieldValue('devfile.devfileHasError', true);
-        });
-
-      setFieldValue('git.url', devfileSourceUrl);
-      setFieldTouched('git.url');
-
+      setFieldValue('devfile.devfilePath', recommendedStrategy?.detectedFiles?.[0]);
+      setFieldValue('docker.dockerfilePath', 'Dockerfile');
       if (formType === 'sample') {
         setFieldValue('name', createComponentName(devfileName));
         setFieldValue('application.initial', SAMPLE_APPLICATION_GROUP);
@@ -143,7 +119,16 @@ export const useDevfileSource = () => {
         setFieldValue('application.selectedKey', SAMPLE_APPLICATION_GROUP);
       }
     }
-  }, [devfileSourceUrl, devfileName, formType, setFieldValue, setFieldTouched]);
+  }, [
+    devfileSourceUrl,
+    devfileName,
+    formType,
+    setFieldValue,
+    setFieldTouched,
+    recommendedStrategy,
+    devfile.devfileContents,
+    devfile.devfileContent,
+  ]);
 };
 
 export const useSelectedDevfileSample = () => {
@@ -153,11 +138,7 @@ export const useSelectedDevfileSample = () => {
 
   React.useEffect(() => {
     let mounted = true;
-    const payload = {
-      registry: 'sample-placeholder',
-    };
-    coFetchJSON
-      .put('/api/devfile/samples', payload)
+    coFetchJSON('/api/devfile/samples/?registry=registry.devfile.io')
       .then((samples: DevfileSample[]) => {
         if (mounted) setDevfileSamples(samples);
       })

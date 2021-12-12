@@ -20,7 +20,8 @@ import { HandlePromiseProps, withHandlePromise } from '@console/internal/compone
 import { k8sCreate } from '@console/internal/module/k8s';
 import { VMSnapshotWrapper } from '../../../k8s/wrapper/vm/vm-snapshot-wrapper';
 import { getName, getNamespace } from '../../../selectors';
-import { asVM, getVolumeSnapshotStatuses } from '../../../selectors/vm';
+import { getVolumeSnapshotStatuses } from '../../../selectors/vm/selectors';
+import { asVM } from '../../../selectors/vm/vm';
 import { VMSnapshot } from '../../../types';
 import { VMLikeEntityKind } from '../../../types/vmLike';
 import { buildOwnerReference, prefixedID } from '../../../utils';
@@ -48,6 +49,7 @@ const SnapshotsModal = withHandlePromise((props: SnapshotsModalProps) => {
     cancel,
     isVMRunningOrExpectedRunning,
     snapshots,
+    hotplugVolumeSnapshotStatuses,
   } = props;
   const { t } = useTranslation();
   const vmName = getName(vmLikeEntity);
@@ -56,7 +58,10 @@ const SnapshotsModal = withHandlePromise((props: SnapshotsModalProps) => {
   const [approveUnsupported, setApproveUnsupported] = React.useState(false);
   const asId = prefixedID.bind(null, 'snapshot');
 
-  const volumeSnapshotStatuses = getVolumeSnapshotStatuses(asVM(vmLikeEntity)) || [];
+  const volumeSnapshotStatuses =
+    getVolumeSnapshotStatuses(asVM(vmLikeEntity))
+      .concat(hotplugVolumeSnapshotStatuses)
+      .filter(Boolean) || [];
   const supportedVolumes = volumeSnapshotStatuses.filter((status) => status?.enabled);
   const hasSupportedVolumes = supportedVolumes.length > 0;
   const unsupportedVolumes = volumeSnapshotStatuses.filter((status) => !status?.enabled);
@@ -139,6 +144,7 @@ const SnapshotsModal = withHandlePromise((props: SnapshotsModalProps) => {
               <Checkbox
                 id="approve-checkbox"
                 isChecked={approveUnsupported}
+                data-checked-state={approveUnsupported}
                 aria-label={t('kubevirt-plugin~unsupported approve checkbox')}
                 label={t('kubevirt-plugin~I am aware of this warning and wish to proceed')}
                 onChange={setApproveUnsupported}
@@ -171,5 +177,6 @@ export type SnapshotsModalProps = {
   vmLikeEntity: VMLikeEntityKind;
   isVMRunningOrExpectedRunning: boolean;
   snapshots: VMSnapshot[];
+  hotplugVolumeSnapshotStatuses?: any[];
 } & ModalComponentProps &
   HandlePromiseProps;

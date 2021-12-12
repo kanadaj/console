@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { chart_color_red_300 as knativeEventingColor } from '@patternfly/react-tokens/dist/js/chart_color_red_300';
 import * as _ from 'lodash';
+import isMultiClusterEnabled from '@console/app/src/utils/isMultiClusterEnabled';
 import { coFetch } from '@console/internal/co-fetch';
 import { useSafetyFirst } from '@console/internal/components/safety-first';
 import {
@@ -9,7 +10,6 @@ import {
   referenceForModel,
   getLatestVersionForCRD,
 } from '@console/internal/module/k8s';
-import { EventingSubscriptionModel, EventingTriggerModel } from '../models';
 
 interface EventSourcetData {
   loaded: boolean;
@@ -31,6 +31,11 @@ interface EventChannelData {
 export const getLabelPlural = (kind: string, plural: string) => kind + plural.slice(kind.length);
 
 export const fetchEventSourcesCrd = async () => {
+  if (isMultiClusterEnabled()) {
+    eventSourceData.eventSourceModels = [];
+    eventSourceData.loaded = true;
+    return eventSourceData.eventSourceModels;
+  }
   const url = 'api/console/knative-event-sources';
   try {
     const res = await coFetch(url);
@@ -159,6 +164,10 @@ export const isDynamicEventSourceKind = (kind: string): boolean => {
 };
 
 export const fetchChannelsCrd = async () => {
+  if (isMultiClusterEnabled()) {
+    eventSourceData.eventSourceChannels = [];
+    return eventSourceData.eventSourceChannels;
+  }
   const url = 'api/console/knative-channels';
   try {
     const res = await coFetch(url);
@@ -291,8 +300,4 @@ export const isEventingChannelResourceKind = (resourceRef: string): boolean => {
     (model: K8sKind) => referenceForModel(model) === resourceRef,
   );
   return index !== -1;
-};
-
-export const isEventingPubSubLinkKind = (kind: string) => {
-  return [EventingSubscriptionModel.kind, EventingTriggerModel.kind].includes(kind);
 };

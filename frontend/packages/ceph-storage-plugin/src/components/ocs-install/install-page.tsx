@@ -113,7 +113,7 @@ const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
     return sanitizedStep;
   };
 
-  const getIndex = (searchSpace: any, search: string, offset: number = 0) => {
+  const getIndex = (searchSpace: any, search: string | React.ReactText, offset: number = 0) => {
     const index = Object.values(searchSpace).findIndex((el) => el === search);
     return index - offset + 1;
   };
@@ -136,23 +136,23 @@ const InstallCluster: React.FC<InstallClusterProps> = ({ match }) => {
 
   return (
     <>
+      <div className="co-create-operand__breadcrumbs">
+        {clusterServiceVersion !== null && (
+          <BreadCrumbs
+            breadcrumbs={[
+              {
+                name: clusterServiceVersion.spec.displayName,
+                path: url.replace('/~new', ''),
+              },
+              {
+                name: t('ceph-storage-plugin~Create StorageCluster'),
+                path: url,
+              },
+            ]}
+          />
+        )}
+      </div>
       <div className="co-create-operand__header">
-        <div className="co-create-operand__header-buttons">
-          {clusterServiceVersion !== null && (
-            <BreadCrumbs
-              breadcrumbs={[
-                {
-                  name: clusterServiceVersion.spec.displayName,
-                  path: url.replace('/~new', ''),
-                },
-                {
-                  name: t('ceph-storage-plugin~Create StorageCluster'),
-                  path: url,
-                },
-              ]}
-            />
-          )}
-        </div>
         <h1 className="co-create-operand__header-text">
           {t('ceph-storage-plugin~Create StorageCluster')}
         </h1>

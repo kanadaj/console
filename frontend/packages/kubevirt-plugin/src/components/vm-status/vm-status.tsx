@@ -36,7 +36,7 @@ import { unpauseVMI } from '../../k8s/requests/vmi/actions';
 import { VMImportWrappper } from '../../k8s/wrapper/vm-import/vm-import-wrapper';
 import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
 import { getName, getNamespace } from '../../selectors';
-import { getVMLikeModel } from '../../selectors/vm';
+import { getVMLikeModel } from '../../selectors/vm/vmlike';
 import { VMStatusBundle } from '../../statuses/vm/types';
 import { VMIKind, VMKind } from '../../types';
 import { VMILikeEntityKind } from '../../types/vmLike';
@@ -46,7 +46,7 @@ import { VMTabURLEnum } from '../vms/types';
 
 import './vm-status.scss';
 
-const getStatusSuffixLabelKey = (vmStatusBundle: VMStatusBundle) => {
+export const getStatusSuffixLabelKey = (vmStatusBundle: VMStatusBundle) => {
   if (vmStatusBundle.status.getGroup() === StatusGroup.VMIMPORT) {
     switch (new VMImportWrappper(vmStatusBundle.vmImport).getType()) {
       case VMImportType.OVIRT:
@@ -111,7 +111,10 @@ type PendingChangesPopoverContentProps = {
 
 // Use onMouseUp instead of onClick since PF4 popup prevents
 // child components to use onClick and onMouseDown
-const PendingChangesPopoverContent: React.FC<PendingChangesPopoverContentProps> = ({ vm, vmi }) => {
+export const PendingChangesPopoverContent: React.FC<PendingChangesPopoverContentProps> = ({
+  vm,
+  vmi,
+}) => {
   const { t } = useTranslation();
   return (
     <VMStatusPopoverContent
@@ -196,17 +199,16 @@ export const getVMILikeLink = (vmLike: VMILikeEntityKind) =>
   )}/${VM_DETAIL_EVENTS_HREF}`;
 
 export const getVMStatusIcon = (
-  isPaused: boolean,
   status: VMStatusEnum,
   arePendingChanges: boolean,
 ): React.ComponentClass | React.FC => {
   let icon: React.ComponentClass | React.FC = UnknownIcon;
 
-  if (isPaused) {
+  if (status === VMStatusEnum.PAUSED) {
     icon = PausedIcon;
   } else if (status === VMStatusEnum.RUNNING) {
     icon = SyncAltIcon;
-  } else if (status === VMStatusEnum.OFF) {
+  } else if (status === VMStatusEnum.STOPPED) {
     icon = OffIcon;
   } else if (status.isError()) {
     icon = RedExclamationCircleIcon;
@@ -254,7 +256,7 @@ export const VMStatus: React.FC<VMStatusProps> = ({
     links.push({ to: `${getPodLink(pod)}/logs`, message: VIEW_POD_LOGS });
   }
 
-  const Icon = getVMStatusIcon(isPaused, status, arePendingChanges);
+  const Icon = getVMStatusIcon(status, arePendingChanges);
 
   return (
     <GenericStatus title={title} Icon={Icon} popoverTitle={popoverTitle}>

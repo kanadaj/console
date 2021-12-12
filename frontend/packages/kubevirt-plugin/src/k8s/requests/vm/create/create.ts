@@ -1,3 +1,4 @@
+import { TemplateKind } from '@console/internal/module/k8s';
 import { getOS } from '../../../../components/create-vm-wizard/selectors/combined';
 import { getImportProvidersFieldValue } from '../../../../components/create-vm-wizard/selectors/import-providers';
 import {
@@ -5,14 +6,26 @@ import {
   getFieldValue,
 } from '../../../../components/create-vm-wizard/selectors/vm-settings';
 import {
+  AUTOUNATTEND,
+  sysprepDisk,
+  sysprepVolume,
+  UNATTEND,
+} from '../../../../components/create-vm-wizard/tabs/advanced-tab/sysprep/utils/sysprep-utils';
+import {
   ImportProvidersField,
   VMImportProvider,
   VMSettingsField,
 } from '../../../../components/create-vm-wizard/types';
-import { TEMPLATE_PARAM_VM_NAME, TEMPLATE_PARAM_VM_NAME_DESC } from '../../../../constants/vm';
+import {
+  TEMPLATE_PARAM_VM_NAME,
+  TEMPLATE_PARAM_VM_NAME_DESC,
+  TEMPLATE_PARAM_VM_PASSWORD,
+  TEMPLATE_PARAM_VM_PASSWORD_DESC,
+} from '../../../../constants/vm';
 import { ProcessedTemplatesModel } from '../../../../models/models';
 import { iGetRelevantTemplate } from '../../../../selectors/immutable/template/combined';
 import { selectVM } from '../../../../selectors/vm-template/basic';
+import { VMKind } from '../../../../types';
 import { toShallowJS } from '../../../../utils/immutable';
 import { VMTemplateWrapper } from '../../../wrapper/vm/vm-template-wrapper';
 import { VMWrapper } from '../../../wrapper/vm/vm-wrapper';
@@ -74,6 +87,12 @@ export const createVMTemplate = async (params: CreateVMParams) => {
         description: TEMPLATE_PARAM_VM_NAME_DESC,
         required: true,
       },
+      {
+        name: TEMPLATE_PARAM_VM_PASSWORD,
+        description: TEMPLATE_PARAM_VM_PASSWORD_DESC,
+        generate: 'expression',
+        from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}',
+      },
     ],
   });
 
@@ -96,7 +115,14 @@ const importVM = async (params: CreateVMParams): Promise<ImporterResult> => {
 };
 
 export const createVM = async (params: CreateVMParams) => {
-  const { enhancedK8sMethods, namespace, vmSettings, openshiftFlag, isProviderImport } = params;
+  const {
+    enhancedK8sMethods,
+    namespace,
+    vmSettings,
+    openshiftFlag,
+    isProviderImport,
+    sysprepData,
+  } = params;
   const { k8sCreate, k8sWrapperCreate, getActualState } = enhancedK8sMethods;
 
   const combinedSimpleSettings = {
@@ -106,7 +132,6 @@ export const createVM = async (params: CreateVMParams) => {
   let onVMCreate: OnVMCreate = null;
   if (isProviderImport) {
     const result = await importVM(params);
-
     if (result?.skipVMCreation) {
       return getActualState();
     }
@@ -136,7 +161,7 @@ export const createVM = async (params: CreateVMParams) => {
         ),
       );
 
-    const processedTemplate = await k8sCreate(
+    const processedTemplate = await k8sCreate<TemplateKind>(
       ProcessedTemplatesModel,
       template.asResource(),
       null,
@@ -154,9 +179,17 @@ export const createVM = async (params: CreateVMParams) => {
     initializeCommonMetadata(combinedSimpleSettings, vmWrapper);
     initializeVM(params, vmWrapper);
   }
+
+  if (sysprepData?.[AUTOUNATTEND] || sysprepData?.[UNATTEND]) {
+    vmWrapper.appendStorage({
+      disk: sysprepDisk(),
+      volume: sysprepVolume(vmWrapper),
+    });
+  }
+
   initializeCommonVMMetadata(combinedSimpleSettings, vmWrapper);
 
-  const virtualMachine = await k8sWrapperCreate(vmWrapper);
+  const virtualMachine = await k8sWrapperCreate<VMKind, VMWrapper>(vmWrapper);
 
   if (onVMCreate) {
     await onVMCreate(virtualMachine);

@@ -11,7 +11,6 @@ import {
   DetailsPage,
   MultiListPage,
   Table,
-  TableRow,
   TableData,
   RowFunctionArgs,
 } from '@console/internal/components/factory';
@@ -35,6 +34,8 @@ import {
   k8sPatch,
   k8sKill,
   k8sUpdate,
+  K8sResourceCommon,
+  K8sKind,
 } from '@console/internal/module/k8s';
 import {
   BlueArrowCircleUpIcon,
@@ -203,10 +204,10 @@ const menuActions = [
   },
 ];
 
-export const SubscriptionTableRow: React.FC<RowFunctionArgs> = ({ obj, index, key, style }) => {
+export const SubscriptionTableRow: React.FC<RowFunctionArgs> = ({ obj }) => {
   const { t } = useTranslation();
   return (
-    <TableRow id={obj.metadata.uid} index={index} trKey={key} style={style}>
+    <>
       <TableData className={tableColumnClasses[0]}>
         <ResourceLink
           kind={referenceForModel(SubscriptionModel)}
@@ -233,7 +234,7 @@ export const SubscriptionTableRow: React.FC<RowFunctionArgs> = ({ obj, index, ke
           resource={obj}
         />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 
@@ -276,7 +277,7 @@ export const SubscriptionsList = requireOperatorGroup((props: SubscriptionsListP
       {...props}
       aria-label={t('olm~Operator Subscriptions')}
       Header={SubscriptionTableHeader}
-      Row={(rowArgs) => <SubscriptionTableRow {...rowArgs} />}
+      Row={SubscriptionTableRow}
       EmptyMsg={() => (
         <MsgBox
           title={t('olm~No Subscriptions found')}
@@ -488,7 +489,8 @@ export const SubscriptionUpdates: React.FC<SubscriptionUpdatesProps> = ({
     }
   }, [obj, waitingForUpdate]);
 
-  const k8sUpdateAndWait = (...args) => k8sUpdate(...args).then(() => setWaitingForUpdate(true));
+  const k8sUpdateAndWait = (kind: K8sKind, resource: K8sResourceCommon) =>
+    k8sUpdate(kind, resource).then(() => setWaitingForUpdate(true));
   const channelModal = () =>
     createSubscriptionChannelModal({ subscription: obj, pkg, k8sUpdate: k8sUpdateAndWait });
   const approvalModal = () => createInstallPlanApprovalModal({ obj, k8sUpdate: k8sUpdateAndWait });

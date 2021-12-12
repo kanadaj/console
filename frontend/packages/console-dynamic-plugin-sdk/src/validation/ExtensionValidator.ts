@@ -1,11 +1,9 @@
 import * as _ from 'lodash';
 import * as webpack from 'webpack';
-import {
-  filterEncodedCodeRefProperties,
-  parseEncodedCodeRefValue,
-} from '../coderefs/coderef-resolver';
-import { SupportedExtension } from '../schema/console-extensions';
+import { isEncodedCodeRef, parseEncodedCodeRefValue } from '../coderefs/coderef-resolver';
 import { ConsolePluginMetadata } from '../schema/plugin-package';
+import { Extension, EncodedCodeRef } from '../types';
+import { deepForOwn } from '../utils/object';
 import { ValidationResult } from './ValidationResult';
 
 type ExtensionCodeRefData = {
@@ -15,12 +13,18 @@ type ExtensionCodeRefData = {
 
 type ExposedPluginModules = ConsolePluginMetadata['exposedModules'];
 
-export const collectCodeRefData = (extensions: SupportedExtension[]) =>
+export const collectCodeRefData = (extensions: Extension[]) =>
   extensions.reduce((acc, e, index) => {
-    const refs = filterEncodedCodeRefProperties(e.properties);
-    if (!_.isEmpty(refs)) {
-      acc.push({ index, propToCodeRefValue: _.mapValues(refs, (obj) => obj.$codeRef) });
+    const data: ExtensionCodeRefData = { index, propToCodeRefValue: {} };
+
+    deepForOwn<EncodedCodeRef>(e.properties, isEncodedCodeRef, (ref, key) => {
+      data.propToCodeRefValue[key] = ref.$codeRef;
+    });
+
+    if (!_.isEmpty(data.propToCodeRefValue)) {
+      acc.push(data);
     }
+
     return acc;
   }, [] as ExtensionCodeRefData[]);
 
@@ -48,7 +52,7 @@ export class ExtensionValidator {
 
   validate(
     compilation: webpack.Compilation,
-    extensions: SupportedExtension[],
+    extensions: Extension[],
     exposedModules: ExposedPluginModules,
     dataVar: string = 'extensions',
   ) {

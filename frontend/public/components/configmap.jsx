@@ -3,7 +3,7 @@ import * as React from 'react';
 import * as classNames from 'classnames';
 import { sortable } from '@patternfly/react-table';
 import { useTranslation } from 'react-i18next';
-import { DetailsPage, ListPage, Table, TableRow, TableData } from './factory';
+import { DetailsPage, ListPage, Table, TableData } from './factory';
 import { ConfigMapData, ConfigMapBinaryData } from './configmap-and-secret-data';
 import {
   Kebab,
@@ -22,9 +22,9 @@ const kind = 'ConfigMap';
 
 const tableColumnClasses = ['', '', 'hidden-xs', 'hidden-xs', Kebab.columnClass];
 
-const ConfigMapTableRow = ({ obj: configMap, index, key, style }) => {
+const ConfigMapTableRow = ({ obj: configMap }) => {
   return (
-    <TableRow id={configMap.metadata.uid} index={index} trKey={key} style={style}>
+    <>
       <TableData className={tableColumnClasses[0]}>
         <ResourceLink
           kind="ConfigMap"
@@ -47,7 +47,7 @@ const ConfigMapTableRow = ({ obj: configMap, index, key, style }) => {
       <TableData className={tableColumnClasses[4]}>
         <ResourceKebab actions={menuActions} kind={kind} resource={configMap} />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 
@@ -88,7 +88,7 @@ const ConfigMaps = (props) => {
   return (
     <Table
       {...props}
-      aria-label="Config Maps"
+      aria-label={t('public~ConfigMaps')}
       Header={ConfigMapTableHeader}
       Row={ConfigMapTableRow}
       virtualize
@@ -115,7 +115,7 @@ const ConfigMapsDetailsPage = (props) => {
         </div>
         <div className="co-m-pane__body">
           <SectionHeading text={t('public~Data')} />
-          <ConfigMapData data={configMap.data} label="Data" />
+          <ConfigMapData data={configMap.data} label={t('public~Data')} />
         </div>
         <div className="co-m-pane__body">
           <SectionHeading text={t('public~Binary data')} />

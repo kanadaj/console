@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import { Dispatch } from 'react-redux';
-import { k8sList, StorageClassResourceKind, ListKind } from '@console/internal/module/k8s';
+import { k8sGet, k8sList, StorageClassResourceKind, ListKind } from '@console/internal/module/k8s';
 import {
   ClusterServiceVersionModel,
   ClusterServiceVersionKind,
@@ -9,7 +9,7 @@ import { setFlag } from '@console/internal/actions/features';
 import { FeatureDetector } from '@console/plugin-sdk';
 import { getAnnotations, getName } from '@console/shared/src/selectors/common';
 import { fetchK8s } from '@console/internal/graphql/client';
-import { StorageClassModel } from '@console/internal/models';
+import { NamespaceModel, StorageClassModel } from '@console/internal/models';
 import { CephClusterModel, NooBaaSystemModel } from './models';
 import {
   CEPH_STORAGE_NAMESPACE,
@@ -18,10 +18,13 @@ import {
   SECOND,
   OCS_OPERATOR,
   NOOBAA_PROVISIONER,
+  ODF_MANAGED_LABEL,
 } from './constants';
 
 export const OCS_INDEPENDENT_FLAG = 'OCS_INDEPENDENT';
 export const OCS_CONVERGED_FLAG = 'OCS_CONVERGED';
+
+export const ODF_MANAGED_FLAG = 'ODF_MANAGED';
 
 export const LSO_FLAG = 'LSO';
 
@@ -34,6 +37,8 @@ export const CEPH_FLAG = 'CEPH';
 // Based on the existence of StorageCluster
 export const OCS_FLAG = 'OCS';
 
+export const MCG_STANDALONE = 'MCG_STANDALONE';
+
 export enum GUARDED_FEATURES {
   // Flag names to be prefixed with "OCS_" so as to seperate from console flags
   OCS_MULTUS = 'OCS_MULTUS',
@@ -44,6 +49,7 @@ export enum GUARDED_FEATURES {
   OCS_THICK_PROVISION = 'OCS_THICK_PROVISION',
   OCS_POOL_MANAGEMENT = 'OCS_POOL_MANAGEMENT',
   OCS_NAMESPACE_STORE = 'OCS_NAMESPACE_STORE',
+  ODF_MCG_STANDALONE = 'ODF_MCG_STANDALONE',
 }
 
 const OCS_FEATURE_FLAGS = {
@@ -56,6 +62,7 @@ const OCS_FEATURE_FLAGS = {
   [GUARDED_FEATURES.OCS_THICK_PROVISION]: 'thick-provision',
   [GUARDED_FEATURES.OCS_POOL_MANAGEMENT]: 'pool-management',
   [GUARDED_FEATURES.OCS_NAMESPACE_STORE]: 'namespace-store',
+  [GUARDED_FEATURES.ODF_MCG_STANDALONE]: 'mcg-standalone',
 };
 
 const handleError = (res: any, flags: string[], dispatch: Dispatch, cb: FeatureDetector) => {
@@ -123,6 +130,18 @@ export const detectOCS: FeatureDetector = async (dispatch) => {
   dispatch(setFlag(OCS_CONVERGED_FLAG, true));
   dispatch(setFlag(OCS_INDEPENDENT_FLAG, false));
   dispatch(setFlag(OCS_FLAG, true));
+};
+
+export const detectManagedODF: FeatureDetector = async (dispatch) => {
+  try {
+    const ns = await k8sGet(NamespaceModel, CEPH_STORAGE_NAMESPACE);
+    if (ns) {
+      const isManagedCluster = ns?.metadata?.labels?.[ODF_MANAGED_LABEL];
+      dispatch(setFlag(ODF_MANAGED_FLAG, !!isManagedCluster));
+    }
+  } catch (error) {
+    dispatch(setFlag(ODF_MANAGED_FLAG, false));
+  }
 };
 
 export const detectComponents: FeatureDetector = async (dispatch) => {

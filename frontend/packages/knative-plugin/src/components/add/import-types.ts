@@ -21,6 +21,11 @@ export const EventSources = {
   SinkBinding: EventSourceSinkBindingModel.kind,
   KameletBinding: CamelKameletBindingModel.kind,
 };
+
+export const Channels = {
+  InMemoryChannel: EventingIMCModel.kind,
+  KafkaChannel: EventingKafkaChannelModel.kind,
+};
 export const defaultChannels = {
   InMemoryChannel: EventingIMCModel,
   KafkaChannel: EventingKafkaChannelModel,
@@ -67,6 +72,13 @@ export interface EventSourceSyncFormData {
   yamlData?: string;
 }
 
+export type YamlFormSyncData<T> = {
+  editorType?: string;
+  showCanUseYAMLMessage?: boolean;
+  formData: T;
+  yamlData?: string;
+};
+
 export interface EventSourceMetaData {
   name: string;
   description?: string;
@@ -83,8 +95,6 @@ export enum SinkType {
   Uri = 'uri',
 }
 
-export const EVENT_SOURCES_APP = 'event-sources-app';
-
 export const sourceSinkType = (t: TFunction) => {
   return {
     Resource: {
@@ -98,6 +108,7 @@ export const sourceSinkType = (t: TFunction) => {
   };
 };
 export interface AddChannelFormData {
+  project?: ProjectData;
   application: ApplicationData;
   name: string;
   namespace: string;
@@ -110,4 +121,18 @@ export interface AddChannelFormData {
 export interface ChannelListProps {
   loaded: boolean;
   channelList: string[];
+}
+
+export interface AddBrokerFormYamlValues {
+  editorType: string;
+  showCanUseYAMLMessage: boolean;
+  formData: BrokerFormData;
+  yamlData: string;
+}
+
+export interface BrokerFormData {
+  project: ProjectData;
+  application: ApplicationData;
+  name: string;
+  spec: {};
 }

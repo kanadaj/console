@@ -20,17 +20,14 @@ export class GithubService extends BaseService {
     super(gitsource);
     const opts = this.getAuthProvider();
     this.metadata = this.getRepoMetadata();
-    this.client = new Octokit({ auth: opts });
+    this.client = new Octokit(opts);
   }
 
-  protected getAuthProvider = (): any => {
+  protected getAuthProvider = (): Octokit.Options => {
     switch (this.gitsource.secretType) {
-      case SecretType.BASIC_AUTH: {
-        const { username, password } = this.gitsource.secretContent;
-        return { username, password };
-      }
-      case SecretType.NO_AUTH:
-        return null;
+      case SecretType.PERSONAL_ACCESS_TOKEN:
+      case SecretType.BASIC_AUTH:
+        return { auth: this.gitsource.secretContent };
       default:
         return null;
     }
@@ -45,6 +42,8 @@ export class GithubService extends BaseService {
       host: source,
       defaultBranch: this.gitsource.ref,
       contextDir,
+      devfilePath: this.gitsource.devfilePath,
+      dockerfilePath: this.gitsource.dockerfilePath,
     };
   };
 
@@ -146,13 +145,17 @@ export class GithubService extends BaseService {
     }
   };
 
-  isDockerfilePresent = () => this.isFilePresent(`${this.metadata.contextDir}/Dockerfile`);
+  isDockerfilePresent = () =>
+    this.isFilePresent(`${this.metadata.contextDir}/${this.metadata.dockerfilePath}`);
 
-  getDockerfileContent = () => this.getFileContent(`${this.metadata.contextDir}/Dockerfile`);
+  getDockerfileContent = () =>
+    this.getFileContent(`${this.metadata.contextDir}/${this.metadata.dockerfilePath}`);
 
-  isDevfilePresent = () => this.isFilePresent(`${this.metadata.contextDir}/devfile.yaml`);
+  isDevfilePresent = () =>
+    this.isFilePresent(`${this.metadata.contextDir}/${this.metadata.devfilePath}`);
 
-  getDevfileContent = () => this.getFileContent(`${this.metadata.contextDir}/devfile.yaml`);
+  getDevfileContent = () =>
+    this.getFileContent(`${this.metadata.contextDir}/${this.metadata.devfilePath}`);
 
   getPackageJsonContent = () => this.getFileContent(`${this.metadata.contextDir}/package.json`);
 }

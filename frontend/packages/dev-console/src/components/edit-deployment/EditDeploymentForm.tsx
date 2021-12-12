@@ -2,7 +2,6 @@ import * as React from 'react';
 import { FormikProps, FormikValues } from 'formik';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { history } from '@console/internal/components/utils';
 import { DeploymentConfigModel, DeploymentModel } from '@console/internal/models';
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import {
@@ -27,6 +26,7 @@ import {
 const EditDeploymentForm: React.FC<FormikProps<FormikValues> & {
   heading: string;
   resource: K8sResourceKind;
+  handleCancel: () => void;
 }> = ({
   heading,
   resource,
@@ -34,6 +34,7 @@ const EditDeploymentForm: React.FC<FormikProps<FormikValues> & {
   isSubmitting,
   dirty,
   handleSubmit,
+  handleCancel,
   setFieldValue,
   setStatus,
   setErrors,
@@ -45,6 +46,8 @@ const EditDeploymentForm: React.FC<FormikProps<FormikValues> & {
 
   const isStale = resource.metadata.resourceVersion !== formData.resourceVersion;
 
+  const LAST_VIEWED_EDITOR_TYPE_USERSETTING_KEY = 'devconsole.editDeploymentForm.editor.lastView';
+
   const formEditor = (
     <EditDeploymentFormEditor resourceType={resourceType} resourceObj={resource} />
   );
@@ -53,6 +56,7 @@ const EditDeploymentForm: React.FC<FormikProps<FormikValues> & {
     <YAMLEditorField
       name="yamlData"
       model={resourceType === Resources.OpenShift ? DeploymentConfigModel : DeploymentModel}
+      showSamples={!resource}
       onSave={handleSubmit}
     />
   );
@@ -93,6 +97,7 @@ const EditDeploymentForm: React.FC<FormikProps<FormikValues> & {
             editor: yamlEditor,
             sanitizeTo: sanitizeToYaml,
           }}
+          lastViewUserSettingKey={LAST_VIEWED_EDITOR_TYPE_USERSETTING_KEY}
           noMargin
         />
       </FormBody>
@@ -108,7 +113,7 @@ const EditDeploymentForm: React.FC<FormikProps<FormikValues> & {
         disableSubmit={
           (editorType === EditorType.YAML ? !dirty : !dirty || !_.isEmpty(errors)) || isSubmitting
         }
-        handleCancel={history.goBack}
+        handleCancel={handleCancel}
         handleDownload={editorType === EditorType.YAML && (() => downloadYaml(yamlData))}
         sticky
       />

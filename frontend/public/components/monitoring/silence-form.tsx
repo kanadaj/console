@@ -4,7 +4,10 @@ import { MinusCircleIcon, PlusCircleIcon } from '@patternfly/react-icons';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
-import { connect } from 'react-redux';
+// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// @ts-ignore
+import { useSelector } from 'react-redux';
+import { getUser } from '@console/dynamic-plugin-sdk';
 
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 import { coFetchJSON } from '../../co-fetch';
@@ -17,8 +20,8 @@ import { SectionHeading } from '../utils/headings';
 import { ExternalLink, getURLSearchParams } from '../utils/link';
 import { history } from '../utils/router';
 import { StatusBox } from '../utils/status-box';
-import { SilenceStates } from './types';
-import { silenceParamToProps, SilenceResource, silenceState } from './utils';
+import { Silence, Silences, SilenceStates } from './types';
+import { SilenceResource, silenceState } from './utils';
 
 const pad = (i: number): string => (i < 10 ? `0${i}` : String(i));
 
@@ -56,12 +59,23 @@ const DatetimeTextInput = (props) => {
   );
 };
 
-const durationOff = '-';
-const durations = [durationOff, '30m', '1h', '2h', '6h', '12h', '1d', '2d', '1w'];
-const durationItems = _.zipObject(durations, durations);
-
 const SilenceForm_: React.FC<SilenceFormProps> = ({ defaults, Info, title }) => {
   const { t } = useTranslation();
+
+  const durationOff = '-';
+  const durations = [durationOff, '30m', '1h', '2h', '6h', '12h', '1d', '2d', '1w'];
+  const internationalizedDurationItems = [
+    durationOff,
+    t('public~30m'),
+    t('public~1h'),
+    t('public~2h'),
+    t('public~6h'),
+    t('public~12h'),
+    t('public~1d'),
+    t('public~2d'),
+    t('public~1w'),
+  ];
+  const durationItems = _.zipObject(durations, internationalizedDurationItems);
 
   const now = new Date();
 
@@ -95,6 +109,15 @@ const SilenceForm_: React.FC<SilenceFormProps> = ({ defaults, Info, title }) => 
     defaults.matchers ?? [{ isRegex: false, name: '', value: '' }],
   );
   const [startsAt, setStartsAt] = React.useState(defaults.startsAt ?? formatDate(now));
+
+  const user = useSelector(getUser);
+
+  React.useEffect(() => {
+    if (_.isEmpty(createdBy)) {
+      setCreatedBy(user?.metadata?.name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const getEndsAtValue = (): string => {
     const startsAtDate = Date.parse(startsAt);
@@ -224,7 +247,7 @@ const SilenceForm_: React.FC<SilenceFormProps> = ({ defaults, Info, title }) => 
                     isDisabled
                     value={
                       isStartNow
-                        ? t('public~{{duration}} from now', { duration })
+                        ? t('public~{{duration}} from now', { duration: durationItems[duration] })
                         : getEndsAtValue()
                     }
                   />
@@ -372,9 +395,12 @@ const EditInfo = () => {
   );
 };
 
-export const EditSilence = connect(silenceParamToProps)(({ loaded, loadError, silence }) => {
+export const EditSilence = ({ match }) => {
   const { t } = useTranslation();
 
+  const silences: Silences = useSelector(({ observe }: RootState) => observe.get('silences'));
+
+  const silence: Silence = _.find(silences?.data, { id: match.params.id });
   const isExpired = silenceState(silence) === SilenceStates.Expired;
   const defaults = _.pick(silence, [
     'comment',
@@ -388,7 +414,12 @@ export const EditSilence = connect(silenceParamToProps)(({ loaded, loadError, si
   defaults.endsAt = isExpired ? undefined : formatDate(new Date(defaults.endsAt));
 
   return (
-    <StatusBox data={silence} label={SilenceResource.label} loaded={loaded} loadError={loadError}>
+    <StatusBox
+      data={silence}
+      label={SilenceResource.label}
+      loaded={silences?.loaded}
+      loadError={silences?.loadError}
+    >
       <SilenceForm
         defaults={defaults}
         Info={isExpired ? undefined : EditInfo}
@@ -396,23 +427,19 @@ export const EditSilence = connect(silenceParamToProps)(({ loaded, loadError, si
       />
     </StatusBox>
   );
-});
+};
 
-const CreateSilence_ = ({ createdBy }) => {
+export const CreateSilence = () => {
   const { t } = useTranslation();
 
   const matchers = _.map(getURLSearchParams(), (value, name) => ({ name, value, isRegex: false }));
 
   return _.isEmpty(matchers) ? (
-    <SilenceForm defaults={{ createdBy }} title={t('public~Create silence')} />
+    <SilenceForm defaults={{}} title={t('public~Create silence')} />
   ) : (
-    <SilenceForm defaults={{ createdBy, matchers }} title={t('public~Silence alert')} />
+    <SilenceForm defaults={{ matchers }} title={t('public~Silence alert')} />
   );
 };
-const createSilenceStateToProps = ({ UI }: RootState) => ({
-  createdBy: UI.get('user')?.metadata?.name,
-});
-export const CreateSilence = connect(createSilenceStateToProps)(CreateSilence_);
 
 type SilenceFormProps = {
   defaults: any;

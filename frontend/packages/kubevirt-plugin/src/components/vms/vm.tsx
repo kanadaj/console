@@ -18,16 +18,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { QuickStartModel } from '@console/app/src/models';
 import {
   MultiListPage,
-  RowFunction,
+  RowFunctionArgs,
   Table,
   TableData,
-  TableRow,
 } from '@console/internal/components/factory';
 import {
+  Kebab,
   FirehoseResult,
   history,
-  Kebab,
-  KebabOption,
   ResourceLink,
   Timestamp,
 } from '@console/internal/components/utils';
@@ -38,7 +36,8 @@ import {
   PersistentVolumeClaimModel,
   PodModel,
 } from '@console/internal/models';
-import { K8sKind, PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
+import { PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
+import { LazyActionMenu } from '@console/shared';
 import { VMWizardMode, VMWizardName } from '../../constants';
 import { V2VVMImportStatus } from '../../constants/v2v-import/ovirt/v2v-vm-import-status';
 import { useNamespace } from '../../hooks/use-namespace';
@@ -67,11 +66,11 @@ import {
   dimensifyRow,
   getBasicID,
   getLoadedData,
+  getVMActionContext,
 } from '../../utils';
 import { hasPendingChanges } from '../../utils/pending-changes';
 import { getVMWizardCreateLink } from '../../utils/url';
 import { VMStatus } from '../vm-status/vm-status';
-import { vmiMenuActions, vmImportMenuActions, vmMenuActions } from './menu-actions';
 import { vmStatusFilter } from './table-filters';
 import VMIP from './VMIP';
 
@@ -130,34 +129,21 @@ const PendingChanges: React.FC = () => {
   return <div className="kv-vm-row_status-extra-label">{t('kubevirt-plugin~Pending changes')}</div>;
 };
 
-const VMRow: RowFunction<VMRowObjType> = ({ obj, index, key, style }) => {
+const VMRow: React.FC<RowFunctionArgs<VMRowObjType>> = ({ obj }) => {
   const { vm, vmi, vmImport } = obj;
   const { name, namespace, node, creationTimestamp, uid, vmStatusBundle } = obj.metadata;
   const dimensify = dimensifyRow(tableColumnClasses);
 
-  let options: KebabOption[];
-  let model: K8sKind;
-
-  if (vmImport) {
-    model = VirtualMachineImportModel;
-    options = vmImportMenuActions.map((action) => action(model, vmImport));
-  } else if (vm) {
-    model = VirtualMachineModel;
-    options = vmMenuActions.map((action) =>
-      action(model, vm, {
-        vmStatusBundle,
-        vmi,
-      }),
-    );
-  } else if (vmi) {
-    model = VirtualMachineInstanceModel;
-    options = vmiMenuActions.map((action) => action(model, vmi));
-  }
+  const model =
+    (vmImport && VirtualMachineImportModel) ||
+    (vm && VirtualMachineModel) ||
+    (vmi && VirtualMachineInstanceModel);
+  const context = getVMActionContext(vm || vmi);
 
   const arePendingChanges = hasPendingChanges(vm, vmi);
 
   return (
-    <TableRow key={`${key}${name}`} id={uid} index={index} trKey={key} style={style}>
+    <>
       <TableData className={dimensify()}>
         <ResourceLink kind={kubevirtReferenceForModel(model)} name={name} namespace={namespace} />
       </TableData>
@@ -183,9 +169,9 @@ const VMRow: RowFunction<VMRowObjType> = ({ obj, index, key, style }) => {
       </TableData>
       <TableData className={dimensify()}>{vmi && <VMIP data={getVmiIpAddresses(vmi)} />}</TableData>
       <TableData className={dimensify(true)}>
-        <Kebab options={options} key={`kebab-for-${uid}`} id={`kebab-for-${uid}`} />
+        <LazyActionMenu context={context} key={`kebab-for-${uid}`} />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 
@@ -193,7 +179,6 @@ const VMListEmpty: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const namespace = useNamespace();
-
   const searchText = 'virtual machine';
   const [quickStarts, quickStartsLoaded] = useK8sWatchResource<QuickStart[]>({
     kind: kubevirtReferenceForModel(QuickStartModel),
@@ -206,7 +191,6 @@ const VMListEmpty: React.FC = () => {
         displayName.toLowerCase().includes(searchText) ||
         description.toLowerCase().includes(searchText),
     );
-
   return (
     <EmptyState>
       <EmptyStateIcon icon={VirtualMachineIcon} />
@@ -274,7 +258,7 @@ const VMList: React.FC<React.ComponentProps<typeof Table> & VMListProps> = (prop
 
 VMList.displayName = 'VMList';
 
-const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
+export const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
   const { t } = useTranslation();
   const { skipAccessReview, noProjectsAvailable, showTitle } = props.customData;
   const namespace = props.match.params.ns;
@@ -293,7 +277,22 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
     {
       kind: PodModel.kind,
       namespace,
-      prop: 'pods',
+      prop: 'kubevirtPods',
+      selector: {
+        matchLabels: {
+          app: 'kubevirt',
+        },
+      },
+    },
+    {
+      kind: PodModel.kind,
+      namespace,
+      prop: 'cdiPods',
+      selector: {
+        matchLabels: {
+          app: 'containerized-data-importer',
+        },
+      },
     },
     {
       kind: kubevirtReferenceForModel(VirtualMachineInstanceMigrationModel),
@@ -324,7 +323,8 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
   const flatten = ({
     vms,
     vmis,
-    pods,
+    kubevirtPods,
+    cdiPods,
     migrations,
     pvcs,
     dataVolumes,
@@ -332,7 +332,8 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
   }: {
     vms: FirehoseResult<VMKind[]>;
     vmis: FirehoseResult<VMIKind[]>;
-    pods: FirehoseResult<PodKind[]>;
+    kubevirtPods: FirehoseResult<PodKind[]>;
+    cdiPods: FirehoseResult<PodKind[]>;
     migrations: FirehoseResult;
     pvcs: FirehoseResult<PersistentVolumeClaimKind[]>;
     dataVolumes: FirehoseResult<V1alpha1DataVolume[]>;
@@ -340,7 +341,8 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
   }) => {
     const loadedVMs = getLoadedData(vms);
     const loadedVMIs = getLoadedData(vmis);
-    const loadedPods = getLoadedData(pods);
+    const loadedKubevirtPods = getLoadedData(kubevirtPods);
+    const loadedCDIPods = getLoadedData(cdiPods);
     const loadedMigrations = getLoadedData(migrations);
     const loadedVMImports = getLoadedData(vmImports);
     const loadedPVCs = getLoadedData(pvcs);
@@ -351,7 +353,8 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
       ![
         loadedVMs,
         loadedVMIs,
-        loadedPods,
+        loadedKubevirtPods,
+        loadedCDIPods,
         loadedMigrations,
         loadedDataVolumes,
         isVMImportLoaded,
@@ -405,7 +408,7 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
           vmStatusBundle = getVMStatus({
             vm: objectBundle.vm,
             vmi: objectBundle.vmi,
-            pods: loadedPods,
+            pods: [...loadedKubevirtPods, ...loadedCDIPods],
             migrations: loadedMigrations,
             pvcs: loadedPVCs,
             dataVolumes: loadedDataVolumes,
@@ -434,7 +437,6 @@ const VirtualMachinesPage: React.FC<VirtualMachinesPageProps> = (props) => {
 
   const createAccessReview = skipAccessReview ? null : { model: VirtualMachineModel, namespace };
   const modifiedProps = Object.assign({}, { mock: noProjectsAvailable }, props);
-
   return (
     <MultiListPage
       {...modifiedProps}
@@ -483,5 +485,3 @@ type VirtualMachinesPageProps = {
     noProjectsAvailable?: boolean;
   };
 };
-
-export { VirtualMachinesPage };

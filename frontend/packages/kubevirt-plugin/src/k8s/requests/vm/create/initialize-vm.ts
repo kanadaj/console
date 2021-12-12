@@ -9,8 +9,8 @@ import {
   VolumeType,
 } from '../../../../constants/vm';
 import { VM_TEMPLATE_NAME_PARAMETER } from '../../../../constants/vm-templates/constants';
-import { getVolumeCloudInitNoCloud } from '../../../../selectors/vm';
 import { isCustomFlavor } from '../../../../selectors/vm-like/flavor';
+import { getVolumeCloudInitNoCloud } from '../../../../selectors/vm/volume';
 import { resolveDataVolumeName } from '../../../../utils';
 import {
   CloudInitDataFormKeys,
@@ -47,6 +47,16 @@ const initializeStorage = (params: CreateVMParams, vm: VMWrapper) => {
       }
     }
 
+    if (volumeWrapper.getCloudInitNoCloud()) {
+      const cloudConfigHeader = volumeWrapper
+        .getCloudInitNoCloud()
+        ?.userData?.includes('#cloud-config');
+      !cloudConfigHeader &&
+        volumeWrapper.setCloudInitNoCloud({
+          userData: ['#cloud-config', volumeWrapper.getCloudInitNoCloud().userData].join('\n'),
+        });
+    }
+
     return {
       ...storage,
       volume: volumeWrapper.asResource(),
@@ -78,7 +88,7 @@ const initializeNetworks = ({ networks, vmSettings }: CreateVMParams, vm: VMWrap
 };
 
 export const initializeVM = (params: CreateVMParams, vm: VMWrapper) => {
-  const { vmSettings, storages, isTemplate } = params;
+  const { vmSettings, storages, isTemplate, gpus, hostDevices } = params;
   const settings = asSimpleSettings(vmSettings);
   const isRunning = settings[VMSettingsField.START_VM];
 
@@ -87,6 +97,8 @@ export const initializeVM = (params: CreateVMParams, vm: VMWrapper) => {
     vm.setMemory(settings[VMSettingsField.MEMORY]);
   }
 
+  vm.setGPUDevices(gpus);
+  vm.setHostDevices(hostDevices);
   vm.setRunning(!isTemplate && isRunning);
 
   const cloudInitVolume = storages.map((s) => s.volume).find(getVolumeCloudInitNoCloud);

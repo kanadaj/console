@@ -36,9 +36,32 @@ export enum nodeActions {
   DeleteInMemoryChannel = 'Delete InMemoryChannel',
   EditRevision = 'Edit Revision',
   DeleteRevision = 'Delete Revision',
+  MakeServerless = 'Make Serverless',
+}
+
+export enum applicationGroupingsActions {
+  DeleteApplication = 'Delete Application',
+  AddtoApplication = 'Add to Application',
 }
 
 export enum authenticationTypes {
   ImageRegistryCredentials = 'Image registry credentials',
   UploadConfigurationFile = 'Upload configuration file',
+}
+
+export enum addToApplicationGroupings {
+  FromGit = 'From Git',
+  ContainerImage = 'Container Image',
+  FromDockerfile = 'From Dockerfile',
+  FromDevfile = 'From Devfile',
+  UploadJarfile = 'Upload JAR file',
+  EventSource = 'Event Source',
+  Channel = 'Channel',
+}
+
+export enum sideBarTabs {
+  Details = 'Details',
+  Resources = 'Resources',
+  ReleaseNotes = 'Release notes',
+  Observe = 'Observe',
 }

@@ -5,12 +5,10 @@ import { FormikValues, useFormikContext } from 'formik';
 import { safeLoad } from 'js-yaml';
 import * as _ from 'lodash';
 import { Trans, useTranslation } from 'react-i18next';
+import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
 import { coFetchJSON, coFetch } from '@console/internal/co-fetch';
 import { confirmModal } from '@console/internal/components/modals/confirm-modal';
-import {
-  useK8sWatchResource,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { K8sResourceKind, referenceForModel } from '@console/internal/module/k8s';
 import { DropdownField } from '@console/shared';
 import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
@@ -176,10 +174,10 @@ const HelmChartVersionDropdown: React.FunctionComponent<HelmChartVersionDropdown
     }
   };
 
+  const isDisabled = _.isEmpty(helmChartVersions) || _.keys(helmChartVersions).length === 1;
+
   const helpText =
-    helmAction === HelmActionType.Install
-      ? t('helm-plugin~Select the chart version.')
-      : t('helm-plugin~Select the version to upgrade to.');
+    helmAction === HelmActionType.Upgrade && t('helm-plugin~Select the version to upgrade to.');
 
   const title =
     _.isEmpty(helmChartVersions) && !chartVersion
@@ -198,8 +196,8 @@ const HelmChartVersionDropdown: React.FunctionComponent<HelmChartVersionDropdown
         name="chartVersion"
         label={t('helm-plugin~Chart version')}
         items={helmChartVersions}
-        helpText={helpText}
-        disabled={_.isEmpty(helmChartVersions) || _.keys(helmChartVersions).length === 1}
+        helpText={!isDisabled ? helpText : ''}
+        disabled={isDisabled}
         title={title}
         onChange={handleChartVersionChange}
         required

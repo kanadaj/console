@@ -1,11 +1,22 @@
 export const topologyPO = {
-  switcher: '[data-test-id="topology-switcher-view"]',
+  switcher: 'button[data-test-id="topology-switcher-view"]',
   noWorkLoadsText: 'h2.co-hint-block__title',
   title: 'h1.ocs-page-layout__title',
   search: '[data-test-id="item-filter"]',
   emptyStateIcon: 'div.pf-c-empty-state__icon',
+  emptyText: '[data-test="no-resources-found"]',
+  addToApplication: '[data-test-action="devconsole~Add to Application"]',
+  addToApplicationInContext: 'button.pf-topology-context-sub-menu.pf-c-dropdown__menu-item',
+  quickSearch: '[data-test="quick-search-bar"]',
+  filterByResourceDropDown: '[data-test="filter-by-resource"] button',
+  topologyDropDown: 'button[aria-label="Options menu"]',
+  emptyView: {
+    startBuildingYourApplicationLink: '[data-test="start-building-your-application"]',
+    addPageLink: '[data-test="add-page"]',
+  },
   graph: {
     reset: '#reset-view',
+    layoutViewGroup: '.odc-topology__layout-group',
     zoomIn: '#zoom-in',
     zoomOut: '#zoom-out',
     fitToScreen: '#fit-to-screen',
@@ -22,34 +33,36 @@ export const topologyPO = {
     eventSourceWorkload: '[data-type="event-source"]',
     applicationGroupingTitle: '.odc-topology-list-view__application-label',
     addNewAnnotations: '[data-test="add-button"]',
+    deleteApplication: '[id="form-input-resourceName-field"]',
     connector: '[data-test-id="edge-handler"]',
     displayOptions: {
-      connenctivityMode: '[id="showGroups"]',
+      connectivityMode: '[id="showGroups"]',
       consumptionMode: '[id="hideGroups"]',
       expandSwitchToggle: '.pf-c-switch__input',
-      applicationGroupingsDisabled: '.pf-c-check.pf-c-select__menu-item.pf-m-disabled',
-    },
-    filterByResource: {
-      filterByResourceDropDown: '.pf-c-select__toggle-text',
-      deploymentResource: '.co-m-resource-icon.co-m-resource-deployment',
-      deploymentConfigResource: '.co-m-resource-icon.co-m-resource-deploymentconfig',
+      applicationGroupings: '[id$=expand-app-groups]',
+      showLabels: '[id$=show-labels]',
+      showPodCount: '[id$=show-pod-count]',
     },
     contextMenuOptions: {
       addToProject: '.pf-topology-context-sub-menu',
     },
+    addLink: '[data-test="add-page"]',
+    quickSearch: '[data-test="quick-search-bar"]',
   },
   list: {
     appName: '#HelmRelease ul li div',
     nodeName: '#HelmRelease ul li div',
     resourceTitle: 'pf-c-data-list__cell.odc-topology-list-view__kind-label',
+    switcher: '[data-test-id="topology-switcher-view"][aria-label="Graph view"]',
   },
   sidePane: {
     actionsDropDown: '[data-test-id="actions-menu-button"]',
     showPodCount: '[id$=show-pod-count]',
     dialog: '[role="dialog"]',
     title: '[role="dialog"] h1',
+    knativeServiceIcon: '[title="Service"]',
     tabs: '[role="dialog"] li button',
-    sectionTitle: '[role="dialog"] h2.sidebar__section-heading',
+    sectionTitle: 'h2',
     close: 'button[aria-label="Close"]',
     labelsList: '[data-test="label-list"]',
     editAnnotations: '[data-test="edit-annotations"]',
@@ -57,9 +70,12 @@ export const topologyPO = {
     healthCheckAlert: 'div.ocs-health-checks-alert',
     podScale: 'button.pf-c-button.pf-m-plain.pf-m-block',
     podText: 'text.pf-chart-donut-title.pod-ring__center-text',
+    applicationGroupingsTitle: '.overview__sidebar-pane-head.resource-overview__heading',
+    applicationGroupingsSidepane: 'overview__sidebar-pane resource-overview',
+    resourcesTabApplicationGroupings: '.co-m-horizontal-nav__menu-item',
     detailsTab: {
-      labels: 'dt[data-test-selector$="Labels"]',
-      annotations: '[data-test-selector="details-item-label__Annotations"]',
+      labels: '[data-test="label-list"]',
+      annotations: '[data-test="edit-annotations"]',
       labelsEdit: '[data-test="Labels-details-item__edit-button"]',
     },
     resourcesTab: {
@@ -222,4 +238,11 @@ export const topologyPO = {
     },
     tickButton: '[data-test-id="check-icon"]',
   },
+};
+
+export const typeOfWorkload = (workload: string) => {
+  return `[data-test~="icon"][data-test~="${workload
+    .toLowerCase()
+    .replace(' ', '')
+    .trim()}"]`;
 };

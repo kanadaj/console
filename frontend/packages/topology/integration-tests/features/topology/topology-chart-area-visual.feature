@@ -7,32 +7,36 @@ Feature: Topology chart area
               And user has created or selected namespace "aut-topology-delete-workload"
 
 
-        @smoke @to-do
+        @smoke
         Scenario: Empty state of topology: T-06-TC01
              When user navigates to Topology page
              Then user sees Topology page with message "No resources found"
+              And user is able to see Start building your application, Add page links
+              And Display options dropdown, Filter by resource and Find by name fields are disabled
+              And Zoom in, Zoom out, Fit to Screen, Reset view, layout icons are disabled
+              And switch view is disabled
 
 
-        @regression @to-do
+        @regression
         Scenario: Navigate to Add page from Empty state of topology: T-06-TC02
             Given user is at the Topology page
              When user clicks on "Add page" link in the topology page
-             Then user will be redirected too Add page
+             Then user will be redirected to Add page
 
 
-        @regression @to-do
+        @regression
         Scenario: Add to project option in Empty state of topology: T-06-TC03
             Given user is at the Topology page
-             When user clicks on "Start building your application" link in the topology page
+             When user clicks on "Start building your application" link in the empty topology page
              Then user will be able to see Add to project search bar
 
 
-        @smoke @to-do
+        @smoke
         Scenario: Topology with workloads: T-06-TC04
-            Given user has created a workload named "nodejs-ex-git"
-              And user has created knative workload "nodejs-ex-git-1"
+            Given user has created a deployment workload named "nodejs-ex-git-1"
+              And user has created a deployment config workload "nodejs-ex-git-2"
              When user navigates to Topology page
-             Then user sees different workloads in topology chart area
+             Then user sees "nodejs-ex-git-1" and "nodejs-ex-git-2" workloads in topology chart area
 
 
         @regression @manual
@@ -134,16 +138,18 @@ Feature: Topology chart area
              Then user sees the chart area is reset to original
 
 
-        @regression @to-do
-        Scenario: Topology filter by resource: T-06-TC14
-            Given user created two workloads with resource type "Deployment" and "Deployment-Config"
+        @regression
+        Scenario Outline: Topology filter by resource: T-06-TC14
+            Given user created "<resource_type>" workload
              When user is at Topology page chart view
               And user clicks the filter by resource on top
-              And user will see "Deployment" and "Deployment-Config" options with '1' associated with it
-              And user clicks on Deployment
-              And user can see only the deployment workload
-              And user clicks on Deployment-Config
-             Then user can see only the deployment-config workload
+              And user clicks on "<resource_type>" option
+             Then user can see only the "<resource_type>" workload
+
+        Examples:
+                  | resource_type    |
+                  | Deployment       |
+                  | DeploymentConfig |
 
 
         @regression @to-do
@@ -161,13 +167,10 @@ Feature: Topology chart area
               And user hovers on Add to Project
               And user clicks on Samples
               And user selects go sample and clicks Create
-              And user hovers on Add to Project and clicks on From Git
+              And user hovers on Add to Project and clicks on Import from Git
               And user fills the form and clicks Create
               And user hovers on Add to Project and clicks on Container Image
               And user fills the form and clicks Create
-              And user hovers on Add to Project and clicks on From Dockerfile
-              And user fills the form and clicks Create
-              And user hovers on Add to Project and clicks on From Devfile
               And user fills the form and clicks Create
               And user hovers on Add to Project and clicks on From Catalog
               And user selects Python Builder Image and clicks Create Application
@@ -179,14 +182,14 @@ Feature: Topology chart area
               And user selects Postgres and clicks on Create
               And user fills the form and clicks Create
               And user hovers on Add to Project and clicks on Helm Charts
-              And user selects Nodejs Ex K v0.2.1 and clicks on Install Helm Charts
+              And user selects Nodejs and clicks on Install Helm Charts
               And user clicks on Install
               And user hovers on Add to Project and clicks on From Event Source
               And user selects Api Server Source and clicks on Create Event Source
               And user fills the form and clicks Create
               And user hovers on Add to Project and clicks on From Channel
               And user clicks on Create
-             Then user is able to see different applications created from Samples, From Git, Container Image, From Dockerfile, From Devfile, From Catalog, Database, Operator Backed, Helm Charts, Event Source, Channel
+             Then user is able to see different applications created from Samples, Import from Git, Container Image, From Catalog, Database, Operator Backed, Helm Charts, Event Source, Channel
 
 
         @regression @manual
@@ -270,3 +273,24 @@ Feature: Topology chart area
               And user sees shortcut for Access create connector handle
               And user sees shortcut for Qpen quick search modal
               And user sees shortcut for Drag and drop a JAR file into Topology
+
+
+        @regression @manual
+        Scenario: Display of External Bindable resources: T-06-TC24
+            Given user has installed Service Binding operator
+            #Please refer to test case KM-01-TC01 for creating kafka connection
+              And user has created external bindable resource Kafka Connection "kafka-instance-123"
+             When user navigates to Topology chart view
+             Then user will see the bindable resource "kafka-instance-123" in trapezoid shape
+
+
+        @regression @manual
+        Scenario: Connect to External Bindable resources: T-06-TC25
+            Given user has installed Service Binding operator
+            #Please refer to test case KM-01-TC01 for creating kafka connection
+              And user has created external bindable resource Kafka Connection "kafka-instance-123"
+              And user is at the Topology chart view
+             When user created a deployment workload "node-js-git-1"
+              And user drag the connector from the deployment workload
+              And user drops the connector on the enabled bindable resource
+             Then user will see service binding connection

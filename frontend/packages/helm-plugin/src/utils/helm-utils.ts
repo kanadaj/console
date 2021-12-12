@@ -175,7 +175,7 @@ export const getOriginRedirectURL = (
 ) => {
   switch (actionOrigin) {
     case HelmActionOrigins.topology:
-      return `/topology/ns/${namespace}/graph`;
+      return `/topology/ns/${namespace}`;
     case HelmActionOrigins.list:
       return `/helm-releases/ns/${namespace}`;
     case HelmActionOrigins.details:
@@ -276,3 +276,11 @@ export const helmActionString = (t: TFunction) => ({
   Upgrade: t('helm-plugin~Upgrade'),
   Rollback: t('helm-plugin~Rollback'),
 });
+
+export const fetchHelmReleaseHistory = (
+  releaseName: string,
+  namespace: string,
+): Promise<HelmRelease[]> => {
+  const helmReleaseApi: string = `/api/helm/release/history?ns=${namespace}&name=${releaseName}`;
+  return coFetchJSON(helmReleaseApi);
+};

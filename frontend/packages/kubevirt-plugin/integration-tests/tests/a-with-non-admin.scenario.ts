@@ -5,14 +5,14 @@ import * as crudView from '@console/internal-integration-tests/views/crud.view';
 import * as loginView from '@console/internal-integration-tests/views/login.view';
 import { closeGuidedTour } from '@console/internal-integration-tests/views/overview.view';
 import * as sidenav from '@console/internal-integration-tests/views/sidenav.view';
-import { VirtualMachineModel } from '@console/kubevirt-plugin/src/models';
+import { VirtualMachineModel } from '../../src/models';
 import {
   addLeakableResource,
   click,
   removeLeakedResources,
   withResource,
   withResources,
-} from '@console/shared/src/test-utils/utils';
+} from '../utils/shared-utils';
 import * as pvcView from '../views/pvc.view';
 import { restrictedAccessBlock } from '../views/vms.list.view';
 import { uploadLink } from '../views/wizard.view';

@@ -9,6 +9,8 @@ export const addPagePO = {
   kebabMenuGettingStarted: '[data-test="actions"]',
   hideGettingStarted: '[data-test="hide"]',
   closeButton: '[aria-label="label-close-button"]',
+  buildWithGuidedDocumentation: '[data-test="card quick-start"]',
+  buildWithGuidedDocumentationItems: '[data-test="card quick-start"] [data-test~="item"]',
   viewAllQuickStarts: '[data-test="item all-quick-starts"]',
 };
 
@@ -40,6 +42,7 @@ export const gitPO = {
   pipeline: {
     infoMessage: '[aria-label="Info Alert"]',
     addPipeline: '#form-checkbox-pipeline-enabled-field',
+    pipelineDropdown: '#form-dropdown-pipeline-templateSelected-field',
   },
   resources: {
     deployment: '#form-radiobutton-resources-kubernetes-field',
@@ -128,7 +131,7 @@ export const catalogPO = {
     nginxHTTPServer:
       'a[data-test="Template-Nginx HTTP server and a reverse proxy"] .catalog-tile-pf-title',
     knativeKafka: '[data-test="OperatorBackedService-Knative Kafka"]',
-    helmNodejs: '[data-test="HelmChart-Nodejs Ex K v0.2.1"]',
+    helmNodejs: '[data-test="HelmChart-Nodejs"]',
   },
   sidePane: {
     dialog: '[role="dialog"]',

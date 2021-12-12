@@ -1,20 +1,26 @@
 import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
-import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants';
+import {
+  devNavigationMenu,
+  pageTitle,
+  helmActions,
+} from '@console/dev-console/integration-tests/support/constants';
+import { helmPO } from '@console/dev-console/integration-tests/support/pageObjects';
 import {
   topologyPage,
   topologySidePane,
   app,
   navigateTo,
-  catalogPage,
+  createHelmChartFromAddPage,
 } from '@console/dev-console/integration-tests/support/pages';
+import { detailsPage } from '../../../../../integration-tests-cypress/views/details-page';
 import { upgradeHelmRelease, helmDetailsPage, rollBackHelmRelease, helmPage } from '../../pages';
 
 Given('helm release {string} is present in topology page', (workloadName: string) => {
-  catalogPage.createHelmChartFromAddPage(workloadName);
+  createHelmChartFromAddPage(workloadName);
 });
 
 Given('user has installed helm release {string}', (helmReleaseName: string) => {
-  catalogPage.createHelmChartFromAddPage(helmReleaseName);
+  createHelmChartFromAddPage(helmReleaseName);
 });
 
 When(
@@ -28,11 +34,17 @@ Then(
   'user is able to see the context menu with actions Upgrade, Rollback and Uninstall Helm Release',
   () => {
     cy.get('ul[role="menu"]').should('be.visible');
-    cy.byTestActionID('Upgrade').should('be.visible');
-    cy.byTestActionID('Rollback').should('be.visible');
-    cy.byTestActionID('Uninstall Helm Release').should('be.visible');
+    cy.get(helmPO.helmActions.upgrade).should('be.visible');
+    cy.get(helmPO.helmActions.rollBack).should('be.visible');
+    cy.get(helmPO.helmActions.uninstallHelmRelease).should('be.visible');
   },
 );
+
+Then('user is able to see the context menu with actions Upgrade and Uninstall Helm Release', () => {
+  cy.get('ul[role="menu"]').should('be.visible');
+  cy.byTestActionID('Upgrade').should('be.visible');
+  cy.byTestActionID('Uninstall Helm Release').should('be.visible');
+});
 
 Given('user is on the topology sidebar of the helm release {string}', (helmReleaseName: string) => {
   topologyPage.clickOnNode(helmReleaseName);
@@ -40,13 +52,24 @@ Given('user is on the topology sidebar of the helm release {string}', (helmRelea
 });
 
 When('user clicks on the Actions drop down menu', () => {
-  cy.byLegacyTestID('actions-menu-button').click();
+  topologySidePane.clickActionsDropDown();
 });
 
 Then(
   'user is able to see the actions dropdown menu with actions Upgrade, Rollback and Uninstall Helm Release',
   () => {
-    const actions = ['Upgrade', 'Rollback', 'Uninstall Helm Release'];
+    topologySidePane.verifyActions(
+      helmActions.upgrade,
+      helmActions.rollback,
+      helmActions.uninstallHelmRelease,
+    );
+  },
+);
+
+Then(
+  'user is able to see the actions dropdown menu with actions Upgrade and Uninstall Helm Release',
+  () => {
+    const actions = ['Upgrade', 'Uninstall Helm Release'];
     cy.byLegacyTestID('action-items')
       .children()
       .each(($ele) => {
@@ -60,6 +83,10 @@ Given('user is on the Helm page with helm release {string}', (helmRelease: strin
   helmPage.search(helmRelease);
 });
 
+Then('user will be redirected to Helm Releases page', () => {
+  detailsPage.titleShouldContain(pageTitle.HelmReleases);
+});
+
 When('user clicks on the Kebab menu', () => {
   helmPage.selectKebabMenu();
 });
@@ -67,17 +94,16 @@ When('user clicks on the Kebab menu', () => {
 Then(
   'user is able to see kebab menu with actions Upgrade, Rollback and Uninstall Helm Release',
   () => {
-    const actions = ['Upgrade', 'Rollback', 'Uninstall Helm Release'];
-    cy.byLegacyTestID('action-items')
-      .children()
-      .each(($ele) => {
-        expect(actions).toContain($ele.text());
-      });
+    topologySidePane.verifyActions(
+      helmActions.upgrade,
+      helmActions.rollback,
+      helmActions.uninstallHelmRelease,
+    );
   },
 );
 
 When('user clicks on the {string} action', (actionName: string) => {
-  cy.byTestActionID(actionName).click();
+  helmPage.selectHelmActionFromMenu(actionName);
 });
 
 When('user upgrades the chart Version', () => {
@@ -97,8 +123,8 @@ When('user clicks on the rollback button', () => {
   cy.get('.co-m-loader', { timeout: 40000 }).should('not.exist');
 });
 
-When('user enters the release name', () => {
-  helmDetailsPage.enterReleaseNameInUninstallPopup();
+When('user enters the release name {string}', (releaseName: string) => {
+  helmDetailsPage.enterReleaseNameInUninstallPopup(releaseName);
 });
 
 When('user clicks on the Uninstall button', () => {

@@ -1,4 +1,4 @@
-import { JSONSchema6 } from 'json-schema';
+import { JSONSchema7 } from 'json-schema';
 import { BadgeType, NodeAddress } from '@console/shared';
 import {
   ObjectReference,
@@ -6,12 +6,12 @@ import {
   K8sResourceCommon,
   K8sVerb,
   AccessReviewResourceAttributes,
-  Selector,
-  MatchLabels,
 } from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import { EventInvolvedObject } from './event';
+import { Selector, MatchLabels } from '@console/dynamic-plugin-sdk/src/api/common-types';
 
 export * from '@console/dynamic-plugin-sdk/src/extensions/console-types';
+export * from '@console/dynamic-plugin-sdk/src/api/common-types';
 
 export type PartialObjectMetadata = {
   apiVersion: string;
@@ -28,6 +28,13 @@ export enum K8sResourceConditionStatus {
 export type K8sResourceCondition = {
   type: string;
   status: keyof typeof K8sResourceConditionStatus;
+  lastTransitionTime?: string;
+  reason?: string;
+  message?: string;
+};
+
+export type ClusterServiceVersionCondition = {
+  phase: string;
   lastTransitionTime?: string;
   reason?: string;
   message?: string;
@@ -55,7 +62,6 @@ export type Toleration = {
 // or status, weakening type checking.
 export type K8sResourceKind = K8sResourceCommon & {
   spec?: {
-    selector?: Selector | MatchLabels;
     [key: string]: any;
   };
   status?: { [key: string]: any };
@@ -319,6 +325,29 @@ export type DeploymentKind = {
   };
 } & K8sResourceCommon;
 
+export type AppliedClusterResourceQuotaKind = {
+  spec?: {
+    selector?: {
+      labels?: Selector;
+      annotations?: MatchLabels;
+    };
+    quota?: {
+      hard?: { [key: string]: number };
+      scopes?: string[];
+      scopeSelector?: {
+        matchExpressions?: { scopeName: string; operator: string; values?: string[] }[];
+      };
+    };
+  };
+  status?: {
+    namespaces?: {
+      namespace: string;
+      status: { used?: { [key: string]: number }; hard?: { [key: string]: number } };
+    }[];
+    total?: { hard?: { [key: string]: number }; used?: { [key: string]: number } };
+  };
+} & K8sResourceCommon;
+
 type CurrentObject = {
   averageUtilization?: number;
   averageValue?: string;
@@ -431,6 +460,9 @@ export type NodeKind = {
       sizeBytes?: number;
     }[];
     phase?: string;
+    nodeInfo?: {
+      operatingSystem: string;
+    };
   };
 } & K8sResourceCommon;
 
@@ -499,7 +531,7 @@ export type CRDVersion = {
   storage: boolean;
   schema: {
     // NOTE: Actually a subset of JSONSchema, but using this type for convenience
-    openAPIV3Schema: JSONSchema6;
+    openAPIV3Schema: JSONSchema7;
   };
 };
 
@@ -610,6 +642,10 @@ export type MachineSpec = {
   providerSpec: {
     value?: {
       placement?: MachineAWSPlacement;
+      instanceType?: string;
+      vmSize?: string;
+      machineType?: string;
+      flavor?: string;
     };
   };
   versions: {
@@ -1060,7 +1096,7 @@ export type PersistentVolumeClaimKind = K8sResourceCommon & {
 
 export type NetworkPolicyKind = K8sResourceCommon & {
   spec: {
-    podSelector: Selector;
+    podSelector?: Selector;
     ingress?: {
       from?: NetworkPolicyPeer[];
       ports?: NetworkPolicyPort[];

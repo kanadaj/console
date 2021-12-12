@@ -12,7 +12,9 @@ import { NodeModel } from '@console/internal/models';
 import { k8sPatch, NodeKind } from '@console/internal/module/k8s';
 import { useCollisionChecker } from '../../../../hooks/use-collision-checker';
 import { getDedicatedCpuPatch } from '../../../../k8s/patches/vm/vm-cpu-patches';
-import { asVM, getVMLikeModel, isDedicatedCPUPlacement } from '../../../../selectors/vm';
+import { isDedicatedCPUPlacement } from '../../../../selectors/vm/selectors';
+import { asVM } from '../../../../selectors/vm/vm';
+import { getVMLikeModel } from '../../../../selectors/vm/vmlike';
 import { VMLikeEntityKind } from '../../../../types/vmLike';
 import { getLoadedData, getLoadError, isLoaded } from '../../../../utils';
 import { ModalFooter } from '../../modal/modal-footer';
@@ -77,6 +79,7 @@ export const DedicatedResourcesModal = withHandlePromise<DedicatedResourcesModal
               'kubevirt-plugin~Schedule this workload with dedicated resources (guaranteed policy)',
             )}
             isChecked={isPinned}
+            data-checked-state={isPinned}
             isDisabled={!isLoaded(nodes) || inProgress}
             onChange={(flag) => setIsPinned(flag)}
             id="dedicated-resources-checkbox"

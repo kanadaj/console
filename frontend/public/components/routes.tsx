@@ -5,13 +5,13 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Button, Popover } from '@patternfly/react-core';
 import { sortable } from '@patternfly/react-table';
 import { EyeIcon, EyeSlashIcon, QuestionCircleIcon } from '@patternfly/react-icons';
+import i18next from 'i18next';
 
 import { Status } from '@console/shared';
-import { DetailsPage, ListPage, Table, TableRow, TableData, RowFunction } from './factory';
+import { DetailsPage, ListPage, RowFunctionArgs, Table, TableData } from './factory';
 import {
   CopyToClipboard,
   DetailsItem,
-  ExternalLink,
   Kebab,
   ResourceKebab,
   ResourceLink,
@@ -19,6 +19,7 @@ import {
   SectionHeading,
   detailsPage,
   navFactory,
+  ExternalLinkWithCopy,
 } from './utils';
 import { MaskedData } from './configmap-and-secret-data';
 import {
@@ -82,14 +83,14 @@ const getSubdomain = (route: RouteKind): string => {
   return hostname.replace(/^[a-z0-9]([-a-z0-9]*[a-z0-9])\./, '');
 };
 
-const getRouteLabel = (route: RouteKind): string => {
+export const getRouteLabel = (route: RouteKind): string => {
   if (isWebRoute(route)) {
     return getRouteWebURL(route);
   }
 
   let label = getRouteHost(route, false);
   if (!label) {
-    return '<unknown host>';
+    return i18next.t('public~unknown host');
   }
 
   if (_.get(route, 'spec.wildcardPolicy') === 'Subdomain') {
@@ -102,14 +103,19 @@ const getRouteLabel = (route: RouteKind): string => {
   return label;
 };
 
+export const RouteLinkAndCopy: React.FC<RouteLinkAndCopyProps> = ({
+  route,
+  additionalClassName,
+}) => {
+  const link = getRouteWebURL(route);
+  return <ExternalLinkWithCopy additionalClassName={additionalClassName} link={link} text={link} />;
+};
+
+// Renders LinkAndCopy for non subdomains
 export const RouteLocation: React.FC<RouteHostnameProps> = ({ obj }) => (
   <div>
     {isWebRoute(obj) ? (
-      <ExternalLink
-        href={getRouteWebURL(obj)}
-        additionalClassName="co-external-link--block"
-        text={getRouteLabel(obj)}
-      />
+      <RouteLinkAndCopy route={obj} additionalClassName="co-external-link--block" />
     ) : (
       getRouteLabel(obj)
     )}
@@ -152,9 +158,9 @@ const tableColumnClasses = [
 
 const kind = 'Route';
 
-const RouteTableRow: RowFunction<RouteKind> = ({ obj: route, index, key, style }) => {
+const RouteTableRow: React.FC<RowFunctionArgs<RouteKind>> = ({ obj: route }) => {
   return (
-    <TableRow id={route.metadata.uid} index={index} trKey={key} style={style}>
+    <>
       <TableData className={tableColumnClasses[0]}>
         <ResourceLink kind={kind} name={route.metadata.name} namespace={route.metadata.namespace} />
       </TableData>
@@ -181,7 +187,7 @@ const RouteTableRow: RowFunction<RouteKind> = ({ obj: route, index, key, style }
       <TableData className={tableColumnClasses[5]}>
         <ResourceKebab actions={menuActions} kind={kind} resource={route} />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 
@@ -467,7 +473,7 @@ const RouteDetails: React.FC<RoutesDetailsProps> = ({ obj: route }) => {
       )}
       {_.isEmpty(route.status.ingress) ? (
         <div className="cos-status-box">
-          <div className="text-center">{t('public~No route status')}</div>
+          <div className="pf-u-text-align-center">{t('public~No route status')}</div>
         </div>
       ) : (
         <div className="co-m-pane__body">
@@ -486,11 +492,7 @@ export const RoutesDetailsPage: React.FC<RoutesDetailsPageProps> = (props) => (
     menuActions={menuActions}
     pages={[
       navFactory.details(detailsPage(RouteDetails)),
-      {
-        href: 'metrics',
-        nameKey: 'public~Metrics',
-        component: RouteMetrics,
-      },
+      navFactory.metrics(RouteMetrics),
       navFactory.editYaml(),
     ]}
   />
@@ -613,6 +615,11 @@ export type RoutesDetailsPageProps = {
 
 export type RouteIngressStatusProps = {
   route: RouteKind;
+};
+
+export type RouteLinkAndCopyProps = {
+  route: RouteKind;
+  additionalClassName?: string;
 };
 
 export type CustomRouteHelpProps = {

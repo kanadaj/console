@@ -1,18 +1,22 @@
 import * as React from 'react';
 import { FormikValues, useFormikContext } from 'formik';
-import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import { DropdownField } from '@console/shared/src';
+import { Resources } from '../../import/import-types';
 import FormSection from '../../import/section/FormSection';
 import { getStrategyData } from '../utils/edit-deployment-utils';
 import CustomStrategy from './CustomStrategy';
 import RecreateStrategy from './RecreateStrategy';
 import RollingStrategy from './RollingStrategy';
-import { DeploymentStrategyType, DeploymentStrategyDropdownData } from './utils/types';
+import {
+  getDeploymentStrategyItems,
+  getDeploymentStrategyHelpText,
+} from './utils/deployment-strategy-utils';
+import { DeploymentStrategyType } from './utils/types';
 
 export type DeploymentStrategySectionProps = {
-  resourceType: string;
+  resourceType: Resources;
   resourceObj: K8sResourceKind;
 };
 
@@ -26,7 +30,7 @@ const DeploymentStrategySection: React.FC<DeploymentStrategySectionProps> = ({
       formData: {
         name: resName,
         project: { name: resNamespace },
-        deploymentStrategy: { type },
+        deploymentStrategy,
       },
     },
     initialValues,
@@ -34,7 +38,7 @@ const DeploymentStrategySection: React.FC<DeploymentStrategySectionProps> = ({
   } = useFormikContext<FormikValues>();
 
   const deploymentStrategyFields = React.useMemo(() => {
-    switch (type) {
+    switch (deploymentStrategy.type) {
       case DeploymentStrategyType.recreateParams:
         return <RecreateStrategy resourceType={resourceType} resourceObj={resourceObj} />;
       case DeploymentStrategyType.rollingParams:
@@ -45,20 +49,15 @@ const DeploymentStrategySection: React.FC<DeploymentStrategySectionProps> = ({
       default:
         return null;
     }
-  }, [type, resourceObj, resourceType]);
+  }, [deploymentStrategy.type, resourceObj, resourceType]);
 
   const onChange = React.useCallback(
-    (value) => {
+    (value: DeploymentStrategyType) => {
       const strategyDefaultValues = getStrategyData(value, {}, resName, resNamespace, resourceType);
       const strategyData = {
-        ..._.omit(resourceObj.spec?.strategy, [
-          'rollingParams',
-          'recreateParams',
-          'customParams',
-          'rollingUpdate',
-        ]),
-        type: value,
         ...strategyDefaultValues,
+        ...deploymentStrategy,
+        type: value,
       };
       initialValues.formData.deploymentStrategy = strategyData;
       setFieldValue('formData.deploymentStrategy', strategyData);
@@ -67,19 +66,19 @@ const DeploymentStrategySection: React.FC<DeploymentStrategySectionProps> = ({
       initialValues.formData.deploymentStrategy,
       resName,
       resNamespace,
-      resourceObj.spec,
       resourceType,
       setFieldValue,
+      deploymentStrategy,
     ],
   );
 
   return (
-    <FormSection title={t('devconsole~Deployment strategy')}>
+    <FormSection title={t('devconsole~Deployment strategy')} dataTest="deployment-strategy-section">
       <DropdownField
         name="formData.deploymentStrategy.type"
         label={t('devconsole~Strategy type')}
-        items={DeploymentStrategyDropdownData[resourceType].items}
-        helpText={DeploymentStrategyDropdownData[resourceType].helpText[type]}
+        items={getDeploymentStrategyItems(resourceType, t)}
+        helpText={getDeploymentStrategyHelpText(resourceType, deploymentStrategy.type, t)}
         onChange={onChange}
         fullWidth
       />

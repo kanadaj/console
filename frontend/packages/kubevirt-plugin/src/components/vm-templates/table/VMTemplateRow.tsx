@@ -3,9 +3,10 @@ import { Button } from '@patternfly/react-core';
 import { StarIcon } from '@patternfly/react-icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { RowFunction, TableData, TableRow } from '@console/internal/components/factory';
+import { RowFunctionArgs, TableData } from '@console/internal/components/factory';
 import { Kebab, ResourceLink } from '@console/internal/components/utils';
 import { NamespaceModel, TemplateModel } from '@console/internal/models';
+import { VIRTUALMACHINES_TEMPLATES_BASE_URL } from '../../../constants/url-params';
 import { useCustomizeSourceModal } from '../../../hooks/use-customize-source-modal';
 import { useSupportModal } from '../../../hooks/use-support-modal';
 import { getTemplateName, getTemplateProvider } from '../../../selectors/vm-template/basic';
@@ -19,15 +20,11 @@ import { VMTemplateCommnunityLabel } from '../VMTemplateCommnunityLabel';
 import RowActions from './RowActions';
 import { VMTemplateRowProps } from './types';
 import { tableColumnClasses } from './utils';
-
 import './vm-template-table.scss';
 
-const VMTemplateRow: RowFunction<TemplateItem, VMTemplateRowProps> = ({
+const VMTemplateRow: React.FC<RowFunctionArgs<TemplateItem, VMTemplateRowProps>> = ({
   obj,
   customData: { dataVolumes, pvcs, pods, namespace, loaded, togglePin, isPinned, sourceLoadError },
-  index,
-  key,
-  style,
 }) => {
   const { t } = useTranslation();
   const [template] = obj.variants;
@@ -38,13 +35,7 @@ const VMTemplateRow: RowFunction<TemplateItem, VMTemplateRowProps> = ({
   const withSupportModal = useSupportModal();
   const withCustomizeModal = useCustomizeSourceModal();
   return (
-    <TableRow
-      className="kv-vm-template__row"
-      id={template.metadata.uid}
-      index={index}
-      trKey={key}
-      style={style}
-    >
+    <>
       <TableData className={dimensify()}>
         <Button
           className={pinned ? 'kv-pin-remove-btn' : 'kv-pin-btn'}
@@ -58,7 +49,7 @@ const VMTemplateRow: RowFunction<TemplateItem, VMTemplateRowProps> = ({
       <TableData className={dimensify()}>
         <img src={getTemplateOSIcon(template)} alt="" className="kubevirt-vm-template-logo" />
         <Link
-          to={`/k8s/ns/${template.metadata.namespace}/vmtemplates/${template.metadata.name}`}
+          to={`/k8s/ns/${template.metadata.namespace}/${VIRTUALMACHINES_TEMPLATES_BASE_URL}/${template.metadata.name}`}
           data-test-id={template.metadata.name}
           className="co-resource-item__resource-name"
         >
@@ -71,7 +62,11 @@ const VMTemplateRow: RowFunction<TemplateItem, VMTemplateRowProps> = ({
       <TableData className={dimensify()}>
         <ResourceLink kind={NamespaceModel.kind} name={template.metadata.namespace} />
       </TableData>
-      <TableData className={dimensify()} data-test="template-source">
+      <TableData
+        className={dimensify()}
+        data-test="template-source"
+        data-test-template-name={template.metadata.name}
+      >
         <TemplateSource
           loadError={sourceLoadError}
           loaded={loaded}
@@ -99,7 +94,7 @@ const VMTemplateRow: RowFunction<TemplateItem, VMTemplateRowProps> = ({
           id={`kebab-for-${template.metadata.uid}`}
         />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 

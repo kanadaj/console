@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Button, Tooltip } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-import { RowFunction, TableData, TableRow } from '@console/internal/components/factory';
+import { RowFunctionArgs, TableData } from '@console/internal/components/factory';
 import { Kebab, ResourceKebab, ResourceLink, Timestamp } from '@console/internal/components/utils';
 import { VirtualMachineSnapshotModel } from '../../models';
 import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
@@ -14,9 +14,9 @@ import {
 import { VMRestore, VMSnapshot } from '../../types';
 import { DASH, dimensifyRow } from '../../utils';
 import snapshotRestoreModal from '../modals/snapshot-restore-modal/snapshot-restore-modal';
+import { VMLabel } from '../VMLabel';
 import { VMSnapshotRowCustomData } from './types';
 import { VMSnapshotStatus } from './vm-snapshot-status';
-import { VMRunningSnapshotLabel } from './VMRunningSnapshotLabel';
 
 const { Delete } = Kebab.factory;
 
@@ -26,8 +26,6 @@ export type VMSnapshotSimpleRowProps = {
   isDisabled: boolean;
   columnClasses: string[];
   actionsComponent: React.ReactNode;
-  index: number;
-  style: object;
   isVMRunning: boolean;
 };
 
@@ -37,8 +35,6 @@ export const VMSnapshotSimpleRow: React.FC<VMSnapshotSimpleRowProps> = ({
   isDisabled,
   columnClasses,
   actionsComponent,
-  index,
-  style,
   isVMRunning,
 }) => {
   const { t } = useTranslation();
@@ -49,7 +45,7 @@ export const VMSnapshotSimpleRow: React.FC<VMSnapshotSimpleRowProps> = ({
   const indications = snapshot?.status?.indications;
 
   return (
-    <TableRow id={snapshot?.metadata?.uid} index={index} trKey={snapshotName} style={style}>
+    <>
       <TableData className={dimensify()}>
         <ResourceLink
           kind={kubevirtReferenceForModel(VirtualMachineSnapshotModel)}
@@ -69,10 +65,7 @@ export const VMSnapshotSimpleRow: React.FC<VMSnapshotSimpleRowProps> = ({
       <TableData id={`${snapshotName}-online-snapshot`} className={dimensify()}>
         {indications
           ? indications.map((indication) => (
-              <VMRunningSnapshotLabel
-                key={`${snapshotName}-${indication}`}
-                indication={indication}
-              />
+              <VMLabel key={`${snapshotName}-${indication}`} indication={indication} />
             ))
           : DASH}
       </TableData>
@@ -84,7 +77,7 @@ export const VMSnapshotSimpleRow: React.FC<VMSnapshotSimpleRowProps> = ({
             id={`${snapshotName}-restore-btn`}
             variant="secondary"
             onClick={() => snapshotRestoreModal({ snapshot })}
-            isDisabled={
+            isAriaDisabled={
               isDisabled ||
               !isVMSnapshotReady(snapshot) ||
               isVmRestoreProgressing(relevantRestore) ||
@@ -96,22 +89,18 @@ export const VMSnapshotSimpleRow: React.FC<VMSnapshotSimpleRowProps> = ({
         </Tooltip>
       </TableData>
       <TableData className={dimensify(true)}>{actionsComponent}</TableData>
-    </TableRow>
+    </>
   );
 };
 
-export const VMSnapshotRow: RowFunction<VMSnapshot, VMSnapshotRowCustomData> = ({
+export const VMSnapshotRow: React.FC<RowFunctionArgs<VMSnapshot, VMSnapshotRowCustomData>> = ({
   obj: snapshot,
   customData: { restores, columnClasses, isDisabled, isVMRunning },
-  index,
-  style,
 }) => (
   <VMSnapshotSimpleRow
     data={snapshot}
     restores={restores}
     columnClasses={columnClasses}
-    index={index}
-    style={style}
     isDisabled={isDisabled}
     isVMRunning={isVMRunning}
     actionsComponent={

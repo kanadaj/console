@@ -12,7 +12,7 @@
     "@console/shared": "0.0.0-fixed",
     "@console/topology": "0.0.0-fixed",
     "@console/dev-console": "0.0.0-fixed",
-    "@patternfly/react-console": "4.3.2",
+    "@patternfly/react-console": "4.13.4",
     "unique-names-generator": "4.3.1"
   },
   "consolePlugin": {
@@ -33,9 +33,6 @@
       ],
       "kubevirt-v2v": [
         "integration-tests/v2v/*.scenario.ts"
-      ],
-      "kubevirt-gating": [
-        "integration-tests/tests/vm.tab.snapshots.scenario.ts"
       ]
     },
     "exposedModules": {
@@ -54,6 +51,7 @@
       "VMCreateYAML": "src/components/vms/vm-create-yaml.tsx",
       "CreateVMWizardPage": "src/components/create-vm-wizard/create-vm-wizard.tsx",
       "CreateVM": "src/components/create-vm/create-vm.tsx",
+      "VirtualizationWizardNavigator": "src/components/VirtualizationWizardNavigator/VirtualizationWizardNavigator.tsx",
       "VirtualMachinesDetailsPage": "src/components/vms/vm-details-page.tsx",
       "VirtualMachinesInstanceDetailsPage": "src/components/vms/vmi-details-page.tsx",
       "VirtualizationPage": "src/components/vms/virtualization.tsx",
@@ -67,7 +65,12 @@
       "dashboardHealth": "src/components/dashboards-page/overview-dashboard/health.ts",
       "dashboardInventory": "src/components/dashboards-page/overview-dashboard/inventory.tsx",
       "dashboardActivity": "src/components/dashboards-page/overview-dashboard/activity.tsx",
-      "topology": "src/topology/topology-plugin.ts"
+      "topology": "src/topology/topology-plugin.ts",
+      "kubevirtFlags": "src/flags",
+      "topologySidebar": "src/topology/vm-tab-sections.tsx",
+      "actions": "src/actions/provider.ts",
+      "HardwareDevicesPage": "src/components/hardware-devices/Page/HardwareDevicesPage.tsx",
+      "VirtualizationOverviewPage": "src/components/virtualization-overview/VirtualizationOverviewPage.tsx"
     }
   }
 }

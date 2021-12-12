@@ -16,7 +16,7 @@ import {
   K8sKind,
 } from '../module/k8s';
 import { cloneBuild, formatBuildDuration, getBuildNumber } from '../module/k8s/builds';
-import { DetailsPage, ListPage, Table, TableRow, TableData, RowFunction } from './factory';
+import { DetailsPage, ListPage, Table, TableData, RowFunctionArgs } from './factory';
 import { errorModal, confirmModal } from './modals';
 import {
   AsyncComponent,
@@ -170,14 +170,14 @@ const BuildMetrics = requirePrometheus(({ obj }) => {
 
   const { t } = useTranslation();
   return (
-    <Dashboard>
+    <Dashboard className="resource-metrics-dashboard">
       <Grid hasGutter>
         <GridItem xl={6} lg={12}>
-          <DashboardCard>
+          <DashboardCard className="resource-metrics-dashboard__card">
             <DashboardCardHeader>
               <DashboardCardTitle>{t('public~Memory usage')}</DashboardCardTitle>
             </DashboardCardHeader>
-            <DashboardCardBody>
+            <DashboardCardBody className="resource-metrics-dashboard__card-body">
               <Area
                 byteDataType={ByteDataTypes.BinaryBytes}
                 humanize={humanizeBinaryBytes}
@@ -188,11 +188,11 @@ const BuildMetrics = requirePrometheus(({ obj }) => {
           </DashboardCard>
         </GridItem>
         <GridItem xl={6} lg={12}>
-          <DashboardCard>
+          <DashboardCard className="resource-metrics-dashboard__card">
             <DashboardCardHeader>
               <DashboardCardTitle>{t('public~CPU usage')}</DashboardCardTitle>
             </DashboardCardHeader>
-            <DashboardCardBody>
+            <DashboardCardBody className="resource-metrics-dashboard__card-body">
               <Area
                 humanize={humanizeCpuCores}
                 query={`pod:container_cpu_usage:sum{pod='${podName}',container='',namespace='${namespace}'}`}
@@ -202,11 +202,11 @@ const BuildMetrics = requirePrometheus(({ obj }) => {
           </DashboardCard>
         </GridItem>
         <GridItem xl={6} lg={12}>
-          <DashboardCard>
+          <DashboardCard className="resource-metrics-dashboard__card">
             <DashboardCardHeader>
               <DashboardCardTitle>{t('public~Filesystem')}</DashboardCardTitle>
             </DashboardCardHeader>
-            <DashboardCardBody>
+            <DashboardCardBody className="resource-metrics-dashboard__card-body">
               <Area
                 byteDataType={ByteDataTypes.BinaryBytes}
                 humanize={humanizeBinaryBytes}
@@ -366,7 +366,7 @@ export const BuildEnvironmentComponent = (props) => {
   }
   return (
     <div className="cos-status-box">
-      <div className="text-center">
+      <div className="pf-u-text-align-center">
         {t('public~The environment variable editor does not support build strategy: {{ type }}', {
           type: obj.spec.strategy.type,
         })}
@@ -403,9 +403,9 @@ const tableColumnClasses = [
   Kebab.columnClass,
 ];
 
-const BuildsTableRow: RowFunction<K8sResourceKind> = ({ obj, index, key, style }) => {
+const BuildsTableRow: React.FC<RowFunctionArgs<K8sResourceKind>> = ({ obj }) => {
   return (
-    <TableRow id={obj.metadata.uid} index={index} trKey={key} style={style}>
+    <>
       <TableData className={tableColumnClasses[0]}>
         <ResourceLink
           kind={BuildsReference}
@@ -428,7 +428,7 @@ const BuildsTableRow: RowFunction<K8sResourceKind> = ({ obj, index, key, style }
       <TableData className={tableColumnClasses[4]}>
         <ResourceKebab actions={menuActions} kind={BuildsReference} resource={obj} />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 

@@ -3,7 +3,7 @@ import { TFunction } from 'i18next';
 import * as _ from 'lodash';
 import { Trans, useTranslation } from 'react-i18next';
 import { coFetchJSON } from '@console/internal/co-fetch';
-import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
+import { TableData, RowFunctionArgs } from '@console/internal/components/factory';
 import { confirmModal } from '@console/internal/components/modals';
 import { Timestamp } from '@console/internal/components/utils';
 import { ActionMenu, Status } from '@console/shared';
@@ -55,8 +55,8 @@ const HelmReleaseHistoryKebab: React.FC<HelmReleaseHistoryKebabProps> = ({ obj }
   return <ActionMenu actions={menuActions} />;
 };
 
-const HelmReleaseHistoryRow: RowFunction = ({ obj, index, key, style }) => (
-  <TableRow id={obj.revision} index={index} trKey={key} style={style}>
+const HelmReleaseHistoryRow: React.FC<RowFunctionArgs> = ({ obj, customData }) => (
+  <>
     <TableData className={tableColumnClasses.revision}>{obj.version}</TableData>
     <TableData className={tableColumnClasses.updated}>
       <Timestamp timestamp={obj.info.last_deployed} />
@@ -69,9 +69,11 @@ const HelmReleaseHistoryRow: RowFunction = ({ obj, index, key, style }) => (
     <TableData className={tableColumnClasses.appVersion}>{obj.chart.metadata.appVersion}</TableData>
     <TableData className={tableColumnClasses.description}>{obj.info.description}</TableData>
     <TableData className={tableColumnClasses.kebab}>
-      <HelmReleaseHistoryKebab obj={obj} />
+      {customData?.totalRevisions > 1 && customData?.latestHelmReleaseVersion !== obj.version && (
+        <HelmReleaseHistoryKebab obj={obj} />
+      )}
     </TableData>
-  </TableRow>
+  </>
 );
 
 export default HelmReleaseHistoryRow;

@@ -1,19 +1,19 @@
-import { RemoteEntryModule } from './types';
-
 /**
- * Vendor modules shared between Console application and its dynamic plugins.
+ * Modules shared between the Console application and its dynamic plugins.
  */
-export const sharedVendorModules = ['react'];
-
-/**
- * At runtime, Console will override (i.e. enforce Console-bundled implementation of) shared
- * modules for each dynamic plugin, before loading any of the modules exposed by that plugin.
- *
- * This way, a single version of React etc. is used by the Console application.
- */
-export const overrideSharedModules = (entryModule: RemoteEntryModule) => {
-  entryModule.override({
-    // eslint-disable-next-line
-    react: async () => () => require('react'),
-  });
-};
+export const sharedPluginModules = [
+  '@openshift-console/dynamic-plugin-sdk',
+  '@openshift-console/dynamic-plugin-sdk-internal',
+  '@openshift-console/dynamic-plugin-sdk-internal-kubevirt',
+  '@openshift-console/dynamic-plugin-sdk-host-app',
+  '@patternfly/react-core',
+  '@patternfly/react-table',
+  'react',
+  'react-helmet',
+  'react-i18next',
+  'react-router',
+  'react-router-dom',
+  'react-redux',
+  'redux',
+  'redux-thunk',
+];

@@ -1,12 +1,13 @@
 import * as React from 'react';
 import Measure from 'react-measure';
 import MonacoEditor from 'react-monaco-editor';
+import './theme';
 import { registerYAMLinMonaco, defaultEditorOptions } from './yaml-editor-utils';
 import YAMLEditorToolbar from './YAMLEditorToolbar';
 
 import './YAMLEditor.scss';
 
-interface YAMLEditorProps {
+type YAMLEditorProps = {
   value?: string;
   options?: object;
   minHeight?: string | number;
@@ -14,7 +15,7 @@ interface YAMLEditorProps {
   toolbarLinks?: React.ReactNodeArray;
   onChange?: (newValue, event) => {};
   onSave?: () => {};
-}
+};
 
 const YAMLEditor = React.forwardRef<MonacoEditor, YAMLEditorProps>((props, ref) => {
   const {

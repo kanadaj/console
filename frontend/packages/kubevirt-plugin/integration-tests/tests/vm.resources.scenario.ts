@@ -2,7 +2,9 @@ import * as _ from 'lodash';
 import { browser } from 'protractor';
 import { appHost, testName } from '@console/internal-integration-tests/protractor.conf';
 import { isLoaded } from '@console/internal-integration-tests/views/crud.view';
-import { VirtualMachineModel } from '@console/kubevirt-plugin/src/models';
+import { VirtualMachineModel } from '../../src/models';
+import { getInterfaces } from '../../src/selectors/vm/selectors';
+import { getVMIDisks } from '../../src/selectors/vmi/basic';
 import {
   click,
   createResource,
@@ -10,9 +12,7 @@ import {
   deleteResource,
   deleteResources,
   withResource,
-} from '@console/shared/src/test-utils/utils';
-import { getInterfaces } from '../../src/selectors/vm/selectors';
-import { getVMIDisks } from '../../src/selectors/vmi/basic';
+} from '../utils/shared-utils';
 import { nicModel, nicType } from '../views/dialogs/networkInterface.view';
 import { createNICButton } from '../views/kubevirtUIResource.view';
 import { dropDownItemMain, dropDownList } from '../views/uiResource.view';
@@ -50,7 +50,7 @@ describe('Add/remove disks and NICs on respective VM pages', () => {
 
   beforeAll(async () => {
     createResources([multusNAD, testVM]);
-    await vm.waitForStatus(VM_STATUS.Off, VM_IMPORT_TIMEOUT_SECS);
+    await vm.waitForStatus(VM_STATUS.Stopped, VM_IMPORT_TIMEOUT_SECS);
   });
 
   afterAll(() => {

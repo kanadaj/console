@@ -1,10 +1,16 @@
 [
   {
+    "type": "console.flag",
+    "properties": {
+      "handler": { "$codeRef": "nadFlags.checkNadPermissions" }
+    }
+  },
+  {
     "type": "console.navigation/resource-cluster",
     "properties": {
       "id": "networkattachmentdefinitions",
       "section": "networking",
-      "name": "Network Attachment Definitions",
+      "name": "NetworkAttachmentDefinitions",
       "model": {
         "group": "k8s.cni.cncf.io",
         "kind": "NetworkAttachmentDefinition",
@@ -12,7 +18,7 @@
       }
     },
     "flags": {
-      "required": ["NET_ATTACH_DEF", "KUBEVIRT"]
+      "required": ["NET_ATTACH_DEF", "KUBEVIRT", "CAN_VIEW_NADS"]
     }
   },
   {

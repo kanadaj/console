@@ -7,7 +7,6 @@ import {
   humanizeDecimalBytesPerSec,
 } from '@console/internal/components/utils';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
-import { GraphTypes } from './dashboard/MonitoringDashboardGraph';
 
 export interface MonitoringQuery {
   query: _.TemplateExecutor;
@@ -16,6 +15,11 @@ export interface MonitoringQuery {
   humanize: Humanize;
   byteDataType: ByteDataTypes;
   id?: string;
+}
+
+export enum GraphTypes {
+  area = 'Area',
+  line = 'Line',
 }
 
 export const metricsQuery = (t: TFunction) => ({
@@ -142,9 +146,9 @@ export const topWorkloadMetricsQueries = (t: TFunction): MonitoringQuery[] => [
     humanize: humanizeDecimalBytesPerSec,
     byteDataType: ByteDataTypes.DecimalBytes,
     query: _.template(
-      `sum(irate(container_network_receive_bytes_total{namespace=~'<%= namespace %>'}[4h])
+      `sum(irate(container_network_receive_bytes_total{namespace='<%= namespace %>'}[4h])
           * on (namespace,pod) group_left(workload,workload_type) namespace_workload_pod:kube_pod_owner:relabel{
-          namespace=~'<%= namespace %>', workload=~'<%= workloadName %>', workload_type='<%= workloadType %>'}) by (pod)`,
+          namespace='<%= namespace %>', workload=~'<%= workloadName %>', workload_type='<%= workloadType %>'}) by (pod)`,
     ),
   },
 ];

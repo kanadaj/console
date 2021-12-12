@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { GraphElement } from '@patternfly/react-topology';
-import { Extension } from '@console/plugin-sdk/src/typings/base';
-import { CodeRef, ExtensionDeclaration } from '../types';
+import { Extension, CodeRef, ExtensionDeclaration } from '../types';
+import { K8sResourceCommon } from './console-types';
+import { BuildConfigData } from './topology-types';
 
 /** DetailsTab contributes a tab for the topology details panel. */
 export type DetailsTab = ExtensionDeclaration<
-  'topology.details/tab',
+  'console.topology/details/tab',
   {
     /** A unique identifier for this details tab. */
     id: string;
@@ -25,7 +26,7 @@ export type DetailsTab = ExtensionDeclaration<
 
 /** DetailsTabSection contributes a section for a specific tab in topology details panel. */
 export type DetailsTabSection = ExtensionDeclaration<
-  'topology.details/tab-section',
+  'console.topology/details/tab-section',
   {
     /** A unique identifier for this details tab section. */
     id: string;
@@ -33,8 +34,12 @@ export type DetailsTabSection = ExtensionDeclaration<
     tab: string;
     /** Returns a section for the graph element or undefined if not provided.
      * SDK component: <Section title={<optional>}>... padded area </Section>
+     * @param renderNull should be used for section that defines Adapter to
+     *  determine if adapter component renders null or not
      * */
-    section: CodeRef<(element: GraphElement) => React.Component | undefined>;
+    section: CodeRef<
+      (element: GraphElement, renderNull?: () => null) => React.Component | undefined
+    >;
     /** Insert this item before the item referenced here.
      * For arrays, the first one found in order is used.
      * */
@@ -49,7 +54,7 @@ export type DetailsTabSection = ExtensionDeclaration<
 
 /** DetailsResourceLink contributes a link for specific topology context or graph element. */
 export type DetailsResourceLink = ExtensionDeclaration<
-  'topology.details/resource-link',
+  'console.topology/details/resource-link',
   {
     /** A higher priority factory will get the first chance to create the link. */
     priority?: number;
@@ -62,7 +67,7 @@ export type DetailsResourceLink = ExtensionDeclaration<
 
 /** DetailsResourceAlert contributes an alert for specific topology context or graph element. */
 export type DetailsResourceAlert = ExtensionDeclaration<
-  'topology.details/resource-alert',
+  'console.topology/details/resource-alert',
   {
     /** The ID of this alert. Used to save state if the alert shouldn't be shown after dismissed. */
     id: string;
@@ -71,28 +76,67 @@ export type DetailsResourceAlert = ExtensionDeclaration<
   }
 >;
 
+/** PodAdapter contributes an adapter to adapt element to data that can be used by Pod component */
+export type PodAdapter = ExtensionDeclaration<
+  'console.topology/adapter/pod',
+  {
+    adapt: CodeRef<(element: GraphElement) => AdapterDataType<PodsAdapterDataType> | undefined>;
+  }
+>;
+
+/** BuildAdapter contributes an adapter to adapt element to data that can be used by Build component */
+export type BuildAdapter = ExtensionDeclaration<
+  'console.topology/adapter/build',
+  {
+    adapt: CodeRef<(element: GraphElement) => AdapterDataType<BuildConfigData> | undefined>;
+  }
+>;
+
+/** NetworkAdpater contributes an adapter to adapt element to data that can be used by Networking component */
+export type NetworkAdapter = ExtensionDeclaration<
+  'console.topology/adapter/network',
+  {
+    adapt: CodeRef<(element: GraphElement) => NetworkAdapterType | undefined>;
+  }
+>;
+
 export type SupportedTopologyDetailsExtensions =
   | DetailsTab
   | DetailsTabSection
   | DetailsResourceLink
-  | DetailsResourceAlert;
+  | DetailsResourceAlert
+  | PodAdapter
+  | BuildAdapter
+  | NetworkAdapter;
 
 // Type guards
 
 export const isDetailsTab = (e: Extension): e is DetailsTab => {
-  return e.type === 'topology.details/tab';
+  return e.type === 'console.topology/details/tab';
 };
 
 export const isDetailsTabSection = (e: Extension): e is DetailsTabSection => {
-  return e.type === 'topology.details/tab-section';
+  return e.type === 'console.topology/details/tab-section';
 };
 
 export const isDetailsResourceLink = (e: Extension): e is DetailsResourceLink => {
-  return e.type === 'topology.details/resource-link';
+  return e.type === 'console.topology/details/resource-link';
 };
 
 export const isDetailsResourceAlert = (e: Extension): e is DetailsResourceAlert => {
-  return e.type === 'topology.details/resource-alert';
+  return e.type === 'console.topology/details/resource-alert';
+};
+
+export const isPodAdapter = (e: Extension): e is PodAdapter => {
+  return e.type === 'console.topology/adapter/pod';
+};
+
+export const isBuildAdapter = (e: Extension): e is BuildAdapter => {
+  return e.type === 'console.topology/adapter/build';
+};
+
+export const isNetworkAdapter = (e: Extension): e is NetworkAdapter => {
+  return e.type === 'console.topology/adapter/network';
 };
 
 export type DetailsResourceAlertContent = {
@@ -102,7 +146,25 @@ export type DetailsResourceAlertContent = {
    * State will be store in user settings, once dismissed alert won't show up again untill user settings state resets
    */
   dismissible?: boolean;
-  content: React.Component | undefined;
+  content: React.Component | undefined | JSX.Element;
   variant?: 'success' | 'danger' | 'warning' | 'info' | 'default';
   actionLinks?: React.ReactNode;
+};
+
+export type AdapterDataType<D = {}> = {
+  resource: K8sResourceCommon;
+  provider: (resource: K8sResourceCommon) => D;
+};
+
+export type PodsAdapterDataType<E = K8sResourceCommon> = {
+  pods: E[];
+  loaded: boolean;
+  loadError: string;
+  emptyText?: string;
+  allPodsLink?: string;
+  buildConfigData?: BuildConfigData;
+};
+
+export type NetworkAdapterType = {
+  resource: K8sResourceCommon;
 };

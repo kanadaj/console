@@ -2,18 +2,18 @@ import * as React from 'react';
 import { Button } from '@patternfly/react-core';
 import { sortable } from '@patternfly/react-table';
 import { useTranslation } from 'react-i18next';
-import { RowFunction, Table } from '@console/internal/components/factory';
+import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
+import { RowFunctionArgs, Table } from '@console/internal/components/factory';
 import { useSafetyFirst } from '@console/internal/components/safety-first';
-import {
-  useK8sWatchResource,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { VirtualMachineSnapshotModel } from '../../models';
 import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
 import { getName, getNamespace } from '../../selectors';
 import { isVMI } from '../../selectors/check-type';
+import { getVMIHotplugVolumeSnapshotStatuses } from '../../selectors/disks/hotplug';
 import { getVmSnapshotVmName } from '../../selectors/snapshot/snapshot';
-import { asVM, isVMRunningOrExpectedRunning } from '../../selectors/vm';
+import { isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
+import { asVM } from '../../selectors/vm/vm';
 import { VMSnapshot } from '../../types';
 import { dimensifyHeader } from '../../utils';
 import { wrapWithProgress } from '../../utils/utils';
@@ -26,7 +26,7 @@ import { VMSnapshotRow } from './vm-snapshot-row';
 export type VMSnapshotsTableProps = {
   data?: any[];
   customData?: object;
-  row: RowFunction;
+  Row: React.FC<RowFunctionArgs>;
   columnClasses: string[];
   loadError: any;
   loaded: boolean;
@@ -35,7 +35,7 @@ export type VMSnapshotsTableProps = {
 export const VMSnapshotsTable: React.FC<VMSnapshotsTableProps> = ({
   data,
   customData,
-  row: Row,
+  Row,
   columnClasses,
   loaded,
   loadError,
@@ -132,6 +132,10 @@ export const VMSnapshotsPage: React.FC<VMTabProps> = ({ obj: vmLikeEntity, vmis:
                       vmi,
                     ),
                     snapshots,
+                    hotplugVolumeSnapshotStatuses: getVMIHotplugVolumeSnapshotStatuses(
+                      asVM(vmLikeEntity),
+                      vmi,
+                    ),
                   }).result,
                 )
               }
@@ -153,7 +157,7 @@ export const VMSnapshotsPage: React.FC<VMTabProps> = ({ obj: vmLikeEntity, vmis:
             isDisabled,
             isVMRunning: isVMRunningOrExpectedRunning(asVM(vmLikeEntity), vmi),
           }}
-          row={VMSnapshotRow}
+          Row={VMSnapshotRow}
           columnClasses={snapshotsTableColumnClasses}
         />
       </div>

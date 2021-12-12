@@ -1,20 +1,19 @@
 import * as React from 'react';
 import * as _ from 'lodash';
 import { Link } from 'react-router-dom';
-import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
+import { TableData, RowFunctionArgs } from '@console/internal/components/factory';
 import { Timestamp, ResourceIcon } from '@console/internal/components/utils';
-import { ActionsLoader, ActionMenu, Status } from '@console/shared';
+import { LazyActionMenu, Status } from '@console/shared';
 import { HelmRelease, HelmActionOrigins } from '../../types/helm-types';
 import { tableColumnClasses } from './HelmReleaseListHeader';
 
-const HelmReleaseListRow: RowFunction<HelmRelease> = ({ obj, index, key, style }) => {
+const HelmReleaseListRow: React.FC<RowFunctionArgs<HelmRelease>> = ({ obj }) => {
   const actionsScope = {
-    releaseName: obj.name,
-    namespace: obj.namespace,
+    release: obj,
     actionOrigin: HelmActionOrigins.list,
   };
   return (
-    <TableRow id={obj.name} index={index} trKey={key} style={style}>
+    <>
       <TableData className={tableColumnClasses.name}>
         <ResourceIcon kind={'Helm Release'} />
         <Link
@@ -40,13 +39,9 @@ const HelmReleaseListRow: RowFunction<HelmRelease> = ({ obj, index, key, style }
         {obj.chart.metadata.appVersion || '-'}
       </TableData>
       <TableData className={tableColumnClasses.kebab}>
-        <ActionsLoader contextId="helm-actions" scope={actionsScope}>
-          {(loader) =>
-            loader.loaded && <ActionMenu actions={loader.actions} options={loader.options} />
-          }
-        </ActionsLoader>
+        <LazyActionMenu context={{ 'helm-actions': actionsScope }} />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 

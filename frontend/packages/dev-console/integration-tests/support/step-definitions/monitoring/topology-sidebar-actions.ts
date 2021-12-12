@@ -25,17 +25,25 @@ Given('user has installed helm release {string}', (helmReleaseName: string) => {
   topologyPage.verifyWorkloadInTopologyPage(helmReleaseName);
 });
 
+Given(
+  'user has installed helm chart {string} with release name {string}',
+  (helmChartName: string, helmReleaseName: string) => {
+    createHelmChartFromAddPage(helmReleaseName, helmChartName);
+    topologyPage.verifyWorkloadInTopologyPage(helmReleaseName);
+  },
+);
+
 When('user clicks on Monitoring tab', () => {
-  topologySidePane.selectTab(sideBarTabs.observe);
+  topologySidePane.selectTab(sideBarTabs.Observe);
 });
 
 When('user selects {string} from Context Menu', (menuOption: string) => {
   topologyPage.selectContextMenuAction(menuOption);
 });
 
-When('user clicks on View Monitoring dashboard link', () => {
+When('user clicks on View dashboard link', () => {
   cy.get('a')
-    .contains('View monitoring dashboard')
+    .contains('View dashboard')
     .click({ force: true });
 });
 
@@ -95,6 +103,13 @@ When(
   },
 );
 
+When('user edits the application {string}', (name: string) => {
+  topologyPage.rightClickOnNode(name);
+  cy.byTestActionID(`Edit ${name}`)
+    .should('be.visible')
+    .click();
+});
+
 When(
   'user right clicks on the Service {string} to open the Context Menu',
   (serviceName: string) => {
@@ -122,6 +137,10 @@ When('user right clicks on the {string} to open the Context Menu', (nodeName: st
   topologyPage.rightClickOnNode(nodeName);
 });
 
+When('user starts a new build', () => {
+  topologyPage.startBuild();
+});
+
 Then('user will be taken to Dashboard tab on the Monitoring page', () => {
   detailsPage.titleShouldContain(pageTitle.Observe);
 });
@@ -129,11 +148,11 @@ Then('user will be taken to Dashboard tab on the Monitoring page', () => {
 Then('user wont see Monitoring tab', () => {
   topologySidePane.verify();
   cy.get(topologyPO.sidePane.tabName)
-    .contains(sideBarTabs.observe)
+    .contains(sideBarTabs.Observe)
     .should('not.be.visible');
 });
 
-Then('user will see View Monitoring dashborad link', () => {
+Then('user will see View dashboard link', () => {
   cy.get(topologyPO.sidePane.monitoringTab.viewMonitoringDashBoardLink).should('be.visible');
 });
 

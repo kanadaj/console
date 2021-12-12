@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 // @ts-ignore: FIXME missing exports due to out-of-sync @types/react-redux version
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
+import { useActivePerspective } from '@console/dynamic-plugin-sdk';
 import { getPrometheusQueryResponse } from '@console/internal/actions/dashboards';
 import {
   withDashboardResources,
@@ -18,9 +19,8 @@ import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watc
 import { K8sKind, referenceForModel, K8sResourceCommon } from '@console/internal/module/k8s';
 import { featureReducerName } from '@console/internal/reducers/features';
 import { RootState } from '@console/internal/redux';
-import { FLAGS } from '@console/shared/src/constants';
 import { getName, getNamespace } from '../../..';
-import { useActivePerspective } from '../../../hooks';
+import { FLAGS } from '../../../constants';
 import { RedExclamationCircleIcon, YellowExclamationTriangleIcon } from '../../status';
 import { DashboardCardPopupLink } from '../dashboard-card/DashboardCardLink';
 import Status from '../status-card/StatusPopup';

@@ -11,6 +11,7 @@ import {
 } from '@patternfly/react-topology';
 import * as _ from 'lodash';
 import { connect } from 'react-redux';
+import { alertingLoaded } from '@console/internal/actions/observe';
 import * as UIActions from '@console/internal/actions/ui';
 import { ErrorBoundaryFallback } from '@console/internal/components/error';
 import { Alert } from '@console/internal/components/monitoring/types';
@@ -153,7 +154,6 @@ const ConnectedTopologyListView: React.FC<TopologyListViewProps &
       const newVisualization = new Visualization();
       newVisualization.registerElementFactory(odcElementFactory);
       newVisualization.fromModel(listModel);
-      setVisualization(newVisualization);
       return newVisualization;
     };
 
@@ -163,6 +163,12 @@ const ConnectedTopologyListView: React.FC<TopologyListViewProps &
     }
 
     const visualization = visualizationRef.current;
+
+    React.useEffect(() => {
+      if (visualization) {
+        setVisualization(visualization);
+      }
+    }, [setVisualization, visualization]);
 
     React.useEffect(() => {
       if (model) {
@@ -318,8 +324,7 @@ const stateToProps = ({ UI }): TopologyListViewPropsFromState => {
 
 const dispatchToProps = (dispatch): TopologyListViewPropsFromDispatch => ({
   updateMetrics: (metrics: OverviewMetrics) => dispatch(UIActions.updateOverviewMetrics(metrics)),
-  updateMonitoringAlerts: (alerts: Alert[]) =>
-    dispatch(UIActions.monitoringLoaded('devAlerts', alerts, 'dev')),
+  updateMonitoringAlerts: (alerts: Alert[]) => dispatch(alertingLoaded('devAlerts', alerts, 'dev')),
 });
 
 const TopologyListView = withFallback(

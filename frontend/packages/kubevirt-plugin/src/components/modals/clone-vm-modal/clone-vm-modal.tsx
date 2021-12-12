@@ -23,18 +23,18 @@ import {
   HandlePromiseProps,
   withHandlePromise,
 } from '@console/internal/components/utils';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { NamespaceModel, PersistentVolumeClaimModel, ProjectModel } from '@console/internal/models';
 import { K8sResourceKind, PersistentVolumeClaimKind } from '@console/internal/module/k8s';
 import { cloneVM } from '../../../k8s/requests/vm/clone';
 import { DataVolumeModel, VirtualMachineModel } from '../../../models';
 import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
 import { getName, getNamespace, ValidationErrorType, getDescription } from '../../../selectors';
+import { getVolumes, isVMExpectedRunning } from '../../../selectors/vm/selectors';
 import {
   getVolumeDataVolumeName,
   getVolumePersistentVolumeClaimName,
-  getVolumes,
-  isVMExpectedRunning,
-} from '../../../selectors/vm';
+} from '../../../selectors/vm/volume';
 import { VMKind, VMIKind } from '../../../types';
 import { V1alpha1DataVolume } from '../../../types/api';
 import { getLoadedData, getLoadError, prefixedID } from '../../../utils';
@@ -51,6 +51,7 @@ export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
     vm,
     vmi,
     namespace,
+    vmNamespace,
     onNamespaceChanged,
     namespaces,
     virtualMachines,
@@ -95,6 +96,12 @@ export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
   const isValid =
     !nameError && dataVolumesValid && pvcsValid && !namespacesError && name && namespace;
 
+  const [pvcs] = useK8sWatchResource<PersistentVolumeClaimKind[]>({
+    kind: PersistentVolumeClaimModel.kind,
+    namespace: vmNamespace,
+    isList: true,
+  });
+
   const submit = (e) => {
     e.preventDefault();
 
@@ -106,6 +113,7 @@ export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
         persistentVolumeClaims: persistentVolumeClaimsData,
       },
       { name, namespace, description, startVM },
+      pvcs,
     );
     handlePromise(promise, close);
   };
@@ -200,6 +208,7 @@ export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
               label={t('kubevirt-plugin~Start virtual machine on clone')}
               id={asId('start')}
               isChecked={startVM}
+              data-checked-state={startVM}
               onChange={setStartVM}
               className="kubevirt-clone-vm-modal__start_vm_checkbox"
             />
@@ -224,7 +233,7 @@ export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
         warningMessage={vmRunningWarning}
         inProgress={inProgress}
         isDisabled={!isValid || inProgress}
-        submitButtonText={t('kubevirt-plugin~Clone Virtual Machine')}
+        submitButtonText={t('kubevirt-plugin~Clone')}
         onSubmit={submit}
         onCancel={onCancelClick}
       />
@@ -235,6 +244,7 @@ export const CloneVMModal = withHandlePromise<CloneVMModalProps>((props) => {
 export type CloneVMModalProps = CloneVMModalFirehoseProps &
   HandlePromiseProps & {
     namespace: string;
+    vmNamespace?: string;
     onNamespaceChanged: (namespace: string) => void;
     namespaces?: FirehoseResult<K8sResourceKind[]>;
     virtualMachines?: FirehoseResult<VMKind[]>;
@@ -289,6 +299,7 @@ const CloneVMModalFirehose: React.FC<CloneVMModalFirehoseProps> = (props) => {
       <CloneVMModal
         {...props}
         namespace={namespace}
+        vmNamespace={vmNamespace}
         onNamespaceChanged={(n) => setNamespace(n)}
         requestsDataVolumes={requestsDataVolumes}
         requestsPVCs={requestsPVCs}

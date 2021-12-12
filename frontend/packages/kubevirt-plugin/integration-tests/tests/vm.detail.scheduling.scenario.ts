@@ -1,7 +1,7 @@
 import { browser, ExpectedConditions as until } from 'protractor';
 import { testName } from '@console/internal-integration-tests/protractor.conf';
 import { MatchLabels } from '@console/internal/module/k8s';
-import { click, createResource, deleteResource } from '@console/shared/src/test-utils/utils';
+import { click, createResource, deleteResource } from '../utils/shared-utils';
 import * as editAffinityView from '../views/dialogs/editAffinityView';
 import { saveButton } from '../views/kubevirtUIResource.view';
 import * as virtualMachineView from '../views/virtualMachine.view';
@@ -30,7 +30,7 @@ describe('KubeVirt VM scheduling', () => {
 
   beforeAll(async () => {
     createResource(testVM);
-    await vm.waitForStatus(VM_STATUS.Off, VM_IMPORT_TIMEOUT_SECS);
+    await vm.waitForStatus(VM_STATUS.Stopped, VM_IMPORT_TIMEOUT_SECS);
   });
 
   afterAll(() => {

@@ -14,18 +14,12 @@ import {
 import { K8sResourceKind } from '@console/internal/module/k8s';
 
 const ResourceMetricsDashboardCard: React.FC<ResourceMetricsDashboardCardProps> = (props) => (
-  <DashboardCard>
+  <DashboardCard className="resource-metrics-dashboard__card">
     <DashboardCardHeader>
       <DashboardCardTitle>{props.title}</DashboardCardTitle>
     </DashboardCardHeader>
-    <DashboardCardBody>
-      <QueryBrowser
-        queries={props.queries}
-        disableZoom
-        hideControls
-        showLegend
-        wrapperClassName="query-browser__resource-metrics-wrapper"
-      />
+    <DashboardCardBody className="resource-metrics-dashboard__card-body">
+      <QueryBrowser queries={props.queries} namespace={props.namespace} disableZoom hideControls />
     </DashboardCardBody>
   </DashboardCard>
 );
@@ -34,36 +28,41 @@ export const ResourceMetricsDashboard: React.FC<ResourceMetricsDashboardProps> =
   const { t } = useTranslation();
   const queries = useResourceMetricsQueries(obj);
   return queries ? (
-    <Dashboard>
+    <Dashboard className="resource-metrics-dashboard">
       <Grid hasGutter>
         <GridItem xl={6} lg={12}>
           <ResourceMetricsDashboardCard
-            title={t('public~Memory usage')}
+            namespace={obj.metadata.namespace}
             queries={queries[ResourceUtilizationQuery.MEMORY]}
+            title={t('public~Memory usage')}
           />
         </GridItem>
         <GridItem xl={6} lg={12}>
           <ResourceMetricsDashboardCard
-            title={t('public~CPU usage')}
+            namespace={obj.metadata.namespace}
             queries={queries[ResourceUtilizationQuery.CPU]}
+            title={t('public~CPU usage')}
           />
         </GridItem>
         <GridItem xl={6} lg={12}>
           <ResourceMetricsDashboardCard
-            title={t('public~Filesystem')}
+            namespace={obj.metadata.namespace}
             queries={queries[ResourceUtilizationQuery.FILESYSTEM]}
+            title={t('public~Filesystem')}
           />
         </GridItem>
         <GridItem xl={6} lg={12}>
           <ResourceMetricsDashboardCard
-            title={t('public~Network in')}
+            namespace={obj.metadata.namespace}
             queries={queries[ResourceUtilizationQuery.NETWORK_IN]}
+            title={t('public~Network in')}
           />
         </GridItem>
         <GridItem xl={6} lg={12}>
           <ResourceMetricsDashboardCard
-            title={t('public~Network out')}
+            namespace={obj.metadata.namespace}
             queries={queries[ResourceUtilizationQuery.NETWORK_OUT]}
+            title={t('public~Network out')}
           />
         </GridItem>
       </Grid>
@@ -72,6 +71,7 @@ export const ResourceMetricsDashboard: React.FC<ResourceMetricsDashboardProps> =
 };
 
 type ResourceMetricsDashboardCardProps = {
+  namespace?: string;
   title: string;
   queries: string[];
 };

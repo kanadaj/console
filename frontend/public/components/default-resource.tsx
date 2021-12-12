@@ -5,15 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { sortable } from '@patternfly/react-table';
 
 import { Conditions } from './conditions';
-import {
-  DetailsPage,
-  ListPage,
-  Table,
-  TableRow,
-  TableData,
-  TableProps,
-  RowFunction,
-} from './factory';
+import { DetailsPage, ListPage, Table, TableData, TableProps, RowFunctionArgs } from './factory';
 import {
   referenceFor,
   kindForReference,
@@ -78,6 +70,36 @@ export const DetailsForKind = (
     );
   };
 
+const TableRowForKind: React.FC<RowFunctionArgs<K8sResourceKind>> = ({ obj, customData }) => {
+  const kind = referenceFor(obj) || customData.kind;
+  const menuActions = [...Kebab.getExtensionsActionsForKind(kindObj(kind)), ...common];
+  const { t } = useTranslation();
+  return (
+    <>
+      <TableData className={tableColumnClasses[0]}>
+        <ResourceLink
+          kind={customData.kind}
+          name={obj.metadata.name}
+          namespace={obj.metadata.namespace}
+        />
+      </TableData>
+      <TableData className={classNames(tableColumnClasses[1], 'co-break-word')}>
+        {obj.metadata.namespace ? (
+          <ResourceLink kind="Namespace" name={obj.metadata.namespace} />
+        ) : (
+          t('public~None')
+        )}
+      </TableData>
+      <TableData className={tableColumnClasses[2]}>
+        <Timestamp timestamp={obj.metadata.creationTimestamp} />
+      </TableData>
+      <TableData className={tableColumnClasses[3]}>
+        <ResourceKebab actions={menuActions} kind={kind} resource={obj} />
+      </TableData>
+    </>
+  );
+};
+
 export const DefaultList: React.FC<TableProps & { kinds: string[] }> = (props) => {
   const { t } = useTranslation();
 
@@ -110,42 +132,6 @@ export const DefaultList: React.FC<TableProps & { kinds: string[] }> = (props) =
     ];
   };
 
-  const TableRowForKind: RowFunction<K8sResourceKind> = ({
-    obj,
-    index,
-    key,
-    style,
-    customData,
-  }) => {
-    const kind = referenceFor(obj) || customData.kind;
-    const menuActions = [...Kebab.getExtensionsActionsForKind(kindObj(kind)), ...common];
-
-    return (
-      <TableRow id={obj.metadata.uid} index={index} trKey={key} style={style}>
-        <TableData className={tableColumnClasses[0]}>
-          <ResourceLink
-            kind={customData.kind}
-            name={obj.metadata.name}
-            namespace={obj.metadata.namespace}
-          />
-        </TableData>
-        <TableData className={classNames(tableColumnClasses[1], 'co-break-word')}>
-          {obj.metadata.namespace ? (
-            <ResourceLink kind="Namespace" name={obj.metadata.namespace} />
-          ) : (
-            t('public~None')
-          )}
-        </TableData>
-        <TableData className={tableColumnClasses[2]}>
-          <Timestamp timestamp={obj.metadata.creationTimestamp} />
-        </TableData>
-        <TableData className={tableColumnClasses[3]}>
-          <ResourceKebab actions={menuActions} kind={kind} resource={obj} />
-        </TableData>
-      </TableRow>
-    );
-  };
-
   const getAriaLabel = (item) => {
     const model = modelFor(item);
     // API discovery happens asynchronously. Avoid runtime errors if the model hasn't loaded.
@@ -155,11 +141,18 @@ export const DefaultList: React.FC<TableProps & { kinds: string[] }> = (props) =
     return model.labelPluralKey ? t(model.labelPluralKey) : model.labelPlural;
   };
 
+  const customData = React.useMemo(
+    () => ({
+      kind: kinds[0],
+    }),
+    [kinds],
+  );
+
   return (
     <Table
       {...props}
       aria-label={getAriaLabel(kinds[0])}
-      customData={{ kind: kinds[0] }}
+      customData={customData}
       Header={TableHeader}
       Row={TableRowForKind}
       virtualize

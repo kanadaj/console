@@ -1,5 +1,6 @@
 // import { checkErrors } from '../../../../integration-tests-cypress/support';
 
+import { formPO } from '../pageObjects';
 import { app } from '../pages';
 
 export {}; // needed in files which don't have an import to trigger ES6 module usage
@@ -20,6 +21,7 @@ declare global {
       selectActionsMenuOption(actionsMenuOption: string): Chainable<Element>;
       dropdownSwitchTo(dropdownMenuOption: string): Chainable<Element>;
       isDropdownVisible(): Chainable<Element>;
+      checkErrors(): Chainable<Element>;
     }
   }
 }
@@ -104,4 +106,43 @@ Cypress.Commands.add('isDropdownVisible', () => {
     .click()
     .get('.pf-c-dropdown__menu')
     .should('be.visible');
+});
+
+Cypress.Commands.add('checkErrors', () => {
+  cy.get('body').then(($body) => {
+    if ($body.find('[data-test-id="reset-button"]').length !== 0) {
+      cy.get('body').then(($body1) => {
+        if ($body1.find(formPO.errorAlert).length !== 0) {
+          cy.get(formPO.errorAlert)
+            .find('.co-pre-line')
+            .then(($alert) => {
+              cy.log(
+                `Displaying following error: "${$alert.text()}", so closing this form or modal`,
+              );
+            });
+        }
+      });
+      cy.byLegacyTestID('reset-button').click({ force: true });
+    } else if ($body.find('[data-test-id="modal-cancel-action"]').length !== 0) {
+      cy.get('body').then(($body2) => {
+        if ($body2.find(formPO.errorAlert).length !== 0) {
+          cy.get(formPO.errorAlert)
+            .find('.co-pre-line')
+            .then(($alert) => {
+              cy.log(
+                `Displaying following error: "${$alert.text()}", so closing this form or modal`,
+              );
+            });
+        }
+      });
+      cy.byLegacyTestID('modal-cancel-action').click({ force: true });
+      cy.get('body').then(($body1) => {
+        if ($body1.find('[data-test-id="reset-button"]').length !== 0) {
+          cy.byLegacyTestID('reset-button').click({ force: true });
+        }
+      });
+    } else if ($body.find('button[aria-label="Close"]').length !== 0) {
+      cy.get('button[aria-label="Close"]').click({ force: true });
+    }
+  });
 });

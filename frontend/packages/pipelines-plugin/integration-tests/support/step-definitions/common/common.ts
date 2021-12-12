@@ -40,9 +40,9 @@ Given('user is at the Topology page', () => {
   topologyPage.verifyTopologyPage();
 });
 
-When('user enters Git Repo url as {string}', (gitUrl: string) => {
+When('user enters Git Repo URL as {string}', (gitUrl: string) => {
   gitPage.enterGitUrl(gitUrl);
-  gitPage.verifyValidatedMessage();
+  gitPage.verifyValidatedMessage(gitUrl);
   cy.get('body').then(($el) => {
     if ($el.find('[aria-label$="Alert"]').length) {
       cy.log('Builder image detected');

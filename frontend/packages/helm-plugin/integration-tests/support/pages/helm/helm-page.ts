@@ -1,4 +1,4 @@
-import { messages } from '@console/dev-console/integration-tests/support/constants';
+import { helmActions, messages } from '@console/dev-console/integration-tests/support/constants';
 import { helmPO } from '@console/dev-console/integration-tests/support/pageObjects';
 
 export const helmPage = {
@@ -45,7 +45,7 @@ export const helmPage = {
     }
     helmPage.selectHelmFilterDropDown();
   },
-  verifyStatusInHelmReleasesTable: (helmReleaseName: string = 'Nodejs Ex K v0.2.1') => {
+  verifyStatusInHelmReleasesTable: (helmReleaseName: string = 'Nodejs') => {
     cy.get(helmPO.table).should('exist');
     cy.get('tr td:nth-child(1)').each(($el, index) => {
       const text = $el.text();
@@ -59,7 +59,9 @@ export const helmPage = {
   },
   selectKebabMenu: () => {
     cy.get(helmPO.table).should('exist');
-    cy.byLegacyTestID('kebab-button').click();
+    cy.byLegacyTestID('kebab-button')
+      .first()
+      .click();
   },
   verifyHelmChartsListed: () => {
     cy.get(helmPO.noHelmSearchMessage)
@@ -160,5 +162,24 @@ export const helmPage = {
           .click();
       }
     });
+  },
+  selectHelmActionFromMenu: (actionName: helmActions | string) => {
+    switch (actionName) {
+      case 'Upgrade':
+      case helmActions.upgrade:
+        cy.get(helmPO.helmActions.upgrade).click();
+        break;
+      case 'Rollback':
+      case helmActions.rollback:
+        cy.get(helmPO.helmActions.rollBack).click();
+        break;
+      case 'Uninstall Helm Release':
+      case helmActions.uninstallHelmRelease:
+        cy.get(helmPO.helmActions.uninstallHelmRelease).click();
+        break;
+      default:
+        cy.log(`${actionName} is not available in dropdown menu`);
+        break;
+    }
   },
 };

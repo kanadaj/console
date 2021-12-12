@@ -1,47 +1,58 @@
-import { ConfigMapKind } from '@console/internal/module/k8s';
 import { projectDropdown } from '../../../integration-tests-cypress/views/common';
-import { V1alpha1DataVolume } from '../../src/types/api';
+import nadFixture from '../fixtures/nad';
+import { VirtualMachineData } from '../types/vm';
 import {
+  EXPECT_LOGIN_SCRIPT_PATH,
+  K8S_KIND,
   KUBEVIRT_PROJECT_NAME,
   KUBEVIRT_STORAGE_CLASS_DEFAULTS,
-  EXPECT_LOGIN_SCRIPT_PATH,
-} from '../const';
-import { VirtualMachineData } from '../types/vm';
+} from '../utils/const/index';
+import './virtualization';
 
 export * from '../../../integration-tests-cypress/support';
 
 declare global {
   namespace Cypress {
     interface Chainable<Subject> {
-      deleteResource(resource: any, ignoreNotFound?: boolean): void;
+      deleteResource(kind: string, name: string, namespace?: string): void;
       applyResource(resource: any): void;
       createResource(resource: any): void;
       waitForResource(resource: any): void;
       createDataVolume(name: string, namespace: string): void;
       dropFile(filePath: string, fileName: string, inputSelector: string): void;
-      createUserTemplate(namespace: string): void;
       cdiCloner(srcNS: string, destNS: string): void;
-      waitForLoginPrompt(vmName: string, namespace: string): void;
       Login(): void;
       deleteTestProject(namespace: string): void;
       pauseVM(vmData: VirtualMachineData): void;
       uploadFromCLI(dvName: string, ns: string, imagePath: string, size: string): void;
       selectProject(project: string): void;
       createNAD(namespace: string): void;
+      waitForLoginPrompt(vmName: string, namespace: string): void;
+      visitNADPage(): void;
     }
   }
 }
 
-Cypress.Commands.add('deleteResource', (resource, ignoreNotFound = true) => {
-  const kind = resource.kind === 'NetworkAttachmentDefinition' ? 'net-attach-def' : resource.kind;
+Cypress.Commands.add('deleteResource', (kind: string, name: string, namespace?: string) => {
+  // If cluster resource, ommit namespace
+  if (!namespace) {
+    cy.exec(
+      `kubectl delete --ignore-not-found=true --cascade ${kind} ${name} --wait=true --timeout=180s || true`,
+      { timeout: 180000 },
+    );
+    return;
+  }
+
   cy.exec(
-    `kubectl delete --ignore-not-found=${ignoreNotFound} -n ${resource.metadata.namespace} --cascade ${kind} ${resource.metadata.name} --wait=true --timeout=120s`,
+    `kubectl delete --ignore-not-found=true -n ${namespace} --cascade ${kind} ${name} --wait=true --timeout=120s || true`,
+    { timeout: 120000 },
   );
 
-  // VMI may still be there while VM is being deleted. Wait for VMI to be deleted before continuing
-  if (['VirtualMachine', 'DataVolume', 'PersistentVolumeClaim'].includes(kind)) {
+  if (kind === K8S_KIND.VM) {
+    // VMI may still be there while VM is being deleted. Wait for VMI to be deleted before continuing
     cy.exec(
-      `kubectl delete --ignore-not-found=${ignoreNotFound} -n ${resource.metadata.namespace} vmi ${resource.metadata.name} --wait=true --timeout=120s`,
+      `kubectl delete --ignore-not-found=true -n ${namespace} vmi ${name} --wait=true --timeout=240s || true`,
+      { timeout: 240000 },
     );
   }
 });
@@ -58,16 +69,16 @@ Cypress.Commands.add('waitForResource', (resource: any) => {
   const { kind } = resource;
   const { name } = resource.metadata;
   const ns = resource.metadata.namespace;
-  cy.exec(`kubectl wait --for condition=Ready ${kind} ${name} -n ${ns} --timeout=600s`, {
+  cy.exec(`kubectl wait --for condition=Ready ${kind} ${name} -n ${ns} --timeout=600s || true`, {
     timeout: 600000,
   });
 });
 
 Cypress.Commands.add('createDataVolume', (name: string, namespace: string) => {
-  cy.exec(
-    `kubectl get -o json -n ${KUBEVIRT_PROJECT_NAME} configMap ${KUBEVIRT_STORAGE_CLASS_DEFAULTS}`,
-  ).then((result) => {
-    const configMap = JSON.parse(result.stdout);
+  const execCommand = (project: string) =>
+    `kubectl get -o json -n ${project} configMap ${KUBEVIRT_STORAGE_CLASS_DEFAULTS}`;
+
+  const createDataVolume = (configMap) => {
     cy.fixture('data-volume').then((dv) => {
       dv.metadata.name = name;
       dv.metadata.namespace = namespace;
@@ -84,6 +95,10 @@ Cypress.Commands.add('createDataVolume', (name: string, namespace: string) => {
       cy.applyResource(dv);
       cy.waitForResource(dv);
     });
+  };
+
+  cy.exec(execCommand(KUBEVIRT_PROJECT_NAME)).then((result) => {
+    result?.stdout && createDataVolume(JSON.parse(result?.stdout));
   });
 });
 
@@ -101,54 +116,12 @@ Cypress.Commands.add('dropFile', (filePath, fileName, inputSelector) => {
   });
 });
 
-const configureDataVolume = (dv: V1alpha1DataVolume, configMap: ConfigMapKind) => {
-  const storageClass = Cypress.env('STORAGE_CLASS');
-  dv.spec.pvc.accessModes = storageClass
-    ? [configMap.data[`${storageClass}.accessMode`]]
-    : [configMap.data.accessMode];
-  dv.spec.pvc.volumeMode = storageClass
-    ? configMap.data[`${storageClass}.volumeMode`]
-    : configMap.data.volumeMode;
-  if (storageClass) {
-    dv.spec.pvc.storageClassName = storageClass;
-  }
-};
-
-Cypress.Commands.add('createUserTemplate', (namespace: string) => {
-  cy.exec(
-    `kubectl get -o json -n ${KUBEVIRT_PROJECT_NAME} configMap ${KUBEVIRT_STORAGE_CLASS_DEFAULTS}`,
-  ).then((result) => {
-    const configMap = JSON.parse(result.stdout);
-    cy.fixture('user-template').then((ut) => {
-      ut.disk0.metadata.namespace = namespace;
-      configureDataVolume(ut.disk0, configMap);
-      cy.createResource(ut.disk0);
-      ut.disk1.metadata.namespace = namespace;
-      configureDataVolume(ut.disk1, configMap);
-      cy.createResource(ut.disk1);
-      ut.template.objects[0].spec.dataVolumeTemplates.forEach((dv: any) => {
-        configureDataVolume(dv, configMap);
-        dv.spec.source.pvc.namespace = namespace;
-      });
-      ut.template.metadata.namespace = namespace;
-      cy.createResource(ut.template);
-    });
-  });
-});
-
 Cypress.Commands.add('cdiCloner', (srcNS: string, destNS: string) => {
   cy.fixture('cdi-cloner').then((cloner) => {
     cy.applyResource(cloner.clusterRole);
     cloner.roleBinding.subjects[0].namespace = destNS;
     cloner.roleBinding.metadata.namespace = srcNS;
     cy.applyResource(cloner.roleBinding);
-  });
-});
-
-Cypress.Commands.add('waitForLoginPrompt', (vmName: string, namespace: string) => {
-  cy.exec(`expect ${EXPECT_LOGIN_SCRIPT_PATH} ${vmName} ${namespace}`, {
-    failOnNonZeroExit: false,
-    timeout: 600000,
   });
 });
 
@@ -194,8 +167,17 @@ Cypress.Commands.add('selectProject', (project: string) => {
 });
 
 Cypress.Commands.add('createNAD', (namespace: string) => {
-  cy.fixture('nad').then((nad) => {
-    nad.metadata.namespace = namespace;
-    cy.createResource(nad);
+  nadFixture.metadata.namespace = namespace;
+  cy.createResource(nadFixture);
+});
+
+Cypress.Commands.add('waitForLoginPrompt', (vmName: string, namespace: string) => {
+  cy.exec(`expect ${EXPECT_LOGIN_SCRIPT_PATH} ${vmName} ${namespace}`, {
+    failOnNonZeroExit: false,
+    timeout: 600000,
   });
+});
+
+Cypress.Commands.add('visitNADPage', () => {
+  cy.clickNavLink(['Networking', 'NetworkAttachmentDefinitions']);
 });

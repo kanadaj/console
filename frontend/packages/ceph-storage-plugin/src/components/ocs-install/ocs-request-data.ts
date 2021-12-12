@@ -1,12 +1,7 @@
 import * as _ from 'lodash';
-import {
-  k8sPatch,
-  NodeKind,
-  StorageClassResourceKind,
-  K8sKind,
-} from '@console/internal/module/k8s';
+import { k8sPatch, NodeKind, K8sKind } from '@console/internal/module/k8s';
 import { NodeModel, NamespaceModel } from '@console/internal/models';
-import { hasLabel, getName } from '@console/shared';
+import { hasLabel } from '@console/shared';
 import {
   NO_PROVISIONER,
   OCS_INTERNAL_CR_NAME,
@@ -23,6 +18,7 @@ import {
   DeviceSet,
   ResourceConstraints,
 } from '../../types';
+import { WizardState } from '../create-storage-system/reducer';
 
 const MIN_SPEC_RESOURCES: StorageClusterResource = {
   mds: {
@@ -126,7 +122,7 @@ export const createDeviceSet = (
 });
 
 export const getOCSRequestData = (
-  storageClass: StorageClassResourceKind,
+  storageClass: WizardState['storageClass'],
   storage: string,
   encrypted: boolean,
   isMinimal: boolean,
@@ -138,8 +134,8 @@ export const getOCSRequestData = (
   stretchClusterChecked?: boolean,
   availablePvsCount?: number,
 ): StorageClusterKind => {
-  const scName: string = getName(storageClass);
-  const isNoProvisioner: boolean = storageClass.provisioner === NO_PROVISIONER;
+  const scName: string = storageClass.name;
+  const isNoProvisioner: boolean = storageClass?.provisioner === NO_PROVISIONER;
   const isPortable: boolean = flexibleScaling ? false : !isNoProvisioner;
   const deviceSetReplica: number = stretchClusterChecked
     ? OCS_DEVICE_SET_ARBITER_REPLICA
@@ -180,12 +176,12 @@ export const getOCSRequestData = (
         ),
       ],
       ...Object.assign(
-        publicNetwork
+        publicNetwork || clusterNetwork
           ? {
               network: {
                 provider: 'multus',
                 selectors: {
-                  public: publicNetwork,
+                  ...Object.assign(publicNetwork ? { public: publicNetwork } : {}),
                   ...Object.assign(clusterNetwork ? { cluster: clusterNetwork } : {}),
                 },
               },

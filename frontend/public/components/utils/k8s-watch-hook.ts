@@ -7,26 +7,17 @@ import { createSelectorCreator, defaultMemoize } from 'reselect';
 import { useDeepCompareMemoize } from '@console/shared/src/hooks/deep-compare-memoize';
 import { usePrevious } from '@console/shared/src/hooks/previous';
 import {
+  WatchK8sResource,
   UseK8sWatchResource,
   UseK8sWatchResources,
-  WatchK8sResource,
-} from '@console/dynamic-plugin-sdk/src/api/api-types';
+} from '@console/dynamic-plugin-sdk/src/extensions/console-types';
+import { getReference } from '@console/dynamic-plugin-sdk/src/utils/k8s/k8s-ref';
 
 import { makeQuery, makeReduxID } from './k8s-watcher';
 import * as k8sActions from '../../actions/k8s';
 import { K8sKind } from '../../module/k8s';
 import { RootState } from '../../redux';
 import { K8sState } from '../../reducers/k8s';
-
-export {
-  UseK8sWatchResource,
-  WatchK8sResult,
-  ResourcesObject,
-  WatchK8sResults,
-  WatchK8sResultsObject,
-  WatchK8sResource,
-  WatchK8sResources,
-} from '@console/dynamic-plugin-sdk/src/api/api-types';
 
 export class NoModelError extends Error {
   constructor() {
@@ -83,8 +74,12 @@ export const useK8sWatchResource: UseK8sWatchResource = (initResource) => {
   const resource = useDeepCompareMemoize(initResource, true);
   const modelsLoaded = useModelsLoaded();
 
+  const kindReference = resource?.groupVersionKind
+    ? getReference(resource.groupVersionKind)
+    : resource?.kind;
+
   const k8sModel = useSelector<RootState, K8sKind>(({ k8s }) =>
-    resource ? k8s.getIn(['RESOURCES', 'models', resource.kind]) : null,
+    kindReference ? k8s.getIn(['RESOURCES', 'models', kindReference]) : null,
   );
 
   const reduxID = React.useMemo(() => getIDAndDispatch(resource, k8sModel), [k8sModel, resource]);
@@ -156,7 +151,11 @@ export const useK8sWatchResources: UseK8sWatchResources = (initResources) => {
     () =>
       modelsLoaded
         ? Object.keys(resources).reduce((ids, key) => {
-            const resourceModel = k8sModels.get(resources[key].kind);
+            const kindReference = resources[key]?.groupVersionKind
+              ? getReference(resources[key].groupVersionKind)
+              : resources[key].kind;
+
+            const resourceModel = k8sModels.get(kindReference);
             if (!resourceModel) {
               ids[key] = {
                 noModel: true,

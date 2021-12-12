@@ -1,13 +1,13 @@
-$global-notification-text: $color-pf-white;
+$global-notification-text: $pf-color-white;
 
 .co-global-notification {
-  background-color: $color-pf-blue-400;
+  background-color: $pf-color-blue-400;
   color: $global-notification-text;
-  padding: 4px ($grid-gutter-width / 2);
+  padding: 4px $pf-global-gutter;
   text-align: center;
 
-  @media(min-width: $grid-float-breakpoint) {
-    padding: 6px $grid-gutter-width;
+  @media(min-width: $pf-global--breakpoint--md) {
+    padding: 6px $pf-global-gutter--md;
   }
 
   + .co-global-notification {
@@ -18,6 +18,10 @@ $global-notification-text: $color-pf-white;
     color: $global-notification-text;
     cursor: pointer;
     text-decoration: underline;
+  }
+
+  button {
+    color: $global-notification-text !important;
   }
 }
 

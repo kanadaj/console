@@ -1,4 +1,3 @@
-import { modal } from '@console/cypress-integration-tests/views/modal';
 import { helmPO } from '@console/dev-console/integration-tests/support/pageObjects/helm-po';
 
 export const upgradeHelmRelease = {
@@ -7,22 +6,27 @@ export const upgradeHelmRelease = {
       .get('h1')
       .contains('Upgrade Helm Release')
       .should('be.visible'),
-  updateReplicaCount: () =>
+  updateReplicaCount: (replicaCount: string = '2') =>
     cy
       .get(helmPO.upgradeHelmRelease.replicaCount)
       .clear()
-      .type('2'),
-  upgradeChartVersion: (yamlView: boolean = false) => {
+      .type(replicaCount),
+  upgradeChartVersion: () => {
     cy.get(helmPO.upgradeHelmRelease.chartVersion).click();
     const count = Cypress.$('[data-test-id="dropdown-menu"]').length;
     const randNum = Math.floor(Math.random() * count);
     cy.byLegacyTestID('dropdown-menu')
       .eq(randNum)
       .click();
-    if (yamlView === true) {
-      modal.modalTitleShouldContain('Change Chart Version?');
-      cy.byTestID('confirm-action').click();
-    }
+    cy.get('body').then(($body) => {
+      if ($body.find('form.modal-content').length) {
+        cy.log('Change Chart version popup is displayed, so clicking on the proceed button');
+        cy.get('form.modal-content').within(() => {
+          cy.byLegacyTestID('modal-title').should('contain.text', 'Change chart version?');
+          cy.get('button[type=submit]').click({ force: true });
+        });
+      }
+    });
   },
   clickOnUpgrade: () => {
     cy.get(helmPO.upgradeHelmRelease.upgrade).click();

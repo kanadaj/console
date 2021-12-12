@@ -15,12 +15,12 @@ import * as _ from 'lodash';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link, match as RouterMatch } from 'react-router-dom';
-import { Conditions } from '@console/internal/components/conditions';
+import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
+import { Conditions, ConditionTypes } from '@console/internal/components/conditions';
 import { ResourceEventStream } from '@console/internal/components/events';
 import {
   DetailsPage,
   Table,
-  TableRow,
   TableData,
   MultiListPage,
   RowFunctionArgs,
@@ -46,13 +46,12 @@ import {
   KebabOption,
   resourceObjPath,
   KebabAction,
+  isUpstream,
   openshiftHelpBase,
+  Page,
 } from '@console/internal/components/utils';
 import { getBreadcrumbPath } from '@console/internal/components/utils/breadcrumbs';
-import {
-  useK8sWatchResource,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { useAccessReview } from '@console/internal/components/utils/rbac';
 import { ConsoleOperatorConfigModel } from '@console/internal/models';
 import {
@@ -66,13 +65,7 @@ import {
   K8sResourceCommon,
   K8sResourceKind,
 } from '@console/internal/module/k8s';
-import {
-  ALL_NAMESPACES_KEY,
-  Status,
-  getNamespace,
-  getUID,
-  StatusIconAndText,
-} from '@console/shared';
+import { ALL_NAMESPACES_KEY, Status, getNamespace, StatusIconAndText } from '@console/shared';
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 import { consolePluginModal } from '@console/shared/src/components/modals';
 import { RedExclamationCircleIcon } from '@console/shared/src/components/status/icons';
@@ -107,7 +100,7 @@ import {
   upgradeRequiresApproval,
 } from '../utils';
 import { createUninstallOperatorModal } from './modals/uninstall-operator-modal';
-import { ProvidedAPIsPage, ProvidedAPIPage } from './operand';
+import { ProvidedAPIsPage, ProvidedAPIPage, ProvidedAPIPageProps } from './operand';
 import { operatorGroupFor, operatorNamespaceFor } from './operator-group';
 import { CreateInitializationResourceButton } from './operator-install-page';
 import {
@@ -357,17 +350,16 @@ const ConsolePluginStatus: React.FC<ConsolePluginStatusProps> = ({ csv, csvPlugi
 };
 
 export const ClusterServiceVersionTableRow = withFallback<ClusterServiceVersionTableRowProps>(
-  ({ activeNamespace, obj, rowKey, subscription, catalogSourceMissing, index, style }) => {
+  ({ activeNamespace, obj, subscription, catalogSourceMissing }) => {
     const { displayName, provider, version } = obj.spec ?? {};
     const olmOperatorNamespace = obj.metadata?.annotations?.['olm.operatorNamespace'] ?? '';
     const [icon] = obj.spec.icon ?? [];
     const route = resourceObjPath(obj, referenceFor(obj));
-    const uid = getUID(obj);
     const providedAPIs = providedAPIsForCSV(obj);
     const csvPlugins = getClusterServiceVersionPlugins(obj?.metadata?.annotations);
 
     return (
-      <TableRow id={uid} trKey={rowKey} index={index} style={style}>
+      <>
         {/* Name */}
         <TableData className={nameColumnClass}>
           <Link
@@ -443,7 +435,7 @@ export const ClusterServiceVersionTableRow = withFallback<ClusterServiceVersionT
             actions={menuActionsForCSV(obj, subscription)}
           />
         </TableData>
-      </TableRow>
+      </>
     );
   },
 );
@@ -451,20 +443,16 @@ export const ClusterServiceVersionTableRow = withFallback<ClusterServiceVersionT
 export const SubscriptionTableRow: React.FC<SubscriptionTableRowProps> = ({
   activeNamespace,
   catalogSourceMissing,
-  rowKey,
   obj,
-  index,
-  style,
 }) => {
   const { t } = useTranslation();
   const csvName = obj?.spec?.name;
   const menuActions = [Kebab.factory.Edit, () => uninstall(obj)];
   const namespace = getNamespace(obj);
   const route = resourceObjPath(obj, referenceForModel(SubscriptionModel));
-  const uid = getUID(obj);
 
   return (
-    <TableRow id={uid} trKey={rowKey} index={index} style={style}>
+    <>
       {/* Name */}
       <TableData className={nameColumnClass}>
         <Link to={route}>
@@ -508,16 +496,15 @@ export const SubscriptionTableRow: React.FC<SubscriptionTableRowProps> = ({
       <TableData className={Kebab.columnClass}>
         <ResourceKebab resource={obj} kind={referenceFor(obj)} actions={menuActions} />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 
 const InstalledOperatorTableRow: React.FC<InstalledOperatorTableRowProps> = ({
   obj,
-  catalogSources = [],
-  subscriptions = [],
-  ...rest
+  customData,
 }) => {
+  const { catalogSources, subscriptions, activeNamespace } = customData;
   const subscription = isCSV(obj)
     ? subscriptionForCSV(subscriptions, obj as ClusterServiceVersionKind)
     : (obj as SubscriptionKind);
@@ -530,14 +517,14 @@ const InstalledOperatorTableRow: React.FC<InstalledOperatorTableRowProps> = ({
 
   return isCSV(obj) ? (
     <ClusterServiceVersionTableRow
-      {...rest}
+      activeNamespace={activeNamespace}
       catalogSourceMissing={catalogSourceMissing}
       obj={obj as ClusterServiceVersionKind}
       subscription={subscription}
     />
   ) : (
     <SubscriptionTableRow
-      {...rest}
+      activeNamespace={activeNamespace}
       catalogSourceMissing={catalogSourceMissing}
       obj={subscription as SubscriptionKind}
     />
@@ -700,26 +687,26 @@ export const ClusterServiceVersionList: React.FC<ClusterServiceVersionListProps>
   };
   const allNamespaceActive = activeNamespace === ALL_NAMESPACES_KEY;
 
+  const customData = React.useMemo(
+    () => ({
+      catalogSources: catalogSources?.data ?? [],
+      subscriptions: subscriptions?.data ?? [],
+      activeNamespace,
+    }),
+    [activeNamespace, catalogSources, subscriptions],
+  );
+
   return (
     <Table
       data={filterOperators(data, allNamespaceActive)}
       {...rest}
-      aria-label="Installed Operators"
+      aria-label={t('olm~Installed Operators')}
       Header={allNamespaceActive ? AllProjectsTableHeader : SingleProjectTableHeader}
-      Row={(rowArgs: RowFunctionArgs<ClusterServiceVersionKind | SubscriptionKind>) => (
-        <InstalledOperatorTableRow
-          activeNamespace={activeNamespace}
-          obj={rowArgs.obj}
-          index={rowArgs.index}
-          rowKey={rowArgs.key}
-          style={rowArgs.style}
-          catalogSources={catalogSources.data}
-          subscriptions={subscriptions.data}
-        />
-      )}
+      Row={InstalledOperatorTableRow}
       EmptyMsg={CSVListEmptyMsg}
       NoDataEmptyMsg={CSVListNoDataEmptyMsg}
       virtualize
+      customData={customData}
       customSorts={{
         formatTargetNamespaces,
         getOperatorNamespace,
@@ -731,16 +718,15 @@ export const ClusterServiceVersionList: React.FC<ClusterServiceVersionListProps>
 export const ClusterServiceVersionsPage: React.FC<ClusterServiceVersionsPageProps> = (props) => {
   const { t } = useTranslation();
   const title = t('olm~Installed Operators');
+  const olmLink = isUpstream()
+    ? `${openshiftHelpBase}operators/understanding/olm-what-operators-are.html`
+    : `${openshiftHelpBase}html/operators/understanding-operators#olm-what-operators-are`;
   const helpText = (
     <Trans ns="olm">
       Installed Operators are represented by ClusterServiceVersions within this Namespace. For more
       information, see the{' '}
-      <ExternalLink
-        href={`${openshiftHelpBase}operators/understanding/olm-what-operators-are.html`}
-      >
-        Understanding Operators documentation
-      </ExternalLink>
-      . Or create an Operator and ClusterServiceVersion using the{' '}
+      <ExternalLink href={olmLink}>Understanding Operators documentation</ExternalLink>. Or create
+      an Operator and ClusterServiceVersion using the{' '}
       <ExternalLink href="https://sdk.operatorframework.io/">Operator SDK</ExternalLink>.
     </Trans>
   );
@@ -1165,6 +1151,7 @@ export const ClusterServiceVersionDetails: React.FC<ClusterServiceVersionDetails
             type: c.phase,
             status: 'True',
           }))}
+          type={ConditionTypes.ClusterServiceVersion}
         />
       </div>
     </>
@@ -1251,7 +1238,7 @@ export const ClusterServiceVersionsDetailsPage: React.FC<ClusterServiceVersionsD
               },
             ]
           : []),
-        ...providedAPIs.map((api: CRDDescription) => ({
+        ...providedAPIs.map<Page<ProvidedAPIPageProps>>((api: CRDDescription) => ({
           href: referenceForProvidedAPI(api),
           name: ['Details', 'YAML', 'Subscription', 'Events'].includes(api.displayName)
             ? `${api.displayName} Operand`
@@ -1358,21 +1345,17 @@ type ConsolePluginStatusProps = {
   csvPlugins: string[];
 };
 
-type InstalledOperatorTableRowProps = {
-  activeNamespace: string;
-  obj: ClusterServiceVersionKind | SubscriptionKind;
-  index: number;
-  rowKey: string;
-  style: object;
-  catalogSources: CatalogSourceKind[];
-  subscriptions: SubscriptionKind[];
-};
+type InstalledOperatorTableRowProps = RowFunctionArgs<
+  ClusterServiceVersionKind | SubscriptionKind,
+  {
+    activeNamespace: string;
+    catalogSources: CatalogSourceKind[];
+    subscriptions: SubscriptionKind[];
+  }
+>;
 
 export type ClusterServiceVersionTableRowProps = {
   obj: ClusterServiceVersionKind;
-  index: number;
-  rowKey: string;
-  style: object;
   catalogSourceMissing: boolean;
   subscription: SubscriptionKind;
   activeNamespace?: string;
@@ -1380,9 +1363,6 @@ export type ClusterServiceVersionTableRowProps = {
 
 type SubscriptionTableRowProps = {
   obj: SubscriptionKind;
-  index: number;
-  rowKey: string;
-  style: object;
   catalogSourceMissing: boolean;
   activeNamespace?: string;
 };

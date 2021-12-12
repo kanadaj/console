@@ -82,6 +82,7 @@ import {
   Firehose,
   FirehoseResource,
   HorizontalNav,
+  isUpstream,
   openshiftHelpBase,
   ReleaseNotesLink,
   ResourceLink,
@@ -89,12 +90,10 @@ import {
   SectionHeading,
   Timestamp,
   truncateMiddle,
+  UpstreamConfigDetailsItem,
   useAccessReview,
 } from '../utils';
-import {
-  useK8sWatchResource,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import {
   BlueArrowCircleUpIcon,
   BlueInfoCircleIcon,
@@ -102,6 +101,7 @@ import {
   RedExclamationCircleIcon,
   YellowExclamationTriangleIcon,
 } from '@console/shared';
+import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
 import { useFlag } from '@console/shared/src/hooks/flag';
 import { FLAGS } from '@console/shared/src/constants';
 
@@ -382,10 +382,13 @@ export const CurrentVersionHeader: React.FC<CurrentVersionProps> = ({ cv }) => {
 };
 
 export const ChannelDocLink: React.FC<{}> = () => {
+  const upgradeLink = isUpstream()
+    ? `${openshiftHelpBase}updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor`
+    : `${openshiftHelpBase}html/updating_clusters/updating-cluster-between-minor#understanding-upgrade-channels_updating-cluster-between-minor`;
   const { t } = useTranslation();
   return (
     <ExternalLink
-      href={`${openshiftHelpBase}updating/updating-cluster-between-minor.html#understanding-upgrade-channels_updating-cluster-between-minor`}
+      href={upgradeLink}
       text={t('public~Learn more about OpenShift update channels')}
     />
   );
@@ -715,7 +718,17 @@ const MachineConfigPoolsResource: WatchK8sResource = {
 export const ClusterOperatorsLink: React.FC<ClusterOperatorsLinkProps> = ({
   children,
   queryString,
-}) => <Link to={`/settings/cluster/clusteroperators${queryString}`}>{children}</Link>;
+}) => (
+  <Link
+    to={
+      queryString
+        ? `/settings/cluster/clusteroperators${queryString}`
+        : '/settings/cluster/clusteroperators'
+    }
+  >
+    {children}
+  </Link>
+);
 
 export const UpdateInProgress: React.FC<UpdateInProgressProps> = ({
   desiredVersion,
@@ -1001,6 +1014,7 @@ export const ClusterVersionDetailsTable: React.FC<ClusterVersionDetailsTableProp
             <dd>
               <ResourceLink kind={referenceForModel(ClusterVersionModel)} name={cv.metadata.name} />
             </dd>
+            <UpstreamConfigDetailsItem resource={cv} />
             {autoscalers && (
               <>
                 <dt>{t('public~Cluster autoscaler')}</dt>

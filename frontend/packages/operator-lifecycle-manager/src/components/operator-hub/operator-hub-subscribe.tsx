@@ -11,6 +11,7 @@ import {
   FieldLevelHelp,
   Firehose,
   history,
+  isUpstream,
   NsDropdown,
   openshiftHelpBase,
   BreadCrumbs,
@@ -68,6 +69,7 @@ import { installedFor, supports, providedAPIsForOperatorGroup, isGlobal } from '
 import { OperatorInstallStatusPage } from '../operator-install-page';
 
 export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> = (props) => {
+  const [inProgress, setInProgress] = React.useState(false);
   const [targetNamespace, setTargetNamespace] = React.useState(null);
   const [installMode, setInstallMode] = React.useState(null);
   const [showInstallStatusPage, setShowInstallStatusPage] = React.useState(false);
@@ -75,6 +77,9 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
   const [approval, setApproval] = React.useState(InstallPlanApproval.Automatic);
   const [cannotResolve, setCannotResolve] = React.useState(false);
   const [suggestedNamespaceExists, setSuggestedNamespaceExists] = React.useState(false);
+  const [suggestedNamespaceExistsInFlight, setSuggestedNamespaceExistsInFlight] = React.useState(
+    true,
+  );
   const [
     useSuggestedNSForSingleInstallMode,
     setUseSuggestedNSForSingleInstallMode,
@@ -177,16 +182,25 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
 
   const isSuggestedNamespaceSelected =
     suggestedNamespace && suggestedNamespace === selectedTargetNamespace;
+  const showSuggestedNamespaceDetails =
+    !suggestedNamespaceExistsInFlight && isSuggestedNamespaceSelected;
   const selectedApproval = approval || InstallPlanApproval.Automatic;
 
   React.useEffect(() => {
     if (!suggestedNamespace) {
+      setSuggestedNamespaceExistsInFlight(false);
       return;
     }
     setTargetNamespace(suggestedNamespace);
     k8sGet(NamespaceModel, suggestedNamespace)
-      .then(() => setSuggestedNamespaceExists(true))
-      .catch(() => setSuggestedNamespaceExists(false));
+      .then(() => {
+        setSuggestedNamespaceExists(true);
+        setSuggestedNamespaceExistsInFlight(false);
+      })
+      .catch(() => {
+        setSuggestedNamespaceExists(false);
+        setSuggestedNamespaceExistsInFlight(false);
+      });
   }, [suggestedNamespace]);
 
   React.useEffect(() => {
@@ -246,9 +260,9 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
     return t('olm~This mode is not supported by this Operator');
   };
   const subscriptionExists = (ns: string) =>
-    installedFor(props.subscription.data)(props.operatorGroup.data)(
-      props.packageManifest.data[0].status.packageName,
-    )(ns);
+    installedFor(props.subscription.data)(props.operatorGroup.data)(props.packageManifest.data[0])(
+      ns,
+    );
   const namespaceSupports = (ns: string) => (mode: InstallModeType) => {
     const operatorGroup = props.operatorGroup.data.find((og) => og.metadata.namespace === ns);
     if (!operatorGroup || !ns) {
@@ -274,6 +288,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
   const submit = async () => {
     // Clear any previous errors.
     setError('');
+    setInProgress(true);
 
     const ns: K8sResourceCommon = {
       metadata: {
@@ -388,13 +403,16 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
           },
         ]);
       }
+      setInProgress(false);
       setShowInstallStatusPage(true);
     } catch (err) {
       setError(err.message || t('olm~Could not create Operator Subscription.'));
+      setInProgress(false);
     }
   };
 
   const formValid = () =>
+    inProgress ||
     [selectedUpdateChannel, selectedInstallMode, selectedTargetNamespace, selectedApproval].some(
       (v) => _.isNil(v) || _.isEmpty(v),
     ) ||
@@ -404,6 +422,9 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
     !_.isEmpty(conflictingProvidedAPIs(selectedTargetNamespace));
 
   const formError = () => {
+    if (inProgress) {
+      return null;
+    }
     return (
       (error && (
         <Alert
@@ -492,7 +513,11 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
   const showMonitoringCheckbox =
     operatorRequestsMonitoring && _.startsWith(selectedTargetNamespace, 'openshift-');
 
-  const suggestedNamespaceDetails = isSuggestedNamespaceSelected && (
+  const monitoringLink = isUpstream()
+    ? `${openshiftHelpBase}monitoring/configuring-the-monitoring-stack.html#maintenance-and-support_configuring-monitoring`
+    : `${openshiftHelpBase}html/monitoring/configuring-the-monitoring-stack#maintenance-and-support_configuring-the-monitoring-stack`;
+
+  const suggestedNamespaceDetails = showSuggestedNamespaceDetails && (
     <>
       <Alert
         isInline
@@ -521,6 +546,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
             label={t('olm~Enable Operator recommended cluster monitoring on this Namespace')}
             onChange={setEnableMonitoring}
             isChecked={enableMonitoring}
+            data-checked-state={enableMonitoring}
           />
           {props.packageManifest.data[0].metadata.labels['opsrc-provider'] !== 'redhat' && (
             <Alert
@@ -534,12 +560,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
                 enabling monitoring voids user support. Enabling cluster monitoring for non-Red Hat
                 operators can lead to malicious metrics data overriding existing cluster metrics.
                 For more information, see the{' '}
-                <ExternalLink
-                  href={`${openshiftHelpBase}monitoring/configuring-the-monitoring-stack.html#maintenance-and-support_configuring-monitoring`}
-                >
-                  cluster monitoring documentation
-                </ExternalLink>
-                .
+                <ExternalLink href={monitoringLink}>cluster monitoring documentation</ExternalLink>.
               </Trans>
             </Alert>
           )}
@@ -553,6 +574,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
       <div className="form-group">
         <Dropdown
           id="dropdown-selectbox"
+          dataTest="dropdown-selectbox"
           dropDownClassName="dropdown--full-width"
           menuClassName="dropdown-menu--text-wrap"
           items={items}

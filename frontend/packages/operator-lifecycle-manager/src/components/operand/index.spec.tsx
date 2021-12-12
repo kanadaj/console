@@ -44,14 +44,6 @@ import {
   OperandStatusProps,
 } from '.';
 
-jest.mock('react-i18next', () => {
-  const reactI18next = require.requireActual('react-i18next');
-  return {
-    ...reactI18next,
-    useTranslation: () => ({ t: (key) => key }),
-  };
-});
-
 jest.mock('@console/shared/src/hooks/useK8sModels', () => ({
   useK8sModels: () => [
     {
@@ -73,23 +65,43 @@ jest.mock('@console/shared/src/hooks/useK8sModels', () => ({
   ],
 }));
 
-jest.mock('@console/shared/src/hooks/useK8sModel', () => ({
-  useK8sModel: () => [
-    {
-      abbr: 'TR',
-      apiGroup: 'testapp.coreos.com',
-      apiVersion: 'v1alpha1',
-      crd: true,
-      kind: 'TestResource',
-      label: 'Test Resource',
-      labelPlural: 'Test Resources',
-      namespaced: true,
-      plural: 'testresources',
-      verbs: ['create'],
-    },
-    false,
-    null,
-  ],
+jest.mock('@console/shared/src/hooks/useK8sModel', () => {
+  return {
+    useK8sModel: (groupVersionKind) => [
+      groupVersionKind === 'TestResourceRO'
+        ? {
+            abbr: 'TR',
+            apiGroup: 'testapp.coreos.com',
+            apiVersion: 'v1alpha1',
+            crd: true,
+            kind: 'TestResourceRO',
+            label: 'Test Resource',
+            labelPlural: 'Test Resources',
+            namespaced: true,
+            plural: 'testresources',
+            verbs: ['get'],
+          }
+        : {
+            abbr: 'TR',
+            apiGroup: 'testapp.coreos.com',
+            apiVersion: 'v1alpha1',
+            crd: true,
+            kind: 'TestResource',
+            label: 'Test Resource',
+            labelPlural: 'Test Resources',
+            namespaced: true,
+            plural: 'testresources',
+            verbs: ['create'],
+          },
+      false,
+      null,
+    ],
+  };
+});
+
+jest.mock('react-redux', () => ({
+  ...(jest as any).requireActual('react-redux'),
+  useDispatch: () => jest.fn(),
 }));
 
 const i18nNS = 'public';
@@ -99,9 +111,7 @@ describe(OperandTableRow.displayName, () => {
 
   beforeEach(() => {
     spyOn(extensionHooks, 'useExtensions').and.returnValue([]);
-    wrapper = shallow(
-      <OperandTableRow obj={testResourceInstance} index={0} rowKey={'0'} style={{}} />,
-    );
+    wrapper = shallow(<OperandTableRow obj={testResourceInstance} columns={[]} />);
   });
 
   it('renders column for resource name', () => {
@@ -172,11 +182,11 @@ describe(OperandList.displayName, () => {
       ),
     ).toBe(true);
     expect(table.props().Header().length).toEqual(6);
-    expect(table.props().Header()[0].title).toEqual('public~Name');
-    expect(table.props().Header()[1].title).toEqual('public~Kind');
-    expect(table.props().Header()[2].title).toEqual('public~Status');
-    expect(table.props().Header()[3].title).toEqual('public~Labels');
-    expect(table.props().Header()[4].title).toEqual('public~Last updated');
+    expect(table.props().Header()[0].title).toEqual('Name');
+    expect(table.props().Header()[1].title).toEqual('Kind');
+    expect(table.props().Header()[2].title).toEqual('Status');
+    expect(table.props().Header()[3].title).toEqual('Labels');
+    expect(table.props().Header()[4].title).toEqual('Last updated');
     expect(_.isFunction(table.props().Row)).toBe(true);
   });
 });
@@ -206,7 +216,7 @@ describe(OperandDetails.displayName, () => {
       .find('SectionHeading')
       .first()
       .prop('text');
-    expect(title).toEqual('olm~{{kind}} overview');
+    expect(title).toEqual('Test Resource overview');
   });
 
   it('renders info section', () => {
@@ -270,7 +280,7 @@ describe(OperandDetails.displayName, () => {
         .find('SectionHeading')
         .at(1)
         .prop('text'),
-    ).toEqual('public~Conditions');
+    ).toEqual('Conditions');
 
     expect(wrapper.find('Conditions').prop('conditions')).toEqual(
       testResourceInstance.status.conditions,
@@ -393,7 +403,7 @@ describe(OperandDetailsPage.displayName, () => {
         .breadcrumbsFor(null),
     ).toEqual([
       {
-        name: 'olm~Installed Operators',
+        name: 'Installed Operators',
         path: `/k8s/ns/default/${ClusterServiceVersionModel.plural}`,
       },
       {
@@ -401,7 +411,7 @@ describe(OperandDetailsPage.displayName, () => {
         path: `/k8s/ns/default/${ClusterServiceVersionModel.plural}/testapp/testapp.coreos.com~v1alpha1~TestResource`,
       },
       {
-        name: `olm~{{item}} details`,
+        name: `TestResource details`,
         path: `/k8s/ns/default/${ClusterServiceVersionModel.plural}/testapp/testapp.coreos.com~v1alpha1~TestResource/my-test-resource`,
       },
     ]);
@@ -422,12 +432,12 @@ describe(OperandDetailsPage.displayName, () => {
         .breadcrumbsFor(null),
     ).toEqual([
       {
-        name: 'olm~Installed Operators',
+        name: 'Installed Operators',
         path: `/k8s/ns/example/${ClusterServiceVersionModel.plural}`,
       },
       { name: 'example', path: `/k8s/ns/${ClusterServiceVersionModel.plural}/example/example` },
       {
-        name: `olm~{{item}} details`,
+        name: `example details`,
         path: `/k8s/ns/${ClusterServiceVersionModel.plural}/example/example/example`,
       },
     ]);
@@ -514,7 +524,7 @@ describe(ProvidedAPIsPage.displayName, () => {
     const listPage = wrapper.find(MultiListPage);
 
     expect(listPage.props().ListComponent).toEqual(OperandList);
-    expect(listPage.props().filterLabel).toEqual('olm~Resources by name');
+    expect(listPage.props().filterLabel).toEqual('Resources by name');
     expect(listPage.props().canCreate).toBe(true);
     expect(listPage.props().resources).toEqual(
       owned.concat(required).map((crdDesc) => ({
@@ -537,7 +547,7 @@ describe(ProvidedAPIsPage.displayName, () => {
     wrapper.setProps({ obj });
     const listPage = wrapper.find(MultiListPage);
 
-    expect(listPage.props().createButtonText).toEqual('olm~Create new');
+    expect(listPage.props().createButtonText).toEqual('Create new');
     expect(listPage.props().createProps.to).not.toBeDefined();
     expect(listPage.props().createProps.items).toEqual({
       'testresources.testapp.coreos.com': 'Test Resource',
@@ -553,7 +563,7 @@ describe(ProvidedAPIsPage.displayName, () => {
   it('passes `createProps` for single create button if app has only one owned CRD', () => {
     const listPage = wrapper.find(MultiListPage);
 
-    expect(listPage.props().createButtonText).toEqual(`olm~Create {{item}}`);
+    expect(listPage.props().createButtonText).toEqual('Create Test Resource');
     expect(listPage.props().createProps.items).not.toBeDefined();
     expect(listPage.props().createProps.createLink).not.toBeDefined();
     expect(listPage.props().createProps.to).toEqual(
@@ -588,14 +598,8 @@ describe(ProvidedAPIPage.displayName, () => {
   let wrapper: ShallowWrapper<ProvidedAPIPageProps>;
 
   it('does not allow creation if "create" not included in the verbs for the model', () => {
-    const readonlyModel = _.cloneDeep(testModel);
-    readonlyModel.verbs = ['get'];
     wrapper = shallow(
-      <ProvidedAPIPage.WrappedComponent
-        kindObj={readonlyModel}
-        kind={k8sModels.referenceForModel(readonlyModel)}
-        csv={testClusterServiceVersion}
-      />,
+      <ProvidedAPIPage kind="TestResourceRO" csv={testClusterServiceVersion} namespace="foo" />,
     );
 
     expect(wrapper.find(ListPage).props().canCreate).toBe(false);

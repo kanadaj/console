@@ -11,7 +11,7 @@ import {
   queryBrowserRunQueries,
   queryBrowserPatchQuery,
   queryBrowserSetMetrics,
-} from '@console/internal/actions/ui';
+} from '@console/internal/actions/observe';
 import { PROMETHEUS_BASE_PATH } from '@console/internal/components/graphs';
 import { getPrometheusURL, PrometheusEndpoint } from '@console/internal/components/graphs/helpers';
 import { QueryInput } from '@console/internal/components/monitoring/metrics';
@@ -45,8 +45,8 @@ const MetricsQueryInput: React.FC = () => {
   ];
 
   const namespace = useSelector((state: RootState) => getActiveNamespace(state));
-  const queries = useSelector((state: RootState) =>
-    state.UI.getIn(['queryBrowser', 'queries', 0]).toJS(),
+  const queries = useSelector(({ observe }: RootState) =>
+    observe.getIn(['queryBrowser', 'queries', 0]).toJS(),
   );
   const dispatch = useDispatch();
   const [title, setTitle] = React.useState(DEFAULT_TITLE);
@@ -65,14 +65,11 @@ const MetricsQueryInput: React.FC = () => {
   }, [dispatch, metric, query, namespace, changeKey, t]);
 
   React.useEffect(() => {
-    const q = queries?.query;
-    const text = queries?.text;
+    const q = queries?.query?.trim();
+    const text = queries?.text?.trim();
     if (text && text.localeCompare(q) !== 0) {
       setTitle(CUSTOM_QUERY);
       setIsPromQlDisabled(true);
-      if (query) {
-        removeQueryArgument('query0');
-      }
     }
   }, [query, queries, CUSTOM_QUERY]);
 
@@ -105,21 +102,24 @@ const MetricsQueryInput: React.FC = () => {
       .catch(() => {});
   }, [namespace, safeFetch, dispatch]);
 
-  const onChange = (selectedValue: string) => {
-    setMetric(metricsQuery(t)[selectedValue]);
-    setChangeKey(!changeKey);
-    if (selectedValue && selectedValue === ADD_NEW_QUERY) {
-      setTitle(CUSTOM_QUERY);
-      setIsPromQlDisabled(true);
-      setShowPromQl(true);
-    } else {
-      setTitle(metricsQuery(t)[selectedValue]);
-      setIsPromQlDisabled(false);
-    }
-    if (query) {
-      removeQueryArgument('query0');
-    }
-  };
+  const onChange = React.useCallback(
+    (selectedValue: string) => {
+      setMetric(metricsQuery(t)[selectedValue]);
+      setChangeKey(!changeKey);
+      if (selectedValue && selectedValue === ADD_NEW_QUERY) {
+        setTitle(CUSTOM_QUERY);
+        setIsPromQlDisabled(true);
+        setShowPromQl(true);
+      } else {
+        setTitle(metricsQuery(t)[selectedValue]);
+        setIsPromQlDisabled(false);
+      }
+      if (query) {
+        removeQueryArgument('query0');
+      }
+    },
+    [CUSTOM_QUERY, changeKey, query, t],
+  );
 
   return (
     <>

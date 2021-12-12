@@ -210,7 +210,7 @@ export const EventsList = (props) => {
             className="co-search-group__resource"
           />
           <Dropdown
-            className="btn-group co-search-group__resource"
+            className="co-search-group__resource"
             items={eventTypes}
             onChange={(v) => setType(v)}
             selectedKey={type}
@@ -228,6 +228,8 @@ export const EventsList = (props) => {
               key="resources-category"
               categoryName={t('public~Resource')}
               defaultIsOpen={false}
+              collapsedText={t('public~{{numRemaining}} more', { numRemaining: '${remaining}' })}
+              expandedText={t('public~Show less')}
             >
               {[...selected].map((chip) => {
                 const chipString = chip === resourceTypeAll ? t('public~All') : chip;
@@ -263,7 +265,7 @@ export const NoEvents = () => {
   const { t } = useTranslation();
   return (
     <Box className="co-sysevent-stream__status-box-empty">
-      <div className="text-center cos-status-box__detail">{t('public~No events')}</div>
+      <div className="pf-u-text-align-center cos-status-box__detail">{t('public~No events')}</div>
     </Box>
   );
 };
@@ -273,7 +275,7 @@ export const NoMatchingEvents = ({ allCount }) => {
   return (
     <Box className="co-sysevent-stream__status-box-empty">
       <div className="cos-status-box__title">{t('public~No matching events')}</div>
-      <div className="text-center cos-status-box__detail">
+      <div className="pf-u-text-align-center cos-status-box__detail">
         {allCount >= maxMessages
           ? t('public~{{allCount}}+ events exist, but none match the current filter', { allCount })
           : t('public~{{allCount}} events exist, but none match the current filter', { allCount })}
@@ -289,7 +291,7 @@ export const ErrorLoadingEvents = () => {
       <div className="cos-status-box__title cos-error-title">
         {t('public~Error loading events')}
       </div>
-      <div className="cos-status-box__detail text-center">
+      <div className="cos-status-box__detail pf-u-text-align-center">
         {t('public~An error occurred during event retrieval. Attempting to reconnect...')}
       </div>
     </Box>

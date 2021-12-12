@@ -16,18 +16,18 @@ import {
   VolumeMode,
   VolumeType,
 } from '../../../../constants';
-import { CLOUDINIT_DISK } from '../../../../constants/vm/constants';
+import { CLOUDINIT_DISK, ROOT_DISK_INSTALL_NAME } from '../../../../constants/vm/constants';
 import { ProvisionSource } from '../../../../constants/vm/provision-source';
 import { winToolsContainerNames } from '../../../../constants/vm/wintools';
 import { VirtualMachineModel } from '../../../../models';
 import { getKubevirtAvailableModel } from '../../../../models/kubevirtReferenceForModel';
 import { ProcessedTemplatesModel } from '../../../../models/models';
-import { getFlavor, getWorkloadProfile } from '../../../../selectors/vm';
 import {
   getTemplateOperatingSystems,
   isWindowsTemplate,
 } from '../../../../selectors/vm-template/advanced';
 import { isCommonTemplate, selectVM } from '../../../../selectors/vm-template/basic';
+import { getFlavor, getWorkloadProfile } from '../../../../selectors/vm/selectors';
 import { isTemplateSourceError, TemplateSourceStatus } from '../../../../statuses/template/types';
 import { VMKind } from '../../../../types';
 import { ignoreCaseSort } from '../../../../utils/sort';
@@ -181,6 +181,8 @@ export const prepareVM = async (
       rootDisk.setType(DiskType.CDROM, {
         bus: rootDiskBus === DiskBus.VIRTIO ? DiskBus.SATA : rootDiskBus,
       });
+      rootDisk.setName(ROOT_DISK_INSTALL_NAME);
+      rootVolume.setName(ROOT_DISK_INSTALL_NAME);
       vmWrapper.prependStorage(
         getEmptyInstallStorage(scConfigMap, rootDiskBus, name, emptyDiskSize),
       );
@@ -198,19 +200,21 @@ export const prepareVM = async (
         disk: windowsToolsStorage(winToolsContainerNames(containerImagesNames)).disk,
         volume: windowsToolsStorage(winToolsContainerNames(containerImagesNames)).volume,
       });
-    } else if (!isEmpty(sshKey) && enableSSHService) {
-      vmWrapper.updateVolume(
-        new VolumeWrapper()
-          .init({ name: CLOUDINIT_DISK })
-          .setType(VolumeType.CLOUD_INIT_CONFIG_DRIVE)
-          .setTypeData(
-            vmWrapper.getVolumes().find(({ name: volumeName }) => volumeName === CLOUDINIT_DISK)
-              ?.cloudInitNoCloud,
-          )
-          .asResource(),
-      );
-      vmWrapper.setSSHKey([`${AUTHORIZED_SSH_KEYS}-${name}`]);
     }
+  }
+
+  if (!isWindowsTemplate(template) && !isEmpty(sshKey) && enableSSHService) {
+    vmWrapper.updateVolume(
+      new VolumeWrapper()
+        .init({ name: CLOUDINIT_DISK })
+        .setType(VolumeType.CLOUD_INIT_CONFIG_DRIVE)
+        .setTypeData(
+          vmWrapper.getVolumes().find(({ name: volumeName }) => volumeName === CLOUDINIT_DISK)
+            ?.cloudInitNoCloud,
+        )
+        .asResource(),
+    );
+    vmWrapper.setSSHKey([`${AUTHORIZED_SSH_KEYS}-${name}`]);
   }
 
   const os = ignoreCaseSort(getTemplateOperatingSystems([template]), ['name'])[0];

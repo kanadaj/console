@@ -1,17 +1,17 @@
 import { Patch } from '@console/internal/module/k8s';
-import { PatchBuilder } from '@console/shared/src/k8s';
 import { getName } from '../../../selectors';
 import { toDataVolumeTemplateSpec } from '../../../selectors/dv/selectors';
 import {
   getDataVolumeTemplates,
   getDisks,
   getInterfaces,
-  getVolumeDataVolumeName,
   getVolumes,
-} from '../../../selectors/vm';
+} from '../../../selectors/vm/selectors';
+import { getVolumeDataVolumeName } from '../../../selectors/vm/volume';
 import { V1alpha1DataVolume, V1Disk, V1Volume } from '../../../types/api';
 import { VMLikeEntityKind } from '../../../types/vmLike';
 import { getSimpleName } from '../../../utils';
+import { PatchBuilder } from '../../helpers/patch';
 import { DiskWrapper } from '../../wrapper/vm/disk-wrapper';
 import { getVMLikePatches } from '../vm-template';
 import { getShiftBootOrderPatches } from './utils';

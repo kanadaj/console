@@ -24,6 +24,8 @@ import { FLAGS, YellowExclamationTriangleIcon, ACM_LINK_ID } from '@console/shar
 import { formatNamespacedRouteForResource } from '@console/shared/src/utils';
 import CloudShellMastheadButton from '@console/app/src/components/cloud-shell/CloudShellMastheadButton';
 import CloudShellMastheadAction from '@console/app/src/components/cloud-shell/CloudShellMastheadAction';
+import isMultiClusterEnabled from '@console/app/src/utils/isMultiClusterEnabled';
+import { getUser } from '@console/dynamic-plugin-sdk';
 import * as UIActions from '../actions/ui';
 import { connectToFlags } from '../reducers/connectToFlags';
 import { flagPending, featureReducerName } from '../reducers/features';
@@ -36,8 +38,22 @@ import { clusterVersionReference, getReportBugLink } from '../module/k8s/cluster
 import * as redhatLogoImg from '../imgs/logos/redhat.svg';
 import { GuidedTourMastheadTrigger } from '@console/app/src/components/tour';
 import { ConsoleLinkModel } from '../models';
-import { languagePreferencesModal } from './modals';
 import { withTelemetry, withQuickStartContext } from '@console/shared/src/hoc';
+
+const defaultHelpLinks = [
+  {
+    // t('public~Learning Portal')
+    label: 'Learning Portal',
+    externalLink: true,
+    href: 'https://learn.openshift.com/?ref=webconsole',
+  },
+  {
+    // t('public~OpenShift Blog')
+    label: 'OpenShift Blog',
+    externalLink: true,
+    href: 'https://blog.openshift.com',
+  },
+];
 
 const SystemStatusButton = ({ statuspageData, className }) => {
   const { t } = useTranslation();
@@ -327,6 +343,20 @@ class MastheadToolbarContents_ extends React.Component {
             fireTelemetryEvent('Documentation Clicked');
           },
         },
+        ...(isMultiClusterEnabled()
+          ? [
+              {
+                label: t('public~ACM Documentation'),
+                externalLink: true,
+                // TODO:  add version number to end of URL
+                href:
+                  'https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes',
+                callback: () => {
+                  fireTelemetryEvent('ACM Documentation Clicked');
+                },
+              },
+            ]
+          : []),
         ...(flags[FLAGS.CONSOLE_CLI_DOWNLOAD]
           ? [
               {
@@ -362,6 +392,14 @@ class MastheadToolbarContents_ extends React.Component {
         },
       ],
     });
+
+    // Add default help links to start of additional links from operator
+    additionalHelpActions.actions = defaultHelpLinks
+      .map((helpLink) => ({
+        ...helpLink,
+        label: t(`public~${helpLink.label}`),
+      }))
+      .concat(additionalHelpActions.actions);
 
     if (!_.isEmpty(additionalHelpActions.actions)) {
       helpActions.push(additionalHelpActions);
@@ -443,7 +481,7 @@ class MastheadToolbarContents_ extends React.Component {
   }
 
   _renderMenu(mobile) {
-    const { flags, consoleLinks, t, quickStartContext } = this.props;
+    const { flags, consoleLinks, t } = this.props;
     const { isUserDropdownOpen, isKebabDropdownOpen, username } = this.state;
     const additionalUserActions = this._getAdditionalActions(
       this._getAdditionalLinks(consoleLinks?.data, 'UserMenu'),
@@ -464,10 +502,7 @@ class MastheadToolbarContents_ extends React.Component {
     const actions = [];
     const userActions = [
       {
-        label: t('public~Language preference'),
-        callback: () => languagePreferencesModal({ quickStartContext }),
-        component: 'button',
-        dataTest: 'language',
+        component: <Link to="/user-preferences">{t('public~User Preferences')}</Link>,
       },
     ];
 
@@ -576,7 +611,7 @@ class MastheadToolbarContents_ extends React.Component {
       showAboutModal,
       statuspageData,
     } = this.state;
-    const { consoleLinks, drawerToggle, canAccessNS, notificationAlerts, t } = this.props;
+    const { consoleLinks, drawerToggle, canAccessNS, alertCount, t } = this.props;
     const launchActions = this._launchActions();
     const alertAccess = canAccessNS && !!window.SERVER_FLAGS.prometheusBaseURL;
     return (
@@ -609,7 +644,7 @@ class MastheadToolbarContents_ extends React.Component {
                   aria-label={t('public~Notification drawer')}
                   onClick={drawerToggle}
                   variant="read"
-                  count={notificationAlerts?.data?.length || 0}
+                  count={alertCount || 0}
                   data-quickstart-id="qs-masthead-notifications"
                 >
                   <BellIcon alt="" />
@@ -653,13 +688,13 @@ class MastheadToolbarContents_ extends React.Component {
           </PageHeaderToolsGroup>
           <PageHeaderToolsGroup>
             {/* mobile -- (notification drawer button) */
-            alertAccess && notificationAlerts?.data?.length > 0 && (
+            alertAccess && alertCount > 0 && (
               <PageHeaderToolsItem className="visible-xs-block">
                 <NotificationBadge
                   aria-label={t('public~Notification drawer')}
                   onClick={drawerToggle}
                   variant="read"
-                  count={notificationAlerts?.data?.length}
+                  count={alertCount}
                   data-quickstart-id="qs-masthead-notifications"
                 >
                   <BellIcon />
@@ -687,8 +722,8 @@ class MastheadToolbarContents_ extends React.Component {
 const mastheadToolbarStateToProps = (state) => ({
   activeNamespace: state.UI.get('activeNamespace'),
   clusterID: state.UI.get('clusterID'),
-  user: state.UI.get('user'),
-  notificationAlerts: state.UI.getIn(['monitoring', 'notificationAlerts']),
+  user: getUser(state),
+  alertCount: state.observe.getIn(['alertCount']),
   canAccessNS: !!state[featureReducerName].get(FLAGS.CAN_GET_NS),
 });
 

@@ -3,7 +3,7 @@ import * as semver from 'semver';
 import i18next from 'i18next';
 
 import { ClusterVersionModel } from '../../models';
-import { referenceForModel } from './k8s';
+import { referenceForModel } from './k8s-ref';
 import {
   ClusterVersionKind,
   ClusterUpdate,
@@ -210,11 +210,11 @@ Browser: ${window.navigator.userAgent}
 `);
   return _.isEmpty(prerelease)
     ? {
-        label: i18next.t('public~Open Support Case with Red Hat'),
+        label: i18next.t('public~Open support case with Red Hat'),
         href: `https://access.redhat.com/support/cases/#/case/new?product=OpenShift%20Container%20Platform&version=${major}.${minor}&clusterId=${cv.spec.clusterID}`,
       }
     : {
-        label: i18next.t('public~Report Bug to Red Hat'),
+        label: i18next.t('public~Report bug to Red Hat'),
         href: `https://bugzilla.redhat.com/enter_bug.cgi?product=OpenShift%20Container%20Platform&version=${bugzillaVersion}&cf_environment=${environment}`,
       };
 };
@@ -223,7 +223,7 @@ export const showReleaseNotes = (): boolean => {
   return window.SERVER_FLAGS.branding === 'ocp';
 };
 
-// example link: https://docs.openshift.com/container-platform/4.2/release_notes/ocp-4-2-release-notes.html#ocp-4-2-4
+// example link: https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html/release_notes/ocp-4-9-release-notes#ocp-4-9-4
 export const getReleaseNotesLink = (version: string): string => {
   if (!showReleaseNotes()) {
     return null;
@@ -239,7 +239,7 @@ export const getReleaseNotesLink = (version: string): string => {
     return null;
   }
 
-  return `https://docs.openshift.com/container-platform/${major}.${minor}/release_notes/ocp-${major}-${minor}-release-notes.html#ocp-${major}-${minor}-${patch}`;
+  return `https://access.redhat.com/documentation/en-us/openshift_container_platform/${major}.${minor}/html/release_notes/ocp-${major}-${minor}-release-notes#ocp-${major}-${minor}-${patch}`;
 };
 
 export const getClusterName = (): string => window.SERVER_FLAGS.kubeAPIServerURL || null;
@@ -250,7 +250,7 @@ export const getOCMLink = (clusterID: string): string =>
   `https://console.redhat.com/openshift/details/${clusterID}`;
 
 export const getConditionUpgradeableFalse = (resource) =>
-  resource.status?.conditions.find(
+  resource.status?.conditions?.find(
     (c) => c.type === 'Upgradeable' && c.status === K8sResourceConditionStatus.False,
   );
 

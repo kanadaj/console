@@ -1,6 +1,7 @@
 import * as React from 'react';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { HealthItemProps } from '@console/dynamic-plugin-sdk/src/api/internal-types';
 import { SecondaryStatus } from '../../status';
 import { DashboardCardPopupLink } from '../dashboard-card/DashboardCardLink';
 import { HealthState, healthStateMapping, healthStateMessage } from './states';
@@ -20,7 +21,7 @@ const HealthItem: React.FC<HealthItemProps> = React.memo(
     return (
       <div
         className={classNames('co-status-card__health-item', className)}
-        data-test={`${title}-health-item`}
+        data-item-id={`${title}-health-item`}
       >
         {state === HealthState.LOADING ? (
           <div className="skeleton-health">
@@ -47,7 +48,11 @@ const HealthItem: React.FC<HealthItemProps> = React.memo(
             )}
           </span>
           {state !== HealthState.LOADING && detailMessage && (
-            <SecondaryStatus status={detailMessage} className="co-status-card__health-item-text" />
+            <SecondaryStatus
+              status={detailMessage}
+              className="co-status-card__health-item-text"
+              dataStatusID={`${title}-secondary-status`}
+            />
           )}
         </div>
       </div>
@@ -56,16 +61,6 @@ const HealthItem: React.FC<HealthItemProps> = React.memo(
 );
 
 export default HealthItem;
-
-type HealthItemProps = {
-  title: string;
-  className?: string;
-  details?: string;
-  state?: HealthState;
-  popupTitle?: string;
-  noIcon?: boolean;
-  icon?: React.ReactNode;
-};
 
 type HealthItemIconProps = {
   state?: HealthState;

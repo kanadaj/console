@@ -13,7 +13,7 @@ const configureKms = () => {
   // save
   cy.byTestID('confirm-action').click();
   cy.byTestID('save-action').click();
-  cy.byTestID('edit-kms-link').contains('Change connection details');
+  cy.byTestID('kms-connection-dropdown').should('contain', 'vault');
 };
 
 export const createStorageClass = (scName: string, poolName?: string, encrypted?: boolean) => {
@@ -37,6 +37,8 @@ export const createStorageClass = (scName: string, poolName?: string, encrypted?
   cy.byTestID(poolName || 'ocs-storagecluster-cephblockpool').click();
 
   cy.log('Creating new StorageClass');
+  cy.byTestID('storage-class-volume-binding-mode').click();
+  cy.byTestDropDownMenu('Immediate').click();
   cy.byLegacyTestID('storage-class-form')
     .get('button#save-changes')
     .click();

@@ -169,3 +169,78 @@ export const VirtualMachineRestoreModel: K8sKind = {
   id: 'virtualmachinerestore',
   crd: true,
 };
+
+export const StorageProfileModel: K8sKind = {
+  label: 'Storage Profile',
+  labelPlural: 'Storage Profiles',
+  apiVersion: 'v1beta1',
+  apiGroup: 'cdi.kubevirt.io',
+  plural: 'storageprofiles',
+  abbr: 'SP',
+  namespaced: false,
+  kind: 'StorageProfile',
+  id: 'storageprofile',
+  crd: true,
+};
+
+export const SubscriptionModel: K8sKind = {
+  kind: 'Subscription',
+  label: 'Subscription',
+  labelPlural: 'Subscriptions',
+  apiGroup: 'operators.coreos.com',
+  apiVersion: 'v1alpha1',
+  abbr: 'SUB',
+  namespaced: true,
+  crd: true,
+  plural: 'subscriptions',
+  legacyPluralURL: true,
+};
+
+export const PackageManifestModel: K8sKind = {
+  kind: 'PackageManifest',
+  label: 'PackageManifest',
+  labelPlural: 'PackageManifests',
+  apiGroup: 'packages.operators.coreos.com',
+  apiVersion: 'v1',
+  abbr: 'PM',
+  namespaced: true,
+  crd: true,
+  plural: 'packagemanifests',
+};
+
+export const ForkliftControllerModel = {
+  kind: 'ForkliftController',
+  label: 'ForkliftController',
+  labelPlural: 'ForkliftController',
+  apiGroup: 'forklift.konveyor.io',
+  apiVersion: 'v1beta1',
+  abbr: 'PM',
+  namespaced: true,
+  crd: true,
+  plural: 'forkliftcontrollers',
+};
+
+export const HyperConvergedModel = {
+  kind: 'HyperConverged',
+  label: 'HyperConverged',
+  labelPlural: 'HyperConvergeds',
+  apiGroup: 'hco.kubevirt.io',
+  apiVersion: 'v1beta1',
+  abbr: 'HC',
+  namespaced: true,
+  crd: true,
+  plural: 'hyperconvergeds',
+};
+
+export const NetworkAddonsConfigModel: K8sKind = {
+  label: 'NetworkAddonsConfig',
+  labelPlural: 'NetworkAddonsConfigs',
+  apiVersion: 'v1',
+  apiGroup: 'networkaddonsoperator.network.kubevirt.io',
+  plural: 'networkaddonsconfigs',
+  abbr: 'NAC',
+  namespaced: true,
+  kind: 'NetworkAddonsConfig',
+  id: 'networkaddonsconfig',
+  crd: true,
+};

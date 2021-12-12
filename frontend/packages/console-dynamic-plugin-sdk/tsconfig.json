@@ -1,14 +1,7 @@
 {
+  "extends": "./tsconfig-base.json",
   "compilerOptions": {
-    "module": "esnext",
-    "moduleResolution": "node",
-    "target": "es2016",
-    "declaration": true,
-    "outDir": "dist/lib",
-    "experimentalDecorators": true,
-    "sourceMap": true,
-    "noUnusedLocals": true,
-    "skipLibCheck": true
+    "outDir": "dist/core/lib"
   },
-  "files": ["src/webpack/ConsoleRemotePlugin.ts", "src/extensions/index.ts", "src/api/api.ts"]
+  "files": ["src/lib-core.ts"]
 }

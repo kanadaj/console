@@ -2,9 +2,10 @@ import * as React from 'react';
 import { ChartAxis, ChartContainer } from '@patternfly/react-charts';
 import { Grid } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
+import { UtilizationBodyProps } from '@console/dynamic-plugin-sdk/src/api/internal-types';
 import { timeFormatter } from '@console/internal/components/utils/datetime';
 import { useRefWidth } from '@console/internal/components/utils/ref-width-hook';
-import { useUtilizationDuration } from '@console/shared';
+import { useUtilizationDuration } from '../../../hooks/useUtilizationDuration';
 
 import './utilization-card.scss';
 
@@ -62,7 +63,3 @@ export const UtilizationBody: React.FC<UtilizationBodyProps> = ({ children }) =>
 };
 
 export default UtilizationBody;
-
-type UtilizationBodyProps = {
-  children: React.ReactNode;
-};

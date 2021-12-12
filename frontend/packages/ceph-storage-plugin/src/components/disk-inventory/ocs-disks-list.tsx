@@ -8,9 +8,8 @@ import { useSelector } from 'react-redux';
 import {
   Table,
   TableProps,
-  TableRow,
   TableData,
-  RowFunction,
+  RowFunctionArgs,
 } from '@console/internal/components/factory';
 import { sortable } from '@patternfly/react-table';
 import { humanizeBinaryBytes, Kebab } from '@console/internal/components/utils';
@@ -24,12 +23,9 @@ import {
 import { TemplateInstanceModel } from '@console/internal/models';
 import { TemplateInstanceKind } from '@console/internal/module/k8s';
 import { PrometheusResult } from '@console/internal/components/graphs';
-import {
-  useK8sWatchResource,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { RootState } from '@console/internal/redux';
-import { NotificationAlerts } from '@console/internal/reducers/ui';
+import { NotificationAlerts } from '@console/internal/reducers/observe';
 import { Alert } from '@console/internal/components/monitoring/types';
 import { DiskMetadata } from '@console/local-storage-operator-plugin/src/components/disks-list/types';
 import {
@@ -37,6 +33,7 @@ import {
   NodesDisksListPageProps,
 } from '@console/local-storage-operator-plugin/src/components/disks-list/disks-list-page';
 import { getAnnotations } from '@console/shared/src';
+import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
 import { OCSKebabOptions } from './ocs-kebab-options';
 import { OCSStatus } from './ocs-status-column';
 import {
@@ -92,16 +89,10 @@ export const tableColumnClasses = [
   Kebab.columnClass,
 ];
 
-const diskRow: RowFunction<DiskMetadata, OCSMetadata> = ({
-  obj,
-  index,
-  key,
-  style,
-  customData,
-}) => {
+const DiskRow: React.FC<RowFunctionArgs<DiskMetadata, OCSMetadata>> = ({ obj, customData }) => {
   const { ocsState, nodeName, dispatch } = customData;
   return (
-    <TableRow id={obj.deviceID} index={index} trKey={key} style={style}>
+    <>
       <TableData className={tableColumnClasses[0]}>{obj.path}</TableData>
       <TableData className={tableColumnClasses[1]}>{obj.status.state}</TableData>
       <OCSStatus
@@ -121,9 +112,13 @@ const diskRow: RowFunction<DiskMetadata, OCSMetadata> = ({
       </TableData>
       <TableData className={tableColumnClasses[5]}>{obj.fstype || '-'}</TableData>
       <OCSKebabOptions disk={obj} nodeName={nodeName} ocsState={ocsState} dispatch={dispatch} />
-    </TableRow>
+    </>
   );
 };
+
+const getRowProps = (obj) => ({
+  id: obj.deviceID,
+});
 
 const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
   const { t } = useTranslation();
@@ -143,7 +138,7 @@ const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
   const { data: alertsData, loaded: alertsLoaded, loadError: alertsLoadError } = useSelector<
     RootState,
     NotificationAlerts
-  >(({ UI }) => UI.getIn(['monitoring', 'notificationAlerts']));
+  >(({ observe }) => observe.get('notificationAlerts'));
 
   const error = alertsLoadError || cephDiskLoadError || progressLoadError;
   const isLoading = !alertsLoaded || cephDiskLoading || progressLoading;
@@ -247,7 +242,7 @@ const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
       props: { className: tableColumnClasses[1] },
     },
     {
-      title: t("ceph-storage-plugin~OpenShift Container Storage's Status"),
+      title: t('ceph-storage-plugin~OpenShift Data Foundation status'),
       sortField: '',
       transforms: [],
       props: { className: tableColumnClasses[1] },
@@ -289,10 +284,11 @@ const OCSDisksList: React.FC<TableProps> = React.memo((props) => {
       {...props}
       aria-label={t('ceph-storage-plugin~Disks List')}
       Header={diskHeader}
-      Row={diskRow}
+      Row={DiskRow}
       customData={{ ocsState, dispatch, nodeName }}
       NoDataEmptyMsg={props.customData.EmptyMsg}
       virtualize
+      getRowProps={getRowProps}
     />
   );
 });

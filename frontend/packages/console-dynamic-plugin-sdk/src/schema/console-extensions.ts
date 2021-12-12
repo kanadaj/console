@@ -3,6 +3,7 @@ import { AddAction, AddActionGroup } from '../extensions/add-actions';
 import { SupportedCatalogExtensions } from '../extensions/catalog';
 import { ClusterGlobalConfig } from '../extensions/cluster-settings';
 import { ContextProvider } from '../extensions/context-providers';
+import { CreateResource } from '../extensions/create-resource';
 import {
   DashboardsTab,
   DashboardsCard,
@@ -16,6 +17,8 @@ import {
 } from '../extensions/dashboards';
 import { FeatureFlag, ModelFeatureFlag } from '../extensions/feature-flags';
 import { FileUpload } from '../extensions/file-upload';
+import { HorizontalNavTab } from '../extensions/horizontal-nav-tabs';
+import { ImportEnvironment } from '../extensions/import-environments';
 import {
   HrefNavItem,
   ResourceNSNavItem,
@@ -31,6 +34,7 @@ import {
   ResourceListPage,
   ResourceTabPage,
 } from '../extensions/pages';
+import { Perspective } from '../extensions/perspectives';
 import { PVCCreateProp, PVCStatus, PVCAlert, PVCDelete } from '../extensions/pvc';
 import { ReduxReducer } from '../extensions/redux';
 import { ModelMetadata } from '../extensions/resource-metadata';
@@ -42,8 +46,10 @@ import {
   TopologyDataModelFactory,
   TopologyDecoratorProvider,
   TopologyDisplayFilters,
+  TopologyRelationshipProvider,
 } from '../extensions/topology';
 import { SupportedTopologyDetailsExtensions } from '../extensions/topology-details';
+import { UserPreferenceGroup, UserPreferenceItem } from '../extensions/user-preferences';
 import { YAMLTemplate } from '../extensions/yaml-templates';
 
 export type SupportedExtension =
@@ -59,6 +65,7 @@ export type SupportedExtension =
   | YAMLTemplate
   | AddAction
   | AddActionGroup
+  | ImportEnvironment
   | ClusterGlobalConfig
   | HrefNavItem
   | ResourceNSNavItem
@@ -90,7 +97,14 @@ export type SupportedExtension =
   | TopologyCreateConnector
   | TopologyDataModelFactory
   | TopologyDisplayFilters
-  | TopologyDecoratorProvider;
+  | TopologyDecoratorProvider
+  | TopologyRelationshipProvider
+  | CreateResource
+  | CreateResource
+  | UserPreferenceGroup
+  | UserPreferenceItem
+  | Perspective
+  | HorizontalNavTab;
 
 /**
  * Schema of Console plugin's `console-extensions.json` file.

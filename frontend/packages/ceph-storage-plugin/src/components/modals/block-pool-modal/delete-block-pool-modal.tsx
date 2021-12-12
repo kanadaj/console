@@ -1,9 +1,15 @@
 import * as React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
+import { useLocation } from 'react-router-dom';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
-import { ListKind, k8sKill, PersistentVolumeClaimKind } from '@console/internal/module/k8s';
+import {
+  ListKind,
+  k8sKill,
+  PersistentVolumeClaimKind,
+  K8sKind,
+} from '@console/internal/module/k8s';
 import { useDeepCompareMemoize, YellowExclamationTriangleIcon } from '@console/shared';
 import {
   createModalLauncher,
@@ -17,9 +23,10 @@ import { withHandlePromise } from '@console/internal/components/utils';
 import { StatusBox } from '@console/internal/components/utils/status-box';
 import { StorageClassModel, PersistentVolumeClaimModel } from '@console/internal/models';
 
+import { history } from '@console/internal/components/utils/router';
 import { BlockPoolModalFooter } from './modal-footer';
 import { BlockPoolStatus } from '../../block-pool/body';
-import { CephClusterKind, StoragePoolKind, OcsStorageClassKind } from '../../../types';
+import { CephClusterKind, OcsStorageClassKind, StoragePoolKind } from '../../../types';
 import { cephClusterResource } from '../../../resources';
 import {
   blockPoolReducer,
@@ -27,6 +34,7 @@ import {
   BlockPoolActionType,
   FooterPrimaryActions,
   isDefaultPool,
+  getScNamesUsingPool,
 } from '../../../utils/block-pool';
 import { toList } from '../../../utils/common';
 import { POOL_PROGRESS } from '../../../constants/storage-pool-const';
@@ -65,10 +73,7 @@ const DeleteBlockPoolModal = withHandlePromise((props: DeleteBlockPoolModalProps
 
   React.useEffect(() => {
     if (scLoaded && pvcLoaded && state.poolStatus !== POOL_PROGRESS.NOTALLOWED) {
-      const poolScNames: string[] = scResources.items?.reduce((scList, sc) => {
-        if (sc.parameters?.pool === poolName) scList.push(sc.metadata?.name);
-        return scList;
-      }, []);
+      const poolScNames: string[] = getScNamesUsingPool(scResources.items, poolName);
       const pvcScNames: string[] = pvcResources.items?.map(getStorageClassName);
 
       // intersection of scNames and pvcScNames
@@ -81,9 +86,16 @@ const DeleteBlockPoolModal = withHandlePromise((props: DeleteBlockPoolModalProps
     }
   }, [scResources, scLoaded, pvcResources, pvcLoaded, state.poolStatus, poolName, t]);
 
+  const location = useLocation();
   // Delete block pool
   const deletePool = () => {
-    handlePromise(k8sKill(CephBlockPoolModel, blockPoolConfig), () => close());
+    handlePromise(k8sKill(CephBlockPoolModel, blockPoolConfig), () => {
+      close();
+      // Go to block pool list page if pool is deleted
+      if (location.pathname.includes(poolName)) {
+        history.push(location.pathname.split(`/${poolName}`)[0]);
+      }
+    });
   };
 
   const MODAL_TITLE = t('ceph-storage-plugin~Delete BlockPool');
@@ -148,7 +160,7 @@ const DeleteBlockPoolModal = withHandlePromise((props: DeleteBlockPoolModalProps
 });
 
 type DeleteBlockPoolModalProps = {
-  kind?: string;
+  kindObj?: K8sKind;
   blockPoolConfig: StoragePoolKind;
 } & HandlePromiseProps &
   ModalComponentProps;

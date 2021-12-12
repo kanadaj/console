@@ -2,7 +2,12 @@ import * as React from 'react';
 import { sortable } from '@patternfly/react-table';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Flatten, MultiListPage, RowFunction, Table } from '@console/internal/components/factory';
+import {
+  Flatten,
+  MultiListPage,
+  RowFunctionArgs,
+  Table,
+} from '@console/internal/components/factory';
 import { useSafetyFirst } from '@console/internal/components/safety-first';
 import { FieldLevelHelp, FirehoseResult } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
@@ -13,19 +18,21 @@ import {
   TemplateKind,
 } from '@console/internal/module/k8s';
 import { CombinedDiskFactory } from '../../k8s/wrapper/vm/combined-disk';
+import { VMTemplateWrapper } from '../../k8s/wrapper/vm/vm-template-wrapper';
 import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
 import { VMIWrapper } from '../../k8s/wrapper/vm/vmi-wrapper';
 import { DataVolumeModel, VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
 import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
 import { getNamespace } from '../../selectors';
 import { isVM, isVMI } from '../../selectors/check-type';
-import { asVM } from '../../selectors/vm';
 import { changedDisks } from '../../selectors/vm-like/next-run-changes';
+import { isCommonTemplate } from '../../selectors/vm-template/basic';
 import {
   getTemplateValidationsFromTemplate,
   getVMTemplateNamespacedName,
 } from '../../selectors/vm-template/selectors';
 import { isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
+import { asVM } from '../../selectors/vm/vm';
 import { getVMStatus } from '../../statuses/vm/vm-status';
 import { VMIKind } from '../../types';
 import { V1alpha1DataVolume } from '../../types/api';
@@ -71,7 +78,7 @@ const getStoragesData = ({
 export type VMDisksTableProps = {
   data?: any[];
   customData?: object;
-  Row: RowFunction;
+  Row: React.FC<RowFunctionArgs>;
   loaded: boolean;
 };
 
@@ -104,7 +111,7 @@ const getHeader = (t: TFunction, columnClasses: string[]) => () =>
         transforms: [sortable],
       },
       {
-        title: t('kubevirt-plugin~Storage Class'),
+        title: t('kubevirt-plugin~Storage class'),
         sortField: 'storageClass',
         transforms: [sortable],
       },
@@ -114,6 +121,10 @@ const getHeader = (t: TFunction, columnClasses: string[]) => () =>
     ],
     columnClasses,
   );
+
+const getRowProps = (obj) => ({
+  id: obj.name,
+});
 
 export const VMDisksTable: React.FC<React.ComponentProps<typeof Table> | VMDisksTableProps> = (
   props,
@@ -140,6 +151,7 @@ export const VMDisksTable: React.FC<React.ComponentProps<typeof Table> | VMDisks
         Header={getHeader(t, props?.customData?.columnClasses)}
         Row={props.Row || DiskRow}
         virtualize
+        getRowProps={getRowProps}
       />
     </div>
   );
@@ -147,10 +159,11 @@ export const VMDisksTable: React.FC<React.ComponentProps<typeof Table> | VMDisks
 
 type VMDisksProps = VMTabProps & {
   vmi?: VMIKind;
-  isCommonTemplate?: boolean;
 };
 
-export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi, isCommonTemplate }) => {
+export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi }) => {
+  const commonTemplate = new VMTemplateWrapper(vmLikeEntity).asResource(true);
+  const isCommon = isCommonTemplate(commonTemplate);
   const vmTemplateQuery = getVMTemplateNamespacedName(vmLikeEntity);
   const [vmTemplate] = useK8sWatchResource<TemplateKind>({
     kind: TemplateModel.kind,
@@ -188,7 +201,7 @@ export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi, isComm
     pvcs: PersistentVolumeClaimKind[];
   }> = ({ datavolumes, pvcs }) =>
     getStoragesData({
-      vmLikeEntity,
+      vmLikeEntity: !isVMRunning ? vmLikeEntity : vmi,
       datavolumes,
       pvcs,
     });
@@ -200,6 +213,8 @@ export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi, isComm
         vmLikeEntity: !isVMI(vmLikeEntity) && vmLikeEntity,
         templateValidations,
         isVMRunning,
+        vm: asVM(vmLikeEntity),
+        vmi,
       }).result,
     );
 
@@ -208,10 +223,10 @@ export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi, isComm
       ListComponent={VMDisksTable}
       resources={resources}
       flatten={flatten}
-      createButtonText={t('kubevirt-plugin~Add Disk')}
-      canCreate={!isVMI(vmLikeEntity)}
+      createButtonText={t('kubevirt-plugin~Add disk')}
+      canCreate
       createProps={{
-        isDisabled: isLocked || isCommonTemplate,
+        isDisabled: isLocked || isCommon || isVMI(vmLikeEntity),
         onClick: createFn,
         id: 'add-disk',
       }}
@@ -220,7 +235,7 @@ export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi, isComm
         vmLikeEntity,
         vmi,
         withProgress,
-        isDisabled: isLocked || isCommonTemplate,
+        isDisabled: isLocked || isCommon,
         templateValidations,
         columnClasses: diskTableColumnClasses,
         showGuestAgentHelp: true,

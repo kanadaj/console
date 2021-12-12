@@ -19,6 +19,7 @@ import {
   diskModeDropdownItems,
   diskTypeDropdownItems,
   diskSizeUnitOptions,
+  fsTypeDropdownItems,
   deviceTypeDropdownItems,
 } from '../../constants';
 import { NodesTable } from '../tables/nodes-table';
@@ -33,6 +34,7 @@ export const LocalVolumeSetBody: React.FC<LocalVolumeSetBodyProps> = ({
   allNodesHelpTxt,
   lvsNameHelpTxt,
   deviceTypeOptions = deviceTypeDropdownItems,
+  fsTypeOptions = fsTypeDropdownItems,
 }) => {
   const { t } = useTranslation();
 
@@ -64,7 +66,7 @@ export const LocalVolumeSetBody: React.FC<LocalVolumeSetBodyProps> = ({
   return (
     <>
       <FormGroup
-        label={t('lso-plugin~Local Volume Set Name')}
+        label={t('lso-plugin~LocalVolumeSet Name')}
         isRequired
         fieldId="create-lvs-volume-set-name"
       >
@@ -187,6 +189,24 @@ export const LocalVolumeSetBody: React.FC<LocalVolumeSetBodyProps> = ({
             defaultSelected={[deviceTypeOptions.DISK, deviceTypeOptions.PART]}
           />
         </FormGroup>
+        {state.diskMode === diskModeDropdownItems.FILESYSTEM && (
+          <FormGroup
+            label={t('lso-plugin~File System Type')}
+            fieldId="create-lso-fs-type-dropdown"
+            className="lso-create-lvs__fs-type-dropdown--margin"
+          >
+            <Dropdown
+              id="create-lso-fs-type-dropdown"
+              dropDownClassName="dropdown--full-width"
+              items={fsTypeOptions}
+              title={state.fsType}
+              selectedKey={state.fsType}
+              onChange={(mode: string) => {
+                dispatch({ type: 'setFsType', value: fsTypeDropdownItems[mode] });
+              }}
+            />
+          </FormGroup>
+        )}
         <FormGroup
           label={t('lso-plugin~Disk Size')}
           fieldId="create-lvs-disk-size"
@@ -201,8 +221,8 @@ export const LocalVolumeSetBody: React.FC<LocalVolumeSetBodyProps> = ({
               <Tooltip
                 content={
                   !validMinDiskSize
-                    ? 'Please enter a positive Integer'
-                    : 'Please enter a value less than or equal to max disk size'
+                    ? t('lso-plugin~Please enter a positive Integer')
+                    : t('lso-plugin~Please enter a value less than or equal to max disk size')
                 }
                 isVisible={!validMinDiskSize || (invalidMinGreaterThanMax && activeMinDiskSize)}
                 trigger="manual"
@@ -234,8 +254,8 @@ export const LocalVolumeSetBody: React.FC<LocalVolumeSetBodyProps> = ({
               <Tooltip
                 content={
                   !validMaxDiskSize
-                    ? 'Please enter a positive Integer'
-                    : 'Please enter a value greater than or equal to min disk size'
+                    ? t('lso-plugin~Please enter a positive Integer')
+                    : t('lso-plugin~Please enter a value greater than or equal to min disk size')
                 }
                 isVisible={!validMaxDiskSize || (invalidMinGreaterThanMax && activeMaxDiskSize)}
                 trigger="manual"
@@ -299,6 +319,7 @@ type LocalVolumeSetBodyProps = {
   dispatch: React.Dispatch<Action>;
   diskModeOptions?: { [key: string]: string };
   deviceTypeOptions?: { [key: string]: string };
+  fsTypeOptions?: { [key: string]: string };
   allNodesHelpTxt?: string;
   lvsNameHelpTxt?: string;
   taintsFilter?: (node: NodeKind) => boolean;

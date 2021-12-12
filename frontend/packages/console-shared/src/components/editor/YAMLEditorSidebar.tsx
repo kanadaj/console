@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { JSONSchema6 } from 'json-schema';
+import { JSONSchema7 } from 'json-schema';
 import MonacoEditor from 'react-monaco-editor';
 import { ResourceSidebar } from '@console/internal/components/sidebars/resource-sidebar';
 import { K8sKind } from '@console/internal/module/k8s';
@@ -10,7 +10,7 @@ type YAMLEditorSidebarProps = {
   editorRef: React.MutableRefObject<MonacoEditor>;
   model?: K8sKind;
   samples?: Sample[];
-  schema?: JSONSchema6;
+  schema?: JSONSchema7;
   snippets?: Sample[];
   sidebarLabel?: string;
   sanitizeYamlContent?: (id: string, yaml: string, kind: string) => string;
@@ -30,7 +30,7 @@ const YAMLEditorSidebar: React.FC<YAMLEditorSidebarProps> = ({
   const editor = editorRef.current?.editor;
 
   const insertYamlContent = React.useCallback(
-    (id, yamlContent, kind) => {
+    (id: string = 'default', yamlContent: string = '', kind) => {
       const yaml = sanitizeYamlContent ? sanitizeYamlContent(id, yamlContent, kind) : yamlContent;
 
       const selection = editor.getSelection();
@@ -70,7 +70,7 @@ const YAMLEditorSidebar: React.FC<YAMLEditorSidebarProps> = ({
   );
 
   const replaceYamlContent = React.useCallback(
-    (id, yamlContent, kind) => {
+    (id: string = 'default', yamlContent: string = '', kind: string) => {
       const yaml = sanitizeYamlContent ? sanitizeYamlContent(id, yamlContent, kind) : yamlContent;
       editor.setValue(yaml);
     },
@@ -78,7 +78,7 @@ const YAMLEditorSidebar: React.FC<YAMLEditorSidebarProps> = ({
   );
 
   const downloadYamlContent = React.useCallback(
-    (id = 'default', yamlContent = '', kind) => {
+    (id: string = 'default', yamlContent: string = '', kind: string) => {
       try {
         const yaml = sanitizeYamlContent ? sanitizeYamlContent(id, yamlContent, kind) : yamlContent;
         downloadYaml(yaml);

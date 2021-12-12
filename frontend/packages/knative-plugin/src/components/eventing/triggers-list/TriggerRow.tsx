@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { TableRow, TableData, RowFunction } from '@console/internal/components/factory';
-import { Kebab, ResourceKebab, ResourceLink, Timestamp } from '@console/internal/components/utils';
+import { TableData, RowFunctionArgs } from '@console/internal/components/factory';
+import { ResourceLink, Timestamp } from '@console/internal/components/utils';
 import { referenceFor, referenceForModel } from '@console/internal/module/k8s';
-import { EventingTriggerModel, EventingBrokerModel } from '../../../models';
+import { LazyActionMenu } from '@console/shared/src';
+import { EventingBrokerModel } from '../../../models';
 import { EventTriggerKind, TriggerConditionTypes } from '../../../types';
 import { getConditionString, getCondition } from '../../../utils/condition-utils';
 import { tableColumnClasses } from './trigger-table';
@@ -10,11 +11,8 @@ import { tableColumnClasses } from './trigger-table';
 type TriggerRowType = {
   broker?: string;
 };
-const TriggerRow: RowFunction<EventTriggerKind, TriggerRowType> = ({
+const TriggerRow: React.FC<RowFunctionArgs<EventTriggerKind, TriggerRowType>> = ({
   obj,
-  index,
-  key,
-  style,
   customData,
 }) => {
   const {
@@ -23,15 +21,12 @@ const TriggerRow: RowFunction<EventTriggerKind, TriggerRowType> = ({
   } = obj;
 
   const objReference = referenceFor(obj);
-  const menuActions = [
-    ...Kebab.getExtensionsActionsForKind(EventingTriggerModel),
-    ...Kebab.factory.common,
-  ];
+  const context = { [objReference]: obj };
   const readyCondition = obj.status
     ? getCondition(obj.status.conditions, TriggerConditionTypes.Ready)
     : null;
   return (
-    <TableRow id={uid} index={index} trKey={key} style={style}>
+    <>
       <TableData columnID="name" className={tableColumnClasses[0]}>
         <ResourceLink kind={objReference} name={name} namespace={namespace} title={uid} />
       </TableData>
@@ -71,9 +66,9 @@ const TriggerRow: RowFunction<EventTriggerKind, TriggerRowType> = ({
         <Timestamp timestamp={creationTimestamp} />
       </TableData>
       <TableData className={tableColumnClasses[8]}>
-        <ResourceKebab actions={menuActions} kind={objReference} resource={obj} />
+        <LazyActionMenu context={context} />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 

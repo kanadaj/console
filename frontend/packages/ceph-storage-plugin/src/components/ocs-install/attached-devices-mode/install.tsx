@@ -6,10 +6,8 @@ import { match as RouterMatch } from 'react-router';
 import { Alert, Button } from '@patternfly/react-core';
 import { K8sResourceKind, referenceForModel } from '@console/internal/module/k8s';
 import { history, LoadingBox } from '@console/internal/components/utils';
-import {
-  useK8sWatchResource,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
+import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
 import { ClusterServiceVersionModel, SubscriptionModel } from '@console/operator-lifecycle-manager';
 import { getNamespace } from '@console/shared';
 import CreateStorageClusterWizard from './install-wizard';
@@ -69,9 +67,9 @@ export const CreateAttachedDevicesCluster: React.FC<CreateAttachedDevicesCluster
       isInline
     >
       <Trans t={t} ns="ceph-storage-plugin">
-        Before we can create a StorageCluster, the local storage operator needs to be installed.
-        When installation is finished come back to OpenShift Container Storage to create a storage
-        cluster.
+        Before we can create a StorageCluster, the Local Storage operator needs to be installed.
+        When installation is finished come back to OpenShift Container Storage to create a
+        StorageCluster.
         <div className="ceph-ocs-install__lso-alert__button">
           <Button type="button" variant="primary" onClick={goToLSOInstallationPage}>
             Install

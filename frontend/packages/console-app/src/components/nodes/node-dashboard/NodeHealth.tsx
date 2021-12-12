@@ -1,15 +1,12 @@
 import * as React from 'react';
-import { Gallery, GalleryItem, Alert } from '@patternfly/react-core';
+import { Gallery, GalleryItem, Alert, Stack, StackItem } from '@patternfly/react-core';
 import i18next from 'i18next';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { WatchK8sResource, WatchK8sResult } from '@console/dynamic-plugin-sdk';
 import { ResourceLink } from '@console/internal/components/utils';
 import { pluralize } from '@console/internal/components/utils/details-page';
-import {
-  useK8sWatchResource,
-  WatchK8sResult,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { MachineModel, MachineHealthCheckModel } from '@console/internal/models';
 import {
   referenceForModel,
@@ -67,77 +64,89 @@ export const HealthChecksPopup: React.FC<HealthChecksPopupProps> = ({
   });
   const { t } = useTranslation();
   return (
-    <>
-      {t(
-        'console-app~{{ machineHealthCheckLabelPlural }} automatically remediate node health issues.',
-        {
-          machineHealthCheckLabelPlural: MachineHealthCheckModel.labelPlural,
-        },
-      )}
+    <Stack hasGutter>
+      <StackItem>
+        {t(
+          'console-app~{{ machineHealthCheckLabelPlural }} automatically remediate node health issues.',
+          {
+            machineHealthCheckLabelPlural: MachineHealthCheckModel.labelPlural,
+          },
+        )}
+      </StackItem>
       {!!machineHealthChecks?.length && (
-        <StatusPopupSection
-          firstColumn={pluralize(
-            machineHealthChecks.length,
-            MachineHealthCheckModel.label,
-            MachineHealthCheckModel.labelPlural,
-            false,
-          )}
-        >
-          {machineHealthChecks.map(({ metadata }) => (
-            <Status key={metadata.uid}>
-              <ResourceLink
-                kind={referenceForModel(MachineHealthCheckModel)}
-                name={metadata.name}
-                namespace={metadata.namespace}
-                className="co-status-popup__title"
-              />
-            </Status>
-          ))}
-        </StatusPopupSection>
+        <StackItem>
+          <StatusPopupSection
+            firstColumn={pluralize(
+              machineHealthChecks.length,
+              MachineHealthCheckModel.label,
+              MachineHealthCheckModel.labelPlural,
+              false,
+            )}
+          >
+            {machineHealthChecks.map(({ metadata }) => (
+              <Status key={metadata.uid}>
+                <ResourceLink
+                  kind={referenceForModel(MachineHealthCheckModel)}
+                  name={metadata.name}
+                  namespace={metadata.namespace}
+                  className="co-status-popup__title"
+                />
+              </Status>
+            ))}
+          </StatusPopupSection>
+        </StackItem>
       )}
       {!!conditions.length && (
-        <StatusPopupSection
-          firstColumn={t('console-app~Conditions')}
-          secondColumn={t('console-app~Status')}
-        >
-          {grouppedConditions.map((c) => (
-            <Status {...c} key={c.title}>
-              {c.title}
-            </Status>
-          ))}
-        </StatusPopupSection>
+        <StackItem>
+          <StatusPopupSection
+            firstColumn={t('console-app~Conditions')}
+            secondColumn={t('console-app~Status')}
+          >
+            {grouppedConditions.map((c) => (
+              <Status {...c} key={c.title}>
+                {c.title}
+              </Status>
+            ))}
+          </StatusPopupSection>
+        </StackItem>
       )}
       {conditionFailing && (
-        <Alert
-          variant="warning"
-          isInline
-          title={reboot ? t('console-app~Reboot pending') : t('console-app~Reprovision pending')}
-          className="co-node-health__popup-alert"
-        >
-          {CONDITIONS_WARNING(reboot)}
-        </Alert>
+        <StackItem>
+          <Alert
+            variant="warning"
+            isInline
+            title={reboot ? t('console-app~Reboot pending') : t('console-app~Reprovision pending')}
+            className="co-node-health__popup-alert"
+          >
+            {CONDITIONS_WARNING(reboot)}
+          </Alert>
+        </StackItem>
       )}
       {machineHealthChecks?.length > 1 && (
-        <Alert
-          variant="warning"
-          isInline
-          title="Multiple resources"
-          className="co-node-health__popup-alert"
-        >
-          {t(
-            'console-app~Only one {{ machineHealthCheckLabel }} resource should match this node.',
-            {
-              machineHealthCheckLabel: MachineHealthCheckModel.label,
-            },
-          )}
-        </Alert>
+        <StackItem>
+          <Alert
+            variant="warning"
+            isInline
+            title="Multiple resources"
+            className="co-node-health__popup-alert"
+          >
+            {t(
+              'console-app~Only one {{ machineHealthCheckLabel }} resource should match this node.',
+              {
+                machineHealthCheckLabel: MachineHealthCheckModel.label,
+              },
+            )}
+          </Alert>
+        </StackItem>
       )}
       {disabledAlert && (
-        <Alert isInline title={disabledAlert.title} className="co-node-health__popup-alert">
-          {disabledAlert.message}
-        </Alert>
+        <StackItem>
+          <Alert isInline title={disabledAlert.title} className="co-node-health__popup-alert">
+            {disabledAlert.message}
+          </Alert>
+        </StackItem>
       )}
-    </>
+    </Stack>
   );
 };
 

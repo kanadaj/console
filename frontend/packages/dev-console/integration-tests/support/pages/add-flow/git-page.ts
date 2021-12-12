@@ -1,3 +1,4 @@
+import { gitImportRepos } from '../../../testData/git-import/repos';
 import { gitAdvancedOptions, buildConfigOptions, builderImages, messages } from '../../constants';
 import { gitPO } from '../../pageObjects';
 import { app } from '../app';
@@ -16,30 +17,76 @@ export const gitPage = {
     cy.get(gitPO.pipeline.infoMessage).should('contain.text', `Info alert:${message}`);
   },
   enterGitUrl: (gitUrl: string) => {
+    const shortUrl = gitUrl.endsWith('.git') ? gitUrl.substring(0, gitUrl.length - 4) : gitUrl;
+    const repository = gitImportRepos.find((repo) => repo.url === shortUrl);
+
+    // mock the github requests for the frequently used repositories to avoid rate limits
+    if (repository) {
+      const urlSegments = repository.url.split('/');
+      const organization = urlSegments[urlSegments.length - 2];
+      const name = urlSegments[urlSegments.length - 1];
+      const apiBaseUrl = `https://api.github.com/repos/${organization}/${name}`;
+
+      cy.readFile(`testData/git-import/${repository.folder}/repo.json`).then((repoResponse) => {
+        cy.intercept('GET', apiBaseUrl, {
+          statusCode: 200,
+          body: repoResponse,
+        }).as('getRepo');
+      });
+
+      cy.readFile(`testData/git-import/${repository.folder}/contents.json`).then(
+        (contentsResponse) => {
+          cy.intercept('GET', `${apiBaseUrl}/contents/`, {
+            statusCode: 200,
+            body: contentsResponse,
+          }).as('getContents');
+        },
+      );
+
+      cy.task('readFileIfExists', `testData/git-import/${repository.folder}/package.json`).then(
+        (packageResponse) => {
+          cy.intercept('GET', `${apiBaseUrl}/contents//package.json`, {
+            statusCode: packageResponse ? 200 : 404,
+            body: packageResponse,
+          }).as('getPackage');
+        },
+      );
+    }
+
     cy.get(gitPO.gitRepoUrl)
       .clear()
       .type(gitUrl);
+
+    if (repository) {
+      cy.wait(['@getRepo', '@getContents', '@getPackage']);
+    }
     app.waitForDocumentLoad();
   },
-
   verifyPipelineCheckBox: () => {
     cy.get(gitPO.pipeline.addPipeline)
       .scrollIntoView()
       .should('be.visible');
   },
+  selectPipeline: (pipelineName: string) => {
+    cy.get(gitPO.pipeline.pipelineDropdown)
+      .scrollIntoView()
+      .click();
+    cy.get(`#${pipelineName}-link`)
+      .should('be.visible')
+      .click();
+  },
   enterAppName: (appName: string) => {
     cy.get('body').then(($body) => {
-      if ($body.find('#form-input-application-name-field').length) {
+      if ($body.find('#form-input-application-name-field').length !== 0) {
         cy.get('#form-input-application-name-field')
           .scrollIntoView()
-          .invoke('val')
-          .should('not.be.empty');
-        cy.get('#form-input-application-name-field')
           .clear()
+          .should('not.have.value');
+        cy.get('#form-input-application-name-field')
           .type(appName)
           .should('have.value', appName);
         cy.log(`Application Name "${appName}" is created`);
-      } else if ($body.find('#form-dropdown-application-name-field').length) {
+      } else if ($body.find('#form-dropdown-application-name-field').length !== 0) {
         cy.get(gitPO.appName).click();
         cy.get('[data-test-id="dropdown-text-filter"]').type(appName);
         cy.get('[role="listbox"]').then(($el) => {
@@ -174,51 +221,51 @@ export const gitPage = {
   selectBuilderImageForGitUrl: (gitUrl: string) => {
     switch (gitUrl) {
       case 'https://github.com/sclorg/dancer-ex.git':
-        cy.get(`[aria-label="${builderImages.Perl}"]`).click();
+        cy.get(`[data-test="card ${builderImages.Perl}"]`).click();
         cy.log(`Selecting builder image "${builderImages.Perl}" to avoid the git rate limit issue`);
         break;
       case 'https://github.com/sclorg/cakephp-ex.git':
-        cy.get(`[aria-label="${builderImages.PHP}"]`).click();
+        cy.get(`[data-test="card ${builderImages.PHP}"]`).click();
         cy.log(`Selecting builder image "${builderImages.PHP}" to avoid the git rate limit issue`);
         break;
       case 'https://github.com/sclorg/nginx-ex.git':
-        cy.get(`[aria-label="${builderImages.Nginx}"]`).click();
+        cy.get(`[data-test="card ${builderImages.Nginx}"]`).click();
         cy.log(
           `Selecting builder image "${builderImages.Nginx}" to avoid the git rate limit issue`,
         );
         break;
       case 'https://github.com/sclorg/httpd-ex.git':
-        cy.get(`[aria-label="${builderImages.Httpd}"]`).click();
+        cy.get(`[data-test="card ${builderImages.Httpd}"]`).click();
         cy.log(
           `Selecting builder image "${builderImages.Httpd}" to avoid the git rate limit issue`,
         );
         break;
       case 'https://github.com/redhat-developer/s2i-dotnetcore-ex.git':
-        cy.get(`[aria-label="${builderImages.NETCore}"]`).click();
+        cy.get(`[data-test="card ${builderImages.NETCore}"]`).click();
         cy.log(
           `Selecting builder image "${builderImages.NETCore}" to avoid the git rate limit issue`,
         );
         break;
       case 'https://github.com/sclorg/golang-ex.git':
-        cy.get(`[aria-label="${builderImages.Go}"]`).click();
+        cy.get(`[data-test="card ${builderImages.Go}"]`).click();
         cy.log(`Selecting builder image "${builderImages.Go}" to avoid the git rate limit issue`);
         break;
       case 'https://github.com/sclorg/ruby-ex.git':
-        cy.get(`[aria-label="${builderImages.Ruby}"]`).click();
+        cy.get(`[data-test="card ${builderImages.Ruby}"]`).click();
         cy.log(`Selecting builder image "${builderImages.Ruby}" to avoid the git rate limit issue`);
         break;
       case 'https://github.com/sclorg/django-ex.git':
-        cy.get(`[aria-label="${builderImages.Python}"]`).click();
+        cy.get(`[data-test="card ${builderImages.Python}"]`).click();
         cy.log(
           `Selecting builder image "${builderImages.Python}" to avoid the git rate limit issue`,
         );
         break;
       case 'https://github.com/jboss-openshift/openshift-quickstarts':
-        cy.get(`[aria-label="${builderImages.Java}"]`).click();
+        cy.get(`[data-test="card ${builderImages.Java}"]`).click();
         cy.log(`Selecting builder image "${builderImages.Java}" to avoid the git rate limit issue`);
         break;
       case 'https://github.com/sclorg/nodejs-ex.git':
-        cy.get(`[aria-label="${builderImages.NodeJs}"]`).click();
+        cy.get(`[data-test="card ${builderImages.NodeJs}"]`).click();
         cy.log(
           `Selecting builder image "${builderImages.NodeJs}" to avoid the git rate limit issue`,
         );
@@ -229,14 +276,25 @@ export const gitPage = {
         );
     }
   },
-  verifyValidatedMessage: (gitUrl = 'https://github.com/sclorg/nodejs-ex.git') => {
-    cy.get(gitPO.gitSection.validatedMessage).should('not.have.text', 'Validating...');
+  verifyValidatedMessage: (gitUrl: string) => {
+    cy.get(gitPO.gitSection.validatedMessage)
+      .should('not.include.text', 'Validating...')
+      .and('not.include.text', messages.addFlow.buildDeployMessage);
     cy.get('body').then(($body) => {
-      if (
-        $body.text().includes(messages.addFlow.privateGitRepoMessage) ||
-        $body.text().includes(messages.addFlow.rateLimitExceeded) ||
-        $body.find('[aria-label="Warning Alert"]').length
+      if ($body.text().includes(messages.addFlow.rateLimitExceeded)) {
+        // Remove .git suffix and remove all parts before the last path
+        const componentName = gitUrl.replace(/\.git$/, '').replace(/^.*[\\\\/]/, '');
+        cy.log(
+          `Git Rate limit exceeded for url ${gitUrl}, select builder image and fill component name "${componentName}" based on the URL to continue tests.`,
+        );
+        gitPage.selectBuilderImageForGitUrl(gitUrl);
+        cy.get(gitPO.nodeName).clear();
+        cy.get(gitPO.nodeName).type(componentName);
+      } else if (
+        $body.find('[aria-label="Warning Alert"]').length ||
+        $body.text().includes(messages.addFlow.privateGitRepoMessage)
       ) {
+        cy.log(`Issue with git url ${gitUrl}, maybe a private repo url. Please check it`);
         gitPage.selectBuilderImageForGitUrl(gitUrl);
       }
     });

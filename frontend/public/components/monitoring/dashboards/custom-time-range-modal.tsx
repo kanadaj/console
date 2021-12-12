@@ -7,10 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import { DatePicker, TimePicker } from '@patternfly/react-core';
 
-import {
-  monitoringDashboardsSetEndTime,
-  monitoringDashboardsSetTimespan,
-} from '../../../actions/ui';
+import { dashboardsSetEndTime, dashboardsSetTimespan } from '../../../actions/observe';
 import { RootState } from '../../../redux';
 import {
   createModalLauncher,
@@ -20,14 +17,18 @@ import {
   ModalTitle,
 } from '../../factory/modal';
 import { toISODateString, twentyFourHourTime } from '../../utils/datetime';
+import { setQueryArguments } from '../../utils';
 
-const CustomTimeRangeModal = ({ cancel, close }: ModalComponentProps) => {
+type CustomTimeRangeModalProps = ModalComponentProps & { activePerspective: string };
+
+const CustomTimeRangeModal = ({ cancel, close, activePerspective }: CustomTimeRangeModalProps) => {
   const { t } = useTranslation();
-
   const dispatch = useDispatch();
-  const endTime = useSelector(({ UI }: RootState) => UI.getIn(['monitoringDashboards', 'endTime']));
-  const timespan = useSelector(({ UI }: RootState) =>
-    UI.getIn(['monitoringDashboards', 'timespan']),
+  const endTime = useSelector(({ observe }: RootState) =>
+    observe.getIn(['dashboards', activePerspective, 'endTime']),
+  );
+  const timespan = useSelector(({ observe }: RootState) =>
+    observe.getIn(['dashboards', activePerspective, 'timespan']),
   );
 
   // If a time is already set in Redux, default to that, otherwise default to a time range that
@@ -48,8 +49,12 @@ const CustomTimeRangeModal = ({ cancel, close }: ModalComponentProps) => {
     const from = Date.parse(`${fromDate} ${fromTime}`);
     const to = Date.parse(`${toDate} ${toTime}`);
     if (_.isInteger(from) && _.isInteger(to)) {
-      dispatch(monitoringDashboardsSetEndTime(to));
-      dispatch(monitoringDashboardsSetTimespan(to - from));
+      dispatch(dashboardsSetEndTime(to, activePerspective));
+      dispatch(dashboardsSetTimespan(to - from, activePerspective));
+      setQueryArguments({
+        endTime: to.toString(),
+        timeRange: (to - from).toString(),
+      });
       close();
     }
   };

@@ -10,7 +10,7 @@ import {
 } from '../module/k8s';
 import { HorizontalPodAutoscalerModel } from '../models';
 import { Conditions } from './conditions';
-import { DetailsPage, ListPage, Table, TableRow, TableData, RowFunction } from './factory';
+import { DetailsPage, ListPage, Table, TableData, RowFunctionArgs } from './factory';
 import {
   DetailsItem,
   Kebab,
@@ -78,7 +78,7 @@ const MetricsTable: React.FC<MetricsTableProps> = ({ obj: hpa }) => {
     );
     const currentValue = targetUtilization
       ? getResourceUtilization(current)
-      : resource?.current?.averageValue;
+      : current?.resource?.current?.averageValue;
     const targetValue = targetUtilization ? `${targetUtilization}%` : resource.target.averageValue;
 
     return <MetricsRow key={key} type={type} current={currentValue} target={targetValue} />;
@@ -243,14 +243,9 @@ const tableColumnClasses = [
 
 const kind = 'HorizontalPodAutoscaler';
 
-const HorizontalPodAutoscalersTableRow: RowFunction<K8sResourceKind> = ({
-  obj,
-  index,
-  key,
-  style,
-}) => {
+const HorizontalPodAutoscalersTableRow: React.FC<RowFunctionArgs<K8sResourceKind>> = ({ obj }) => {
   return (
-    <TableRow id={obj.metadata.uid} index={index} trKey={key} style={style}>
+    <>
       <TableData className={tableColumnClasses[0]}>
         <ResourceLink
           kind={HorizontalPodAutoscalersReference}
@@ -284,7 +279,7 @@ const HorizontalPodAutoscalersTableRow: RowFunction<K8sResourceKind> = ({
           resource={obj}
         />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 
@@ -337,7 +332,7 @@ const HorizontalPodAutoscalersList: React.FC = (props) => {
   return (
     <Table
       {...props}
-      aria-label="Horizontal Pod Auto Scalers"
+      aria-label={t('public~HorizontalPodAutoScalers')}
       Header={HorizontalPodAutoscalersTableHeader}
       Row={HorizontalPodAutoscalersTableRow}
       virtualize

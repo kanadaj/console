@@ -23,6 +23,7 @@ import { Scroll } from '@patternfly/react-virtualized-extension/dist/js/componen
 import {
   getNodeRoles,
   getMachinePhase,
+  getMachineSetInstanceType,
   nodeMemory,
   nodeCPU,
   nodeFS,
@@ -39,6 +40,8 @@ import {
 } from '@console/shared';
 import { PackageManifestKind } from '@console/operator-lifecycle-manager/src/types';
 import { defaultChannelFor } from '@console/operator-lifecycle-manager/src/components';
+import { RowFilter as RowFilterExt } from '@console/dynamic-plugin-sdk';
+import { RowFilter } from '../filter-toolbar';
 import * as UIActions from '../../actions/ui';
 import {
   alertingRuleSource,
@@ -72,7 +75,6 @@ import {
   VolumeSnapshotKind,
 } from '../../module/k8s';
 import { useTableData } from './table-data-hook';
-import { RowFilter } from '../filter-toolbar';
 
 const sorts = {
   alertingRuleSource,
@@ -86,6 +88,7 @@ const sorts = {
   dataSize: (resource) => _.size(_.get(resource, 'data')) + _.size(_.get(resource, 'binaryData')),
   ingressValidHosts,
   serviceCatalogStatus,
+  instanceType: (obj): string => getMachineSetInstanceType(obj),
   jobCompletionsSucceeded: (job) => job?.status?.succeeded || 0,
   jobType: (job) => getJobTypeAndCompletions(job).type,
   nodeReadiness: (node: NodeKind) => {
@@ -251,6 +254,9 @@ export type TableWrapperProps = {
   ariaLabel: string;
   ariaRowCount: number;
 };
+const RowMemo = React.memo<RowFunctionArgs & { Row: React.FC<RowFunctionArgs> }>(
+  ({ Row, ...props }) => <Row {...props} />,
+);
 
 const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
   const {
@@ -263,6 +269,7 @@ const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
     columns,
     scrollTop,
     width,
+    getRowProps,
   } = props;
 
   const cellMeasurementCache = new CellMeasurerCache({
@@ -271,23 +278,20 @@ const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
     keyMapper: (rowIndex) => _.get(props.data[rowIndex], 'metadata.uid', rowIndex),
   });
 
-  const rowRenderer = ({ index, isScrolling: scrolling, isVisible, key, style, parent }) => {
+  const rowRenderer = ({ index, isVisible, key, style, parent }) => {
     const rowArgs = {
       obj: data[index],
-      index,
       columns,
-      isScrolling: scrolling,
-      key,
-      style,
       customData,
     };
-
-    const row = Row(rowArgs);
 
     // do not render non visible elements (this excludes overscan)
     if (!isVisible) {
       return null;
     }
+
+    const rowProps = getRowProps?.(rowArgs.obj);
+    const rowId = rowProps?.id ?? key;
     return (
       <CellMeasurer
         cache={cellMeasurementCache}
@@ -296,7 +300,9 @@ const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
         parent={parent}
         rowIndex={index}
       >
-        {row}
+        <TableRow {...rowProps} id={rowId} index={index} trKey={key} style={style}>
+          <RowMemo Row={Row} {...rowArgs} />
+        </TableRow>
       </CellMeasurer>
     );
   };
@@ -323,19 +329,13 @@ const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
 
 export type RowFunctionArgs<T = any, C = any> = {
   obj: T;
-  index: number;
   columns: any[];
-  isScrolling: boolean;
-  key: string;
-  style: object;
   customData?: C;
 };
 
-export type RowFunction<T = any, C = any> = (args: RowFunctionArgs<T, C>) => React.ReactElement;
-
 export type VirtualBodyProps<D = any, C = any> = {
   customData?: C;
-  Row: RowFunction;
+  Row: React.FC<RowFunctionArgs>;
   height: number;
   isScrolling: boolean;
   onChildScroll: (params: Scroll) => void;
@@ -344,6 +344,7 @@ export type VirtualBodyProps<D = any, C = any> = {
   scrollTop: number;
   width: number;
   expand: boolean;
+  getRowProps?: (obj: D) => Partial<Pick<TableRowProps, 'id' | 'className' | 'title'>>;
 };
 
 type HeaderFunc = (componentProps: ComponentProps) => any[];
@@ -433,6 +434,7 @@ export const Table: React.FC<TableProps> = ({
   rowFilters,
   isPinned,
   defaultSortField,
+  getRowProps,
 }) => {
   const filters = useDeepCompareMemoize(initFilters);
   const Header = useDeepCompareMemoize(initHeader);
@@ -444,7 +446,7 @@ export const Table: React.FC<TableProps> = ({
     defaultSortOrder,
     staticFilters,
     filters,
-    rowFilters,
+    rowFilters: rowFilters as RowFilterExt[],
     propData,
     loaded,
     isPinned,
@@ -567,6 +569,7 @@ export const Table: React.FC<TableProps> = ({
                 scrollTop={scrollTop}
                 width={width}
                 expand={expand}
+                getRowProps={getRowProps}
               />
             </div>
           )}
@@ -647,7 +650,7 @@ export type TableProps<D = any, C = any> = Partial<ComponentProps<D>> & {
   showNamespaceOverride?: boolean;
   Header: HeaderFunc;
   loadError?: string | Object;
-  Row?: RowFunction<D, C>;
+  Row?: React.FC<RowFunctionArgs<D, C>>;
   Rows?: (args: RowsArgs<C>) => PfTableProps['rows'];
   'aria-label': string;
   onSelect?: OnSelect;
@@ -668,6 +671,7 @@ export type TableProps<D = any, C = any> = Partial<ComponentProps<D>> & {
   mock?: boolean;
   expand?: boolean;
   scrollElement?: HTMLElement | (() => HTMLElement);
+  getRowProps?: VirtualBodyProps<D>['getRowProps'];
 };
 
 export type ComponentProps<D = any> = {

@@ -12,10 +12,20 @@ export interface GitSource {
   secretContent?: any;
   ref?: string;
   contextDir?: string;
+  devfilePath?: string;
+  dockerfilePath?: string;
 }
 
 export enum GitProvider {
   GITHUB = 'github',
   BITBUCKET = 'bitbucket',
   GITLAB = 'gitlab',
+  UNSURE = 'other',
+  INVALID = '',
+}
+
+export enum ImportStrategy {
+  S2I,
+  DOCKERFILE,
+  DEVFILE,
 }

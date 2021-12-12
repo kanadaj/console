@@ -207,11 +207,31 @@ export type StoragePoolKind = K8sResourceCommon & {
     parameters?: {
       compression_mode: string;
     };
+    mirroring?: {
+      enabled: boolean;
+    };
   };
   status?: {
     phase?: string;
+    mirroringStatus?: {
+      lastChecked: string;
+      summary: {
+        image_health: string;
+        states: ImageStates | {};
+      };
+    };
   };
 };
+
+export enum ImageStates {
+  STARTING_REPLAY = 'starting_replay',
+  STOPPING_REPLAY = 'stopping_replay',
+  REPLAYING = 'replaying',
+  STOPPED = 'stopped',
+  ERROR = 'error',
+  SYNCING = 'syncing',
+  UNKNOWN = 'unknown',
+}
 
 export type StorageClusterKind = K8sResourceCommon & {
   spec: {
@@ -290,7 +310,7 @@ export type DiscoveredDisk = {
 export type NavUtils = {
   getStep: (maxSteps?: number) => number;
   getParamString: (step: number, mode: number) => string;
-  getIndex: (searchSpace: any, search: string, offset?: number) => number;
+  getIndex: (searchSpace: any, search: React.ReactText, offset?: number) => number;
   getAnchor: (step: number, mode: number) => string;
 };
 
@@ -316,5 +336,9 @@ export type StorageSystemKind = K8sResourceCommon & {
     name: string;
     // namespace describes the name of managed storage vendor CR
     namespace: string;
+  };
+  status?: {
+    phase?: string;
+    conditions?: any;
   };
 };

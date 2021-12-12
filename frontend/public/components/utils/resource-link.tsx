@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import * as classNames from 'classnames';
 
 import { FLAGS } from '@console/shared/src/constants';
+import { ResourceLinkProps } from '@console/dynamic-plugin-sdk';
 import { ResourceIcon } from './resource-icon';
 import {
   modelFor,
@@ -12,9 +13,9 @@ import {
   K8sResourceKindReference,
   K8sResourceKind,
 } from '../../module/k8s';
-import { connectToModel } from '../../kinds';
 import { connectToFlags } from '../../reducers/connectToFlags';
 import { FlagsObject } from '../../reducers/features';
+import { getReference } from '@console/dynamic-plugin-sdk/src/utils/k8s/k8s-ref';
 
 const unknownKinds = new Set();
 
@@ -46,7 +47,7 @@ export const resourcePathFromModel = (model: K8sKind, name?: string, namespace?:
   return url;
 };
 
-export const resourceListPathFromModel = (model: K8sKind, namespace: string) =>
+export const resourceListPathFromModel = (model: K8sKind, namespace?: string) =>
   resourcePathFromModel(model, null, namespace);
 
 /**
@@ -69,56 +70,54 @@ export const resourcePath = (kind: K8sResourceKindReference, name?: string, name
 export const resourceObjPath = (obj: K8sResourceKind, kind: K8sResourceKindReference) =>
   resourcePath(kind, _.get(obj, 'metadata.name'), _.get(obj, 'metadata.namespace'));
 
-export const ResourceLink = connectToModel(
-  ({
-    className,
-    displayName,
-    inline = false,
-    kind,
-    linkTo = true,
-    name,
-    namespace,
-    hideIcon,
-    title,
-    children,
-    dataTest,
-  }) => {
-    if (!kind) {
-      return null;
-    }
-    const path = resourcePath(kind, name, namespace);
-    const value = displayName ? displayName : name;
-    const classes = classNames('co-resource-item', className, {
-      'co-resource-item--inline': inline,
-    });
+export const ResourceLink: React.FC<ResourceLinkProps> = ({
+  className,
+  displayName,
+  inline = false,
+  kind,
+  groupVersionKind,
+  linkTo = true,
+  name,
+  namespace,
+  hideIcon,
+  title,
+  children,
+  dataTest,
+  onClick,
+}) => {
+  if (!kind && !groupVersionKind) {
+    return null;
+  }
+  const kindReference = groupVersionKind ? getReference(groupVersionKind) : kind;
+  const path = resourcePath(kindReference, name, namespace);
+  const value = displayName ? displayName : name;
+  const classes = classNames('co-resource-item', className, {
+    'co-resource-item--inline': inline,
+  });
 
-    return (
-      <span className={classes}>
-        {!hideIcon && <ResourceIcon kind={kind} />}
-        {path && linkTo ? (
-          <Link
-            to={path}
-            title={title}
-            className="co-resource-item__resource-name"
-            data-test-id={value}
-            data-test={dataTest}
-          >
-            {value}
-          </Link>
-        ) : (
-          <span
-            className="co-resource-item__resource-name"
-            data-test-id={value}
-            data-test={dataTest}
-          >
-            {value}
-          </span>
-        )}
-        {children}
-      </span>
-    );
-  },
-);
+  return (
+    <span className={classes}>
+      {!hideIcon && <ResourceIcon kind={kindReference} />}
+      {path && linkTo ? (
+        <Link
+          to={path}
+          title={title}
+          className="co-resource-item__resource-name"
+          data-test-id={value}
+          data-test={dataTest}
+          onClick={onClick}
+        >
+          {value}
+        </Link>
+      ) : (
+        <span className="co-resource-item__resource-name" data-test-id={value} data-test={dataTest}>
+          {value}
+        </span>
+      )}
+      {children}
+    </span>
+  );
+};
 
 const NodeLink_: React.FC<NodeLinkProps> = (props) => {
   const { name, flags } = props;

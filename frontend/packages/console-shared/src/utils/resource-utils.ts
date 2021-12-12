@@ -61,7 +61,7 @@ type ResourceItem = {
 export type ResourceUtil = (obj: K8sResourceKind, props: any) => ResourceItem | undefined;
 
 export const getResourcePausedAlert = (resource: K8sResourceKind): OverviewItemAlerts => {
-  if (!resource.spec.paused) {
+  if (!resource?.spec?.paused) {
     return {};
   }
   return {
@@ -700,24 +700,6 @@ export const createOverviewItemForType = (
     default:
       return getOverviewItemForResource(resource, resources, utils);
   }
-};
-
-export const createOverviewItemsForType = (
-  type: string,
-  resources: any,
-  utils?: ResourceUtil[],
-): OverviewItem[] => {
-  if (!WORKLOAD_TYPES.includes(type)) {
-    return [];
-  }
-  const typedItems = resources[type]?.data ?? [];
-  return typedItems.reduce((acc, resource) => {
-    const item = createOverviewItemForType(type, resource, resources, utils);
-    if (item) {
-      acc.push(item);
-    }
-    return acc;
-  }, []);
 };
 
 export const getResourceLimitsData = (limitsData: LimitsData) => ({

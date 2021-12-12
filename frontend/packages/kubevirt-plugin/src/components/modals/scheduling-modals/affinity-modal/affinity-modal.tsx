@@ -26,8 +26,8 @@ import { k8sPatch, NodeKind } from '@console/internal/module/k8s';
 import { useCollisionChecker } from '../../../../hooks/use-collision-checker';
 import { getAffinityPatch } from '../../../../k8s/patches/vm/vm-scheduling-patches';
 import { getName } from '../../../../selectors';
-import { getVMLikeModel } from '../../../../selectors/vm';
 import { getVMLikeAffinity } from '../../../../selectors/vm-like/selectors';
+import { getVMLikeModel } from '../../../../selectors/vm/vmlike';
 import { VMLikeEntityKind } from '../../../../types/vmLike';
 import { getLoadedData, getLoadError, isLoaded } from '../../../../utils';
 import { ModalFooter } from '../../modal/modal-footer';
@@ -46,6 +46,10 @@ import {
 import { AffinityCondition, AffinityRowData, AffinityType } from './types';
 
 import '../shared/scheduling-modals.scss';
+
+const getRowProps = (obj: AffinityRowData) => ({
+  id: obj.condition,
+});
 
 export const AffinityModal = withHandlePromise<AffinityModalProps>(
   ({
@@ -241,7 +245,8 @@ export const AffinityModal = withHandlePromise<AffinityModalProps>(
                         onEdit: onAffinityClickEdit,
                         onDelete: onAffinityDelete,
                       }}
-                      row={AffinityRow}
+                      Row={AffinityRow}
+                      getRowProps={getRowProps}
                     />
                   </StackItem>
                   {(requiredNodeAffinities?.length > 0 || preferredNodeAffinities?.length > 0) && (

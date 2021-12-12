@@ -5,6 +5,7 @@ import { connect } from 'react-redux';
 import { Alert, Button, ActionGroup, AlertActionCloseButton } from '@patternfly/react-core';
 import * as classNames from 'classnames';
 import { Trans, withTranslation } from 'react-i18next';
+import { getImpersonate } from '@console/dynamic-plugin-sdk';
 
 import { k8sPatch, k8sGet, referenceFor, referenceForOwnerRef } from '../module/k8s';
 import {
@@ -59,8 +60,9 @@ const getPairsFromObject = (element = {}) => {
     returnedPairs.env = [['', '', 0]];
   } else {
     returnedPairs.env = _.map(element.env, (leafNode, i) => {
-      if (!_.has(leafNode, 'value') && !_.has(leafNode, 'valueFrom')) {
+      if (_.isEmpty(leafNode.value) && _.isEmpty(leafNode.valueFrom)) {
         leafNode.value = '';
+        delete leafNode.valueFrom;
       }
       leafNode.ID = i;
       return Object.values(leafNode);
@@ -238,7 +240,7 @@ class CurrentEnvVars {
   }
 
   /**
-   * Return env var pairs in name value notation, and strip out any pairs that have empty NAME values.
+   * Return env var pairs in name value notation, and strip out pairs that have empty name and values.
    *
    *
    * @param finalEnvPairs
@@ -246,13 +248,18 @@ class CurrentEnvVars {
    * @private
    */
   _envVarsToNameVal(finalEnvPairs) {
-    return _.filter(finalEnvPairs, (finalEnvPair) => finalEnvPair[NameValueEditorPair.Name]).map(
-      (finalPairForContainer) => {
-        const name = finalPairForContainer[NameValueEditorPair.Name];
-        const value = finalPairForContainer[NameValueEditorPair.Value];
-        return _.isObject(value) ? { name, valueFrom: value } : { name, value };
-      },
-    );
+    const isEmpty = (value) => {
+      return _.isObject(value) ? _.values(value).every(isEmpty) : !value;
+    };
+    return _.filter(finalEnvPairs, (finalEnvPair) => {
+      const name = finalEnvPair[NameValueEditorPair.Name];
+      const value = finalEnvPair[NameValueEditorPair.Value];
+      return !isEmpty(name) || !isEmpty(value);
+    }).map((finalEnvPair) => {
+      const name = finalEnvPair[NameValueEditorPair.Name];
+      const value = finalEnvPair[NameValueEditorPair.Value];
+      return _.isObject(value) ? { name, valueFrom: value } : { name, value };
+    });
   }
 
   /**
@@ -279,11 +286,11 @@ class CurrentEnvVars {
 }
 
 /** @type {(state: any, props: {obj?: object, rawEnvData?: any, readOnly: boolean, envPath: any, onChange?: (env: any) => void, addConfigMapSecret?: boolean, useLoadingInline?: boolean}) => {model: K8sKind}} */
-const stateToProps = ({ k8s, UI }, { obj }) => ({
+const stateToProps = (state, { obj }) => ({
   model:
-    k8s.getIn(['RESOURCES', 'models', referenceFor(obj)]) ||
-    k8s.getIn(['RESOURCES', 'models', obj.kind]),
-  impersonate: UI.get('impersonate'),
+    state.k8s.getIn(['RESOURCES', 'models', referenceFor(obj)]) ||
+    state.k8s.getIn(['RESOURCES', 'models', obj.kind]),
+  impersonate: getImpersonate(state),
 });
 
 export class UnconnectedEnvironmentPage extends PromiseComponent {

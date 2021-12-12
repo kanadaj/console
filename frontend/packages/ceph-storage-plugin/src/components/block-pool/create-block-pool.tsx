@@ -2,14 +2,12 @@ import * as React from 'react';
 import { match as RouteMatch } from 'react-router';
 import { useTranslation } from 'react-i18next';
 
-import { referenceForModel } from '@console/internal/module/k8s';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { useDeepCompareMemoize } from '@console/shared';
 import { StatusBox } from '@console/internal/components/utils/status-box';
-import { BreadCrumbs, history, resourcePathFromModel } from '@console/internal/components/utils';
-import { ClusterServiceVersionModel } from '@console/operator-lifecycle-manager';
+import { BreadCrumbs, history } from '@console/internal/components/utils';
 import { Button } from '@patternfly/react-core';
-import { k8sCreate } from '@console/internal/module/k8s/resource';
+import { k8sCreate } from '@console/internal/module/k8s';
 import { Modal } from '@console/shared/src/components/modal';
 
 import { BlockPoolBody } from './body';
@@ -30,10 +28,7 @@ import { POOL_STATE } from '../../constants/storage-pool-const';
 import './create-block-pool.scss';
 
 const CreateBlockPool: React.FC<CreateBlockPoolProps> = ({ match }) => {
-  const {
-    params: { ns, appName },
-    url,
-  } = match;
+  const { params, url } = match;
   const { t } = useTranslation();
 
   const [state, dispatch] = React.useReducer(blockPoolReducer, blockPoolInitialState);
@@ -43,14 +38,13 @@ const CreateBlockPool: React.FC<CreateBlockPoolProps> = ({ match }) => {
 
   const cephCluster: CephClusterKind = useDeepCompareMemoize(cephClusters[0], true);
 
-  const storageClusterListPage = `${resourcePathFromModel(
-    ClusterServiceVersionModel,
-    appName,
-    ns,
-  )}/${referenceForModel(CephBlockPoolModel)}`;
+  // OCS create pool page url ends with ~new, ODF create pool page ends with /create/~new
+  const blockPoolPageUrl = params?.appName
+    ? url.replace('/~new', '')
+    : url.replace('/create/~new', '');
 
   const onClose = () => {
-    history.push(storageClusterListPage);
+    history.goBack();
   };
 
   // Create new pool
@@ -60,7 +54,7 @@ const CreateBlockPool: React.FC<CreateBlockPoolProps> = ({ match }) => {
 
       dispatch({ type: BlockPoolActionType.SET_INPROGRESS, payload: true });
       k8sCreate(CephBlockPoolModel, poolObj)
-        .then(() => history.push(`${storageClusterListPage}/${state.poolName}`))
+        .then(() => history.push(`${blockPoolPageUrl}/${state.poolName}`))
         .finally(() => dispatch({ type: BlockPoolActionType.SET_INPROGRESS, payload: false }))
         .catch((err) =>
           dispatch({
@@ -72,7 +66,7 @@ const CreateBlockPool: React.FC<CreateBlockPoolProps> = ({ match }) => {
       dispatch({
         type: BlockPoolActionType.SET_ERROR_MESSAGE,
         payload: t(
-          "ceph-storage-plugin~The OpenShift Container Storage's StorageCluster is not available. Try again after the StorageCluster is ready to use.",
+          "ceph-storage-plugin~OpenShift Data Foundation's StorageCluster is not available. Try again after the StorageCluster is ready to use.",
         ),
       });
   };
@@ -94,7 +88,7 @@ const CreateBlockPool: React.FC<CreateBlockPoolProps> = ({ match }) => {
       >
         <strong>
           {t(
-            "ceph-storage-plugin~Pool creation is not supported for OpenShift Container Storage's external mode.",
+            "ceph-storage-plugin~Pool creation is not supported for OpenShift Data Foundation's external RHCS StorageSystem.",
           )}
         </strong>
       </Modal>
@@ -103,22 +97,21 @@ const CreateBlockPool: React.FC<CreateBlockPoolProps> = ({ match }) => {
 
   return (
     <>
+      <div className="co-create-operand__breadcrumbs">
+        <BreadCrumbs
+          breadcrumbs={[
+            {
+              name: params?.appName ? 'Openshift Container Storage' : 'Openshift Data Foundation',
+              path: blockPoolPageUrl,
+            },
+            {
+              name: t('ceph-storage-plugin~Create BlockPool'),
+              path: url,
+            },
+          ]}
+        />
+      </div>
       <div className="co-create-operand__header">
-        <div className="co-create-operand__header-buttons">
-          <BreadCrumbs
-            breadcrumbs={[
-              {
-                name: 'Openshift Container Storage',
-                path: url.replace('/~new', ''),
-              },
-              {
-                name: t('ceph-storage-plugin~Create BlockPool'),
-                path: url,
-              },
-            ]}
-          />
-        </div>
-
         <h1 className="co-create-operand__header-text">
           {t('ceph-storage-plugin~Create BlockPool')}
         </h1>
@@ -152,7 +145,7 @@ const CreateBlockPool: React.FC<CreateBlockPoolProps> = ({ match }) => {
 };
 
 type CreateBlockPoolProps = {
-  match: RouteMatch<{ ns: string; appName: string }>;
+  match: RouteMatch<{ appName: string; systemName: string }>;
 };
 
 export default CreateBlockPool;

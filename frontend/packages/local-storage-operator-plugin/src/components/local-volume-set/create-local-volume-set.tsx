@@ -37,7 +37,7 @@ const CreateLocalVolumeSet: React.FC<CreateLocalVolumeSetProps> = ({ match }) =>
   const onSubmit = async (event: React.FormEvent<EventTarget>) => {
     event.preventDefault();
 
-    const lvsNodes = state.lvsIsSelectNodes ? state.lvsSelectNodes : nodesData;
+    const lvsNodes = state.lvsIsSelectNodes ? state.lvsSelectNodes : state.lvsAllNodes;
     const nodesByHostNameLabel = getNodesByHostNameLabel(lvsNodes);
     const requestData = getLocalVolumeSetRequestData(state, nodesByHostNameLabel, ns);
 
@@ -62,18 +62,18 @@ const CreateLocalVolumeSet: React.FC<CreateLocalVolumeSetProps> = ({ match }) =>
 
   return (
     <>
+      <div className="co-create-operand__breadcrumbs">
+        <BreadCrumbs
+          breadcrumbs={[
+            {
+              name: t('lso-plugin~Local Storage'),
+              path: resourcePath,
+            },
+            { name: t('lso-plugin~Create Local Volume Set'), path: '' },
+          ]}
+        />
+      </div>
       <div className="co-create-operand__header">
-        <div className="co-create-operand__header-buttons">
-          <BreadCrumbs
-            breadcrumbs={[
-              {
-                name: t('lso-plugin~Local Storage'),
-                path: resourcePath,
-              },
-              { name: t('lso-plugin~Create Local Volume Set'), path: '' },
-            ]}
-          />
-        </div>
         <LocalVolumeSetHeader variant={TextVariants.h1} />
       </div>
       <Form

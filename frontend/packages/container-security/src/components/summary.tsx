@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { ChartDonut } from '@patternfly/react-charts';
-import { pluralize } from '@patternfly/react-core';
+import { Stack, StackItem, pluralize } from '@patternfly/react-core';
 import { ExclamationTriangleIcon } from '@patternfly/react-icons';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { WatchK8sResults } from '@console/internal/components/utils/k8s-watch-hook';
+import { WatchK8sResults } from '@console/dynamic-plugin-sdk';
 import { ExternalLink } from '@console/internal/components/utils/link';
 import { referenceForModel } from '@console/internal/module/k8s';
 import { ResourceHealthHandler } from '@console/plugin-sdk';
@@ -79,8 +79,8 @@ export const SecurityBreakdownPopup: React.FC<SecurityBreakdownPopupProps> = ({
   const vulnDetailsUrl = `/k8s/ns/${namespace}/${referenceForModel(ImageManifestVulnModel)}`;
 
   return (
-    <>
-      <div className="co-status-popup__description">
+    <Stack hasGutter>
+      <StackItem>
         {namespace
           ? t(
               `container-security~This project's container images from Quay are analyzed to identify vulnerabilities. Images from other registries are not scanned.`,
@@ -88,10 +88,10 @@ export const SecurityBreakdownPopup: React.FC<SecurityBreakdownPopupProps> = ({
           : t(
               'container-security~Container images from Quay are analyzed to identify vulnerabilities. Images from other registries are not scanned.',
             )}
-      </div>
+      </StackItem>
       {!_.isEmpty(resource) ? (
         <>
-          <div className="co-status-popup__section">
+          <StackItem>
             <div className="co-status-popup__row">
               <div className="co-status-popup__text--bold">
                 {t('container-security~Vulnerable Container Images')}
@@ -135,9 +135,9 @@ export const SecurityBreakdownPopup: React.FC<SecurityBreakdownPopupProps> = ({
                 </Link>
               </div>
             </div>
-          </div>
+          </StackItem>
           {!_.isEmpty(fixableVulns) && (
-            <div className="co-status-popup__section">
+            <StackItem>
               <div className="co-status-popup__row">
                 <div>
                   <span className="co-status-popup__text--bold">
@@ -198,17 +198,17 @@ export const SecurityBreakdownPopup: React.FC<SecurityBreakdownPopupProps> = ({
                   {t('container-security~View all')}
                 </Link>
               </div>
-            </div>
+            </StackItem>
           )}
         </>
       ) : (
-        <div className="co-status-popup__section">
+        <StackItem>
           <span className="text-secondary">
             {t('container-security~No vulnerabilities detected.')}
           </span>
-        </div>
+        </StackItem>
       )}
-    </>
+    </Stack>
   );
 };
 

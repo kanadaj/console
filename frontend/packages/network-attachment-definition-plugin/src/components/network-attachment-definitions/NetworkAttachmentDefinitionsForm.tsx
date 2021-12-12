@@ -42,18 +42,10 @@ const buildConfig = (name, networkType, typeParamsData): NetworkAttachmentDefini
   }
 
   if (networkType === 'cnv-bridge') {
-    // cnv-bridge should not define type on root
-    delete config.type;
-
-    config.plugins = [
-      {
-        type: 'cnv-bridge',
-        bridge: _.get(typeParamsData, 'bridge.value', ''),
-        vlan: parseInt(typeParamsData?.vlanTagNum?.value, 10) || undefined,
-        ipam,
-      },
-      { type: 'cnv-tuning' },
-    ];
+    config.bridge = _.get(typeParamsData, 'bridge.value', '');
+    config.vlan = parseInt(typeParamsData?.vlanTagNum?.value, 10) || undefined;
+    config.macspoofchk = _.get(typeParamsData, 'macspoofchk.value', true);
+    config.ipam = ipam;
   } else if (networkType === 'sriov') {
     config.ipam = ipam;
   }
@@ -335,7 +327,7 @@ const mapStateToProps = ({ k8s }) => {
   const kindsInFlight = k8s.getIn(['RESOURCES', 'inFlight']);
   const hasHyperConvergedCRD =
     !kindsInFlight &&
-    !!['v1beta1', 'v1alpha1'].find(
+    !!['v1beta1', 'v1alpha1', 'v1alpha3'].find(
       (v) => !!modelFor(referenceForGroupVersionKind('hco.kubevirt.io')(v)('HyperConverged')),
     );
 

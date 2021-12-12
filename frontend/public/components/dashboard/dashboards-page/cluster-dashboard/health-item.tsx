@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Map as ImmutableMap } from 'immutable';
 import { useTranslation } from 'react-i18next';
+import { Stack, StackItem } from '@patternfly/react-core';
 import {
   DashboardsOverviewHealthOperator,
   DashboardsOverviewHealthURLSubsystem,
@@ -16,6 +17,9 @@ import {
   DashboardsOverviewHealthURLSubsystem as DynamicDashboardsOverviewHealthURLSubsystem,
   DashboardsOverviewHealthPrometheusSubsystem as DynamicDashboardsOverviewHealthPrometheusSubsystem,
   DashboardsOverviewHealthResourceSubsystem as DynamicDashboardsOverviewHealthResourceSubsystem,
+  WatchK8sResources,
+  WatchK8sResults,
+  ResourcesObject,
 } from '@console/dynamic-plugin-sdk';
 import HealthItem from '@console/shared/src/components/dashboard/status-card/HealthItem';
 import { OperatorsSection } from '@console/shared/src/components/dashboard/status-card/OperatorStatusBody';
@@ -26,12 +30,7 @@ import {
 import { HealthState } from '@console/shared/src/components/dashboard/status-card/states';
 import { K8sKind } from '../../../../module/k8s';
 import { FirehoseResourcesResult, AsyncComponent, resourcePath } from '../../../utils';
-import {
-  ResourcesObject,
-  useK8sWatchResources,
-  WatchK8sResources,
-  WatchK8sResults,
-} from '../../../utils/k8s-watch-hook';
+import { useK8sWatchResources } from '../../../utils/k8s-watch-hook';
 import { withDashboardResources, DashboardItemProps } from '../../with-dashboard-resources';
 import { uniqueResource } from './utils';
 import { getPrometheusQueryResponse } from '../../../../actions/dashboards';
@@ -69,16 +68,17 @@ export const OperatorsPopup: React.FC<OperatorsPopupProps> = ({
         return acc;
       }, {});
       return (
-        <OperatorsSection
-          key={o.title}
-          resources={operatorResources}
-          getOperatorsWithStatuses={o.getOperatorsWithStatuses}
-          title={o.title}
-          linkTo={o.viewAllLink || resourcePath(o.resources[0].kind)}
-          Row={OperatorRow}
-          Component={o.operatorRowLoader}
-          isResolved={false}
-        />
+        <StackItem key={o.title}>
+          <OperatorsSection
+            resources={operatorResources}
+            getOperatorsWithStatuses={o.getOperatorsWithStatuses}
+            title={o.title}
+            linkTo={o.viewAllLink || resourcePath(o.resources[0].kind)}
+            Row={OperatorRow}
+            Component={o.operatorRowLoader}
+            isResolved={false}
+          />
+        </StackItem>
       );
     }),
     ...dynamicOperatorSubsystems.map((o, index) => {
@@ -87,26 +87,29 @@ export const OperatorsPopup: React.FC<OperatorsPopupProps> = ({
         return acc;
       }, {});
       return (
-        <OperatorsSection
-          key={o.title}
-          resources={operatorResources}
-          getOperatorsWithStatuses={o.getOperatorsWithStatuses}
-          title={o.title}
-          linkTo={o.viewAllLink || resourcePath(o.resources[0].kind)}
-          Row={OperatorRow}
-          Component={o.operatorRowLoader}
-          isResolved
-        />
+        <StackItem key={o.title}>
+          <OperatorsSection
+            resources={operatorResources}
+            getOperatorsWithStatuses={o.getOperatorsWithStatuses}
+            title={o.title}
+            linkTo={o.viewAllLink || resourcePath(o.resources[0].kind)}
+            Row={OperatorRow}
+            Component={o.operatorRowLoader}
+            isResolved
+          />
+        </StackItem>
       );
     }),
   ].reverse();
   return (
-    <>
-      {t(
-        'public~Operators create, configure, and manage applications by extending the Kubernetes API.',
-      )}
+    <Stack hasGutter>
+      <StackItem>
+        {t(
+          'public~Operators create, configure, and manage applications by extending the Kubernetes API.',
+        )}
+      </StackItem>
       {sections}
-    </>
+    </Stack>
   );
 };
 
@@ -188,7 +191,7 @@ export const URLHealthItem = withDashboardResources<URLHealthItemProps>(
         subsystem.url,
         (subsystem as DashboardsOverviewHealthURLSubsystem<any>['properties']).fetch
           ? (subsystem as DashboardsOverviewHealthURLSubsystem<any>['properties']).fetch
-          : null,
+          : undefined,
       );
       if (modelExists) {
         watchK8sResource(subsystem.additionalResource);

@@ -4,7 +4,20 @@ export enum StartedByLabel {
 export enum StartedByAnnotation {
   user = 'pipeline.openshift.io/started-by',
 }
-
+export enum TektonTaskAnnotation {
+  minVersion = ' tekton.dev/pipelines.minVersion',
+  tags = 'tekton.dev/tags',
+  categories = 'tekton.dev/categories',
+  installedFrom = 'openshift.io/installed-from',
+}
+export enum TektonTaskProviders {
+  redhat = 'Red Hat',
+  community = 'Community',
+}
+export enum TektonTaskLabel {
+  providerType = 'operator.tekton.dev/provider-type',
+  version = 'app.kubernetes.io/version',
+}
 export enum TektonResourceLabel {
   pipeline = 'tekton.dev/pipeline',
   pipelinerun = 'tekton.dev/pipelineRun',
@@ -39,6 +52,7 @@ export const SecretAnnotationType = {
 };
 
 export const PIPELINE_GA_VERSION = '1.4.0';
+export const TRIGGERS_GA_VERSION = '1.6.0';
 export const PIPELINE_SERVICE_ACCOUNT = 'pipeline';
 export const PIPELINE_RUN_AUTO_START_FAILED = `bridge/pipeline-run-auto-start-failed`;
 

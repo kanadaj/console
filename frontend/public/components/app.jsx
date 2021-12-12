@@ -8,7 +8,8 @@ import { Route, Router, Switch } from 'react-router-dom';
 // AbortController is not supported in some older browser versions
 import 'abort-controller/polyfill';
 import store, { applyReduxExtensions } from '../redux';
-import { withTranslation } from 'react-i18next';
+import { withTranslation, useTranslation } from 'react-i18next';
+import { coFetchJSON } from '../co-fetch';
 
 import { detectFeatures } from '../actions/features';
 import AppContents from './app-contents';
@@ -19,39 +20,49 @@ import { Navigation } from './nav';
 import { history, AsyncComponent, LoadingBox } from './utils';
 import * as UIActions from '../actions/ui';
 import { fetchSwagger, getCachedResources } from '../module/k8s';
-import { receivedResources, watchAPIServices } from '../actions/k8s';
+import { receivedResources, startAPIDiscovery } from '../actions/k8s';
 import { pluginStore } from '../plugins';
 // cloud shell imports must come later than features
 import CloudShell from '@console/app/src/components/cloud-shell/CloudShell';
 import CloudShellTab from '@console/app/src/components/cloud-shell/CloudShellTab';
 import DetectPerspective from '@console/app/src/components/detect-perspective/DetectPerspective';
 import DetectNamespace from '@console/app/src/components/detect-namespace/DetectNamespace';
+import DetectLanguage from '@console/app/src/components/detect-language/DetectLanguage';
 import { useExtensions } from '@console/plugin-sdk';
 import {
   useResolvedExtensions,
   isContextProvider,
   isReduxReducer,
   isStandaloneRoutePage,
+  AppInitSDK,
+  getUser,
 } from '@console/dynamic-plugin-sdk';
 import { initConsolePlugins } from '@console/dynamic-plugin-sdk/src/runtime/plugin-init';
 import { GuidedTour } from '@console/app/src/components/tour';
 import QuickStartDrawer from '@console/app/src/components/quick-starts/QuickStartDrawerAsync';
 import ToastProvider from '@console/shared/src/components/toast/ToastProvider';
+import { useToast } from '@console/shared/src/components/toast';
 import { useTelemetry } from '@console/shared/src/hooks/useTelemetry';
 import { useDebounceCallback } from '@console/shared/src/hooks/debounce';
-import '../i18n';
+import {
+  useURLPoll,
+  URL_POLL_DEFAULT_DELAY,
+} from '@console/internal/components/utils/url-poll-hook';
+import { init as initI18n } from '../i18n';
 import '../vendor.scss';
 import '../style.scss';
-import '@patternfly/quickstarts/dist/quickstarts.css';
+import '@patternfly/quickstarts/dist/quickstarts.min.css';
 
 // PF4 Imports
-import { Page, SkipToContent } from '@patternfly/react-core';
+import { Page, SkipToContent, AlertVariant } from '@patternfly/react-core';
 
-const breakpointMD = 768;
+const breakpointMD = 1200;
 const NOTIFICATION_DRAWER_BREAKPOINT = 1800;
 // Edge lacks URLSearchParams
 import 'url-search-params-polyfill';
 import { graphQLReady } from '../graphql/client';
+
+initI18n();
 
 // Disable linkify 'fuzzy links' across the app.
 // Only linkify url strings beginning with a proper protocol scheme.
@@ -160,9 +171,9 @@ class App_ extends React.PureComponent {
     const content = (
       <>
         <Helmet titleTemplate={`%s · ${productName}`} defaultTitle={productName} />
+        <ConsoleNotifier location="BannerTop" />
         <QuickStartDrawer>
           <div id="app-content" className="co-m-app__content">
-            <ConsoleNotifier location="BannerTop" />
             <Page
               // Need to pass mainTabIndex=null to enable keyboard scrolling as default tabIndex is set to -1 by patternfly
               mainTabIndex={null}
@@ -191,26 +202,29 @@ class App_ extends React.PureComponent {
             </Page>
             <CloudShell />
             <GuidedTour />
-            <ConsoleNotifier location="BannerBottom" />
           </div>
           <div id="modal-container" role="dialog" aria-modal="true" />
         </QuickStartDrawer>
+        <ConsoleNotifier location="BannerBottom" />
       </>
     );
 
     return (
-      <DetectPerspective>
-        <DetectNamespace>
-          {contextProviderExtensions.reduce(
-            (children, e) => (
-              <EnhancedProvider key={e.uid} {...e.properties}>
-                {children}
-              </EnhancedProvider>
-            ),
-            content,
-          )}
-        </DetectNamespace>
-      </DetectPerspective>
+      <>
+        <DetectPerspective>
+          <DetectNamespace>
+            {contextProviderExtensions.reduce(
+              (children, e) => (
+                <EnhancedProvider key={e.uid} {...e.properties}>
+                  {children}
+                </EnhancedProvider>
+              ),
+              content,
+            )}
+          </DetectNamespace>
+        </DetectPerspective>
+        <DetectLanguage />
+      </>
     );
   }
 }
@@ -257,7 +271,7 @@ const CaptureTelemetry = React.memo(() => {
   const fireTelemetryEvent = useTelemetry();
 
   // notify of identity change
-  const user = useSelector(({ UI }) => UI.get('user'));
+  const user = useSelector(getUser);
   React.useEffect(() => {
     if (user.metadata?.uid || user.metadata?.name) {
       fireTelemetryEvent('identify', { user });
@@ -288,9 +302,103 @@ const CaptureTelemetry = React.memo(() => {
   return null;
 });
 
-graphQLReady.onReady(() => {
-  const startDiscovery = () => store.dispatch(watchAPIServices());
+const PollConsoleUpdates = React.memo(() => {
+  const toastContext = useToast();
+  const { t } = useTranslation();
 
+  const [isToastOpen, setToastOpen] = React.useState(false);
+  const [pluginsChanged, setPluginsChanged] = React.useState(false);
+  const [consoleChanged, setConsoleChanged] = React.useState(false);
+  const [isFetchingPluginEndpoints, setIsFetchingPluginEndpoints] = React.useState(false);
+  const [allPluginEndpointsReady, setAllPluginEndpointsReady] = React.useState(false);
+  const [pluginsData, pluginsError] = useURLPoll(
+    `${window.SERVER_FLAGS.basePath}api/check-updates`,
+  );
+  const prevPluginsDataRef = React.useRef();
+  React.useEffect(() => {
+    prevPluginsDataRef.current = pluginsData;
+  });
+  const prevPluginsData = prevPluginsDataRef.current;
+  const stateInitialized = _.isEmpty(pluginsError) && !_.isEmpty(prevPluginsData);
+
+  const pluginsListChanged = !_.isEmpty(_.xor(prevPluginsData?.plugins, pluginsData?.plugins));
+  if (stateInitialized && pluginsListChanged && !pluginsChanged) {
+    setPluginsChanged(true);
+  }
+
+  if (pluginsChanged && !allPluginEndpointsReady && !isFetchingPluginEndpoints) {
+    const pluginEndpointsReady = pluginsData?.plugins?.map((pluginName) => {
+      return coFetchJSON(
+        `${window.SERVER_FLAGS.basePath}api/plugins/${pluginName}/plugin-manifest.json`,
+      );
+    });
+    Promise.all(pluginEndpointsReady)
+      .then(() => {
+        setAllPluginEndpointsReady(true);
+        setIsFetchingPluginEndpoints(false);
+      })
+      .catch(() => {
+        setAllPluginEndpointsReady(false);
+        setTimeout(() => setIsFetchingPluginEndpoints(false), URL_POLL_DEFAULT_DELAY);
+      });
+    setIsFetchingPluginEndpoints(true);
+  }
+
+  const consoleCommitChanged = prevPluginsData?.consoleCommit !== pluginsData?.consoleCommit;
+  if (stateInitialized && consoleCommitChanged && !consoleChanged) {
+    setConsoleChanged(true);
+  }
+
+  if (isToastOpen || !stateInitialized) {
+    return null;
+  }
+
+  if (!pluginsChanged && !consoleChanged) {
+    return null;
+  }
+
+  if (pluginsChanged && !allPluginEndpointsReady) {
+    return null;
+  }
+
+  const toastCallback = () => {
+    setToastOpen(false);
+    setPluginsChanged(false);
+    setConsoleChanged(false);
+    setAllPluginEndpointsReady(false);
+    setIsFetchingPluginEndpoints(false);
+  };
+
+  toastContext.addToast({
+    variant: AlertVariant.warning,
+    title: t('public~Web console update is available'),
+    content: t(
+      'public~There has been an update to the web console. Ensure any changes have been saved and refresh your browser to access the latest version.',
+    ),
+    timeout: false,
+    dismissible: true,
+    actions: [
+      {
+        dismiss: true,
+        label: t('public~Refresh web console'),
+        callback: () => {
+          if (window.location.pathname.includes('/operatorhub/subscribe')) {
+            window.location.href = '/operatorhub';
+          } else {
+            window.location.reload();
+          }
+        },
+      },
+    ],
+    onClose: toastCallback,
+    onRemove: toastCallback,
+  });
+
+  setToastOpen(true);
+  return null;
+});
+
+graphQLReady.onReady(() => {
   // Load cached API resources from localStorage to speed up page load.
   getCachedResources()
     .then((resources) => {
@@ -298,9 +406,9 @@ graphQLReady.onReady(() => {
         store.dispatch(receivedResources(resources));
       }
       // Still perform discovery to refresh the cache.
-      startDiscovery();
+      store.dispatch(startAPIDiscovery());
     })
-    .catch(startDiscovery);
+    .catch(() => store.dispatch(startAPIDiscovery()));
 
   store.dispatch(detectFeatures());
 
@@ -315,8 +423,7 @@ graphQLReady.onReady(() => {
   // Used by GUI tests to check for unhandled exceptions
   window.windowError = null;
   window.onerror = (message, source, lineno, colno, error) => {
-    const { stack } = error;
-    const formattedStack = stack?.replace(/\\n/g, '\n');
+    const formattedStack = error?.stack?.replace(/\\n/g, '\n');
     window.windowError = `unhandled error: ${message} ${formattedStack || ''}`;
     // eslint-disable-next-line no-console
     console.error(window.windowError);
@@ -359,10 +466,13 @@ graphQLReady.onReady(() => {
   render(
     <React.Suspense fallback={<LoadingBox />}>
       <Provider store={store}>
-        <CaptureTelemetry />
-        <ToastProvider>
-          <AppRouter />
-        </ToastProvider>
+        <AppInitSDK>
+          <CaptureTelemetry />
+          <ToastProvider>
+            <PollConsoleUpdates />
+            <AppRouter />
+          </ToastProvider>
+        </AppInitSDK>
       </Provider>
     </React.Suspense>,
     document.getElementById('app'),

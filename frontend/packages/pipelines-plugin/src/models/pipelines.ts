@@ -145,7 +145,6 @@ export const TriggerBindingModel: K8sKind = {
   id: 'triggerbinding',
   labelPlural: 'TriggerBindings',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
@@ -164,7 +163,6 @@ export const ClusterTriggerBindingModel: K8sKind = {
   id: 'clustertriggerbinding',
   labelPlural: 'ClusterTriggerBindings',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
@@ -183,7 +181,6 @@ export const TriggerTemplateModel: K8sKind = {
   id: 'triggertemplate',
   labelPlural: 'TriggerTemplates',
   crd: true,
-  badge: BadgeType.TECH,
   color,
 };
 
@@ -202,6 +199,24 @@ export const EventListenerModel: K8sKind = {
   id: 'eventlistener',
   labelPlural: 'EventListeners',
   crd: true,
-  badge: BadgeType.TECH,
+  color,
+};
+
+export const RepositoryModel: K8sKind = {
+  apiGroup: 'pipelinesascode.tekton.dev',
+  apiVersion: 'v1alpha1',
+  label: 'Repository',
+  // t('pipelines-plugin~Repository')
+  labelKey: 'pipelines-plugin~Repository',
+  // t('pipelines-plugin~Repositories')
+  labelPluralKey: 'pipelines-plugin~Repositories',
+  plural: 'repositories',
+  abbr: 'R',
+  namespaced: true,
+  kind: 'Repository',
+  id: 'repository',
+  labelPlural: 'Repositories',
+  crd: true,
+  badge: BadgeType.DEV,
   color,
 };

@@ -6,20 +6,24 @@ import {
   AccordionToggle,
 } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-import { CLOUD, SSH } from '../../../../utils/strings';
+import { CLOUD, SSH, SYSPREP, HARDWARE } from '../../../../utils/strings';
 import Cloudinit from './cloud-init/Cloudinit';
+import { GPUDevices } from './hardware-devices/GPUDevices';
+import { HostDevices } from './hardware-devices/HostDevices';
 import SSHAdvancedTab from './ssh/SSHAdvancedTab';
+import Sysprep from './sysprep/Sysprep';
 
 import './advanced-tab.scss';
 
 type AdvancedTabProps = {
   wizardReduxID: string;
   key: string;
+  isWindowsTemplate: boolean;
 };
 
-const AdvancedTab: React.FC<AdvancedTabProps> = ({ wizardReduxID }) => {
+const AdvancedTab: React.FC<AdvancedTabProps> = ({ wizardReduxID, isWindowsTemplate }) => {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = React.useState<string>();
+  const [expanded, setExpanded] = React.useState<string>(isWindowsTemplate ? SYSPREP : CLOUD);
 
   const onToggle = (value: string) =>
     setExpanded((expandedValue) => (expandedValue === value ? '' : value));
@@ -42,6 +46,19 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({ wizardReduxID }) => {
       <AccordionItem>
         <AccordionToggle
           className="AdvancedTab-tab-title"
+          onClick={() => onToggle(SYSPREP)}
+          isExpanded={expanded === SYSPREP}
+          id={SYSPREP}
+        >
+          {t('kubevirt-plugin~Sysprep')}
+        </AccordionToggle>
+        <AccordionContent isHidden={expanded !== SYSPREP}>
+          <Sysprep />
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem>
+        <AccordionToggle
+          className="AdvancedTab-tab-title"
           onClick={() => onToggle(SSH)}
           isExpanded={expanded === SSH}
           id={SSH}
@@ -50,6 +67,21 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({ wizardReduxID }) => {
         </AccordionToggle>
         <AccordionContent isHidden={expanded !== SSH}>
           <SSHAdvancedTab />
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem>
+        <AccordionToggle
+          className="AdvancedTab-tab-title"
+          onClick={() => onToggle(HARDWARE)}
+          isExpanded={expanded === HARDWARE}
+          id={HARDWARE}
+        >
+          {t('kubevirt-plugin~Hardware devices')}
+        </AccordionToggle>
+        <AccordionContent isHidden={expanded !== HARDWARE}>
+          <GPUDevices wizardReduxID={wizardReduxID} />
+          <br />
+          <HostDevices wizardReduxID={wizardReduxID} />
         </AccordionContent>
       </AccordionItem>
     </Accordion>

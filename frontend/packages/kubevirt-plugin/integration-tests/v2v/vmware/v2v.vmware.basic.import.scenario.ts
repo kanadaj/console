@@ -1,13 +1,13 @@
+import { multusNAD, v2vUIDeployment } from '../../tests/mocks/mocks';
+import { VmwareImportWizard } from '../../tests/models/vmwareImportWizard';
+import { V2V_VM_IMPORT_TIMEOUT } from '../../tests/utils/constants/common';
+import { VM_STATUS } from '../../tests/utils/constants/vm';
 import {
   createResources,
   deleteResources,
   removeLeakedResources,
   withResource,
-} from '@console/shared/src/test-utils/utils';
-import { multusNAD, v2vUIDeployment } from '../../tests/mocks/mocks';
-import { VmwareImportWizard } from '../../tests/models/vmwareImportWizard';
-import { V2V_VM_IMPORT_TIMEOUT } from '../../tests/utils/constants/common';
-import { VM_STATUS } from '../../tests/utils/constants/vm';
+} from '../../utils/shared-utils';
 import {
   flavorWorkloadConfigs,
   vmwareSecondVMConfig,
@@ -33,7 +33,7 @@ describe('Kubevirt migrate VM from VMWare using wizard', () => {
     async () => {
       const vm = await wizard.import(vmwareVMConfig);
       await withResource(leakedResources, vm.asResource(), async () => {
-        await vm.waitForStatus(VM_STATUS.Off, V2V_VM_IMPORT_TIMEOUT);
+        await vm.waitForStatus(VM_STATUS.Stopped, V2V_VM_IMPORT_TIMEOUT);
       });
     },
     V2V_VM_IMPORT_TIMEOUT,
@@ -44,7 +44,7 @@ describe('Kubevirt migrate VM from VMWare using wizard', () => {
     async () => {
       const vm = await wizard.import(vmwareSecondVMConfig);
       await withResource(leakedResources, vm.asResource(), async () => {
-        await vm.waitForStatus(VM_STATUS.Off, V2V_VM_IMPORT_TIMEOUT);
+        await vm.waitForStatus(VM_STATUS.Stopped, V2V_VM_IMPORT_TIMEOUT);
       });
     },
     V2V_VM_IMPORT_TIMEOUT,
@@ -58,7 +58,7 @@ describe('Kubevirt migrate VM from VMWare using wizard', () => {
         leakedResources,
         vm.asResource(),
         async () => {
-          await vm.waitForStatus(VM_STATUS.Off, V2V_VM_IMPORT_TIMEOUT);
+          await vm.waitForStatus(VM_STATUS.Stopped, V2V_VM_IMPORT_TIMEOUT);
         },
         true,
       );
@@ -72,7 +72,7 @@ describe('Kubevirt migrate VM from VMWare using wizard', () => {
       async () => {
         const vm = await wizard.import(currentConfig);
         await withResource(leakedResources, vm.asResource(), async () => {
-          await vm.waitForStatus(VM_STATUS.Off, V2V_VM_IMPORT_TIMEOUT);
+          await vm.waitForStatus(VM_STATUS.Stopped, V2V_VM_IMPORT_TIMEOUT);
         });
       },
       V2V_VM_IMPORT_TIMEOUT,

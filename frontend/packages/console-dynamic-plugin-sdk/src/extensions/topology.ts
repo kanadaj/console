@@ -1,5 +1,9 @@
+import { Extension, ExtensionDeclaration, CodeRef } from '../types';
+import { WatchK8sResourcesGeneric } from './console-types';
 import {
   CreateConnectionGetter,
+  RelationshipProviderCreate,
+  RelationshipProviderProvides,
   TopologyApplyDisplayOptions,
   TopologyDataModelDepicted,
   TopologyDataModelGetter,
@@ -8,9 +12,7 @@ import {
   TopologyDecoratorQuadrant,
   TopologyDisplayOption,
   ViewComponentFactory,
-} from '../api/topology-types';
-import { Extension, ExtensionDeclaration, CodeRef } from '../types';
-import { WatchK8sResourcesGeneric } from './console-types';
+} from './topology-types';
 
 /** Getter for a ViewComponentFactory */
 export type TopologyComponentFactory = ExtensionDeclaration<
@@ -77,6 +79,21 @@ export type TopologyDecoratorProvider = ExtensionDeclaration<
   }
 >;
 
+/** Topology relationship provider connector extension */
+export type TopologyRelationshipProvider = ExtensionDeclaration<
+  'console.topology/relationship/provider',
+  {
+    // use to determine if a connection can be created between the source and target node
+    provides: CodeRef<RelationshipProviderProvides>;
+    // tooltip to show when connector operation is hovering over the drop target ex: "Create a Visual Connector"
+    tooltip: string;
+    // callback to execute when connector is drop over target node to create a connection
+    create: CodeRef<RelationshipProviderCreate>;
+    // priority for relationship, higher will be preferred in case of multiple
+    priority: number;
+  }
+>;
+
 // Type Guards
 
 export const isTopologyComponentFactory = (e: Extension): e is TopologyComponentFactory =>
@@ -93,3 +110,6 @@ export const isTopologyDisplayFilters = (e: Extension): e is TopologyDisplayFilt
 
 export const isTopologyDecoratorProvider = (e: Extension): e is TopologyDecoratorProvider =>
   e.type === 'console.topology/decorator/provider';
+
+export const isTopologyRelationshipProvider = (e: Extension): e is TopologyRelationshipProvider =>
+  e.type === 'console.topology/relationship/provider';

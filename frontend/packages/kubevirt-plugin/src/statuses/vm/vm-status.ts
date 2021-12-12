@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { K8sResourceKind, PersistentVolumeClaimKind, PodKind } from '@console/internal/module/k8s';
 import { CONVERSION_PROGRESS_ANNOTATION } from '../../constants/v2v';
-import { VMStatus } from '../../constants/vm/vm-status';
+import { VMPrintableStatusSimpleLabel, VMStatus } from '../../constants/vm/vm-status';
 import { VMIPhase } from '../../constants/vmi/phase';
 import { VirtualMachineImportModel } from '../../models';
 import { getDeletetionTimestamp, getName, getNamespace, getOwnerReferences } from '../../selectors';
@@ -15,7 +15,8 @@ import {
   getStatusConditionOfType,
   getStatusPhase,
 } from '../../selectors/selectors';
-import { findConversionPod, isVMCreated, isVMExpectedRunning } from '../../selectors/vm';
+import { findConversionPod } from '../../selectors/vm/combined';
+import { isVMCreated, isVMExpectedRunning } from '../../selectors/vm/selectors';
 import {
   findVMIMigration,
   getMigrationStatusPhase,
@@ -204,7 +205,7 @@ const isBeingImported = (
   };
 };
 
-const isVMError = (vm: VMKind): VMStatusBundle => {
+export const isVMError = (vm: VMKind): VMStatusBundle => {
   const vmFailureCond = getStatusConditionOfType(vm, 'Failure');
   if (vmFailureCond) {
     return {
@@ -236,8 +237,18 @@ const isBeingStopped = (vm: VMKind, vmi: VMIKind): VMStatusBundle => {
   return null;
 };
 
+export const isVMProcessing = (vm: VMKind, vmi?: VMIKind) => {
+  return (
+    vm?.status?.printableStatus === VMPrintableStatusSimpleLabel.Starting ||
+    vm?.status?.printableStatus === VMPrintableStatusSimpleLabel.Stopping ||
+    vm?.status?.printableStatus === VMPrintableStatusSimpleLabel.Terminating ||
+    !!isBeingStopped(vm, vmi) ||
+    !!isDeleting(vm, vmi)
+  );
+};
+
 const isOff = (vm: VMKind, vmi: VMIKind): VMStatusBundle => {
-  return vm && !isVMExpectedRunning(vm, vmi) ? { status: VMStatus.OFF } : null;
+  return vm && !isVMExpectedRunning(vm, vmi) ? { status: VMStatus.STOPPED } : null;
 };
 
 const isError = (vm: VMKind, vmi: VMIKind, launcherPod: PodKind): VMStatusBundle => {
@@ -337,6 +348,40 @@ export const getVMStatus = ({
       message: VMI_WAITING_MESSAGE,
     }) ||
     (getStatusPhase(vmi) === VMIPhase.Failed && { status: VMStatus.VMI_ERROR }) || {
+      status: VMStatus.UNKNOWN,
+    }
+  );
+};
+
+export const getVMConditionsStatus = ({
+  vm,
+  vmi,
+  pods,
+  migrations,
+  pvcs,
+  dataVolumes,
+}: {
+  vm?: VMKind;
+  vmi?: VMIKind;
+  pods?: PodKind[];
+  migrations?: K8sResourceKind[];
+  pvcs?: PersistentVolumeClaimKind[];
+  dataVolumes?: V1alpha1DataVolume[];
+}): VMStatusBundle => {
+  const launcherPod = findVMIPod(vmi, pods);
+
+  return (
+    isOff(vm, vmi) ||
+    isVMError(vm) ||
+    isError(vm, vmi, launcherPod) ||
+    isBeingImported(vm, pods, pvcs, dataVolumes) ||
+    isWaitingForVMI(vm, vmi) ||
+    (getStatusPhase(vmi) === VMIPhase.Pending && {
+      status: VMStatus.VMI_WAITING,
+      message: VMI_WAITING_MESSAGE,
+    }) ||
+    (getStatusPhase(vmi) === VMIPhase.Failed && { status: VMStatus.VMI_ERROR }) ||
+    isBeingMigrated(vm, vmi, migrations) || {
       status: VMStatus.UNKNOWN,
     }
   );

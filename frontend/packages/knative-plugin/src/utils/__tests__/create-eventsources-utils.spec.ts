@@ -22,6 +22,7 @@ import {
   sanitizeSourceToForm,
   isSecretKeyRefPresent,
   getKafkaSourceResource,
+  formDescriptorData,
 } from '../create-eventsources-utils';
 import { getDefaultEventingData, Kafkas } from './knative-serving-data';
 
@@ -315,9 +316,9 @@ describe('sanitizeSourceToForm always returns valid Event Source', () => {
   });
 
   it('expect getKafkaSourceResource to return sasl and tls with secrets if enabled and present', () => {
-    const KafkaSourceData = getDefaultEventingData(EventSources.KafkaSource);
-    KafkaSourceData.formData.data[EventSources.KafkaSource] = {
-      ...KafkaSourceData.formData.data[EventSources.KafkaSource],
+    const { formData: KafkaSourceFormData } = getDefaultEventingData(EventSources.KafkaSource);
+    KafkaSourceFormData.data[EventSources.KafkaSource] = {
+      ...KafkaSourceFormData.data[EventSources.KafkaSource],
       bootstrapServers: ['server1', 'server2'],
       topics: ['topic1'],
       consumerGroup: 'knative-group',
@@ -339,7 +340,7 @@ describe('sanitizeSourceToForm always returns valid Event Source', () => {
       spec: {
         net: { sasl, tls },
       },
-    } = getKafkaSourceResource(KafkaSourceData);
+    } = getKafkaSourceResource(KafkaSourceFormData);
     expect(sasl.enable).toBe(true);
     expect(sasl.user).toEqual({
       secretKeyRef: { name: 'username', key: 'userkey' },
@@ -348,9 +349,9 @@ describe('sanitizeSourceToForm always returns valid Event Source', () => {
   });
 
   it('expect getKafkaSourceResource to return sasl and tls without secrets if not enabled', () => {
-    const KafkaSourceData = getDefaultEventingData(EventSources.KafkaSource);
-    KafkaSourceData.formData.data[EventSources.KafkaSource] = {
-      ...KafkaSourceData.formData.data[EventSources.KafkaSource],
+    const { formData: KafkaSourceFormData } = getDefaultEventingData(EventSources.KafkaSource);
+    KafkaSourceFormData.data[EventSources.KafkaSource] = {
+      ...KafkaSourceFormData.data[EventSources.KafkaSource],
       bootstrapServers: ['server1', 'server2'],
       topics: ['topic1'],
       consumerGroup: 'knative-group',
@@ -372,10 +373,194 @@ describe('sanitizeSourceToForm always returns valid Event Source', () => {
       spec: {
         net: { sasl, tls },
       },
-    } = getKafkaSourceResource(KafkaSourceData);
+    } = getKafkaSourceResource(KafkaSourceFormData);
     expect(sasl.enable).toBeUndefined();
     expect(sasl).toEqual({ user: {}, password: {} });
     expect(tls.enable).toBeUndefined();
     expect(tls).toEqual({ caCert: {}, cert: {}, key: {} });
+  });
+});
+
+describe('form descriptors form json schema for kamelets', () => {
+  it('should return formDescriptorData for provided JsonSchema with string, integer, boolean', () => {
+    const properties = {
+      accessKey: {
+        description: 'The access key obtained from AWS',
+        format: 'password',
+        title: 'Access Key',
+        type: 'string',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:password'],
+      },
+      paritions: {
+        description: 'The number of partitions',
+        title: 'Partitions',
+        type: 'integer',
+      },
+      source: {
+        description: 'Enable source',
+        title: 'Source',
+        type: 'boolean',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:booleanSwitch'],
+      },
+    };
+    expect(formDescriptorData(properties)).toEqual([
+      {
+        description: 'The access key obtained from AWS',
+        displayName: 'Access Key',
+        path: 'accessKey',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:password'],
+      },
+      {
+        description: 'The number of partitions',
+        displayName: 'Partitions',
+        path: 'paritions',
+      },
+      {
+        description: 'Enable source',
+        displayName: 'Source',
+        path: 'source',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:booleanSwitch'],
+      },
+    ]);
+  });
+
+  it('should return formDescriptorData for provided JsonSchema with type object', () => {
+    const properties = {
+      accessKey: {
+        description: 'The access key obtained from AWS',
+        format: 'password',
+        title: 'Access Key',
+        type: 'string',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:password'],
+      },
+      paritionsData: {
+        description: 'The Partitions Data',
+        title: 'Partitions Data',
+        type: 'object',
+        properties: {
+          paritions: {
+            description: 'The number of partitions',
+            title: 'Partitions',
+            type: 'integer',
+          },
+          source: {
+            description: 'Enable source',
+            title: 'Source',
+            type: 'boolean',
+            'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:booleanSwitch'],
+          },
+        },
+      },
+    };
+    expect(formDescriptorData(properties)).toEqual([
+      {
+        description: 'The access key obtained from AWS',
+        displayName: 'Access Key',
+        path: 'accessKey',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:password'],
+      },
+      {
+        description: 'The number of partitions',
+        displayName: 'Partitions',
+        path: 'paritionsData.paritions',
+      },
+      {
+        description: 'Enable source',
+        displayName: 'Source',
+        path: 'paritionsData.source',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:booleanSwitch'],
+      },
+    ]);
+  });
+
+  it('should return formDescriptorData for provided JsonSchema with type array of object', () => {
+    const properties = {
+      accessKey: {
+        description: 'The access key obtained from AWS',
+        format: 'password',
+        title: 'Access Key',
+        type: 'string',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:password'],
+      },
+      paritionsData: {
+        description: 'The Partitions Data',
+        title: 'Partitions Data',
+        type: 'array',
+        items: {
+          title: 'Partition Object',
+          description: 'The Partition Object',
+          type: 'object',
+          properties: {
+            paritions: {
+              description: 'The number of partitions',
+              title: 'Partitions',
+              type: 'integer',
+            },
+            source: {
+              description: 'Enable source',
+              title: 'Source',
+              type: 'boolean',
+              'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:booleanSwitch'],
+            },
+          },
+        },
+      },
+    };
+    expect(formDescriptorData(properties)).toEqual([
+      {
+        description: 'The access key obtained from AWS',
+        displayName: 'Access Key',
+        path: 'accessKey',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:password'],
+      },
+      {
+        description: 'The number of partitions',
+        displayName: 'Partitions',
+        path: 'paritionsData[0].paritions',
+      },
+      {
+        description: 'Enable source',
+        displayName: 'Source',
+        path: 'paritionsData[0].source',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:booleanSwitch'],
+      },
+    ]);
+  });
+
+  it('should return formDescriptorData for provided JsonSchema with type array', () => {
+    const properties = {
+      accessKey: {
+        description: 'The access key obtained from AWS',
+        format: 'password',
+        title: 'Access Key',
+        type: 'string',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:password'],
+      },
+      paritionsData: {
+        description: 'The Partition Data',
+        title: 'Partition Data',
+        type: 'array',
+        items: {
+          description: 'Enable source',
+          title: 'Source',
+          type: 'boolean',
+          'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:booleanSwitch'],
+        },
+      },
+    };
+    expect(formDescriptorData(properties)).toEqual([
+      {
+        description: 'The access key obtained from AWS',
+        displayName: 'Access Key',
+        path: 'accessKey',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:password'],
+      },
+      {
+        description: 'Enable source',
+        displayName: 'Source',
+        path: 'paritionsData[0]',
+        'x-descriptors': ['urn:alm:descriptor:com.tectonic.ui:booleanSwitch'],
+      },
+    ]);
   });
 });

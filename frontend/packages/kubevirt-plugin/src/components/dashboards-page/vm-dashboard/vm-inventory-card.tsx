@@ -1,12 +1,10 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
 import { DashboardItemProps } from '@console/internal/components/dashboard/with-dashboard-resources';
 import { resourcePath } from '@console/internal/components/utils';
-import {
-  useK8sWatchResource,
-  WatchK8sResource,
-} from '@console/internal/components/utils/k8s-watch-hook';
+import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
 import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
 import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
@@ -22,7 +20,7 @@ import { VirtualMachineSnapshotModel } from '../../../models';
 import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
 import { getName, getNamespace } from '../../../selectors';
 import { getVmSnapshotVmName } from '../../../selectors/snapshot/snapshot';
-import { getDisks, getNetworks } from '../../../selectors/vm';
+import { getDisks, getNetworks } from '../../../selectors/vm/selectors';
 import { getVMLikeModel } from '../../../selectors/vm/vmlike';
 import { getVMIDisks, getVMINetworks } from '../../../selectors/vmi';
 import { VMSnapshot } from '../../../types';

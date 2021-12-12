@@ -1,17 +1,38 @@
-import * as _ from 'lodash-es';
 import * as React from 'react';
 import * as classNames from 'classnames';
 import { History, Location } from 'history';
-import { useTranslation } from 'react-i18next';
-import { Route, Switch, Link, withRouter, match, matchPath } from 'react-router-dom';
-
-import { EmptyBox, LoadingBox, StatusBox } from './status-box';
+import * as _ from 'lodash-es';
+/* eslint-disable import/named */
+import { useTranslation, withTranslation, WithTranslation } from 'react-i18next';
+import { TFunction } from 'i18next';
+import {
+  Route,
+  Switch,
+  Link,
+  withRouter,
+  match as Match,
+  matchPath,
+  RouteComponentProps,
+} from 'react-router-dom';
+import {
+  useResolvedExtensions,
+  HorizontalNavTab as DynamicHorizontalNavTab,
+  isHorizontalNavTab as DynamicIsHorizontalNavTab,
+  ExtensionK8sGroupModel,
+} from '@console/dynamic-plugin-sdk';
+import { ErrorBoundary } from '@console/shared/src/components/error/error-boundary';
+import { K8sResourceKind, K8sResourceCommon } from '../../module/k8s';
+import { referenceForModel, referenceFor, referenceForExtensionModel } from '../../module/k8s/k8s';
+import { ErrorBoundaryFallback } from '../error';
 import { PodsPage } from '../pod';
 import { AsyncComponent } from './async';
-import { K8sResourceKind, K8sResourceCommon } from '../../module/k8s';
-import { referenceForModel, referenceFor } from '../../module/k8s/k8s';
-import { useExtensions, HorizontalNavTab, isHorizontalNavTab } from '@console/plugin-sdk';
 import { ResourceMetricsDashboard } from './resource-metrics';
+import { EmptyBox, LoadingBox, StatusBox } from './status-box';
+import {
+  HorizontalNavProps as HorizontalNavFacadeProps,
+  NavPage,
+} from '@console/dynamic-plugin-sdk/src/extensions/console-types';
+import { useExtensions, HorizontalNavTab, isHorizontalNavTab } from '@console/plugin-sdk/src';
 
 const editYamlComponent = (props) => (
   <AsyncComponent loader={() => import('../edit-yaml').then((c) => c.EditYAML)} obj={props.obj} />
@@ -24,15 +45,17 @@ export const viewYamlComponent = (props) => (
   />
 );
 
-export class PodsComponent extends React.PureComponent<PodsComponentProps> {
+class PodsComponentWithTranslation extends React.PureComponent<
+  PodsComponentProps & WithTranslation
+> {
   render() {
     const {
       metadata: { namespace },
       spec: { selector },
     } = this.props.obj;
-    const { customData } = this.props;
+    const { showNodes, t } = this.props;
     if (_.isEmpty(selector)) {
-      return <EmptyBox label="Pods" />;
+      return <EmptyBox label={t('public~Pods')} />;
     }
 
     // Hide the create button to avoid confusion when showing pods for an object.
@@ -44,21 +67,13 @@ export class PodsComponent extends React.PureComponent<PodsComponentProps> {
         namespace={namespace}
         selector={selector}
         canCreate={false}
-        customData={customData}
+        showNodes={showNodes}
       />
     );
   }
 }
 
-export type Page = {
-  href?: string;
-  path?: string;
-  name?: string;
-  nameKey?: string;
-  component?: React.ComponentType<PageComponentProps>;
-  badge?: React.ReactNode;
-  pageData?: any;
-};
+export const PodsComponent = withTranslation()(PodsComponentWithTranslation);
 
 type NavFactory = { [name: string]: (c?: React.ComponentType<any>) => Page };
 export const navFactory: NavFactory = {
@@ -187,7 +202,7 @@ export const NavBar = withRouter<NavBarProps>(({ pages, baseURL, basePath }) => 
           'co-m-horizontal-nav-item--active': matchURL?.isExact,
         });
         return (
-          <li className={klass} key={nameKey || name}>
+          <li className={klass} key={href}>
             <Link
               to={`${baseURL.replace(/\/$/, '')}/${href}`}
               data-test-id={`horizontal-link-${nameKey || name}`}
@@ -255,6 +270,9 @@ export const HorizontalNav = React.memo((props: HorizontalNavProps) => {
   );
 
   const objReference = props.obj?.data ? referenceFor(props.obj.data) : '';
+  const [dynamicNavTabExtensions, navTabExtentionsResolved] = useResolvedExtensions<
+    DynamicHorizontalNavTab
+  >(DynamicIsHorizontalNavTab);
   const navTabExtensions = useExtensions<HorizontalNavTab>(isHorizontalNavTab);
 
   const pluginPages = React.useMemo(
@@ -270,19 +288,42 @@ export const HorizontalNav = React.memo((props: HorizontalNavProps) => {
     [navTabExtensions, objReference],
   );
 
-  const pages = (props.pages || props.pagesFor(props.obj?.data)).concat(pluginPages);
+  const dynamicPluginPages = React.useMemo(
+    () =>
+      navTabExtentionsResolved
+        ? dynamicNavTabExtensions
+            .filter(
+              (tab) =>
+                referenceForExtensionModel(tab.properties.model as ExtensionK8sGroupModel) ===
+                objReference,
+            )
+            .map((tab) => ({
+              ...tab.properties.page,
+              component: tab.properties.component,
+            }))
+        : [],
+    [dynamicNavTabExtensions, navTabExtentionsResolved, objReference],
+  );
+
+  const pages: Page[] = [
+    ...(props.pages || props.pagesFor(props.obj?.data)),
+    ...pluginPages,
+    ...dynamicPluginPages,
+  ];
 
   const routes = pages.map((p) => {
-    const path = `${_.trimEnd(props.match.path, '/')}/${p.path || p.href}`;
-    const render = (params) => {
+const path = `${_.trimEnd(props.match.path, '/')}/${p.path || p.href}`;
+    const render = (params: RouteComponentProps) => {
       return (
-        <p.component
-          {...componentProps}
-          {...extraResources}
-          {...p.pageData}
-          params={params}
-          customData={props.customData}
-        />
+        <ErrorBoundary FallbackComponent={ErrorBoundaryFallback}>
+          <p.component
+            {...params}
+            {...componentProps}
+            {...extraResources}
+            {...p.pageData}
+            customData={props.customData}
+          />
+        </ErrorBoundary>
       );
     };
     return <Route path={path} exact key={p.nameKey || p.name} render={render} />;
@@ -300,32 +341,22 @@ export const HorizontalNav = React.memo((props: HorizontalNavProps) => {
   );
 }, _.isEqual);
 
+/*
+ *Component consumed by the dynamic plugin SDK
+ * Changes to the underlying component has to support props used in this facade
+ */
+export const HorizontalNavFacade = withRouter<HorizontalNavFacadeProps & RouteComponentProps>(
+  ({ resource, pages, match }) => {
+    const obj = { data: resource, loaded: true };
+
+    return <HorizontalNav obj={obj} pages={pages} match={match} noStatusBox />;
+  },
+);
+
 export type PodsComponentProps = {
   obj: K8sResourceKind;
-  customData?: any;
-};
-
-export type NavBarProps = {
-  pages: Page[];
-  baseURL: string;
-  basePath: string;
-  history: History;
-  location: Location<any>;
-  match: match<any>;
-};
-
-export type HorizontalNavProps = {
-  className?: string;
-  obj?: { loaded: boolean; data: K8sResourceKind };
-  label?: string;
-  pages: Page[];
-  pagesFor?: (obj: K8sResourceKind) => Page[];
-  match: any;
-  resourceKeys?: string[];
-  hideNav?: boolean;
-  EmptyMsg?: React.ComponentType<any>;
-  noStatusBox?: boolean;
-  customData?: any;
+  showNodes?: boolean;
+  t: TFunction;
 };
 
 export type PageComponentProps<R extends K8sResourceCommon = K8sResourceKind> = {
@@ -339,4 +370,36 @@ export type PageComponentProps<R extends K8sResourceCommon = K8sResourceKind> = 
   fieldSelector?: string;
 };
 
+export type Page<D = any> = Partial<Omit<NavPage, 'component'>> & {
+  component?: React.ComponentType<PageComponentProps & D>;
+  badge?: React.ReactNode;
+  pageData?: D;
+  nameKey?: string;
+};
+
+export type NavBarProps = {
+  pages: Page[];
+  baseURL: string;
+  basePath: string;
+  history: History;
+  location: Location<any>;
+  match: Match<any>;
+};
+
+export type HorizontalNavProps = Omit<HorizontalNavFacadeProps, 'pages' | 'resource'> & {
+  /* The facade support a limited set of properties for pages */
+  match: Match<any>;
+  className?: string;
+  pages: Page[];
+  label?: string;
+  obj?: { data: K8sResourceCommon; loaded: boolean };
+  pagesFor?: (obj: K8sResourceKind) => Page[];
+  resourceKeys?: string[];
+  hideNav?: boolean;
+  EmptyMsg?: React.ComponentType<any>;
+  customData?: any;
+  noStatusBox?: boolean;
+};
+
 HorizontalNav.displayName = 'HorizontalNav';
+HorizontalNavFacade.displayName = 'HorizontalNavFacade';

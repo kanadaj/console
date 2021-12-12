@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Button, Level, LevelItem, Stack, StackItem } from '@patternfly/react-core';
 import { StarIcon } from '@patternfly/react-icons';
 import { useTranslation } from 'react-i18next';
-import { RowFunction, TableData, TableRow } from '@console/internal/components/factory';
+import { RowFunctionArgs, TableData } from '@console/internal/components/factory';
 import {
   FirehoseResult,
   history,
@@ -14,6 +14,7 @@ import { NamespaceModel } from '@console/internal/models';
 import { PersistentVolumeClaimKind, PodKind, TemplateKind } from '@console/internal/module/k8s';
 import { PendingStatus } from '@console/shared';
 import { SuccessStatus } from '@console/shared/src/components/status/statuses';
+import { VIRTUALIZATION_BASE_URL } from '../../../constants/url-params';
 import { getTemplateProvider } from '../../../selectors/vm-template/basic';
 import { isVMIRunning } from '../../../selectors/vmi';
 import { VMIKind, VMKind } from '../../../types';
@@ -26,7 +27,6 @@ import CustomizeVMTStatus from './CustomizeVMTStatus';
 import RowActions from './RowActions';
 import { VMTemplateRowProps } from './types';
 import { tableColumnClasses } from './utils';
-
 import './vm-template-table.scss';
 
 type VMCustomizeStatusProps = {
@@ -75,7 +75,7 @@ const VMCustomizeStatus: React.FC<VMCustomizeStatusProps> = ({
                   const params = new URLSearchParams();
                   params.append('vm', vm.metadata.name);
                   params.append('vmNs', vm.metadata.namespace);
-                  history.push(`/virtualization/customize-source?${params.toString()}`);
+                  history.push(`/${VIRTUALIZATION_BASE_URL}/customize-source?${params.toString()}`);
                 }}
               >
                 {t('kubevirt-plugin~Launch console')}
@@ -104,24 +104,15 @@ const VMCustomizeStatus: React.FC<VMCustomizeStatusProps> = ({
   );
 };
 
-const VMCustomizeRow: RowFunction<{ vm: VMKind; template: TemplateKind }, VMTemplateRowProps> = ({
-  obj: { vm, template },
-  customData: { namespace, vmis, pvcs, dataVolumes, pods },
-  index,
-  key,
-  style,
-}) => {
+const VMCustomizeRow: React.FC<RowFunctionArgs<
+  { vm: VMKind; template: TemplateKind },
+  VMTemplateRowProps
+>> = ({ obj: { vm, template }, customData: { namespace, vmis, pvcs, dataVolumes, pods } }) => {
   const { t } = useTranslation();
   const dimensify = dimensifyRow(tableColumnClasses(!namespace));
 
   return (
-    <TableRow
-      className="kv-vm-template__row"
-      id={vm.metadata.uid}
-      index={index}
-      trKey={key}
-      style={style}
-    >
+    <>
       <TableData className={dimensify()}>
         <Button
           className={'kv-pin-customize-btn'}
@@ -155,7 +146,7 @@ const VMCustomizeRow: RowFunction<{ vm: VMKind; template: TemplateKind }, VMTemp
           id={`kebab-for-${vm.metadata.uid}`}
         />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 

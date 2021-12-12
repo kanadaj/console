@@ -96,7 +96,7 @@ export const getLifecycleHookFormData = (lch: any): LifecycleHookFormData => {
 };
 
 export const getStrategyData = (
-  type: string,
+  type: DeploymentStrategyType,
   strategy: any,
   resName: string,
   resNamespace: string,
@@ -168,10 +168,10 @@ export const getStrategyData = (
 
 export const getStrategy = (
   deployment: K8sResourceKind,
-  resourceType: string,
+  resourceType: Resources,
 ): DeploymentStrategy => {
   const { strategy } = deployment.spec ?? {};
-  let type: string;
+  let type: DeploymentStrategyType;
 
   if (resourceType === Resources.OpenShift) {
     type = strategy?.type ?? DeploymentStrategyType.rollingParams;
@@ -205,7 +205,7 @@ export const getStrategy = (
 
 export const getTriggersAndImageStreamValues = (
   deployment: K8sResourceKind,
-  resourceType: string,
+  resourceType: Resources,
 ): TriggersAndImageStreamFormData => {
   let imageName: string;
   let imageTrigger;
@@ -248,6 +248,9 @@ export const getTriggersAndImageStreamValues = (
         tag: imageName[1] ?? '',
         namespace: imageTrigger?.imageChangeParams.from.namespace ?? deployment.metadata.namespace,
       },
+      project: {
+        name: deployment.metadata.namespace,
+      },
     };
   }
 
@@ -266,6 +269,9 @@ export const getTriggersAndImageStreamValues = (
       tag: imageName[1] ?? '',
       namespace: imageTrigger?.from?.namespace ?? deployment.metadata.namespace,
     },
+    project: {
+      name: deployment.metadata.namespace,
+    },
   };
 };
 
@@ -275,9 +281,6 @@ export const convertDeploymentToEditForm = (
   const resourceType = getResourcesType(deployment);
   return {
     name: deployment.metadata.name,
-    project: {
-      name: deployment.metadata.namespace,
-    },
     resourceVersion: deployment.metadata.resourceVersion,
     deploymentStrategy: getStrategy(deployment, resourceType),
     containers: deployment.spec.template?.spec?.containers ?? [],
@@ -357,6 +360,7 @@ export const getUpdatedStrategy = (strategy: DeploymentStrategy, resourceType: s
     'recreateParams',
     'customParams',
     'imageStreamData',
+    'rollingUpdate',
   ]);
   switch (type) {
     case DeploymentStrategyType.recreateParams: {

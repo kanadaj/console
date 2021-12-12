@@ -4,11 +4,22 @@ import { guidedTour } from '@console/cypress-integration-tests/views/guided-tour
 import { modal } from '@console/cypress-integration-tests/views/modal';
 import { nav } from '@console/cypress-integration-tests/views/nav';
 import { switchPerspective, devNavigationMenu, adminNavigationMenu } from '../../constants';
-import { perspective, projectNameSpace, navigateTo } from '../../pages';
+import { perspective, projectNameSpace, navigateTo, app } from '../../pages';
+
+Given('user has logged in as a basic user', () => {
+  cy.logout();
+  const idp = Cypress.env('BRIDGE_HTPASSWD_IDP') || 'test';
+  const username = Cypress.env('BRIDGE_HTPASSWD_USERNAME') || 'test';
+  const password = Cypress.env('BRIDGE_HTPASSWD_PASSWORD') || 'test';
+  cy.login(idp, username, password);
+  app.waitForLoad();
+  guidedTour.close();
+});
 
 Given('user is at developer perspective', () => {
   perspective.switchTo(switchPerspective.Developer);
-  cy.testA11y('Developer perspective with guide tour modal');
+  // Due to bug ODC-6231
+  // cy.testA11y('Developer perspective with guide tour modal');
   guidedTour.close();
   nav.sidenav.switcher.shouldHaveText(switchPerspective.Developer);
   // Commenting below line, because it is executing on every test scenario - we will remove this in future releases
@@ -59,7 +70,6 @@ When('user clicks create button', () => {
 
 Given('user has selected namespace {string}', (projectName: string) => {
   projectNameSpace.selectProject(projectName);
-  cy.log(`User has selected namespace ${projectName}`);
 });
 
 When('user clicks on {string} link', (buttonName: string) => {

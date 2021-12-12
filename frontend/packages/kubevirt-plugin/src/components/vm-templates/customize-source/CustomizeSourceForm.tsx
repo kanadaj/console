@@ -29,7 +29,6 @@ import {
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { PersistentVolumeClaimModel, TemplateModel } from '@console/internal/models';
 import { PersistentVolumeClaimKind, TemplateKind } from '@console/internal/module/k8s';
-import { VMKind } from '@console/kubevirt-plugin/src/types';
 import {
   TEMPLATE_PROVIDER_ANNOTATION,
   TEMPLATE_SUPPORT_LEVEL,
@@ -38,20 +37,24 @@ import {
   TEMPLATE_TYPE_VM,
   VM_CUSTOMIZE_LABEL,
 } from '../../../constants';
+import { VIRTUALIZATION_BASE_URL } from '../../../constants/url-params';
 import { TemplateSupport } from '../../../constants/vm-templates/support';
 import { TEMPLATE_CUSTOMIZED_ANNOTATION } from '../../../constants/vm/constants';
 import { useBaseImages } from '../../../hooks/use-base-images';
+import useV2VConfigMap from '../../../hooks/use-v2v-config-map';
 import { createVMForCustomization } from '../../../k8s/requests/vmtemplate/customize';
 import { CloudInitDataHelper } from '../../../k8s/wrapper/vm/cloud-init-data-helper';
 import { VMTemplateWrapper } from '../../../k8s/wrapper/vm/vm-template-wrapper';
 import { VirtualMachineModel } from '../../../models/index';
 import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
 import { getAnnotation } from '../../../selectors/selectors';
-import { getCPU, vCPUCount } from '../../../selectors/vm';
 import { getTemplateFlavorData, getTemplateMemory } from '../../../selectors/vm-template/advanced';
 import { selectVM } from '../../../selectors/vm-template/basic';
+import { vCPUCount } from '../../../selectors/vm/cpu';
+import { getCPU } from '../../../selectors/vm/selectors';
 import { getTemplateSourceStatus } from '../../../statuses/template/template-source-status';
 import { isTemplateSourceError } from '../../../statuses/template/types';
+import { VMKind } from '../../../types';
 import { validateVmLikeEntityName } from '../../../utils/validations';
 import { FormPFSelect } from '../../form/form-pf-select';
 import { FormRow } from '../../form/form-row';
@@ -59,7 +62,6 @@ import { ProjectDropdown } from '../../form/project-dropdown';
 import { preventDefault } from '../../form/utils';
 import { filterTemplates } from '../utils';
 import { FORM_ACTION_TYPE, formReducer, initFormState } from './customize-source-form-reducer';
-
 import './customize-source.scss';
 
 const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
@@ -74,6 +76,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
     { name, namespace, cloudInit, injectCloudInit, selectedTemplate, size, provider, support },
     formDispatch,
   ] = React.useReducer(formReducer, initFormState(urlParams.get('ns')));
+  const [V2VConfigMapImages, V2VConfigMapImagesLoaded] = useV2VConfigMap();
 
   const [templates, loaded, loadError] = useK8sWatchResource<TemplateKind[]>({
     kind: TemplateModel.kind,
@@ -224,11 +227,12 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
         template?.isCommon ? baseImages : pvcs,
         provider,
         support,
+        V2VConfigMapImages,
       );
       const vmParams = new URLSearchParams();
       vmParams.append('vm', vm.metadata.name);
       vmParams.append('vmNs', namespace);
-      history.push(`/virtualization/customize-source?${vmParams.toString()}`);
+      history.push(`/${VIRTUALIZATION_BASE_URL}/customize-source?${vmParams.toString()}`);
     } catch (err) {
       setCreatingVM(false);
       setVMError(err.message);
@@ -256,7 +260,13 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
         <Divider component="div" />
         <GridItem span={6} className="kv-customize-source">
           <StatusBox
-            loaded={loaded && imagesLoaded && pvcsLoaded && loadvmWithCutomBootSource}
+            loaded={
+              loaded &&
+              imagesLoaded &&
+              pvcsLoaded &&
+              loadvmWithCutomBootSource &&
+              V2VConfigMapImagesLoaded
+            }
             loadError={loadError || error || pvcsError || vmWithCustomBootSourceError}
             data={selectedTemplate}
           >
@@ -423,6 +433,7 @@ const CustomizeSourceForm: React.FC<RouteComponentProps> = ({ location }) => {
                   <Checkbox
                     label="Inject cloud-init"
                     isChecked={injectCloudInit}
+                    data-checked-state={injectCloudInit}
                     onChange={(payload) =>
                       formDispatch({
                         type: FORM_ACTION_TYPE.INJECT_CLOUD_INIT,

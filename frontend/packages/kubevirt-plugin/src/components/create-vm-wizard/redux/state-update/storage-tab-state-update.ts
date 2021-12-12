@@ -1,4 +1,9 @@
-import { CLOUDINIT_DISK, LABEL_CDROM_SOURCE, ROOT_DISK_NAME } from '../../../../constants';
+import {
+  CLOUDINIT_DISK,
+  LABEL_CDROM_SOURCE,
+  ROOT_DISK_INSTALL_NAME,
+  ROOT_DISK_NAME,
+} from '../../../../constants';
 import { DiskBus } from '../../../../constants/vm/storage/disk-bus';
 import { DiskType } from '../../../../constants/vm/storage/disk-type';
 import { winToolsContainerNames } from '../../../../constants/vm/wintools';
@@ -12,8 +17,8 @@ import {
 } from '../../../../selectors/config-map/sc-defaults';
 import { getDataVolumeStorageClassName } from '../../../../selectors/dv/selectors';
 import { iGetRelevantTemplate } from '../../../../selectors/immutable/template/combined';
-import { getVolumeContainerImage } from '../../../../selectors/vm';
 import { isWindowsTemplate } from '../../../../selectors/vm-template/advanced';
+import { getVolumeContainerImage } from '../../../../selectors/vm/volume';
 import { isWinToolsImage } from '../../../../selectors/vm/winimage';
 import { V1alpha1DataVolume } from '../../../../types/api/V1alpha1DataVolume';
 import { toShallowJS } from '../../../../utils/immutable';
@@ -145,9 +150,10 @@ const windowsToolsUpdater = ({ id, prevState, dispatch, getState }: UpdateOption
     id,
     VMSettingsField.MOUNT_WINDOWS_GUEST_TOOLS,
   );
-  const windowsTools = getStorages(state, id).find(
-    (storage) => !!isWinToolsImage(getVolumeContainerImage(storage.volume)),
-  );
+  const windowsTools = getStorages(state, id).find((storage) => {
+    const volumeImage = getVolumeContainerImage(storage.volume);
+    return volumeImage && !!isWinToolsImage(volumeImage, getV2VConfigMap(state));
+  });
 
   if (mountWindowsGuestTools && !windowsTools) {
     dispatch(
@@ -313,7 +319,10 @@ const initialDefaultStorageClassUpdater = ({
   ) {
     return;
   }
-  const storageClassName = iGetVmSettingValue(state, id, VMSettingsField.DEFAULT_STORAGE_CLASS);
+
+  const storageClassName =
+    iGetCommonData(state, id, VMWizardProps.initialData)?.toJS()?.storageClass ||
+    iGetVmSettingValue(state, id, VMSettingsField.DEFAULT_STORAGE_CLASS);
 
   if (storageClassName) {
     const iProvisionSourceStorage = iGetProvisionSourceStorage(state, id);
@@ -388,8 +397,11 @@ const initialStorageWindowsUpdater = ({ id, prevState, dispatch, getState }: Upd
     }
     const cdRomDisk = new DiskWrapper(removableRootDisk?.disk, true)
       .setType(DiskType.CDROM, { bus: removableRootDisk?.disk?.disk?.bus })
+      .setName(ROOT_DISK_INSTALL_NAME)
       .asResource(true);
-
+    removableRootDisk.volume = new VolumeWrapper(removableRootDisk.volume)
+      .setName(ROOT_DISK_INSTALL_NAME)
+      .asResource();
     dispatch(vmWizardInternalActions[InternalActionType.RemoveStorage](id, removableRootDisk?.id));
     dispatch(
       vmWizardInternalActions[InternalActionType.UpdateStorage](id, {

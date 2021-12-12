@@ -481,7 +481,7 @@ export const IngressModel: K8sKind = {
   // t('public~Ingresses')
   labelPluralKey: 'public~Ingresses',
   apiGroup: 'networking.k8s.io',
-  apiVersion: 'v1beta1',
+  apiVersion: 'v1',
   plural: 'ingresses',
   abbr: 'I',
   namespaced: true,
@@ -720,6 +720,23 @@ export const ClusterResourceQuotaModel: K8sKind = {
   labelPlural: 'ClusterResourceQuotas',
   // t('public~ClusterResourceQuotas')
   labelPluralKey: 'public~ClusterResourceQuotas',
+  crd: true,
+};
+
+export const AppliedClusterResourceQuotaModel: K8sKind = {
+  label: 'AppliedClusterResourceQuota',
+  // t('public~AppliedClusterResourceQuota')
+  labelKey: 'public~AppliedClusterResourceQuota',
+  apiGroup: 'quota.openshift.io',
+  apiVersion: 'v1',
+  plural: 'appliedclusterresourcequotas',
+  abbr: 'ACRQ',
+  namespaced: true,
+  kind: 'AppliedClusterResourceQuota',
+  id: 'appliedclusterresourcequota',
+  labelPlural: 'AppliedClusterResourceQuotas',
+  // t('public~AppliedClusterResourceQuotas')
+  labelPluralKey: 'public~AppliedClusterResourceQuotas',
   crd: true,
 };
 
@@ -1102,7 +1119,7 @@ export const CSIDriverModel: K8sKind = {
   labelPlural: 'CSIDrivers',
   // t('public~CSIDrivers')
   labelPluralKey: 'public~CSIDrivers',
-  apiVersion: 'v1beta1',
+  apiVersion: 'v1',
   apiGroup: 'storage.k8s.io',
   plural: 'csidrivers',
   abbr: 'CSI',
@@ -1161,6 +1178,19 @@ export const InfrastructureModel: K8sKind = {
   namespaced: false,
   kind: 'Infrastructure',
   id: 'infrastructure',
+  crd: true,
+};
+
+export const NetworkOperatorConfigModel: K8sKind = {
+  label: 'Network',
+  labelPlural: 'Networks',
+  apiVersion: 'v1',
+  apiGroup: 'config.openshift.io',
+  plural: 'networks',
+  abbr: 'NO',
+  namespaced: false,
+  kind: 'Network',
+  id: 'network',
   crd: true,
 };
 

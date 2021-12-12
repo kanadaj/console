@@ -1,8 +1,7 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import * as _ from 'lodash';
 import { RouteComponentProps } from 'react-router';
-import { Title, Wizard } from '@patternfly/react-core';
+import { Title, Wizard, WizardStep } from '@patternfly/react-core';
 import {
   apiVersionForModel,
   k8sCreate,
@@ -13,6 +12,7 @@ import { history } from '@console/internal/components/utils/router';
 import { BreadCrumbs, resourcePathFromModel } from '@console/internal/components/utils';
 import { ClusterServiceVersionModel } from '@console/operator-lifecycle-manager';
 import { getName } from '@console/shared';
+import { useFlag } from '@console/shared/src/hooks/flag';
 import GeneralPage from './wizard-pages/general-page';
 import PlacementPolicyPage from './wizard-pages/placement-policy-page';
 import BackingStorePage from './wizard-pages/backingstore-page';
@@ -27,6 +27,7 @@ import { BucketClassType, NamespacePolicyType } from '../../constants/bucket-cla
 import { validateBucketClassName, validateDuration } from '../../utils/bucket-class';
 import { NooBaaBucketClassModel } from '../../models';
 import { PlacementPolicy } from '../../types';
+import { ODF_MODEL_FLAG, CEPH_STORAGE_NAMESPACE } from '../../constants';
 
 enum CreateStepsBC {
   GENERAL = 'GENERAL',
@@ -38,8 +39,9 @@ enum CreateStepsBC {
 const CreateBucketClass: React.FC<CreateBCProps> = ({ match }) => {
   const { t } = useTranslation();
   const [state, dispatch] = React.useReducer(reducer, initialState);
-  const { ns, appName } = match.params;
+  const { ns = CEPH_STORAGE_NAMESPACE, appName } = match.params;
   const [clusterServiceVersion, setClusterServiceVersion] = React.useState(null);
+  const isODF = useFlag(ODF_MODEL_FLAG);
 
   React.useEffect(() => {
     k8sGet(ClusterServiceVersionModel, appName, ns)
@@ -156,12 +158,15 @@ const CreateBucketClass: React.FC<CreateBCProps> = ({ match }) => {
     const promiseObj = k8sCreate(NooBaaBucketClassModel, payload);
     promiseObj
       .then((obj) => {
+        const resourcePath = `${referenceForModel(NooBaaBucketClassModel)}/${getName(obj)}`;
         dispatch({ type: 'setIsLoading', value: false });
-        history.push(
-          `/k8s/ns/${ns}/clusterserviceversions/${getName(
-            clusterServiceVersion,
-          )}/${referenceForModel(NooBaaBucketClassModel)}/${getName(obj)}`,
-        );
+        isODF
+          ? history.push(`/odf/resource/${resourcePath}`)
+          : history.push(
+              `/k8s/ns/${ns}/clusterserviceversions/${getName(
+                clusterServiceVersion,
+              )}/${resourcePath}`,
+            );
       })
       .catch((err) => {
         dispatch({ type: 'setIsLoading', value: false });
@@ -202,12 +207,31 @@ const CreateBucketClass: React.FC<CreateBCProps> = ({ match }) => {
     );
   };
 
-  const steps = [
+  const [currentStep, setCurrentStep] = React.useState(1);
+  const [stepsReached, setStepsReached] = React.useState(1);
+
+  const StepPositionMap = Object.entries(CreateStepsBC).reduce((acc, cur, index) => {
+    acc[cur[0]] = index + 1;
+    return acc;
+  }, {});
+
+  const canJumpToHelper = (that) => {
+    const currentId = StepPositionMap[that.id];
+    if (currentId === currentStep && !that.enableNext) {
+      setStepsReached(currentId);
+    }
+    return stepsReached >= currentId;
+  };
+
+  const steps: WizardStep[] = [
     {
       id: CreateStepsBC.GENERAL,
       name: t('ceph-storage-plugin~General'),
       component: <GeneralPage dispatch={dispatch} state={state} />,
       enableNext: validateBucketClassName(state.bucketClassName.trim()),
+      get canJumpTo() {
+        return canJumpToHelper(this);
+      },
     },
     {
       id: CreateStepsBC.PLACEMENT,
@@ -222,6 +246,9 @@ const CreateBucketClass: React.FC<CreateBCProps> = ({ match }) => {
         state.bucketClassType === BucketClassType.STANDARD
           ? !!state.tier1Policy
           : !!state.namespacePolicyType,
+      get canJumpTo() {
+        return canJumpToHelper(this);
+      },
     },
     {
       id: CreateStepsBC.RESOURCES,
@@ -236,6 +263,9 @@ const CreateBucketClass: React.FC<CreateBCProps> = ({ match }) => {
         state.bucketClassType === BucketClassType.STANDARD
           ? backingStoreNextConditions()
           : namespaceStoreNextConditions(),
+      get canJumpTo() {
+        return canJumpToHelper(this);
+      },
     },
     {
       id: CreateStepsBC.REVIEW,
@@ -243,30 +273,29 @@ const CreateBucketClass: React.FC<CreateBCProps> = ({ match }) => {
       component: <ReviewPage state={state} />,
       nextButtonText: t('ceph-storage-plugin~Create BucketClass'),
       enableNext: creationConditionsSatisfied(),
+      get canJumpTo() {
+        return canJumpToHelper(this);
+      },
     },
   ];
 
   return (
     <>
+      <div className="co-create-operand__breadcrumbs">
+        <BreadCrumbs
+          breadcrumbs={[
+            {
+              name: isODF ? 'OpenShift Data Foundation' : 'OpenShift Container Storage',
+              path: isODF ? '/odf' : resourcePathFromModel(ClusterServiceVersionModel, appName, ns),
+            },
+            {
+              name: t('ceph-storage-plugin~Create BucketClass'),
+              path: match.url,
+            },
+          ]}
+        />
+      </div>
       <div className="co-create-operand__header">
-        <div className="co-create-operand__header-buttons">
-          <BreadCrumbs
-            breadcrumbs={[
-              {
-                name: _.get(
-                  clusterServiceVersion,
-                  'spec.displayName',
-                  'Openshift Container Storage Operator',
-                ),
-                path: resourcePathFromModel(ClusterServiceVersionModel, appName, ns),
-              },
-              {
-                name: t('ceph-storage-plugin~Create BucketClass'),
-                path: match.url,
-              },
-            ]}
-          />
-        </div>
         <div className="nb-create-bc-header-title">
           <Title size="2xl" headingLevel="h1" className="nb-create-bc-header-title__main">
             {t('ceph-storage-plugin~Create new BucketClass')}
@@ -286,6 +315,19 @@ const CreateBucketClass: React.FC<CreateBCProps> = ({ match }) => {
           backButtonText={t('ceph-storage-plugin~Back')}
           onSave={finalStep}
           onClose={() => history.goBack()}
+          onNext={({ id }) => {
+            setCurrentStep(currentStep + 1);
+            const idIndexPlusOne = StepPositionMap[id];
+            const newStepHigherBound =
+              stepsReached < idIndexPlusOne ? idIndexPlusOne : stepsReached;
+            setStepsReached(newStepHigherBound);
+          }}
+          onBack={() => {
+            setCurrentStep(currentStep - 1);
+          }}
+          onGoToStep={(newStep) => {
+            setCurrentStep(StepPositionMap[newStep.id]);
+          }}
         />
       </div>
     </>

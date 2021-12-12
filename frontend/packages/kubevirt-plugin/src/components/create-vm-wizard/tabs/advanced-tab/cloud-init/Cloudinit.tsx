@@ -6,11 +6,12 @@ import { useTranslation } from 'react-i18next';
 // @ts-ignore: FIXME missing exports due to out-of-sync @types/react-redux version
 import { RootStateOrAny, useDispatch, useSelector } from 'react-redux';
 import useCloudinitValidations from '../../../../../hooks/use-cloudinit-validations';
+import useSSHKeys from '../../../../../hooks/use-ssh-keys';
 import {
   CloudInitDataFormKeys,
   CloudInitDataHelper,
 } from '../../../../../k8s/wrapper/vm/cloud-init-data-helper';
-import { iGetIn, toShallowJS } from '../../../../../utils/immutable';
+import { iGetIn } from '../../../../../utils/immutable';
 import FormWithEditor, {
   EditorPosition,
   FieldsMapper,
@@ -21,7 +22,6 @@ import { cloudinitFormChildren } from './CloudinitForm';
 import CloudinitFormOrYamlSelector from './CloudinitFormOrYamlSelector';
 import CloudInitInfoHelper from './CloudinitInfoHelper';
 import { onDataChanged } from './utils/cloudinit-utils';
-
 import './cloud-init.scss';
 
 const fieldsMapper: FieldsMapper = {
@@ -44,46 +44,76 @@ const Cloudinit: React.FC<CloudinitProps> = ({ wizardReduxID }) => {
   const { iCloudInitStorage } = useSelector((state: RootStateOrAny) => ({
     iCloudInitStorage: iGetCloudInitNoCloudStorage(state, wizardReduxID),
   }));
-
-  const [data, isBase64] = CloudInitDataHelper.getUserData(
-    toShallowJS(iGetIn(iCloudInitStorage, ['volume', 'cloudInitNoCloud'])),
+  const [cloudinitConfigUserData, isBase64] = React.useMemo(
+    () =>
+      CloudInitDataHelper.getUserData(
+        iGetIn(iCloudInitStorage, ['volume', 'cloudInitNoCloud'])?.toJS(),
+      ),
+    [iCloudInitStorage],
   );
-
-  const dataSSHKeys = React.useMemo(() => new CloudInitDataHelper({ userData: data }), [data]);
-
-  const authKeysData = React.useMemo(
-    () => dataSSHKeys.get(CloudInitDataFormKeys.SSH_AUTHORIZED_KEYS) || [],
-    [dataSSHKeys],
+  const cloudinitConfigDataHelper = React.useMemo(
+    () => new CloudInitDataHelper({ userData: cloudinitConfigUserData }),
+    [cloudinitConfigUserData],
   );
-
+  const { tempSSHKey } = useSSHKeys();
+  const { validationSchema, validationStatus, isValid } = useCloudinitValidations(wizardReduxID);
   const [yaml, setYaml] = React.useState<string>();
   const [yamlAsJS, setYamlAsJS] = React.useState<{ [key: string]: any }>();
   const [view, setView] = React.useState<ViewComponent>(ViewComponent.form);
   const [isYamlValid, setIsYamlValid] = React.useState<boolean>(true);
 
-  const [authKeys, setAuthKeys] = React.useState<string[]>(
-    isEmpty(authKeysData) ? [''] : authKeysData,
+  const setAuthKeys = React.useCallback(
+    (fn) =>
+      setYaml((data) => {
+        try {
+          const loadedYaml = yamlParser?.load(data);
+          const keys = fn instanceof Function ? fn(loadedYaml?.ssh_authorized_keys) : fn;
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          return yamlParser.dump({ ...loadedYaml, ssh_authorized_keys: keys });
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.log(e?.message);
+        }
+        return data;
+      }),
+    [setYaml],
   );
 
-  const { validationSchema, validationStatus, isValid } = useCloudinitValidations(wizardReduxID);
+  const authKeys = React.useMemo(() => yamlAsJS?.ssh_authorized_keys || [''], [yamlAsJS]);
 
   React.useEffect(() => {
-    data && !yaml && setYaml(data);
+    if (cloudinitConfigDataHelper && !yaml) {
+      if (tempSSHKey) {
+        cloudinitConfigDataHelper.set(CloudInitDataFormKeys.SSH_AUTHORIZED_KEYS, [tempSSHKey]);
+      }
+      setYaml(cloudinitConfigDataHelper.getUserData());
+    }
+  }, [cloudinitConfigDataHelper, tempSSHKey, yaml]);
+
+  React.useEffect(() => {
+    if (view === ViewComponent.editor) {
+      try {
+        const nonEmptyKeys = yamlAsJS?.ssh_authorized_keys?.filter((key: string) => !isEmpty(key));
+        const loadedYaml = yamlParser?.load(yaml);
+        if (!isEmpty(nonEmptyKeys)) {
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          loadedYaml.ssh_authorized_keys = nonEmptyKeys;
+        } else {
+          delete loadedYaml?.ssh_authorized_keys;
+        }
+        setYaml(yamlParser.dump(loadedYaml));
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.log(e?.message);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [view]);
 
   React.useEffect(() => {
-    const formValues = yamlAsJS?.ssh_authorized_keys;
-    formValues && !isEqual(formValues, authKeys) && setAuthKeys(formValues);
     validationSchema(yamlAsJS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yamlAsJS]);
-
-  React.useEffect(() => {
-    /* eslint-disable-next-line @typescript-eslint/camelcase */
-    !isEmpty(yamlAsJS) && setYaml(yamlParser.dump({ ...yamlAsJS, ssh_authorized_keys: authKeys }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authKeys]);
 
   React.useEffect(() => {
     yaml &&
@@ -95,10 +125,10 @@ const Cloudinit: React.FC<CloudinitProps> = ({ wizardReduxID }) => {
 
   const onChange = React.useCallback(
     (yamlData, yamlAsJSData) => {
-      setYaml(yamlData);
-      setYamlAsJS(yamlAsJSData);
+      yamlAsJSData && !isEqual(yamlAsJSData, yamlAsJS) && setYamlAsJS(yamlAsJSData);
+      yamlData && !isEqual(yamlData, yaml) && setYaml(yamlData);
     },
-    [setYaml, setYamlAsJS],
+    [yaml, yamlAsJS],
   );
 
   return (

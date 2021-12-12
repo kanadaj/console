@@ -7,12 +7,12 @@ import * as classNames from 'classnames';
 import * as _ from 'lodash-es';
 import { ActionGroup, Button } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
+import i18next from 'i18next';
 import CloseButton from '@console/shared/src/components/close-button';
 
 import store from '../../redux';
 import { ButtonBar } from '../utils/button-bar';
 import { history } from '../utils/router';
-import i18next from 'i18next';
 
 export const createModal: CreateModal = (getModalContainer) => {
   const modalContainer = document.getElementById('modal-container');
@@ -25,7 +25,7 @@ export const createModal: CreateModal = (getModalContainer) => {
       resolve();
     };
     Modal.setAppElement(document.getElementById('app-content'));
-    ReactDOM.render(getModalContainer(closeModal), modalContainer);
+    modalContainer && ReactDOM.render(getModalContainer(closeModal), modalContainer);
   });
   return { result };
 };
@@ -46,7 +46,7 @@ export const createModalLauncher: CreateModalLauncher = (Component) => (props) =
         <Router {...{ history, basename: window.SERVER_FLAGS.basePath }}>
           <Modal
             isOpen={true}
-            contentLabel="Modal"
+            contentLabel={i18next.t('public~Modal')}
             onRequestClose={_handleClose}
             className={classNames('modal-dialog', props.modalClassName)}
             overlayClassName="co-overlay"

@@ -1,5 +1,6 @@
 import { EdgeModel, NodeModel } from '@patternfly/react-topology';
 import { PipelineKind, TaskKind, PipelineRunKind, PipelineTask } from '../../../types';
+import { PipelineBuilderLoadingTask, TaskSearchCallback } from '../pipeline-builder/types';
 import { AddNodeDirection, NodeType } from './const';
 
 // Builder Callbacks
@@ -42,8 +43,11 @@ export type FinallyNodeData = {
 };
 export type BuilderFinallyNodeData = {
   task: FinallyNodeTask & {
-    finallyListTasks?: FinallyListTask[];
+    finallyInvalidListTasks: FinallyListTask[];
+    finallyLoadingTasks: PipelineBuilderLoadingTask[];
+    finallyListTasks: FinallyListTask[];
     addNewFinallyListNode?: () => void;
+    onTaskSearch: TaskSearchCallback;
   };
 };
 export type FinallyNodeModel = FinallyNodeData & {
@@ -51,7 +55,9 @@ export type FinallyNodeModel = FinallyNodeData & {
   pipelineRun?: PipelineRunKind;
   isFinallyTask: boolean;
 };
-
+export type LoadingNodeModel = PipelineRunAfterNodeModelData & {
+  isFinallyTask: boolean;
+};
 export type BuilderFinallyNodeModel = BuilderFinallyNodeData & {
   clusterTaskList: TaskKind[];
   namespaceTaskList: TaskKind[];
@@ -64,6 +70,7 @@ export type TaskListNodeModelData = PipelineRunAfterNodeModelData & {
   namespaceTaskList: TaskKind[];
   onNewTask: NewTaskNodeCallback;
   onRemoveTask: RemoveListTaskCallback | null;
+  onTaskSearch: TaskSearchCallback;
 };
 export type BuilderNodeModelData = PipelineRunAfterNodeModelData & {
   error?: string;
@@ -87,6 +94,7 @@ export type PipelineMixedNodeModel = PipelineNodeModel<PipelineRunAfterNodeModel
 export type PipelineTaskNodeModel = PipelineNodeModel<TaskNodeModelData>;
 export type PipelineBuilderTaskNodeModel = PipelineNodeModel<BuilderNodeModelData>;
 export type PipelineTaskListNodeModel = PipelineNodeModel<TaskListNodeModelData>;
+export type PipelineTaskLoadingNodeModel = PipelineNodeModel<LoadingNodeModel>;
 export type PipelineFinallyNodeModel = PipelineNodeModel<FinallyNodeModel>;
 export type PipelineBuilderFinallyNodeModel = PipelineNodeModel<BuilderFinallyNodeModel>;
 

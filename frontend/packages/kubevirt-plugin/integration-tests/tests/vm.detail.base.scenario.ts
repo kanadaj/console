@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { testName } from '@console/internal-integration-tests/protractor.conf';
 import { resourceTitle } from '@console/internal-integration-tests/views/crud.view';
-import { asyncForEach, createResource, deleteResource } from '@console/shared/src/test-utils/utils';
+import { asyncForEach, createResource, deleteResource } from '../utils/shared-utils';
 import * as vmView from '../views/virtualMachine.view';
 import { getVMManifest } from './mocks/mocks';
 import { VirtualMachine } from './models/virtualMachine';
@@ -54,7 +54,7 @@ describe('Kubevirt VM details tab', () => {
   it('ID(CNV-763) Check VM details when VM is off', async () => {
     const expectation = {
       name: vmName,
-      status: VM_STATUS.Off,
+      status: VM_STATUS.Stopped,
       description: testName,
       os: OperatingSystem.RHEL7,
       profile: Workload.DESKTOP.toLowerCase(),

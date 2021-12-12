@@ -78,7 +78,7 @@ When('user clicks From Dockerfile card on the Add page', () => {
   addPage.selectCardFromOptions(addOptions.DockerFile);
 });
 
-Given('user is on Import from Docker file page', () => {
+Given('user is on Import from Git form', () => {
   addPage.selectCardFromOptions(addOptions.DockerFile);
 });
 
@@ -215,4 +215,8 @@ When('user selects resource type as {string}', (resourceType: string) => {
 
 Then('user can see sidebar opens with Resources tab selected by default', () => {
   topologySidePane.verifySelectedTab('Resources');
+});
+
+When('user selects {string} pipeline from the pipeline dropdown menu', (pipelineName: string) => {
+  gitPage.selectPipeline(pipelineName);
 });

@@ -7,7 +7,6 @@ import {
   isGraph,
 } from '@patternfly/react-topology';
 import i18next from 'i18next';
-import { Action } from '@console/dynamic-plugin-sdk/src';
 import {
   history,
   KebabItem,
@@ -16,19 +15,10 @@ import {
   kebabOptionsToMenu,
   isKebabSubMenu,
 } from '@console/internal/components/utils';
-import {
-  GroupedMenuOption,
-  MenuOption,
-  MenuOptionType,
-  orderExtensionBasedOnInsertBeforeAndAfter,
-} from '@console/shared/src';
-import ActionMenuItem from '@console/shared/src/components/actions/menu/ActionMenuItem';
-import { getMenuOptionType } from '@console/shared/src/components/actions/menu/menu-utils';
-import { graphActions } from '../../../actions/graphActions';
-import { groupActions } from '../../../actions/groupActions';
+import { ActionServiceProvider } from '@console/shared';
+import { createContextMenuItems } from '../../../actions/contextMenuActions';
 import { workloadActions } from '../../../actions/workloadActions';
 import { TYPE_APPLICATION_GROUP } from '../../../const';
-import { TopologyApplicationObject } from '../../../topology-types';
 import { getResource, isOperatorBackedNode } from '../../../utils/topology-utils';
 
 export const isWorkloadRegroupable = (node: Node): boolean =>
@@ -55,43 +45,15 @@ export const createMenuItems = (actions: KebabMenuOption[]) =>
     ) : (
       <ContextMenuItem
         key={index} // eslint-disable-line react/no-array-index-key
-        component={<KebabItem option={option} onClick={() => onKebabOptionClick(option)} />}
+        /* wrap in Fragment as KebabItem is a Function Component: gives warning on adding ref prop */
+        component={
+          <>
+            <KebabItem option={option} onClick={() => onKebabOptionClick(option)} />{' '}
+          </>
+        }
       />
     ),
   );
-
-export const createContextMenuItems = (actions: MenuOption[]) => {
-  const sortedOptions = orderExtensionBasedOnInsertBeforeAndAfter(actions);
-  return sortedOptions.map((option: MenuOption) => {
-    const optionType = getMenuOptionType(option);
-    switch (optionType) {
-      case MenuOptionType.SUB_MENU:
-        return (
-          <ContextSubMenuItem label={option.label} key={option.id}>
-            {createContextMenuItems((option as GroupedMenuOption).children)}
-          </ContextSubMenuItem>
-        );
-      case MenuOptionType.GROUP_MENU:
-        return (
-          <>
-            <div className="pf-c-dropdown__group-title">{option.label}</div>
-            {createContextMenuItems((option as GroupedMenuOption).children)}
-          </>
-        );
-      default:
-        return (
-          <ContextMenuItem
-            key={option.id}
-            component={
-              <div className="pf-c-dropdown__menu-item">
-                <ActionMenuItem action={option as Action} />
-              </div>
-            }
-          />
-        );
-    }
-  });
-};
 
 export const workloadContextMenu = (element: Node) =>
   createMenuItems(
@@ -112,18 +74,20 @@ export const noRegroupWorkloadContextMenu = (element: Node) =>
     ),
   );
 
-export const groupContextMenu = (element: Node, connectorSource?: Node) => {
-  const applicationData: TopologyApplicationObject = {
-    id: element.getId(),
-    name: element.getLabel(),
-    resources: element.getData().groupResources,
-  };
+export const groupContextMenu = (element: Node, connectorSource?: Node) => [
+  <ActionServiceProvider
+    key="topology"
+    context={{ 'topology-context-actions': { element, connectorSource } }}
+  >
+    {({ options, loaded }) => loaded && createContextMenuItems(options)}
+  </ActionServiceProvider>,
+];
 
-  const graphData = element.getGraph().getData();
-  return createMenuItems(
-    kebabOptionsToMenu(groupActions(graphData, applicationData, connectorSource)),
-  );
-};
-
-export const graphContextMenu = (graph: Graph, connectorSource?: Node) =>
-  createMenuItems(kebabOptionsToMenu(graphActions(graph.getData(), connectorSource)));
+export const graphContextMenu = (graph: Graph, connectorSource?: Node) => [
+  <ActionServiceProvider
+    key="topology"
+    context={{ 'topology-context-actions': { element: graph, connectorSource } }}
+  >
+    {({ options, loaded }) => loaded && createContextMenuItems(options)}
+  </ActionServiceProvider>,
+];

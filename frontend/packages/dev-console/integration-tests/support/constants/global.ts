@@ -30,6 +30,7 @@ export enum operators {
   GitOpsOperator = 'Red Hat OpenShift GitOps',
   WebTerminalOperator = 'Web Terminal',
   ApacheKafka = 'Red Hat Integration - AMQ Streams',
+  RedHatCodereadyWorkspaces = 'Red Hat CodeReady Workspaces',
 }
 
 export enum authenticationType {
@@ -38,8 +39,9 @@ export enum authenticationType {
 }
 
 export enum resources {
-  DeploymentConfigs = 'Deployment Configs',
+  Deployments = 'Deployments',
   BuildConfigs = 'Build Configs',
+  Builds = 'Builds',
   Services = 'Services',
   ImageStreams = 'Image Streams',
   Routes = 'Routes',

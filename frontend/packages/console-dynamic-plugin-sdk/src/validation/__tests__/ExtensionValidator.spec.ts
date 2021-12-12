@@ -1,6 +1,5 @@
 import * as webpack from 'webpack';
-import { Extension } from '@console/plugin-sdk/src/typings/base';
-import { SupportedExtension } from '../../schema/console-extensions';
+import { Extension } from '../../types';
 import { collectCodeRefData, findWebpackModules, ExtensionValidator } from '../ExtensionValidator';
 import { ValidationResult } from '../ValidationResult';
 
@@ -25,19 +24,25 @@ describe('collectCodeRefData', () => {
     const extensions: Extension[] = [
       {
         type: 'Foo',
-        properties: { test: true },
+        properties: {
+          test: true,
+        },
       },
       {
         type: 'Bar',
-        properties: { baz: 1, qux: { $codeRef: 'a.b' } },
+        properties: {
+          qux: { $codeRef: 'mod.a' },
+          baz: { test: { $codeRef: 'mod.b' } },
+        },
       },
     ];
 
-    expect(collectCodeRefData(extensions as SupportedExtension[])).toEqual([
+    expect(collectCodeRefData(extensions)).toEqual([
       {
         index: 1,
         propToCodeRefValue: {
-          qux: 'a.b',
+          qux: 'mod.a',
+          test: 'mod.b',
         },
       },
     ]);
@@ -72,7 +77,7 @@ describe('ExtensionValidator', () => {
 
       const result = new ExtensionValidator('test').validate(
         compilation,
-        extensions as SupportedExtension[],
+        extensions,
         exposedModules,
         'testExtensions',
       );

@@ -2,10 +2,10 @@ import * as _ from 'lodash-es';
 import * as React from 'react';
 import * as classNames from 'classnames';
 import { Alert, Button } from '@patternfly/react-core';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
+import { TimeoutError } from '@console/dynamic-plugin-sdk/src/utils/error/http-error';
 
 import * as restrictedSignImg from '../../imgs/restricted-sign.svg';
-import { TimeoutError } from '../../co-fetch';
 
 export const Box: React.FC<BoxProps> = ({ children, className }) => (
   <div className={classNames('cos-status-box', className)}>{children}</div>
@@ -16,28 +16,37 @@ export const LoadError: React.FC<LoadErrorProps> = ({
   className,
   message,
   canRetry = true,
-}) => (
-  <Box className={className}>
-    <div className="text-center cos-error-title">
-      Error Loading {label}
-      {_.isString(message) ? `: ${message}` : ''}
-    </div>
-    {canRetry && (
-      <div className="text-center">
-        Please{' '}
-        <Button
-          type="button"
-          onClick={window.location.reload.bind(window.location)}
-          variant="link"
-          isInline
-        >
-          try again
-        </Button>
-        .
+}) => {
+  const { t } = useTranslation();
+  return (
+    <Box className={className}>
+      <div className="pf-u-text-align-center cos-error-title">
+        {_.isString(message)
+          ? t('public~Error Loading {{label}}: {{message}}', {
+              label,
+              message,
+            })
+          : t('public~Error Loading {{label}}', { label })}
       </div>
-    )}
-  </Box>
-);
+      {canRetry && (
+        <div className="pf-u-text-align-center">
+          <Trans ns="public">
+            Please{' '}
+            <Button
+              type="button"
+              onClick={window.location.reload.bind(window.location)}
+              variant="link"
+              isInline
+            >
+              try again
+            </Button>
+            .
+          </Trans>
+        </div>
+      )}
+    </Box>
+  );
+};
 LoadError.displayName = 'LoadError';
 
 export const Loading: React.FC<LoadingProps> = ({ className }) => (
@@ -67,7 +76,7 @@ export const EmptyBox: React.FC<EmptyBoxProps> = ({ label }) => {
   const { t } = useTranslation();
   return (
     <Box>
-      <div data-test="empty-message" className="text-center">
+      <div data-test="empty-message" className="pf-u-text-align-center">
         {label ? t('public~No {{label}} found', { label }) : t('public~Not found')}
       </div>
     </Box>
@@ -83,7 +92,7 @@ export const MsgBox: React.FC<MsgBoxProps> = ({ title, detail, className = '' })
       </div>
     )}
     {detail && (
-      <div className="text-center cos-status-box__detail" data-test="msg-box-detail">
+      <div className="pf-u-text-align-center cos-status-box__detail" data-test="msg-box-detail">
         {detail}
       </div>
     )}
@@ -95,7 +104,7 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({ message }) => {
   const { t } = useTranslation();
   return (
     <div>
-      <Box className="text-center">
+      <Box className="pf-u-text-align-center">
         <img className="cos-status-box__access-denied-icon" src={restrictedSignImg} />
         <MsgBox
           title={t('public~Restricted Access')}

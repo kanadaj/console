@@ -6,6 +6,7 @@ declare module '*.svg' {
   const value: any;
   export = value;
 }
+
 declare module '*.png' {
   const value: any;
   export = value;
@@ -53,9 +54,7 @@ declare interface Window {
   store?: {}; // Redux store
   pluginStore?: {}; // Console plugin store
   loadPluginEntry?: Function;
-  loadPluginFromURL?: Function;
   Cypress?: {};
-  api: {};
 }
 
 // TODO: Remove when upgrading to TypeScript 4.1.2+, which has a type for RelativeTimeFormat.

@@ -52,12 +52,10 @@ const getColorCSS = (colorName: string): string =>
   colorMap[colorName] ? `var(--pf-chart-color-${colorMap[colorName]})` : undefined;
 
 const Body: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Bullseye className="monitoring-dashboards__single-stat query-browser__wrapper">
-    {children}
-  </Bullseye>
+  <Bullseye className="monitoring-dashboards__single-stat">{children}</Bullseye>
 );
 
-const SingleStat: React.FC<Props> = ({ panel, pollInterval, query }) => {
+const SingleStat: React.FC<Props> = ({ panel, pollInterval, query, namespace }) => {
   const {
     decimals,
     format,
@@ -77,7 +75,7 @@ const SingleStat: React.FC<Props> = ({ panel, pollInterval, query }) => {
   const safeFetch = React.useCallback(useSafeFetch(), []);
 
   const tick = () =>
-    safeFetch(getPrometheusURL({ endpoint: PrometheusEndpoint.QUERY, query }))
+    safeFetch(getPrometheusURL({ endpoint: PrometheusEndpoint.QUERY, query, namespace }))
       .then((response: PrometheusResponse) => {
         setError(undefined);
         setIsLoading(false);
@@ -129,6 +127,7 @@ type Props = {
   panel: Panel;
   pollInterval: number;
   query: string;
+  namespace?: string;
 };
 
 export default SingleStat;

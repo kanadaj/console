@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as Ajv from 'ajv';
 import { Formik } from 'formik';
 import { safeDump, safeLoad } from 'js-yaml';
-import { JSONSchema6 } from 'json-schema';
+import { JSONSchema7 } from 'json-schema';
 import * as _ from 'lodash';
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { coFetchJSON } from '@console/internal/co-fetch';
 import { history, LoadingBox } from '@console/internal/components/utils';
 import { SecretModel } from '@console/internal/models';
 import { k8sGet } from '@console/internal/module/k8s';
+import { prune } from '@console/shared/src/components/dynamic-form/utils';
 import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
 import {
   HelmActionType,
@@ -42,7 +43,7 @@ export type HelmInstallUpgradeFormData = {
   appVersion: string;
   yamlData: string;
   formData: any;
-  formSchema: JSONSchema6;
+  formSchema: JSONSchema7;
   editorType: EditorType;
 };
 
@@ -70,7 +71,7 @@ const HelmInstallUpgradePage: React.FunctionComponent<HelmInstallUpgradePageProp
 
   const [initialYamlData, setInitialYamlData] = React.useState<string>('');
   const [initialFormData, setInitialFormData] = React.useState<object>();
-  const [initialFormSchema, setInitialFormSchema] = React.useState<JSONSchema6>();
+  const [initialFormSchema, setInitialFormSchema] = React.useState<JSONSchema7>();
 
   const helmAction: HelmActionType =
     initialChartURL !== 'null' ? HelmActionType.Install : HelmActionType.Upgrade;
@@ -153,23 +154,24 @@ const HelmInstallUpgradePage: React.FunctionComponent<HelmInstallUpgradePageProp
     if (editorType === EditorType.Form) {
       const ajv = new Ajv();
       const validSchema = ajv.validateSchema(formSchema);
-      const validFormData = validSchema && ajv.validate(formSchema, formData);
+      const prunedFormData = prune(formData);
+      const validFormData = validSchema && ajv.validate(formSchema, prunedFormData);
       if (validFormData) {
-        valuesObj = formData;
+        valuesObj = prunedFormData;
       } else {
         actions.setStatus({
           submitError: t('helm-plugin~Errors in the form - {{errorsText}}', {
             errorsText: ajv.errorsText(),
           }),
         });
-        return Promise.reject();
+        return Promise.resolve();
       }
     } else if (yamlData) {
       try {
         valuesObj = safeLoad(yamlData);
       } catch (err) {
         actions.setStatus({ submitError: t('helm-plugin~Invalid YAML - {{err}}', { err }) });
-        return Promise.reject();
+        return Promise.resolve();
       }
     }
 
@@ -200,7 +202,9 @@ const HelmInstallUpgradePage: React.FunctionComponent<HelmInstallUpgradePageProp
           }
           const secretId = secret?.items?.[0]?.metadata?.uid;
           if (secretId) {
-            redirect = `${config.redirectURL}?selectId=${secretId}&selectTab=Release+Notes`;
+            redirect = `${config.redirectURL}?selectId=${secretId}&selectTab=${t(
+              'helm-plugin~Release notes',
+            )}`;
           }
         }
 

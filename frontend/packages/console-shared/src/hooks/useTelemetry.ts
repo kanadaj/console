@@ -2,12 +2,15 @@ import * as React from 'react';
 import {
   useResolvedExtensions,
   isTelemetryListener,
+  TelemetryListener,
   TelemetryEventListener,
 } from '@console/dynamic-plugin-sdk';
 
 export const useTelemetry = () => {
-  // TODO how can we wait for all plugins to load such that we can create a stable callback reference and not end up firing events multiple times whenever plugins asynchronously load
-  const [extensions] = useResolvedExtensions(isTelemetryListener);
+  // TODO use useDynamicPluginInfo() hook to tell whether all dynamic plugins have been processed
+  // to avoid firing telemetry events multiple times whenever a dynamic plugin loads asynchronously
+  const [extensions] = useResolvedExtensions<TelemetryListener>(isTelemetryListener);
+
   return React.useCallback<TelemetryEventListener>(
     (eventType, properties) => {
       extensions.forEach((e) =>

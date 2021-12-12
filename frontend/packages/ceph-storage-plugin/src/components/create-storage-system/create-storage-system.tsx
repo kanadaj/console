@@ -6,9 +6,14 @@ import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
 import { ListKind } from '@console/internal/module/k8s';
 import { CreateStorageSystemFooter } from './footer';
 import { CreateStorageSystemHeader } from './header';
-import { BackingStorage, createSteps } from './create-storage-system-steps';
+import { BackingStorage } from './create-storage-system-steps';
 import { initialState, reducer, WizardReducer } from './reducer';
-import { StepsId, StorageClusterIdentifier } from '../../constants/create-storage-system';
+import { createSteps } from './create-steps';
+import {
+  Steps,
+  StepsName,
+  STORAGE_CLUSTER_SYSTEM_KIND,
+} from '../../constants/create-storage-system';
 import { StorageSystemKind } from '../../types';
 import { StorageSystemModel } from '../../models';
 
@@ -22,22 +27,24 @@ const CreateStorageSystem: React.FC<CreateStorageSystemProps> = ({ match }) => {
   const { url } = match;
 
   let wizardSteps: WizardStep[] = [];
+  let hasOCS: boolean = false;
 
   if (ssLoaded && !ssLoadError) {
-    const hasOCS = ssList?.items?.some((ss) => ss.spec.kind === StorageClusterIdentifier);
-    wizardSteps = createSteps(t, state, hasOCS);
+    hasOCS = ssList?.items?.some((ss) => ss.spec.kind === STORAGE_CLUSTER_SYSTEM_KIND);
+    wizardSteps = createSteps(t, state, dispatch, hasOCS);
   }
 
   const steps: WizardStep[] = [
     {
-      id: StepsId.BackingStorage,
-      name: t('ceph-storage-plugin~Backing storage'),
+      id: 1,
+      name: StepsName(t)[Steps.BackingStorage],
       component: (
         <BackingStorage
           state={state.backingStorage}
           storageClass={state.storageClass}
           dispatch={dispatch}
           storageSystems={ssList?.items || []}
+          stepIdReached={state.stepIdReached}
           error={ssLoadError}
           loaded={ssLoaded}
         />
@@ -54,8 +61,9 @@ const CreateStorageSystem: React.FC<CreateStorageSystemProps> = ({ match }) => {
         footer={
           <CreateStorageSystemFooter
             state={state}
+            hasOCS={hasOCS}
             dispatch={dispatch}
-            disableNext={!ssLoaded || ssLoadError}
+            disableNext={!ssLoaded || !!ssLoadError}
           />
         }
         cancelButtonText={t('ceph-storage-plugin~Cancel')}

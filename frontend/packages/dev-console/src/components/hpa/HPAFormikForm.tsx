@@ -6,6 +6,7 @@ import { HorizontalPodAutoscalerModel } from '@console/internal/models';
 import {
   HorizontalPodAutoscalerKind,
   k8sCreate,
+  K8sKind,
   K8sResourceKind,
   k8sUpdate,
 } from '@console/internal/module/k8s';
@@ -52,11 +53,13 @@ const HPAFormikForm: React.FC<HPAFormikFormProps> = ({ existingHPA, targetResour
     const invalidUsageError = getInvalidUsageError(hpa, values);
     if (invalidUsageError) {
       helpers.setStatus({ submitError: invalidUsageError });
-      return Promise.reject();
+      return Promise.resolve();
     }
 
-    const method = existingHPA ? k8sUpdate : k8sCreate;
-
+    const method: (
+      kind: K8sKind,
+      data: HorizontalPodAutoscalerKind,
+    ) => Promise<HorizontalPodAutoscalerKind> = existingHPA ? k8sUpdate : k8sCreate;
     return method(HorizontalPodAutoscalerModel, hpa)
       .then(() => {
         history.goBack();
@@ -76,7 +79,7 @@ const HPAFormikForm: React.FC<HPAFormikFormProps> = ({ existingHPA, targetResour
       validationSchema={hpaValidationSchema(t)}
     >
       {(props: FormikProps<HPAFormValues>) => (
-        <HPAForm {...props} targetResource={targetResource} />
+        <HPAForm {...props} existingHPA={existingHPA} targetResource={targetResource} />
       )}
     </Formik>
   );

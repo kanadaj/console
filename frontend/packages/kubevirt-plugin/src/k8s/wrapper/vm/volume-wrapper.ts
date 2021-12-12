@@ -14,6 +14,7 @@ import {
   getVolumePersistentVolumeClaimName,
 } from '../../../selectors/vm/volume';
 import { V1LocalObjectReference, V1Volume } from '../../../types/api';
+import { V1CloudInitNoCloudSource } from '../../../types/api/V1CloudInitNoCloudSource';
 import { ObjectWithTypePropertyWrapper } from '../common/object-with-type-property-wrapper';
 
 export type VolumeReferencedObject = {
@@ -125,6 +126,16 @@ export class VolumeWrapper extends ObjectWithTypePropertyWrapper<
   getContainerImage = () => getVolumeContainerImage(this.data);
 
   getReferencedObject = () => getVolumeReferencedObject(this);
+
+  setName = (name: string) => {
+    this.data.name = name;
+    return this;
+  };
+
+  setCloudInitNoCloud = (value: V1CloudInitNoCloudSource) => {
+    this.data.cloudInitNoCloud = value;
+    return this;
+  };
 
   protected sanitize(
     type: VolumeType,

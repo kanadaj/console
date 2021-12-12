@@ -7,7 +7,7 @@ import { SyncAltIcon, UnknownIcon } from '@patternfly/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { ClusterOperatorModel } from '../../models';
-import { DetailsPage, ListPage, Table, TableRow, TableData, RowFunction } from '../factory';
+import { DetailsPage, ListPage, Table, TableData, RowFunctionArgs } from '../factory';
 import { Conditions } from '../conditions';
 import {
   getClusterOperatorStatus,
@@ -27,11 +27,16 @@ import {
   navFactory,
   EmptyBox,
   Kebab,
+  LinkifyExternal,
   ResourceLink,
   ResourceSummary,
   SectionHeading,
 } from '../utils';
-import { GreenCheckCircleIcon, YellowExclamationTriangleIcon } from '@console/shared';
+import {
+  GreenCheckCircleIcon,
+  RedExclamationCircleIcon,
+  YellowExclamationTriangleIcon,
+} from '@console/shared';
 import RelatedObjectsPage from './related-objects';
 import { ClusterVersionConditionsLink, UpdatingMessageText } from './cluster-settings';
 
@@ -45,6 +50,7 @@ const getIcon = (status: OperatorStatus) => {
     [OperatorStatus.Progressing]: <SyncAltIcon />,
     [OperatorStatus.Degraded]: <YellowExclamationTriangleIcon />,
     [OperatorStatus.CannotUpdate]: <YellowExclamationTriangleIcon />,
+    [OperatorStatus.Unavailable]: <RedExclamationCircleIcon />,
     [OperatorStatus.Unknown]: <UnknownIcon />,
   }[status];
 };
@@ -66,11 +72,11 @@ const tableColumnClasses = [
   Kebab.columnClass,
 ];
 
-const ClusterOperatorTableRow: RowFunction<ClusterOperator> = ({ obj, index, key, style }) => {
+const ClusterOperatorTableRow: React.FC<RowFunctionArgs<ClusterOperator>> = ({ obj }) => {
   const { status, message } = getStatusAndMessage(obj);
   const operatorVersion = getClusterOperatorVersion(obj);
   return (
-    <TableRow id={obj.metadata.uid} index={index} trKey={key} style={style}>
+    <>
       <TableData className={tableColumnClasses[0]}>
         <ResourceLink
           kind={clusterOperatorReference}
@@ -82,10 +88,17 @@ const ClusterOperatorTableRow: RowFunction<ClusterOperator> = ({ obj, index, key
         <OperatorStatusIconAndLabel status={status} />
       </TableData>
       <TableData className={tableColumnClasses[2]}>{operatorVersion || '-'}</TableData>
-      <TableData className={classNames(tableColumnClasses[3], 'co-break-word', 'co-pre-line')}>
-        {message ? _.truncate(message, { length: 256, separator: ' ' }) : '-'}
+      <TableData
+        className={classNames(
+          tableColumnClasses[3],
+          'co-break-word',
+          'co-line-clamp',
+          'co-pre-line',
+        )}
+      >
+        <LinkifyExternal>{message || '-'}</LinkifyExternal>
       </TableData>
-    </TableRow>
+    </>
   );
 };
 
@@ -243,7 +256,9 @@ const ClusterOperatorDetails: React.FC<ClusterOperatorDetailsProps> = ({ obj }) 
                 <OperatorStatusIconAndLabel status={status} />
               </dd>
               <dt>{t('public~Message')}</dt>
-              <dd className="co-pre-line">{message || '-'}</dd>
+              <dd className="co-pre-line">
+                <LinkifyExternal>{message || '-'}</LinkifyExternal>
+              </dd>
             </dl>
           </div>
         </div>

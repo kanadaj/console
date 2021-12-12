@@ -331,10 +331,7 @@ const OperatorHubTile: React.FC<OperatorHubTileProps> = ({ item, onClick }) => {
 
   const { uid, name, imgUrl, provider, description, installed } = item;
   const vendor = provider ? t('olm~provided by {{provider}}', { provider }) : null;
-  const badges = ([
-    DefaultCatalogSource.CommunityOperators,
-    DefaultCatalogSource.RedHatMarketPlace,
-  ] as string[]).includes(item.catalogSource)
+  const badges = item?.catalogSourceDisplayName
     ? [<Badge text={item.catalogSourceDisplayName} />]
     : [];
   const icon = (
@@ -345,6 +342,7 @@ const OperatorHubTile: React.FC<OperatorHubTileProps> = ({ item, onClick }) => {
       alt=""
     />
   );
+
   return (
     <CatalogTile
       className="co-catalog-tile"
@@ -356,7 +354,7 @@ const OperatorHubTile: React.FC<OperatorHubTileProps> = ({ item, onClick }) => {
       description={description}
       onClick={() => onClick(item)}
       footer={
-        installed ? (
+        installed && !item.isInstalling ? (
           <span>
             <GreenCheckCircleIcon /> {t('olm~Installed')}
           </span>
@@ -531,6 +529,7 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
                       'pf-c-button',
                       { 'pf-m-secondary': remoteWorkflowUrl },
                       { 'pf-m-primary': !remoteWorkflowUrl },
+                      { 'pf-m-disabled': detailsItem.isInstalling },
                       'co-catalog-page__overlay-action',
                     )}
                     data-test-id="operator-install-btn"

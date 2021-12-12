@@ -9,12 +9,17 @@ import { getFieldId } from './field-utils';
 const SelectInputField: React.FC<SelectInputFieldProps> = ({
   name,
   label,
+  ariaLabel,
+  variant,
   options,
   placeholderText,
   isCreatable,
   hasOnCreateOption,
   helpText,
   required,
+  isInputValuePersisted,
+  noResultsFoundText,
+  toggleOnSelection,
 }) => {
   const [field, { touched, error }] = useField<string[]>(name);
   const { setFieldValue, setFieldTouched } = useFormikContext<FormikValues>();
@@ -31,21 +36,35 @@ const SelectInputField: React.FC<SelectInputFieldProps> = ({
   };
 
   const onSelect = (event, selection: string) => {
-    const selections = field.value;
-    if (_.includes(selections, selection)) {
-      setFieldValue(name, _.pull(selections, selection));
+    if (variant !== SelectVariant.typeaheadMulti && variant !== SelectVariant.checkbox) {
+      setFieldValue(name, selection);
     } else {
-      setFieldValue(name, [...selections, selection]);
+      const selections = field.value;
+      if (_.includes(selections, selection)) {
+        setFieldValue(name, _.pull(selections, selection));
+      } else {
+        setFieldValue(name, [...selections, selection]);
+      }
     }
     setFieldTouched(name);
+    toggleOnSelection && onToggle();
   };
 
   const onCreateOption = (newVal: string) => {
-    setNewOptions([...newOptions, { value: newVal, disabled: false }]);
+    const hasDuplicateOption = [...newOptions, ...options].find(
+      (option) => option.value === newVal,
+    );
+    if (!hasDuplicateOption) {
+      setNewOptions([...newOptions, { value: newVal, disabled: false }]);
+    }
   };
 
   const onClearSelection = () => {
-    setFieldValue(name, []);
+    if (variant !== SelectVariant.typeaheadMulti && variant !== SelectVariant.checkbox) {
+      setFieldValue(name, '');
+    } else {
+      setFieldValue(name, []);
+    }
     setFieldTouched(name);
   };
 
@@ -59,7 +78,10 @@ const SelectInputField: React.FC<SelectInputFieldProps> = ({
       isRequired={required}
     >
       <Select
-        variant={SelectVariant.typeaheadMulti}
+        toggleId={fieldId}
+        variant={variant}
+        aria-describedby={helpText ? `${fieldId}-helper` : undefined}
+        typeAheadAriaLabel={ariaLabel}
         onToggle={onToggle}
         onSelect={onSelect}
         onClear={onClearSelection}
@@ -68,6 +90,8 @@ const SelectInputField: React.FC<SelectInputFieldProps> = ({
         placeholderText={placeholderText}
         isCreatable={isCreatable}
         onCreateOption={(hasOnCreateOption && onCreateOption) || undefined}
+        isInputValuePersisted={isInputValuePersisted}
+        noResultsFoundText={noResultsFoundText}
       >
         {_.map([...options, ...newOptions], (op) => (
           <SelectOption value={op.value} isDisabled={op.disabled} key={op.value} />

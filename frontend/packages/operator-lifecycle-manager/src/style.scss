@@ -1,9 +1,3 @@
-// Bootstrap Core variables and mixins
-@import '~bootstrap-sass/assets/stylesheets/bootstrap/variables';
-
-// Patternfly Core variables and mixins
-@import '~patternfly/dist/sass/patternfly/variables';
-
 // OpenShift variables
 @import '../../../public/style/vars';
 
@@ -148,15 +142,19 @@ $co-affinity-row-margin: 15px;
 
 .co-create-operand__header {
   border-bottom: 1px solid #ddd;
-  padding: 10px 15px;
+  padding: 0 15px 10px;
   @media (min-width: $screen-sm-min) {
     padding: 0 30px 15px;
   }
 }
 
-.co-create-operand__header-buttons {
+.co-create-operand__breadcrumbs {
   align-items: baseline;
   display: flex;
+  padding: 10px 15px;
+  @media (min-width: $screen-sm-min) {
+    padding: 0 30px 15px;
+  }
 }
 
 .co-create-operand__header-text {
@@ -262,9 +260,9 @@ $co-affinity-row-margin: 15px;
 }
 
 #operator-install-page {
-  margin: 0 ($grid-gutter-width / 2);
+  margin: 0 $pf-global-gutter;
   @media (min-width: $screen-sm-min) {
-    margin: $grid-gutter-width;
+    margin: $pf-global-gutter--md;
     max-width: 600px;
     min-width: 375px;
     width: 100%;
@@ -307,4 +305,17 @@ $co-affinity-row-margin: 15px;
 .co-operator-install-page__link {
   display: flex;
   align-items: center;
+}
+
+.co-operator-uninstall-alert__list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.co-operator-uninstall-alert__list-item {
+  padding-bottom: var(--pf-global--spacer--sm);
+}
+
+.co-operator-uninstall__operands-section loading-skeleton--table::after {
+  min-height: 160px;
 }

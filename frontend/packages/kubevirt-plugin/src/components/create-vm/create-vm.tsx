@@ -47,7 +47,6 @@ import { useVmTemplatesResources } from './hooks/use-vm-templates-resources';
 import { BootSource } from './tabs/boot-source';
 import { ReviewAndCreate } from './tabs/review-create';
 import { SelectTemplate } from './tabs/select-template';
-
 import '../create-vm-wizard/create-vm-wizard.scss';
 import './create-vm.scss';
 
@@ -156,11 +155,11 @@ const Footer: React.FC<FooterProps> = ({
   );
 };
 
-export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
+export const CreateVM: React.FC<RouteComponentProps<{ ns: string }>> = ({ match, location }) => {
   const { t } = useTranslation();
   const searchParams = new URLSearchParams(location && location.search);
   const initData = parseVMWizardInitialData(searchParams);
-  const [namespace, setNamespace] = React.useState(searchParams.get('namespace'));
+  const [namespace, setNamespace] = React.useState(match?.params?.ns);
   const [state, dispatch] = React.useReducer(formReducer, initFormState(namespace));
   const [isCreating, setCreating] = React.useState(false);
   const [created, setCreated] = React.useState(false);
@@ -183,7 +182,7 @@ export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
     isList: true,
   });
 
-  const [V2VConfigMapImages, V2VConfigMapImagesLoaded, V2VConfigMapImagesError] = useV2VConfigMap();
+  const [V2VConfigMapImages, V2VConfigMapImagesLoaded] = useV2VConfigMap();
 
   const [scConfigMap, scLoaded, scError] = useStorageClassConfigMap();
   const {
@@ -199,7 +198,7 @@ export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
   const templates = filterTemplates([...userTemplates, ...baseTemplates]);
 
   const loaded = resourcesLoaded && projectsLoaded && scLoaded && V2VConfigMapImagesLoaded;
-  const loadError = resourcesLoadError || projectsError || scError || V2VConfigMapImagesError;
+  const loadError = resourcesLoadError || projectsError || scError;
 
   const sourceStatus =
     selectedTemplate &&
@@ -310,6 +309,7 @@ export const CreateVM: React.FC<RouteComponentProps> = ({ location }) => {
         template: state.template,
         name: state.name,
         startVM: state.startVM,
+        storageClass: bootState?.storageClass?.value,
         bootSource: dataSource
           ? {
               size:

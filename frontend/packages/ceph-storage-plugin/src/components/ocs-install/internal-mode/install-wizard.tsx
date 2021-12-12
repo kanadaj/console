@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { match as RouteMatch } from 'react-router';
-import { Link } from 'react-router-dom';
 import {
   Alert,
   Wizard,
@@ -26,7 +25,7 @@ import { OCS_CONVERGED_FLAG, OCS_INDEPENDENT_FLAG, OCS_FLAG } from '../../../fea
 import { MODES, OCS_INTERNAL_CR_NAME, MINIMUM_NODES, CreateStepsSC } from '../../../constants';
 import { StorageClusterKind, NetworkType, NavUtils } from '../../../types';
 import { labelNodes, getOCSRequestData, labelOCSNamespace } from '../ocs-request-data';
-import { createKmsResources } from '../../kms-config/utils';
+import { createClusterKmsResources } from '../../kms-config/utils';
 import '../install-wizard/install-wizard.scss';
 
 const makeOCSRequest = (state: InternalClusterState): Promise<StorageClusterKind> => {
@@ -43,7 +42,7 @@ const makeOCSRequest = (state: InternalClusterState): Promise<StorageClusterKind
     enableTaint,
   } = state;
   const storageCluster: StorageClusterKind = getOCSRequestData(
-    storageClass,
+    { name: storageClass?.metadata?.name, provisioner: storageClass?.provisioner },
     capacity,
     encryption.clusterWide,
     enableMinimal,
@@ -54,7 +53,7 @@ const makeOCSRequest = (state: InternalClusterState): Promise<StorageClusterKind
   );
   const promises: Promise<K8sResourceKind>[] = [...labelNodes(nodes), labelOCSNamespace()];
   if (encryption.advanced && kms.hasHandled) {
-    promises.push(...createKmsResources(kms));
+    promises.push(...createClusterKmsResources(kms));
   }
   if (enableTaint) {
     promises.push(...taintNodes(nodes));
@@ -84,41 +83,23 @@ export const CreateInternalCluster: React.FC<CreateInternalClusterProps> = ({
   const hasEnabledCreateStep =
     !!(state.nodes.length >= MINIMUM_NODES && scName && state.kms.hasHandled) &&
     hasConfiguredNetwork;
-  const { getStep, getParamString, getIndex, getAnchor } = navUtils;
-
-  const toLink = (steps: any, currentStep: string, modes: any) =>
-    getAnchor(getIndex(steps, currentStep, 2), getIndex(modes, modes.INTERNAL));
+  const { getStep, getParamString, getIndex } = navUtils;
 
   const steps: WizardStep[] = [
     {
-      name: (
-        <Link to={toLink(CreateStepsSC, CreateStepsSC.STORAGEANDNODES, MODES)}>
-          {' '}
-          {t('ceph-storage-plugin~Capacity and nodes')}{' '}
-        </Link>
-      ),
+      name: t('ceph-storage-plugin~Capacity and nodes'),
       id: CreateStepsSC.STORAGEANDNODES,
-      component: <SelectCapacityAndNodes state={state} dispatch={dispatch} mode={mode} />,
+      component: <SelectCapacityAndNodes state={state} dispatch={dispatch} />,
       enableNext: !!(state.nodes.length >= MINIMUM_NODES && scName),
     },
     {
-      name: (
-        <Link to={toLink(CreateStepsSC, CreateStepsSC.CONFIGURE, MODES)}>
-          {' '}
-          {t('ceph-storage-plugin~Security and network')}{' '}
-        </Link>
-      ),
+      name: t('ceph-storage-plugin~Security and network'),
       id: CreateStepsSC.CONFIGURE,
       component: <Configure state={state} dispatch={dispatch} mode={mode} />,
       enableNext: state.encryption.hasHandled && hasConfiguredNetwork && state.kms.hasHandled,
     },
     {
-      name: (
-        <Link to={toLink(CreateStepsSC, CreateStepsSC.REVIEWANDCREATE, MODES)}>
-          {' '}
-          {t('ceph-storage-plugin~Review and create')}{' '}
-        </Link>
-      ),
+      name: t('ceph-storage-plugin~Review and create'),
       id: CreateStepsSC.REVIEWANDCREATE,
       component: (
         <ReviewAndCreate state={state} errorMessage={errorMessage} inProgress={inProgress} />
@@ -152,6 +133,7 @@ export const CreateInternalCluster: React.FC<CreateInternalClusterProps> = ({
       <StackItem>
         {showInfoAlert && (
           <Alert
+            aria-label={t('ceph-storage-plugin~Info Alert')}
             variant="info"
             className="co-alert ocs-install-info-alert"
             title="Internal"
@@ -186,6 +168,14 @@ export const CreateInternalCluster: React.FC<CreateInternalClusterProps> = ({
             history.push(resourcePathFromModel(ClusterServiceVersionModel, appName, ns))
           }
           onSave={createCluster}
+          onGoToStep={(step) => {
+            history.push(
+              `~new?${getParamString(
+                getIndex(CreateStepsSC, step.id) - 2,
+                getIndex(MODES, MODES.INTERNAL),
+              )}`,
+            );
+          }}
         />
       </StackItem>
     </Stack>

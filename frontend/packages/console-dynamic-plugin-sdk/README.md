@@ -24,13 +24,23 @@ dynamic-demo-plugin/
 └── webpack.config.ts
 ```
 
+## SDK packages
+
+| Package Name | Description |
+| --- | --- |
+| `@openshift-console/dynamic-plugin-sdk` | Provides core APIs, types and utilities used by dynamic plugins at runtime. |
+| `@openshift-console/dynamic-plugin-sdk-webpack` | Provides webpack plugin `ConsoleRemotePlugin` used to build all dynamic plugin assets. |
+| `@openshift-console/dynamic-plugin-sdk-internal` | Internal package exposing additional code. |
+| `@openshift-console/dynamic-plugin-sdk-host-app` | Provides APIs, Component, and utilities for host applications i.e reducers, actions, etc |
+| `@openshift-console/dynamic-plugin-sdk-internal-kubevirt` | Internal package to support KubeVirt plugin migration. |
+
 ## `package.json`
 
 Plugin metadata is declared via the `consolePlugin` object.
 
 ```jsonc
 {
-  "name": "@console/dynamic-demo-plugin",
+  "name": "dynamic-demo-plugin",
   "version": "0.0.0",
   "private": true,
   // scripts, dependencies, devDependencies, ...
@@ -49,18 +59,23 @@ Plugin metadata is declared via the `consolePlugin` object.
 }
 ```
 
-`consolePlugin.name` should be the same as `metadata.name` of the corresponding `ConsolePlugin` resource
-used to represent the plugin on the cluster. Therefore, it must be a valid
+`consolePlugin.name` is the plugin's unique identifier. It should be the same as `metadata.name`
+of the corresponding `ConsolePlugin` resource used to represent the plugin on the cluster.
+Therefore, it must be a valid
 [DNS subdomain name](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names).
 
 `consolePlugin.version` must be [semver](https://semver.org/) compliant.
 
 Dynamic plugins can expose modules representing additional code to be referenced, loaded and executed
 at runtime. A separate [webpack chunk](https://webpack.js.org/guides/code-splitting/) is generated for
-each exposed module. Exposed modules are resolved relative to plugin's webpack `context` option.
+each entry in `consolePlugin.exposedModules` object. Exposed modules are resolved relative to plugin's
+webpack `context` option.
 
-See [`ConsolePluginMetadata` type](/frontend/packages/console-dynamic-plugin-sdk/src/schema/plugin-package.ts)
-for details on the `consolePlugin` object and its schema.
+The `@console/pluginAPI` dependency is mandatory and refers to Console versions this dynamic plugin is
+compatible with. The `consolePlugin.dependencies` object may also refer to other dynamic plugins that
+are required for this dynamic plugin to work correctly.
+
+See `ConsolePluginMetadata` type for details on the `consolePlugin` object and its schema.
 
 ## `console-extensions.json`
 
@@ -105,10 +120,9 @@ support for module federation.
 All dynamic plugin assets are managed via webpack plugin `ConsoleRemotePlugin`.
 
 ```ts
-import * as webpack from 'webpack';
-import { ConsoleRemotePlugin } from '@console/dynamic-plugin-sdk/src/webpack/ConsoleRemotePlugin';
+const { ConsoleRemotePlugin } = require('@openshift-console/dynamic-plugin-sdk-webpack');
 
-const config: webpack.Configuration = {
+const config = {
   // 'entry' is optional, but unrelated to plugin assets
   plugins: [new ConsoleRemotePlugin()],
   // ... rest of webpack configuration
@@ -165,6 +179,12 @@ as enabled. Updating Console operator config triggers a new rollout of the Conso
 Bridge reads the computed list of plugins upon its startup and injects this list into Console web page
 via `SERVER_FLAGS` object.
 
+## Disabling plugins in the browser
+
+Console users can disable specific or all dynamic plugins that would normally get loaded upon Console
+startup via `disable-plugins` query parameter. The value of this parameter is either a comma separated
+list of plugin names (disable specific plugins) or an empty string (disable all plugins).
+
 ## Runtime constraints and specifics
 
 - Loading multiple plugins with the same `name` (but with a different `version`) is not allowed.
@@ -174,3 +194,31 @@ via `SERVER_FLAGS` object.
   be enabled or disabled separately.
 - Failure to resolve a code reference (unable to load module, missing module export etc.) will disable
   the plugin.
+
+## Publishing SDK packages
+
+To see the latest published version of the given package:
+
+```sh
+yarn info <package-name> dist-tags --json | jq .data.latest
+```
+
+Before publishing, it's recommended to log into your npm user account:
+
+```sh
+npm login
+```
+
+Build all distributable [SDK packages](#sdk-packages) into `dist` directory:
+
+```sh
+yarn build
+```
+
+Finally, publish relevant packages to [npm registry](https://www.npmjs.com/):
+
+```sh
+yarn publish dist/<pkg> --no-git-tag-version --new-version <version>
+```
+
+If the given package doesn't exist in npm registry, add `--access public` to `yarn publish` command.

@@ -11,7 +11,7 @@ import {
   createResource,
   removeLeakableResource,
   removeLeakedResources,
-} from '@console/shared/src/test-utils/utils';
+} from '../utils/shared-utils';
 import { unpauseButton } from '../views/dialogs/editStatusView';
 import { vmLinkByName } from '../views/vms.list.view';
 import { getVMManifest } from './mocks/mocks';
@@ -50,7 +50,7 @@ describe('Test VM actions', () => {
       await textFilter.clear();
       await textFilter.sendKeys(vm.name);
       await browser.wait(
-        until.textToBePresentInElement(resourceRows.first(), VM_STATUS.Off),
+        until.textToBePresentInElement(resourceRows.first(), VM_STATUS.Stopped),
         VM_IMPORT_TIMEOUT_SECS,
       );
     }, VM_IMPORT_TIMEOUT_SECS);
@@ -108,7 +108,7 @@ describe('Test VM actions', () => {
       testVM.metadata.name = vmName;
       createResource(testVM);
       addLeakableResource(leakedResources, testVM);
-      await vm.waitForStatus(VM_STATUS.Off, VM_IMPORT_TIMEOUT_SECS);
+      await vm.waitForStatus(VM_STATUS.Stopped, VM_IMPORT_TIMEOUT_SECS);
     }, VM_IMPORT_TIMEOUT_SECS);
 
     it(

@@ -2,9 +2,9 @@ import * as React from 'react';
 import { Button } from '@patternfly/react-core';
 import { PlusCircleIcon } from '@patternfly/react-icons';
 import { useTranslation } from 'react-i18next';
-import { AsyncComponent } from '@console/internal/components/utils/async';
+import { AsyncComponent, AsyncComponentProps } from '@console/internal/components/utils/async';
 
-const NameValueEditorComponent = (props) => (
+const NameValueEditorComponent = (props: Omit<AsyncComponentProps, 'loader'>) => (
   <AsyncComponent
     loader={() =>
       import('@console/internal/components/utils/name-value-editor').then((c) => c.NameValueEditor)
@@ -18,26 +18,32 @@ type NetworkPolicyConditionalSelectorProps = {
   helpText: string;
   values: string[][];
   onChange: (pairs: string[][]) => void;
+  dataTest?: string;
 };
 
 export const NetworkPolicyConditionalSelector: React.FunctionComponent<NetworkPolicyConditionalSelectorProps> = (
   props,
 ) => {
   const { t } = useTranslation();
-  const { selectorType, helpText, values, onChange } = props;
-  const [isVisible, setVisible] = React.useState(false);
+  const { selectorType, helpText, values, onChange, dataTest } = props;
+  const [isVisible, setVisible] = React.useState(values.length > 0);
 
-  const handleSelectorChange = (updated) => {
+  const handleSelectorChange = (updated: { nameValuePairs: string[][] }) => {
     onChange(updated.nameValuePairs);
   };
 
-  const title = selectorType === 'pod' ? t('public~Pod selector') : t('public~Namespace selector');
+  const title =
+    selectorType === 'pod' ? t('console-app~Pod selector') : t('console-app~Namespace selector');
   const addSelectorText =
-    selectorType === 'pod' ? t('public~Add pod selector') : t('public~Add namespace selector');
+    selectorType === 'pod'
+      ? t('console-app~Add pod selector')
+      : t('console-app~Add namespace selector');
   const secondHelpText =
     selectorType === 'pod'
-      ? t('public~Pods having all the supplied key/value pairs as labels will be selected.')
-      : t('public~Namespaces having all the supplied key/value pairs as labels will be selected.');
+      ? t('console-app~Pods having all the supplied key/value pairs as labels will be selected.')
+      : t(
+          'console-app~Namespaces having all the supplied key/value pairs as labels will be selected.',
+        );
 
   return (
     <>
@@ -54,9 +60,9 @@ export const NetworkPolicyConditionalSelector: React.FunctionComponent<NetworkPo
           </div>
           <NameValueEditorComponent
             nameValuePairs={values.length > 0 ? values : [['', '']]}
-            valueString={t('public~Selector')}
-            nameString={t('public~Label')}
-            addString={t('public~Add label')}
+            valueString={t('console-app~Selector')}
+            nameString={t('console-app~Label')}
+            addString={t('console-app~Add label')}
             readOnly={false}
             allowSorting={false}
             updateParentData={handleSelectorChange}
@@ -70,6 +76,7 @@ export const NetworkPolicyConditionalSelector: React.FunctionComponent<NetworkPo
             onClick={() => setVisible(true)}
             type="button"
             variant="link"
+            data-test={dataTest ? `add-${dataTest}` : 'add-labels-selector'}
           >
             <PlusCircleIcon className="co-icon-space-r" />
             {addSelectorText}

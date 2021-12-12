@@ -15,23 +15,23 @@ import {
   withHandlePromise,
 } from '@console/internal/components/utils';
 import { k8sPatch } from '@console/internal/module/k8s';
-import { PatchBuilder } from '@console/shared/src/k8s';
 import { DeviceType } from '../../../constants';
+import { PatchBuilder } from '../../../k8s/helpers/patch';
 import { getVMLikePatches } from '../../../k8s/patches/vm-template';
 import { VMWrapper } from '../../../k8s/wrapper/vm/vm-wrapper';
 import { VMIWrapper } from '../../../k8s/wrapper/vm/vmi-wrapper';
 import { VirtualMachineInstanceModel } from '../../../models';
 import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
 import { getName, getNamespace } from '../../../selectors';
+import { isBootOrderChanged } from '../../../selectors/vm-like/next-run-changes';
 import {
-  asVM,
   getBootableDevices,
   getBootableDevicesInOrder,
   getTransformedDevices,
-  getVMLikeModel,
-  isVMRunningOrExpectedRunning,
-} from '../../../selectors/vm';
-import { isBootOrderChanged } from '../../../selectors/vm-like/next-run-changes';
+} from '../../../selectors/vm/devices';
+import { isVMRunningOrExpectedRunning } from '../../../selectors/vm/selectors';
+import { asVM } from '../../../selectors/vm/vm';
+import { getVMLikeModel } from '../../../selectors/vm/vmlike';
 import { BootableDeviceType, VMIKind } from '../../../types';
 import { VMLikeEntityKind } from '../../../types/vmLike';
 import { createBasicLookup, getLoadedData } from '../../../utils';

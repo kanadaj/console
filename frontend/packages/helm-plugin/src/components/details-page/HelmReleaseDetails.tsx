@@ -13,7 +13,7 @@ import {
 } from '@console/internal/components/utils';
 import { SecretModel } from '@console/internal/models';
 import { K8sResourceKindReference } from '@console/internal/module/k8s';
-import { ActionMenu, ActionsLoader, ActionMenuVariant, Status } from '@console/shared';
+import { ActionMenu, ActionMenuVariant, Status, ActionServiceProvider } from '@console/shared';
 import { HelmRelease, HelmActionOrigins } from '../../types/helm-types';
 import { fetchHelmReleases } from '../../utils/helm-utils';
 import HelmReleaseHistory from './history/HelmReleaseHistory';
@@ -74,23 +74,18 @@ export const LoadedHelmReleaseDetails: React.FC<LoadedHelmReleaseDetailsProps> =
   );
 
   const actionsScope = {
-    releaseName,
-    namespace,
+    release: { name: releaseName, namespace, version: helmReleaseData.version },
     actionOrigin: HelmActionOrigins.details,
   };
 
   const customActionMenu = (
-    <ActionsLoader contextId="helm-actions" scope={actionsScope}>
-      {(loader) =>
-        loader.loaded && (
-          <ActionMenu
-            actions={loader.actions}
-            options={loader.options}
-            variant={ActionMenuVariant.DROPDOWN}
-          />
+    <ActionServiceProvider context={{ 'helm-actions': actionsScope }}>
+      {({ actions, options, loaded }) =>
+        loaded && (
+          <ActionMenu actions={actions} options={options} variant={ActionMenuVariant.DROPDOWN} />
         )
       }
-    </ActionsLoader>
+    </ActionServiceProvider>
   );
 
   return (
@@ -158,7 +153,10 @@ const HelmReleaseDetails: React.FC<HelmReleaseDetailsProps> = ({ secret, match }
     return () => {
       ignore = true;
     };
-  }, [helmReleaseName, namespace]);
+    // On upgrading/rolling back to another version a new helm release is created.
+    // For fetching and showing the details of the new release adding secret.data as depedency here
+    // since secret's data list gets updated when a new release is created.
+  }, [helmReleaseName, namespace, secret.data]);
 
   return (
     <LoadedHelmReleaseDetails match={match} secret={secret} helmReleaseData={helmReleaseData} />

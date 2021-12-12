@@ -1,13 +1,13 @@
+import { multusNAD, v2vUIDeployment } from '../../tests/mocks/mocks';
+import { RhvImportWizard } from '../../tests/models/rhvImportWizard';
+import { V2V_VM_IMPORT_TIMEOUT } from '../../tests/utils/constants/common';
+import { VM_STATUS } from '../../tests/utils/constants/vm';
 import {
   createResources,
   deleteResources,
   removeLeakedResources,
   withResource,
-} from '@console/shared/src/test-utils/utils';
-import { multusNAD, v2vUIDeployment } from '../../tests/mocks/mocks';
-import { RhvImportWizard } from '../../tests/models/rhvImportWizard';
-import { V2V_VM_IMPORT_TIMEOUT } from '../../tests/utils/constants/common';
-import { VM_STATUS } from '../../tests/utils/constants/vm';
+} from '../../utils/shared-utils';
 import {
   rhvVMConfigSecond,
   rhvVMConfigStartOnCreate,
@@ -43,7 +43,7 @@ describe('Kubevirt imports VM from RHV using wizard', () => {
     async () => {
       const vm = await wizard.import(rhvVMConfigSecond);
       await withResource(leakedResources, vm.asResource(), async () => {
-        await vm.waitForStatus(VM_STATUS.Off, V2V_VM_IMPORT_TIMEOUT);
+        await vm.waitForStatus(VM_STATUS.Stopped, V2V_VM_IMPORT_TIMEOUT);
       });
     },
     V2V_VM_IMPORT_TIMEOUT,
@@ -54,7 +54,7 @@ describe('Kubevirt imports VM from RHV using wizard', () => {
     async () => {
       const vm = await wizard.import(rhvVMMultiNicConfig);
       await withResource(leakedResources, vm.asResource(), async () => {
-        await vm.waitForStatus(VM_STATUS.Off, V2V_VM_IMPORT_TIMEOUT);
+        await vm.waitForStatus(VM_STATUS.Stopped, V2V_VM_IMPORT_TIMEOUT);
       });
       deleteResources([multusNAD]);
     },

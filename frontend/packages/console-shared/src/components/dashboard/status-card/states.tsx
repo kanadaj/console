@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { InProgressIcon } from '@patternfly/react-icons';
 import { TFunction } from 'i18next';
+import { HealthState } from '@console/dynamic-plugin-sdk';
 import {
   GreenCheckCircleIcon,
   RedExclamationCircleIcon,
@@ -8,19 +9,9 @@ import {
   BlueSyncIcon,
   GrayUnknownIcon,
   BlueArrowCircleUpIcon,
-} from '@console/shared/src/components/status/icons';
+} from '../../status/icons';
 
-export enum HealthState {
-  OK = 'OK',
-  ERROR = 'ERROR',
-  WARNING = 'WARNING',
-  LOADING = 'LOADING',
-  UNKNOWN = 'UNKNOWN',
-  UPDATING = 'UPDATING',
-  PROGRESS = 'PROGRESS',
-  UPGRADABLE = 'UPGRADABLE',
-  NOT_AVAILABLE = 'NOT_AVAILABLE',
-}
+export { HealthState };
 
 export const healthStateMessage = (state: keyof typeof HealthState, t: TFunction): string => {
   switch (state) {

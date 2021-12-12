@@ -68,22 +68,7 @@ Given('user has installed eventing operator', () => {
   });
 });
 
-Given('user has installed knative Apache camel operator', () => {
-  perspective.switchTo(switchPerspective.Administrator);
-  operatorsPage.navigateToInstallOperatorsPage();
-  operatorsPage.searchOperator(operators.KnativeApacheCamelOperator);
-  cy.get('body', {
-    timeout: 50000,
-  }).then(($ele) => {
-    if ($ele.find(operatorsPO.installOperators.noOperatorsFound)) {
-      installOperator(operators.KnativeApacheCamelOperator);
-    } else {
-      cy.log(`${operators.KnativeApacheCamelOperator} operator is installed in cluster`);
-    }
-  });
-});
-
-Given('user has installed Knative Apache Camelk Integration Operator', () => {
+Given('user has installed Red Hat Integration - Camel K Operator', () => {
   perspective.switchTo(switchPerspective.Administrator);
   operatorsPage.navigateToInstallOperatorsPage();
   operatorsPage.searchOperator(operators.RedHatIntegrationCamelK);
@@ -142,7 +127,6 @@ Given(
 
 Then('modal with {string} appears', (header: string) => {
   modal.modalTitleShouldContain(header);
-  modal.cancel();
 });
 
 Given('user has installed OpenShift Serverless Operator', () => {

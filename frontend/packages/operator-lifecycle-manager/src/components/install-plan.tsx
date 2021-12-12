@@ -1,20 +1,23 @@
 import * as React from 'react';
-import { Button } from '@patternfly/react-core';
+import { Alert, Button } from '@patternfly/react-core';
 import { sortable } from '@patternfly/react-table';
 import * as classNames from 'classnames';
 import { Map as ImmutableMap, Set as ImmutableSet, fromJS } from 'immutable';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
+// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// @ts-ignore: FIXME missing exports due to out-of-sync @types/react-redux version
+import { useSelector } from 'react-redux';
 import { match, Link } from 'react-router-dom';
 import { Conditions } from '@console/internal/components/conditions';
 import {
   MultiListPage,
   DetailsPage,
   Table,
-  TableRow,
   TableData,
   RowFunctionArgs,
 } from '@console/internal/components/factory';
+import { errorModal } from '@console/internal/components/modals';
 import {
   SectionHeading,
   MsgBox,
@@ -26,14 +29,20 @@ import {
   ResourceSummary,
   history,
   HintBlock,
+  useAccessReview,
 } from '@console/internal/components/utils';
+import { authSvc } from '@console/internal/module/auth';
 import {
+  apiGroupForReference,
+  referenceFor,
   referenceForModel,
   referenceForOwnerRef,
-  k8sUpdate,
+  k8sPatch,
   apiVersionForReference,
+  UserKind,
 } from '@console/internal/module/k8s';
-import { GreenCheckCircleIcon, Status } from '@console/shared';
+import { RootState } from '@console/internal/redux';
+import { FLAGS, GreenCheckCircleIcon, Status, useFlag } from '@console/shared';
 import {
   SubscriptionModel,
   ClusterServiceVersionModel,
@@ -62,11 +71,11 @@ const componentsTableColumnClasses = [
   classNames('pf-m-hidden', 'pf-m-visible-on-lg'),
 ];
 
-export const InstallPlanTableRow: React.FC<RowFunctionArgs> = ({ obj, index, key, style }) => {
+export const InstallPlanTableRow: React.FC<RowFunctionArgs> = ({ obj }) => {
   const { t } = useTranslation();
   const phaseFor = (phase: InstallPlanKind['status']['phase']) => <Status status={phase} />;
   return (
-    <TableRow id={obj.metadata.uid} index={index} trKey={key} style={style}>
+    <>
       {/* Name */}
       <TableData className={tableColumnClasses[0]}>
         <ResourceLink
@@ -135,7 +144,7 @@ export const InstallPlanTableRow: React.FC<RowFunctionArgs> = ({ obj, index, key
           resource={obj}
         />
       </TableData>
-    </TableRow>
+    </>
   );
 };
 
@@ -193,7 +202,7 @@ export const InstallPlansList = requireOperatorGroup((props: InstallPlansListPro
       {...props}
       aria-label={t('olm~InstallPlans')}
       Header={InstallPlanTableHeader}
-      Row={(rowArgs) => <InstallPlanTableRow {...rowArgs} />}
+      Row={InstallPlanTableRow}
       EmptyMsg={EmptyMsg}
     />
   );
@@ -238,14 +247,56 @@ export const InstallPlansPage: React.FC<InstallPlansPageProps> = (props) => {
   );
 };
 
+const updateUser = (isOpenShift: boolean, user: UserKind): string => {
+  if (!isOpenShift) {
+    return authSvc.name();
+  }
+  return user.fullName || user.metadata?.name || '';
+};
+
+export const NeedInstallPlanPermissions = ({ installPlan }: NeedInstallPlanPermissions) => {
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
+  const user = useSelector<RootState, string>(({ UI }) => UI.get('user'));
+
+  const [username, setUsername] = React.useState(updateUser(isOpenShift, user));
+
+  React.useEffect(() => {
+    setUsername(updateUser(isOpenShift, user));
+  }, [isOpenShift, user]);
+
+  const { t } = useTranslation();
+
+  const apiGroup = apiGroupForReference(referenceFor(installPlan));
+
+  return (
+    <Alert
+      variant="info"
+      isInline
+      title={t('olm~Missing sufficient privileges for manual InstallPlan approval')}
+    >
+      {t(
+        'olm~User "{{user}}" does not have permissions to patch resource InstallPlans in API group "{{apiGroup}}" in the namespace "{{namespace}}."',
+        { user: username, apiGroup, namespace: installPlan.metadata.namespace },
+      )}
+    </Alert>
+  );
+};
+
 export const InstallPlanDetails: React.FC<InstallPlanDetailsProps> = ({ obj }) => {
   const { t } = useTranslation();
   const needsApproval =
     obj.spec.approval === InstallPlanApproval.Manual && obj.spec.approved === false;
 
+  const canPatchInstallPlans = useAccessReview({
+    group: InstallPlanModel.apiGroup,
+    resource: InstallPlanModel.plural,
+    namespace: obj.metadata.namespace,
+    verb: 'patch',
+  });
+
   return (
     <>
-      {needsApproval && (
+      {needsApproval && canPatchInstallPlans && (
         <div className="co-m-pane__body">
           <HintBlock title={t('olm~Review manual InstallPlan')}>
             <p>
@@ -261,6 +312,11 @@ export const InstallPlanDetails: React.FC<InstallPlanDetailsProps> = ({ obj }) =
               <Button variant="primary">{t('olm~Preview InstallPlan')}</Button>
             </Link>
           </HintBlock>
+        </div>
+      )}
+      {needsApproval && !canPatchInstallPlans && (
+        <div className="co-m-pane__body">
+          <NeedInstallPlanPermissions installPlan={obj} />
         </div>
       )}
       <div className="co-m-pane__body">
@@ -326,7 +382,6 @@ export const InstallPlanPreview: React.FC<InstallPlanPreviewProps> = ({
   const [needsApproval, setNeedsApproval] = React.useState(
     obj.spec.approval === InstallPlanApproval.Manual && obj.spec.approved === false,
   );
-  const [error, setError] = React.useState();
   const subscription = obj?.metadata?.ownerReferences.find(
     (ref) => referenceForOwnerRef(ref) === referenceForModel(SubscriptionModel),
   );
@@ -340,9 +395,9 @@ export const InstallPlanPreview: React.FC<InstallPlanPreviewProps> = ({
     .toArray();
 
   const approve = () =>
-    k8sUpdate(InstallPlanModel, { ...obj, spec: { ...obj.spec, approved: true } })
+    k8sPatch(InstallPlanModel, obj, [{ op: 'replace', path: '/spec/approved', value: true }])
       .then(() => setNeedsApproval(false))
-      .catch(setError);
+      .catch((error) => errorModal({ error: error.toString() }));
 
   const stepStatus = (status: Step['status']) => (
     <>
@@ -352,10 +407,21 @@ export const InstallPlanPreview: React.FC<InstallPlanPreviewProps> = ({
     </>
   );
 
+  const canPatchInstallPlans = useAccessReview({
+    group: InstallPlanModel.apiGroup,
+    resource: InstallPlanModel.plural,
+    namespace: obj.metadata.namespace,
+    verb: 'patch',
+  });
+
   return plan.length > 0 ? (
     <>
-      {error && <div className="co-clusterserviceversion-detail__error-box">{error}</div>}
-      {needsApproval && !hideApprovalBlock && (
+      {needsApproval && !hideApprovalBlock && !canPatchInstallPlans && (
+        <div className="co-m-pane__body">
+          <NeedInstallPlanPermissions installPlan={obj} />
+        </div>
+      )}
+      {needsApproval && !hideApprovalBlock && canPatchInstallPlans && (
         <div className="co-m-pane__body">
           <HintBlock title={t('olm~Review manual InstallPlan')}>
             <InstallPlanReview installPlan={obj} />
@@ -481,6 +547,10 @@ export type InstallPlanPreviewProps = {
 export type InstallPlanPreviewState = {
   needsApproval: boolean;
   error?: string;
+};
+
+export type NeedInstallPlanPermissions = {
+  installPlan: InstallPlanKind;
 };
 
 InstallPlansPage.displayName = 'InstallPlansPage';

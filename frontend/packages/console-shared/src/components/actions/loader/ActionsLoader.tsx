@@ -2,26 +2,33 @@ import * as React from 'react';
 import * as _ from 'lodash';
 import {
   Action,
-  ActionGroup,
   ActionProvider,
-  isActionGroup,
   isActionProvider,
+  isResourceActionProvider,
+  ResourceActionProvider,
   useResolvedExtensions,
+  ExtensionK8sGroupModel,
+  isActionFilter,
+  ActionFilter,
 } from '@console/dynamic-plugin-sdk';
-import { useExtensions } from '@console/plugin-sdk';
-import { MenuOption } from '../menu/menu-types';
-import { createMenuOptions } from '../menu/menu-utils';
+import { referenceForExtensionModel } from '@console/internal/module/k8s';
 import ActionsHookResolver from './ActionsHookResolver';
 
 type ActionsLoaderProps = {
   contextId: string;
   scope: any;
-  children: (loader: Loader) => React.ReactNode;
+  onActionsLoaded: (actions: Action[]) => void;
+  onContextChange: (contextId: string, scope: any) => void;
+  onLoadError: (error: any) => void;
 };
 
-type Loader = { actions: Action[]; options: MenuOption[]; loaded: boolean; error: any };
-
-const ActionsLoader: React.FC<ActionsLoaderProps> = ({ contextId, scope, children }) => {
+const ActionsLoader: React.FC<ActionsLoaderProps> = ({
+  contextId,
+  scope,
+  onActionsLoaded,
+  onContextChange,
+  onLoadError,
+}) => {
   const [actionsMap, setActionsMap] = React.useState<{ [uid: string]: Action[] }>({});
   const [loadError, setLoadError] = React.useState<any>();
 
@@ -29,53 +36,78 @@ const ActionsLoader: React.FC<ActionsLoaderProps> = ({ contextId, scope, childre
     setActionsMap((prev) => ({ ...prev, [uid]: actions }));
   }, []);
 
-  const actionProviderGuard = React.useCallback(
-    (e): e is ActionProvider => {
-      return isActionProvider(e) && e.properties.contextId === contextId;
-    },
+  const providerGuard = React.useCallback(
+    (e): e is ActionProvider => isActionProvider(e) && e.properties.contextId === contextId,
+    [contextId],
+  );
+
+  const filterGuard = React.useCallback(
+    (e): e is ActionFilter => isActionFilter(e) && e.properties.contextId === contextId,
+    [contextId],
+  );
+
+  const resourceProviderGuard = React.useCallback(
+    (e): e is ResourceActionProvider =>
+      isResourceActionProvider(e) &&
+      referenceForExtensionModel(e.properties.model as ExtensionK8sGroupModel) === contextId,
     [contextId],
   );
 
   const [providerExtensions, providerExtensionsResolved] = useResolvedExtensions<ActionProvider>(
-    actionProviderGuard,
+    providerGuard,
   );
 
-  const groupExtensions = useExtensions<ActionGroup>(isActionGroup);
+  const [filterExtensions, filterExtensionsResolved] = useResolvedExtensions<ActionFilter>(
+    filterGuard,
+  );
+
+  const [resourceProviderExtensions, resourceProviderExtensionsResolved] = useResolvedExtensions<
+    ResourceActionProvider
+  >(resourceProviderGuard);
+
+  const allProviderExtensions = [...providerExtensions, ...resourceProviderExtensions];
+  const allProviderExtensionsResolved =
+    providerExtensionsResolved && resourceProviderExtensionsResolved && filterExtensionsResolved;
 
   const actionsLoaded =
-    providerExtensionsResolved &&
-    (providerExtensions.length === 0 || providerExtensions.every(({ uid }) => actionsMap[uid]));
+    allProviderExtensionsResolved &&
+    (allProviderExtensions.length === 0 ||
+      allProviderExtensions.every(({ uid }) => actionsMap[uid]));
 
-  const actions: Action[] = React.useMemo(() => _.flatten(Object.values(actionsMap)), [actionsMap]);
+  const actions: Action[] = React.useMemo(() => {
+    const flattenedActions = _.flatten(Object.values(actionsMap));
+    return filterExtensions?.length > 0
+      ? flattenedActions.filter((a) =>
+          filterExtensions.some((ext) => ext.properties.filter(scope, a)),
+        )
+      : flattenedActions;
+  }, [actionsMap, filterExtensions, scope]);
 
-  const options: MenuOption[] = React.useMemo(() => createMenuOptions(actions, groupExtensions), [
-    actions,
-    groupExtensions,
-  ]);
+  React.useEffect(() => {
+    if (actionsLoaded) onActionsLoaded?.(actions);
+    // We do not want to run the effect every time onActionsLoaded changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actions, actionsLoaded]);
 
-  const loader = React.useMemo(
-    () => ({
-      actions,
-      options,
-      loaded: actionsLoaded,
-      error: loadError,
-    }),
-    [actions, actionsLoaded, loadError, options],
-  );
+  React.useEffect(() => {
+    if (loadError) onLoadError(loadError);
+    // We do not want to run the effect every time onLoadError changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadError]);
 
   return (
     <>
-      {providerExtensionsResolved &&
-        providerExtensions.map((extension) => (
+      {allProviderExtensionsResolved &&
+        allProviderExtensions.map((extension) => (
           <ActionsHookResolver
             key={extension.uid}
             useValue={extension.properties.provider}
             scope={scope}
             onValueResolved={(value) => onProviderValueResolved(value, extension.uid)}
+            onContextChange={onContextChange}
             onValueError={setLoadError}
           />
         ))}
-      {children(loader)}
     </>
   );
 };

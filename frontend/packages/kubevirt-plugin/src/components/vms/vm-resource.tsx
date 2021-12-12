@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { ClipboardCopy } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
 import { NodeLink, ResourceLink, ResourceSummary } from '@console/internal/components/utils';
 import { Selector } from '@console/internal/components/utils/selector';
@@ -7,6 +8,8 @@ import { K8sKind, PodKind } from '@console/internal/module/k8s';
 import { ServiceKind } from '@console/knative-plugin/src/types';
 import { LABEL_USED_TEMPLATE_NAME, LABEL_USED_TEMPLATE_NAMESPACE } from '../../constants';
 import { useGuestAgentInfo } from '../../hooks/use-guest-agent-info';
+import useSSHCommand from '../../hooks/use-ssh-command';
+import useSSHService from '../../hooks/use-ssh-service';
 import { asVMILikeWrapper } from '../../k8s/wrapper/utils/convert';
 import { GuestAgentInfoWrapper } from '../../k8s/wrapper/vm/guest-agent-info/guest-agent-info-wrapper';
 import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
@@ -15,10 +18,15 @@ import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
 import { getLabel, getName, getNamespace, getNodeName } from '../../selectors';
 import { findVMIPod } from '../../selectors/pod/selectors';
 import { getDescription } from '../../selectors/selectors';
-import { getOperatingSystem, getOperatingSystemName, getVMLikeModel } from '../../selectors/vm';
 import { isBootOrderChanged, isFlavorChanged } from '../../selectors/vm-like/next-run-changes';
 import { getFlavorData } from '../../selectors/vm/flavor-data';
-import { isVMIReady, isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
+import {
+  getOperatingSystem,
+  getOperatingSystemName,
+  isVMIReady,
+  isVMRunningOrExpectedRunning,
+} from '../../selectors/vm/selectors';
+import { getVMLikeModel } from '../../selectors/vm/vmlike';
 import { getVMINodeName, isVMIPaused } from '../../selectors/vmi';
 import { getVmiIpAddresses } from '../../selectors/vmi/ip-address';
 import { VMStatusBundle } from '../../statuses/vm/types';
@@ -27,9 +35,10 @@ import { getBasicID, prefixedID } from '../../utils';
 import { getGuestAgentFieldNotAvailMsg } from '../../utils/guest-agent-strings';
 import { isGuestAgentInstalled } from '../../utils/guest-agent-utils';
 import { BootOrderSummary } from '../boot-order';
-import { EditButton } from '../edit-button';
 import { descriptionModal, vmFlavorModal } from '../modals';
 import { BootOrderModal } from '../modals/boot-order-modal/boot-order-modal';
+import { gpuDevicesModal } from '../modals/hardware-devices/GPUDeviceModal';
+import { hostDevicesModal } from '../modals/hardware-devices/HostDevicesModal';
 import affinityModal from '../modals/scheduling-modals/affinity-modal/connected-affinity-modal';
 import { getRowsDataFromAffinity } from '../modals/scheduling-modals/affinity-modal/helpers';
 import dedicatedResourcesModal from '../modals/scheduling-modals/dedicated-resources-modal/connected-dedicated-resources-modal';
@@ -37,11 +46,14 @@ import evictionStrategyModal from '../modals/scheduling-modals/eviction-strategy
 import nodeSelectorModal from '../modals/scheduling-modals/node-selector-modal/connected-node-selector-modal';
 import tolerationsModal from '../modals/scheduling-modals/tolerations-modal/connected-tolerations-modal';
 import { vmStatusModal } from '../modals/vm-status-modal/vm-status-modal';
-import SSHDetailsPage from '../ssh-service/SSHDetailsPage/SSHDetailsPage';
+import SSHModal from '../ssh-service/SSHModal';
 import { VMStatus } from '../vm-status/vm-status';
 import VMDetailsItem from './VMDetailsItem';
 import VMDetailsItemTemplate from './VMDetailsItemTemplate';
+import VMEditWithPencil from './VMEditWithPencil';
 import VMIP from './VMIP';
+
+import './ssh-details.scss';
 
 export const VMResourceSummary: React.FC<VMResourceSummaryProps> = ({
   vm,
@@ -75,12 +87,12 @@ export const VMResourceSummary: React.FC<VMResourceSummaryProps> = ({
         {!description && (
           <span className="text-secondary">{t('kubevirt-plugin~Not available')}</span>
         )}
-        <EditButton
-          canEdit={canUpdateVM}
-          onClick={() => descriptionModal({ resource: vmiLike, kind: getVMLikeModel(vmiLike) })}
+        <VMEditWithPencil
+          isEdit={canUpdateVM}
+          onEditClick={() => descriptionModal({ resource: vmiLike, kind: getVMLikeModel(vmiLike) })}
         >
           {description}
-        </EditButton>
+        </VMEditWithPencil>
       </VMDetailsItem>
 
       <VMDetailsItem
@@ -122,12 +134,20 @@ export const VMDetailsList: React.FC<VMResourceListProps> = ({
 
   const canEditWhileVMRunning = vmiLike && canUpdateVM && kindObj !== VirtualMachineInstanceModel;
 
+  const vmWrapper = new VMWrapper(vm);
+  const vmiWrapper = new VMIWrapper(vmi);
+
   const launcherPod = findVMIPod(vmi, pods);
   const id = getBasicID(vmiLike);
   const devices = vmiLikeWrapper?.getLabeledDevices() || [];
   const nodeName = getVMINodeName(vmi) || getNodeName(launcherPod);
   const ipAddrs = getVmiIpAddresses(vmi);
   const workloadProfile = vmiLikeWrapper?.getWorkloadProfile();
+
+  const { sshServices } = useSSHService(vm);
+  const { command, user } = useSSHCommand(vm);
+  const vmiReady = isVMIReady(vmi);
+  const sshServicesRunning = sshServices?.running;
 
   return (
     <dl className="co-m-pane__details">
@@ -158,6 +178,7 @@ export const VMDetailsList: React.FC<VMResourceListProps> = ({
       <VMDetailsItem
         title={t('kubevirt-plugin~Boot Order')}
         canEdit={canEditWhileVMRunning}
+        dataTest="boot-order-details-item"
         editButtonId={prefixedID(id, 'boot-order-edit')}
         onEditClick={() => BootOrderModal({ vmLikeEntity: vm, modalClassName: 'modal-lg' })}
         idValue={prefixedID(id, 'boot-order')}
@@ -216,7 +237,85 @@ export const VMDetailsList: React.FC<VMResourceListProps> = ({
         title={t('kubevirt-plugin~User credentials')}
         idValue={prefixedID(id, 'authorized-ssh-key')}
       >
-        <SSHDetailsPage vm={vmiLike} isVMIReady={isVMIReady(vmi)} />
+        {vmiReady ? (
+          <>
+            <span data-test="details-item-user-credentials-user-name">
+              {t('kubevirt-plugin~user: {{user}}', { user })}
+            </span>
+            <ClipboardCopy
+              isReadOnly
+              data-test="SSHDetailsPage-command"
+              className="SSHDetailsPage-clipboard-command"
+            >
+              {sshServicesRunning ? command : `ssh ${user}@`}
+            </ClipboardCopy>
+            {!sshServicesRunning && (
+              <span className="kubevirt-menu-actions__secondary-title">
+                {t('kubevirt-plugin~Requires SSH Service')}
+              </span>
+            )}
+          </>
+        ) : (
+          <div className="text-secondary">{t('kubevirt-plugin~Virtual machine not running')}</div>
+        )}
+      </VMDetailsItem>
+
+      <VMDetailsItem
+        title={t('kubevirt-plugin~SSH Access')}
+        dataTest="ssh-access-details-item"
+        idValue={prefixedID(id, 'ssh-access')}
+        canEdit={vmiReady}
+        onEditClick={() => SSHModal({ vm })}
+      >
+        <span data-test="details-item-ssh-access-port">
+          {vmiReady ? (
+            sshServicesRunning ? (
+              t('kubevirt-plugin~port: {{port}}', { port: sshServices?.port })
+            ) : (
+              t('kubevirt-plugin~SSH Service disabled')
+            )
+          ) : (
+            <div className="text-secondary">{t('kubevirt-plugin~Virtual machine not running')}</div>
+          )}
+        </span>
+      </VMDetailsItem>
+
+      <VMDetailsItem
+        title={t('kubevirt-plugin~Hardware devices')}
+        idValue={prefixedID(id, 'hardware-devices')}
+        editButtonId={prefixedID(id, 'hardware-devices-edit')}
+      >
+        <VMEditWithPencil
+          isEdit={isVM}
+          onEditClick={() =>
+            gpuDevicesModal({
+              vm: vmWrapper.asResource(),
+              vmDevices: vmWrapper.getGPUDevices(),
+              vmiDevices: vmiWrapper.getGPUDevices(),
+              isVMRunning: isVMRunningOrExpectedRunning(vm, vmi),
+            })
+          }
+        >
+          {t('kubevirt-plugin~{{gpusCount}} GPU devices', {
+            gpusCount: vmWrapper.getGPUDevices()?.length || [].length,
+          })}
+        </VMEditWithPencil>
+        <br />
+        <VMEditWithPencil
+          isEdit={isVM}
+          onEditClick={() =>
+            hostDevicesModal({
+              vm: vmWrapper.asResource(),
+              vmDevices: vmWrapper.getHostDevices(),
+              vmiDevices: vmiWrapper.getHostDevices(),
+              isVMRunning: isVMRunningOrExpectedRunning(vm, vmi),
+            })
+          }
+        >
+          {t('kubevirt-plugin~{{hostDevicesCount}} Host devices', {
+            hostDevicesCount: vmWrapper.getHostDevices()?.length || [].length,
+          })}
+        </VMEditWithPencil>
       </VMDetailsItem>
     </dl>
   );
@@ -259,49 +358,56 @@ export const VMSchedulingList: React.FC<VMSchedulingListProps> = ({
       <div className="col-sm-6">
         <dl className="co-m-pane__details">
           <VMDetailsItem
-            canEdit={canEdit}
             title={t('kubevirt-plugin~Node Selector')}
             idValue={prefixedID(id, 'node-selector')}
             editButtonId={prefixedID(id, 'node-selector-edit')}
-            onEditClick={() => nodeSelectorModal({ vmLikeEntity: vm, blocking: true })}
           >
-            <Selector kind="Node" selector={nodeSelector} />
+            <VMEditWithPencil
+              isEdit={canEdit}
+              onEditClick={() => nodeSelectorModal({ vmLikeEntity: vm, blocking: true })}
+            >
+              <div className="kv-vm-resource--details-item">
+                <Selector kind="Node" selector={nodeSelector} />
+              </div>
+            </VMEditWithPencil>
           </VMDetailsItem>
 
           <VMDetailsItem
-            canEdit={canEdit}
             title={t('kubevirt-plugin~Tolerations')}
             idValue={prefixedID(id, 'tolerations')}
             editButtonId={prefixedID(id, 'tolerations-edit')}
-            onEditClick={() =>
-              tolerationsModal({
-                vmLikeEntity: vm,
-                blocking: true,
-                modalClassName: 'modal-lg',
-              })
-            }
           >
-            {tolerationsWrapperCount > 0 ? (
-              `${tolerationsWrapperCount} Toleration rules`
-            ) : (
-              <p className="text-muted">{t('kubevirt-plugin~No Toleration rules')}</p>
-            )}
+            <VMEditWithPencil
+              isEdit={canEdit}
+              onEditClick={() =>
+                tolerationsModal({
+                  vmLikeEntity: vm,
+                  blocking: true,
+                  modalClassName: 'modal-lg',
+                })
+              }
+            >
+              {t('kubevirt-plugin~{{count}} Toleration rule', {
+                count: tolerationsWrapperCount,
+              })}
+            </VMEditWithPencil>
           </VMDetailsItem>
 
           <VMDetailsItem
-            canEdit={canEdit}
             title={t('kubevirt-plugin~Affinity Rules')}
             idValue={prefixedID(id, 'affinity')}
             editButtonId={prefixedID(id, 'affinity-edit')}
-            onEditClick={() =>
-              affinityModal({ vmLikeEntity: vm, blocking: true, modalClassName: 'modal-lg' })
-            }
           >
-            {affinityWrapperCount > 0 ? (
-              `${affinityWrapperCount} Affinity rules`
-            ) : (
-              <p className="text-muted">{t('kubevirt-plugin~No Affinity rules')}</p>
-            )}
+            <VMEditWithPencil
+              isEdit={canEdit}
+              onEditClick={() =>
+                affinityModal({ vmLikeEntity: vm, blocking: true, modalClassName: 'modal-lg' })
+              }
+            >
+              {t('kubevirt-plugin~{{count}} Affinity rule', {
+                count: affinityWrapperCount,
+              })}
+            </VMEditWithPencil>
           </VMDetailsItem>
         </dl>
       </div>
@@ -311,9 +417,8 @@ export const VMSchedulingList: React.FC<VMSchedulingListProps> = ({
           <VMDetailsItem
             title={t('kubevirt-plugin~Flavor')}
             idValue={prefixedID(id, 'flavor')}
-            canEdit={canEditWhileVMRunning}
-            onEditClick={() => vmFlavorModal({ vmLike: vm, blocking: true })}
             editButtonId={prefixedID(id, 'flavor-edit')}
+            onEditClick={() => vmFlavorModal({ vmLike: vm, blocking: true })}
             isNotAvail={!flavorText}
             arePendingChanges={
               isVM &&
@@ -321,33 +426,44 @@ export const VMSchedulingList: React.FC<VMSchedulingListProps> = ({
               isFlavorChanged(new VMWrapper(vm), new VMIWrapper(vmi))
             }
           >
-            {flavorText}
+            <VMEditWithPencil
+              isEdit={canEditWhileVMRunning}
+              onEditClick={() => vmFlavorModal({ vmLike: vm, blocking: true })}
+            >
+              {flavorText}
+            </VMEditWithPencil>
           </VMDetailsItem>
 
           <VMDetailsItem
             title={t('kubevirt-plugin~Dedicated Resources')}
             idValue={prefixedID(id, 'dedicated-resources')}
-            canEdit={canEdit}
-            onEditClick={() => dedicatedResourcesModal({ vmLikeEntity: vm, blocking: true })}
             editButtonId={prefixedID(id, 'dedicated-resources-edit')}
           >
-            {isCPUPinned
-              ? t('kubevirt-plugin~Workload scheduled with dedicated resources (guaranteed policy)')
-              : t('kubevirt-plugin~No Dedicated resources applied')}
+            <VMEditWithPencil
+              isEdit={canEdit}
+              onEditClick={() => dedicatedResourcesModal({ vmLikeEntity: vm, blocking: true })}
+            >
+              {isCPUPinned
+                ? t(
+                    'kubevirt-plugin~Workload scheduled with dedicated resources (guaranteed policy)',
+                  )
+                : t('kubevirt-plugin~No Dedicated resources applied')}
+            </VMEditWithPencil>
           </VMDetailsItem>
 
           <VMDetailsItem
             title={t('kubevirt-plugin~Eviction Strategy')}
             idValue={prefixedID(id, 'eviction-strategy')}
-            canEdit={canEdit}
-            onEditClick={() =>
-              evictionStrategyModal({ vmLikeEntity: vm, evictionStrategy, blocking: true })
-            }
             editButtonId={prefixedID(id, 'eviction-strategy-edit')}
           >
-            {evictionStrategy || (
-              <p className="text-muted">{t('kubevirt-plugin~No Eviction Strategy')}</p>
-            )}
+            <VMEditWithPencil
+              isEdit={canEdit}
+              onEditClick={() =>
+                evictionStrategyModal({ vmLikeEntity: vm, evictionStrategy, blocking: true })
+              }
+            >
+              {evictionStrategy || t('kubevirt-plugin~No Eviction Strategy')}
+            </VMEditWithPencil>
           </VMDetailsItem>
         </dl>
       </div>

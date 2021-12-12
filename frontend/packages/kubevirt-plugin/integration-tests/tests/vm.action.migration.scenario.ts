@@ -1,13 +1,6 @@
 import { $, browser, ExpectedConditions as until } from 'protractor';
-import {
-  detailViewAction,
-  getDetailActionDropdownOptions,
-} from '@console/shared/src/test-utils/actions.view';
-import {
-  click,
-  deleteResource,
-  waitForStringInElement,
-} from '@console/shared/src/test-utils/utils';
+import { detailViewAction, getDetailActionDropdownOptions } from '../utils/shared-actions.view';
+import { click, deleteResource, waitForStringInElement } from '../utils/shared-utils';
 import { confirmButton } from '../views/uiResource.view';
 import { vmDetailNode } from '../views/virtualMachine.view';
 import { getBasicVMBuilder } from './mocks/vmBuilderPresets';
@@ -23,7 +16,7 @@ import { ProvisionSource } from './utils/constants/enums/provisionSource';
 import { VM_ACTION, VM_STATUS } from './utils/constants/vm';
 
 describe('Test VM Migration', () => {
-  const MIGRATE_VM = 'Migrate Virtual Machine';
+  const MIGRATE_VM = 'Migrate';
   const CANCEL_MIGRATION = 'Cancel Virtual Machine Migration';
   const VM_BOOT_AND_MIGRATE_TIMEOUT = VM_BOOTUP_TIMEOUT_SECS + VM_MIGRATION_TIMEOUT_SECS;
 
@@ -35,7 +28,7 @@ describe('Test VM Migration', () => {
 
   beforeAll(async () => {
     await vm.create();
-    await vm.waitForStatus(VM_STATUS.Off, VM_IMPORT_TIMEOUT_SECS);
+    await vm.waitForStatus(VM_STATUS.Stopped, VM_IMPORT_TIMEOUT_SECS);
   });
 
   afterAll(async () => {

@@ -1,8 +1,8 @@
 import { Edge, EdgeModel, Model, Node, NodeModel, NodeShape } from '@patternfly/react-topology';
 import i18next from 'i18next';
 import * as _ from 'lodash';
+import { WatchK8sResultsObject } from '@console/dynamic-plugin-sdk';
 import { getImageForIconClass } from '@console/internal/components/catalog/catalog-item-icon';
-import { WatchK8sResultsObject } from '@console/internal/components/utils/k8s-watch-hook';
 import { DeploymentModel, PodModel } from '@console/internal/models';
 import {
   K8sResourceKind,
@@ -691,6 +691,7 @@ export const getSinkUriTopologyEdgeItems = (
     edges.push({
       id: `${uid}_${targetUid}`,
       type: EdgeType.EventSource,
+      label: i18next.t('knative-plugin~Event source connector'),
       source: uid,
       target: targetUid,
     });
@@ -738,6 +739,7 @@ export const getEventTopologyEdgeItems = (resource: K8sResourceKind, { data }): 
         edges.push({
           id: `${uid}_${resUid}`,
           type: EdgeType.EventSource,
+          label: i18next.t('knative-plugin~Event source connector'),
           source: uid,
           target: resUid,
         });
@@ -855,6 +857,7 @@ export const getKnSourceKafkaTopologyEdgeItems = (
       acc.push({
         id: edgeId,
         type: EdgeType.EventSourceKafkaLink,
+        label: i18next.t('knative-plugin~Kafka connector'),
         source: kafkaSource.metadata?.uid,
         target: kafkaConnection.metadata?.uid,
       });
@@ -887,6 +890,7 @@ export const getTrafficTopologyEdgeItems = (resource: K8sResourceKind, { data })
         edges.push({
           id: `${uid}_${resUid}`,
           type: EdgeType.Traffic,
+          label: i18next.t('knative-plugin~Traffic distribution connector'),
           source: uid,
           target: resUid,
           data: { percent: trafficPercent },

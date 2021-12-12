@@ -4,7 +4,7 @@ import { modal } from '@console/cypress-integration-tests/views/modal';
 import { nav } from '@console/cypress-integration-tests/views/nav';
 import * as yamlView from '../../../../integration-tests-cypress/views/yaml-editor';
 import { devNavigationMenu, switchPerspective, pageTitle } from '../constants';
-import { devNavigationMenuPO, formPO, gitPO, yamlPO } from '../pageObjects';
+import { devNavigationMenuPO, formPO, gitPO, topologyPO, yamlPO } from '../pageObjects';
 
 export const app = {
   waitForDocumentLoad: () => {
@@ -12,7 +12,7 @@ export const app = {
       .its('readyState')
       .should('eq', 'complete');
   },
-  waitForLoad: (timeout: number = 80000) => {
+  waitForLoad: (timeout: number = 160000) => {
     cy.get('.co-m-loader', { timeout }).should('not.exist');
     cy.get('.pf-c-spinner', { timeout }).should('not.exist');
     cy.get('.skeleton-catalog--grid', { timeout }).should('not.exist');
@@ -21,7 +21,10 @@ export const app = {
     app.waitForDocumentLoad();
   },
   waitForNameSpacesToLoad: () => {
-    cy.byLegacyTestID('namespace-bar-dropdown').should('be.visible');
+    cy.request('/api/kubernetes/apis/project.openshift.io/v1/projects?limit=250').then((resp) => {
+      expect(resp.status).toEqual(200);
+    });
+    app.waitForLoad();
   },
 };
 
@@ -33,8 +36,7 @@ export const perspective = {
   switchTo: (perspectiveName: switchPerspective) => {
     nav.sidenav.switcher.changePerspectiveTo(perspectiveName);
     app.waitForLoad();
-    if (switchPerspective.Developer) {
-      cy.testA11y('Developer perspective with guide tour modal');
+    if (perspectiveName === switchPerspective.Developer) {
       guidedTour.close();
       // Commenting below line, because due to this pipeline runs feature file is failing
       // cy.testA11y('Developer perspective');
@@ -42,10 +44,14 @@ export const perspective = {
     nav.sidenav.switcher.shouldHaveText(perspectiveName);
     cy.get('body').then(($body) => {
       if ($body.find('[aria-label="Close drawer panel"]').length) {
-        cy.get('[aria-label="Close drawer panel"]').click();
-        cy.get('button')
-          .contains('Leave')
-          .click();
+        if ($body.find('[data-test="Next button"]').length) {
+          cy.get('[aria-label="Close drawer panel"]').click();
+          cy.get('button')
+            .contains('Leave')
+            .click();
+        } else {
+          cy.get('[aria-label="Close drawer panel"]').click();
+        }
       }
     });
   },
@@ -69,6 +75,12 @@ export const navigateTo = (opt: devNavigationMenu) => {
     case devNavigationMenu.Topology: {
       cy.get(devNavigationMenuPO.topology).click();
       cy.url().should('include', 'topology');
+      app.waitForLoad();
+      cy.url().then(($url) => {
+        if ($url.includes('view=list')) {
+          cy.get(topologyPO.switcher).click({ force: true });
+        }
+      });
       // Bug: ODC-5119 is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
       // cy.testA11y('Topology Page in dev perspective');
       break;
@@ -163,46 +175,70 @@ export const projectNameSpace = {
 
   selectOrCreateProject: (projectName: string) => {
     projectNameSpace.clickProjectDropdown();
-    // Bug: ODC-5129 - is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
+    cy.byTestID('showSystemSwitch').check(); // Ensure that all projects are showing
+    cy.byTestID('dropdown-menu-item-link').should('have.length.gt', 5);
+    // Bug: ODC-6164 - is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
     // cy.testA11y('Create Project modal');
-    cy.byLegacyTestID('dropdown-text-filter').type(projectName);
-    cy.get('[data-test-id="namespace-bar-dropdown"] span.pf-c-dropdown__toggle-text')
+    cy.byTestID('dropdown-text-filter').type(projectName);
+    cy.get('[data-test-id="namespace-bar-dropdown"] span.pf-c-menu-toggle__text')
       .first()
       .as('projectNameSpaceDropdown');
     app.waitForDocumentLoad();
-    cy.get('[role="listbox"]').then(($el) => {
-      if ($el.find('li[role="option"]').length === 0) {
-        cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
-        projectNameSpace.enterProjectName(projectName);
-        cy.byTestID('confirm-action').click();
-        app.waitForLoad();
-      } else {
-        cy.get('[role="listbox"]')
-          .find('li[role="option"]')
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          .each(($ele, index, $list) => {
-            if ($ele.text() === projectName) {
-              cy.get(`[id="${projectName}-link"]`).click();
+    cy.get('[data-test="namespace-dropdown-menu"]')
+      .first()
+      .then(($el) => {
+        if ($el.find('[data-test="dropdown-menu-item-link"]').length === 0) {
+          cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
+          projectNameSpace.enterProjectName(projectName);
+          cy.byTestID('confirm-action').click();
+          app.waitForLoad();
+        } else {
+          cy.get('[data-test="namespace-dropdown-menu"]')
+            .find('[data-test="dropdown-menu-item-link"]')
+            .contains(projectName)
+            .click();
+          cy.get('@projectNameSpaceDropdown').then(($el1) => {
+            if ($el1.text().includes(projectName)) {
+              cy.get('@projectNameSpaceDropdown').should('contain.text', projectName);
+            } else {
+              cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
+              projectNameSpace.enterProjectName(projectName);
+              cy.byTestID('confirm-action').click();
+              app.waitForLoad();
             }
           });
-        cy.get('@projectNameSpaceDropdown').then(($el1) => {
-          if ($el1.text().includes(projectName)) {
-            cy.get('@projectNameSpaceDropdown').should('contain.text', projectName);
-          } else {
-            cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
-            projectNameSpace.enterProjectName(projectName);
-            cy.byTestID('confirm-action').click();
-            app.waitForLoad();
-          }
-        });
+        }
+      });
+    cy.get('@projectNameSpaceDropdown').should('have.text', `Project: ${projectName}`);
+  },
+
+  selectProjectOrDoNothing: (projectName: string) => {
+    projectNameSpace.clickProjectDropdown();
+    cy.byTestID('showSystemSwitch').check();
+    cy.byTestID('dropdown-menu-item-link').should('have.length.gt', 5);
+    cy.byTestID('dropdown-text-filter').type(projectName);
+    cy.get('[data-test="namespace-dropdown-menu"]').then(($el) => {
+      if ($el.find('[data-test="dropdown-menu-item-link"]').length !== 0) {
+        cy.byTestID('namespace-dropdown-menu')
+          .find('[data-test="dropdown-menu-item-link"]')
+          .contains(projectName)
+          .click();
+      } else {
+        projectNameSpace.clickProjectDropdown();
       }
     });
   },
 
   selectProject: (projectName: string) => {
     projectNameSpace.clickProjectDropdown();
-    cy.byLegacyTestID('dropdown-text-filter').type(projectName);
-    cy.get(`[id="${projectName}-link"]`).click();
+    cy.byTestID('showSystemSwitch').check(); // Ensure that all projects are showing
+    cy.byTestID('dropdown-menu-item-link').should('have.length.gt', 5);
+    cy.byTestID('dropdown-text-filter').type(projectName);
+    cy.byTestID('namespace-dropdown-menu')
+      .find('[data-test="dropdown-menu-item-link"]')
+      .contains(projectName)
+      .click();
+    cy.log(`User has selected namespace ${projectName}`);
   },
 
   verifyMessage: (message: string) => cy.get('h2').should('contain.text', message),
@@ -219,6 +255,11 @@ export const createForm = {
   clickCancel: () =>
     cy
       .get(formPO.cancel)
+      .should('be.enabled')
+      .click(),
+  clickSave: () =>
+    cy
+      .get(formPO.save)
       .should('be.enabled')
       .click(),
   sectionTitleShouldContain: (sectionTitle: string) =>
@@ -243,5 +284,9 @@ export const yamlEditor = {
     cy.readFile(yamlLocation).then((str) => {
       yamlView.setEditorContent(str);
     });
+  },
+
+  clickSave: () => {
+    cy.byTestID('save-changes').click();
   },
 };

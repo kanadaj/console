@@ -12,6 +12,7 @@ import {
   getPorts,
 } from '../../../utils/imagestream-utils';
 import { useSafeK8s } from '../../../utils/safe-k8s-hook';
+import BuilderImageEnvironments from './BuilderImageEnvironments';
 import ImageStreamInfo from './ImageStreamInfo';
 
 export interface BuilderImageTagSelectorProps {
@@ -26,7 +27,13 @@ const BuilderImageTagSelector: React.FC<BuilderImageTagSelectorProps> = ({
   showImageInfo = true,
 }) => {
   const { t } = useTranslation();
-  const { setFieldValue, setFieldError } = useFormikContext<FormikValues>();
+  const {
+    values: {
+      import: { showEditImportStrategy },
+    },
+    setFieldValue,
+    setFieldError,
+  } = useFormikContext<FormikValues>();
   const {
     name: imageName,
     tags: imageTags,
@@ -62,15 +69,22 @@ const BuilderImageTagSelector: React.FC<BuilderImageTagSelectorProps> = ({
 
   return (
     <>
-      <DropdownField
-        name="image.tag"
-        label={t('devconsole~Builder Image version')}
-        items={tagItems}
-        title={tagItems[selectedImageTag]}
-        fullWidth
-        required
-      />
+      <div style={!showEditImportStrategy ? { display: 'none' } : {}}>
+        <DropdownField
+          name="image.tag"
+          label={t('devconsole~Builder Image version')}
+          items={tagItems}
+          title={tagItems[selectedImageTag]}
+          fullWidth
+          required
+        />
+      </div>
       {imageTag && showImageInfo && <ImageStreamInfo displayName={displayName} tag={imageTag} />}
+      <BuilderImageEnvironments
+        name="image.imageEnv"
+        imageStreamName={imageName}
+        imageStreamTag={selectedImageTag}
+      />
     </>
   );
 };

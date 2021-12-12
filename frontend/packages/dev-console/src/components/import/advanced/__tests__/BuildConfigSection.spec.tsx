@@ -7,14 +7,6 @@ import BuildConfigSection from '../BuildConfigSection';
 let BuildConfigSectionProps: React.ComponentProps<typeof BuildConfigSection>;
 const useFormikContextMock = useFormikContext as jest.Mock;
 
-jest.mock('react-i18next', () => {
-  const reactI18next = require.requireActual('react-i18next');
-  return {
-    ...reactI18next,
-    useTranslation: () => ({ t: (key) => key }),
-  };
-});
-
 jest.mock('formik', () => ({
   useFormikContext: jest.fn(() => ({
     values: {
@@ -31,8 +23,13 @@ jest.mock('formik', () => ({
         },
         strategy: 'Source',
       },
+      image: { selected: 'nodejs-ex', tag: 'latest' },
     },
   })),
+}));
+
+jest.mock('../../builder/builderImageHooks', () => ({
+  useBuilderImageEnvironments: () => [[], true],
 }));
 
 describe('BuildConfigSection', () => {
@@ -61,6 +58,7 @@ describe('BuildConfigSection', () => {
           triggers: {},
           strategy: 'Source',
         },
+        image: { selected: 'nodejs-ex', tag: 'latest' },
       },
     });
     const wrapper = shallow(<BuildConfigSection {...BuildConfigSectionProps} />);

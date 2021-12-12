@@ -2,14 +2,17 @@ import * as React from 'react';
 import { Formik } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
+import { Perspective, isPerspective, useActivePerspective } from '@console/dynamic-plugin-sdk';
 import { history } from '@console/internal/components/utils';
 import { K8sResourceKind, k8sCreate, modelFor, referenceFor } from '@console/internal/module/k8s';
 import { getActiveApplication } from '@console/internal/reducers/ui';
 import { RootState } from '@console/internal/redux';
-import { isPerspective, Perspective, useExtensions } from '@console/plugin-sdk';
-import { ALL_APPLICATIONS_KEY, useActivePerspective } from '@console/shared';
+import { useExtensions } from '@console/plugin-sdk';
+import { ALL_APPLICATIONS_KEY } from '@console/shared';
+import { EditorType } from '@console/shared/src/components/synced-editor/editor-toggle';
+import { safeJSToYAML } from '@console/shared/src/utils/yaml';
 import { sanitizeApplicationValue } from '@console/topology/src/utils/application-utils';
-import { getCreateChannelResource } from '../../../utils/create-channel-utils';
+import { getCatalogChannelData, getCreateChannelData } from '../../../utils/create-channel-utils';
 import { handleRedirect } from '../../../utils/create-eventsources-utils';
 import { addChannelValidationSchema } from '../eventSource-validation-utils';
 import { AddChannelFormData, ChannelListProps } from '../import-types';
@@ -31,7 +34,12 @@ type Props = ChannelProps & StateProps;
 const AddChannel: React.FC<Props> = ({ namespace, channels, activeApplication }) => {
   const [perspective] = useActivePerspective();
   const { t } = useTranslation();
-  const initialValues: AddChannelFormData = {
+  const initialFormData: AddChannelFormData = {
+    project: {
+      name: namespace || '',
+      displayName: '',
+      description: '',
+    },
     application: {
       initial: sanitizeApplicationValue(activeApplication),
       name: sanitizeApplicationValue(activeApplication),
@@ -44,9 +52,23 @@ const AddChannel: React.FC<Props> = ({ namespace, channels, activeApplication })
     data: {},
     yamlData: '',
   };
+
+  const initialYamlData: string = safeJSToYAML(getCreateChannelData(initialFormData), 'yamlData', {
+    skipInvalid: true,
+    noRefs: true,
+  });
+
+  const initialValues = {
+    editorType: EditorType.Form,
+    showCanUseYAMLMessage: true,
+    formData: initialFormData,
+    yamlData: initialYamlData,
+  };
+
   const perspectiveExtension = useExtensions<Perspective>(isPerspective);
+
   const createResources = (rawFormData: any): Promise<K8sResourceKind> => {
-    const channelResource = getCreateChannelResource(rawFormData);
+    const channelResource = getCatalogChannelData(rawFormData);
     if (channelResource?.kind && modelFor(referenceFor(channelResource))) {
       return k8sCreate(modelFor(referenceFor(channelResource)), channelResource);
     }
@@ -62,7 +84,7 @@ const AddChannel: React.FC<Props> = ({ namespace, channels, activeApplication })
   const handleSubmit = (values, actions) => {
     return createResources(values)
       .then(() => {
-        handleRedirect(values.namespace, perspective, perspectiveExtension);
+        handleRedirect(values.formData.namespace, perspective, perspectiveExtension);
       })
       .catch((err) => {
         actions.setStatus({ submitError: err.message });

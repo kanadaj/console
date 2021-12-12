@@ -6,10 +6,10 @@ import { useSelector } from 'react-redux';
 import { createSelectorCreator, defaultMemoize } from 'reselect';
 import { SortByDirection } from '@patternfly/react-table';
 import { useDeepCompareMemoize } from '@console/shared';
+import { RowFilter } from '@console/dynamic-plugin-sdk';
 
 import { RootState } from '../../redux';
 import { tableFilters } from './table-filters';
-import { RowFilter } from '../filter-toolbar';
 import { Filter } from './table';
 
 export const getFilteredRows = <D = any>(
@@ -111,11 +111,9 @@ export const useTableData = ({
     [tableSelectorCreator, listId],
   );
 
-  const [
-    currentSortField = defaultSortFunc ? undefined : defaultSortField,
-    currentSortFunc = defaultSortFunc,
-    currentSortOrder = defaultSortOrder,
-  ] = useSelector(sortSelector);
+  const [currentSortField, currentSortFunc, currentSortOrder = defaultSortOrder] = useSelector(
+    sortSelector,
+  );
 
   return React.useMemo(() => {
     const allFilters = staticFilters ? Object.assign({}, filters, ...staticFilters) : filters;
@@ -123,14 +121,16 @@ export const useTableData = ({
 
     if (loaded) {
       let sortBy: string | Function = 'metadata.name';
-      if (currentSortField) {
+      const sortFunc = currentSortFunc || defaultSortFunc;
+      const sortField = currentSortField || (currentSortFunc ? undefined : defaultSortField);
+      if (sortField) {
         sortBy = (resource) => sorts.string(_.get(resource, currentSortField, ''));
-      } else if (currentSortFunc && customSorts?.[currentSortFunc]) {
+      } else if (sortFunc && customSorts?.[sortFunc]) {
         // Sort resources by a function in the 'customSorts' prop
-        sortBy = customSorts[currentSortFunc];
-      } else if (currentSortFunc && sorts[currentSortFunc]) {
+        sortBy = customSorts[sortFunc];
+      } else if (sortFunc && sorts[sortFunc]) {
         // Sort resources by a function in the 'sorts' object
-        sortBy = sorts[currentSortFunc];
+        sortBy = sorts[sortFunc];
       }
 
       const getSortValue = (resource) => {
@@ -178,6 +178,8 @@ export const useTableData = ({
     currentSortOrder,
     customData,
     customSorts,
+    defaultSortField,
+    defaultSortFunc,
     filters,
     isPinned,
     listId,

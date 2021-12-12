@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { match as RouterMatch } from 'react-router';
-import { Link } from 'react-router-dom';
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
 // @ts-ignore
 import { useDispatch } from 'react-redux';
@@ -19,7 +18,6 @@ import {
 import { history } from '@console/internal/components/utils/router';
 import { setFlag } from '@console/internal/actions/features';
 import { k8sCreate, K8sResourceKind, referenceForModel } from '@console/internal/module/k8s';
-import { OCS_ATTACHED_DEVICES_FLAG } from '@console/local-storage-operator-plugin/src/features';
 import { ClusterServiceVersionModel } from '@console/operator-lifecycle-manager';
 import { resourcePathFromModel } from '@console/internal/components/utils';
 import { getName } from '@console/shared';
@@ -40,11 +38,11 @@ import {
   OCS_INTERNAL_CR_NAME,
   MODES,
 } from '../../../constants';
-import { StorageClusterKind, NavUtils } from '../../../types';
+import { StorageClusterKind, NetworkType, NavUtils } from '../../../types';
 import { getOCSRequestData, labelNodes, labelOCSNamespace } from '../ocs-request-data';
 import { OCSServiceModel } from '../../../models';
 import { OCS_CONVERGED_FLAG, OCS_INDEPENDENT_FLAG, OCS_FLAG } from '../../../features';
-import { createKmsResources } from '../../kms-config/utils';
+import { createClusterKmsResources } from '../../kms-config/utils';
 import '../install-wizard/install-wizard.scss';
 import './attached-devices.scss';
 
@@ -73,7 +71,7 @@ const createCluster = async (
     setInProgress(true);
 
     const storageCluster: StorageClusterKind = getOCSRequestData(
-      storageClass,
+      { name: storageClass?.metadata?.name, provisioner: storageClass?.provisioner },
       defaultRequestSize.BAREMETAL,
       encryption.clusterWide,
       enableMinimal,
@@ -87,13 +85,12 @@ const createCluster = async (
     );
     const promises: Promise<K8sResourceKind>[] = [...labelNodes(nodes), labelOCSNamespace()];
     if (encryption.advanced && kms.hasHandled) {
-      promises.push(...createKmsResources(kms));
+      promises.push(...createClusterKmsResources(kms));
     }
     if (enableTaint) {
       promises.push(...taintNodes(nodes));
     }
     await Promise.all(promises).then(() => k8sCreate(OCSServiceModel, storageCluster));
-    flagDispatcher(setFlag(OCS_ATTACHED_DEVICES_FLAG, true));
     flagDispatcher(setFlag(OCS_CONVERGED_FLAG, true));
     flagDispatcher(setFlag(OCS_INDEPENDENT_FLAG, false));
     flagDispatcher(setFlag(OCS_FLAG, true));
@@ -125,7 +122,11 @@ const CreateStorageClusterWizard: React.FC<CreateStorageClusterWizardProps> = ({
 
   const discoveryNodes = state.lvdIsSelectNodes ? state.lvdSelectNodes : state.lvdAllNodes;
 
-  const { getStep, getIndex, getAnchor } = navUtils;
+  const { getParamString, getStep, getIndex, getAnchor } = navUtils;
+  const hasConfiguredNetwork =
+    state.networkType === NetworkType.MULTUS
+      ? !!(state.publicNetwork || state.clusterNetwork)
+      : true;
 
   /**
    * This custom footer for wizard provides a control over the movement to next step.
@@ -154,7 +155,8 @@ const CreateStorageClusterWizard: React.FC<CreateStorageClusterWizardProps> = ({
             },
             [CreateStepsSC.CONFIGURE]: {
               onNextClick: () => onNext(),
-              isNextDisabled: !state.encryption.hasHandled || !state.kms.hasHandled,
+              isNextDisabled:
+                !state.encryption.hasHandled || !hasConfiguredNetwork || !state.kms.hasHandled,
             },
             [CreateStepsSC.REVIEWANDCREATE]: {
               onNextClick: () =>
@@ -162,7 +164,8 @@ const CreateStorageClusterWizard: React.FC<CreateStorageClusterWizardProps> = ({
               isNextDisabled:
                 state.nodes.length < MINIMUM_NODES ||
                 !getName(state.storageClass) ||
-                !state.kms.hasHandled,
+                !state.kms.hasHandled ||
+                !hasConfiguredNetwork,
             },
           };
           const { id } = activeStep;
@@ -196,18 +199,10 @@ const CreateStorageClusterWizard: React.FC<CreateStorageClusterWizardProps> = ({
     </WizardFooter>
   );
 
-  const toLink = (steps: any, currentStep: string, modes: any) =>
-    getAnchor(getIndex(steps, currentStep), getIndex(modes, modes.ATTACHED_DEVICES));
-
   const steps: WizardStep[] = [
     {
       id: CreateStepsSC.DISCOVER,
-      name: (
-        <Link to={toLink(CreateStepsSC, CreateStepsSC.DISCOVER, MODES)}>
-          {' '}
-          {t('ceph-storage-plugin~Discover disks')}{' '}
-        </Link>
-      ),
+      name: t('ceph-storage-plugin~Discover disks'),
       component: (
         <DiscoverDisks
           inProgress={state.lvdInProgress}
@@ -221,42 +216,22 @@ const CreateStorageClusterWizard: React.FC<CreateStorageClusterWizardProps> = ({
     },
     {
       id: CreateStepsSC.STORAGECLASS,
-      name: (
-        <Link to={toLink(CreateStepsSC, CreateStepsSC.STORAGECLASS, MODES)}>
-          {' '}
-          {t('ceph-storage-plugin~Create StorageClass')}{' '}
-        </Link>
-      ),
+      name: t('ceph-storage-plugin~Create StorageClass'),
       component: <CreateStorageClass dispatch={dispatch} state={state} ns={lsoNs} />,
     },
     {
       id: CreateStepsSC.STORAGEANDNODES,
-      name: (
-        <Link to={toLink(CreateStepsSC, CreateStepsSC.STORAGEANDNODES, MODES)}>
-          {' '}
-          {t('ceph-storage-plugin~Capacity and nodes')}{' '}
-        </Link>
-      ),
-      component: <StorageAndNodes dispatch={dispatch} state={state} mode={mode} />,
+      component: <StorageAndNodes dispatch={dispatch} state={state} />,
+      name: t('ceph-storage-plugin~Capacity and nodes'),
     },
     {
       id: CreateStepsSC.CONFIGURE,
-      name: (
-        <Link to={toLink(CreateStepsSC, CreateStepsSC.CONFIGURE, MODES)}>
-          {' '}
-          {t('ceph-storage-plugin~Security and network')}{' '}
-        </Link>
-      ),
+      name: t('ceph-storage-plugin~Security and network'),
       component: <Configure dispatch={dispatch} state={state} mode={mode} />,
     },
     {
       id: CreateStepsSC.REVIEWANDCREATE,
-      name: (
-        <Link to={toLink(CreateStepsSC, CreateStepsSC.REVIEWANDCREATE, MODES)}>
-          {' '}
-          {t('ceph-storage-plugin~Review and create')}{' '}
-        </Link>
-      ),
+      name: t('ceph-storage-plugin~Review and create'),
       nextButtonText: t('ceph-storage-plugin~Create'),
       component: (
         <ReviewAndCreate state={state} inProgress={inProgress} errorMessage={errorMessage} />
@@ -269,6 +244,7 @@ const CreateStorageClusterWizard: React.FC<CreateStorageClusterWizardProps> = ({
       <StackItem>
         {showInfoAlert && (
           <Alert
+            aria-label={t('ceph-storage-plugin~Info Alert')}
             className="co-alert ocs-install-info-alert"
             variant="info"
             isInline
@@ -295,6 +271,14 @@ const CreateStorageClusterWizard: React.FC<CreateStorageClusterWizardProps> = ({
           onClose={() =>
             history.push(resourcePathFromModel(ClusterServiceVersionModel, appName, ns))
           }
+          onGoToStep={(step) => {
+            history.push(
+              `~new?${getParamString(
+                getIndex(CreateStepsSC, step.id),
+                getIndex(MODES, MODES.ATTACHED_DEVICES),
+              )}`,
+            );
+          }}
           footer={CustomFooter}
           cancelButtonText={t('ceph-storage-plugin~Cancel')}
           nextButtonText={t('ceph-storage-plugin~Next')}
