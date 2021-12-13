@@ -3,7 +3,7 @@ import { Action } from '@console/dynamic-plugin-sdk';
 import { configureUpdateStrategyModal, errorModal } from '@console/internal/components/modals';
 import { togglePaused, asAccessReview } from '@console/internal/components/utils';
 import { DeploymentConfigModel } from '@console/internal/models';
-import { K8sResourceKind, K8sKind, k8sCreate } from '@console/internal/module/k8s';
+import { K8sResourceKind, K8sKind, k8sCreate, k8sPatch } from '@console/internal/module/k8s';
 import { resourceLimitsModal } from '../../components/modals/resource-limits';
 import { ResourceActionFactory } from './common-factory';
 
@@ -21,6 +21,21 @@ const deploymentConfigRollout = (dc: K8sResourceKind): Promise<K8sResourceKind> 
     path: 'instantiate',
   };
   return k8sCreate(DeploymentConfigModel, req, opts);
+};
+
+const deploymentRollout = (
+  model: K8sKind,
+  deployment: K8sResourceKind,
+): Promise<K8sResourceKind> => {
+  const patch = [
+    {
+      path: '/spec/template/metadata/labels/timestamp',
+      op: 'replace',
+      value: Date.now().toString(),
+    },
+  ];
+
+  return k8sPatch(model, deployment, patch);
 };
 
 export const DeploymentActionFactory: ResourceActionFactory = {
@@ -57,6 +72,23 @@ export const DeploymentActionFactory: ResourceActionFactory = {
       name: obj.metadata.name,
       namespace: obj.metadata.namespace,
       verb: 'patch',
+    },
+  }),
+  StartDeploymentRollout: (kind: K8sKind, obj: K8sResourceKind): Action => ({
+    id: 'start-rollout',
+    label: i18next.t('console-app~Start rollout'),
+    cta: () =>
+      deploymentRollout(kind, obj).catch((err) => {
+        const error = err.message;
+        errorModal({ error });
+      }),
+    accessReview: {
+      group: kind.apiGroup,
+      resource: kind.plural,
+      subresource: 'instantiate',
+      name: obj.metadata.name,
+      namespace: obj.metadata.namespace,
+      verb: 'create',
     },
   }),
   StartDCRollout: (kind: K8sKind, obj: K8sResourceKind): Action => ({

@@ -15,6 +15,7 @@ export const useDeploymentActionsProvider = (resource: K8sResourceKind) => {
       ...(relatedHPAs?.length === 0 ? [CommonActionFactory.ModifyCount(kindObj, resource)] : []),
       ...hpaActions,
       getHealthChecksAction(kindObj, resource),
+      DeploymentActionFactory.StartRollout(kindObj, resource),
       DeploymentActionFactory.PauseRollout(kindObj, resource),
       CommonActionFactory.AddStorage(kindObj, resource),
       DeploymentActionFactory.UpdateStrategy(kindObj, resource),
