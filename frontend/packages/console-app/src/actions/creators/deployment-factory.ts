@@ -85,10 +85,9 @@ export const DeploymentActionFactory: ResourceActionFactory = {
     accessReview: {
       group: kind.apiGroup,
       resource: kind.plural,
-      subresource: 'instantiate',
       name: obj.metadata.name,
       namespace: obj.metadata.namespace,
-      verb: 'create',
+      verb: 'patch',
     },
   }),
   StartDCRollout: (kind: K8sKind, obj: K8sResourceKind): Action => ({
