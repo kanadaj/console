@@ -78,8 +78,8 @@ const PauseAction: KebabAction = (kind: K8sKind, obj: DeploymentKind) => ({
 });
 
 const RolloutAction: KebabAction = (kind: K8sKind, obj: K8sResourceKind) => ({
-  // t('workload~Start rollout')
-  labelKey: 'workload~Start rollout',
+  // t('public~Start rollout')
+  labelKey: 'public~Start rollout',
   callback: () => restart(kind, obj).catch((err) => errorModal({ error: err.message })),
   accessReview: {
     group: kind.apiGroup,
