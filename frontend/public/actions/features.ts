@@ -193,6 +193,16 @@ const detectRoutes = (dispatch) =>
         : handleError(err, FLAGS.ROUTES, dispatch, detectRoutes),
   );
 
+const buildsPath = '/apis/config.openshift.io/v1/builds';
+const detectBuilds = (dispatch) =>
+  fetchURL(buildsPath).then(
+    (res) => dispatch(setFlag(FLAGS.BUILDS, _.size(res.resources) > 0)),
+    (err) =>
+      err?.response?.status === 404 || err?.status === 404
+        ? dispatch(setFlag(FLAGS.BUILDS, false))
+        : handleError(err, FLAGS.BUILDS, dispatch, detectBuilds),
+  );
+
 const clusterVersionPath = '/apis/config.openshift.io/v1/clusterversions/version';
 const detectClusterVersion = (dispatch) =>
   fetchURL<ClusterVersionKind>(clusterVersionPath).then(
@@ -270,6 +280,7 @@ export const detectFeatures = () => (dispatch: Dispatch) => {
     detectClusterVersion,
     detectUser,
     detectRoutes,
+    detectBuilds,
     ...ssarCheckActions,
   ].forEach((detect) => detect(dispatch));
 };
