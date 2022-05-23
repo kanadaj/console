@@ -154,6 +154,7 @@ export const detectComponents: FeatureDetector = async (dispatch) => {
         const cephClusters = await k8sList(CephClusterModel, { ns: CEPH_STORAGE_NAMESPACE });
         if (cephClusters?.length > 0) {
           dispatch(setFlag(CEPH_FLAG, true));
+          dispatch(setFlag(MCG_FLAG, true));
           cephFound = true;
         }
       }
