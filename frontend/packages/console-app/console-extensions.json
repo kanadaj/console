@@ -461,7 +461,7 @@
       "activePath": "/dashboards/"
     },
     "flags": {
-      "required": ["CAN_GET_NS", "OPENSHIFT", "PROMETHEUS", "MONITORING"]
+      "required": ["CAN_GET_NS", "PROMETHEUS", "MONITORING"]
     }
   },
   {
@@ -474,7 +474,7 @@
       "name": "%console-app~Projects%",
       "resource": "projects"
     },
-    "flags": { "required": ["OPENSHIFT"] }
+    "flags": { "required": [] }
   },
   {
     "type": "console.navigation/href",

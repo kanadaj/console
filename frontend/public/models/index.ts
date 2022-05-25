@@ -969,7 +969,7 @@ export const ClusterOperatorModel: K8sKind = {
   // t('public~ClusterOperators')
   labelPluralKey: 'public~ClusterOperators',
   apiVersion: 'v1',
-  apiGroup: 'config.openshift.io',
+  apiGroup: 'config.kubernetes.io',
   plural: 'clusteroperators',
   abbr: 'CO',
   namespaced: false,
@@ -986,7 +986,7 @@ export const ClusterVersionModel: K8sKind = {
   // t('public~ClusterVersions')
   labelPluralKey: 'public~ClusterVersions',
   apiVersion: 'v1',
-  apiGroup: 'config.openshift.io',
+  apiGroup: 'config.kubernetes.io',
   plural: 'clusterversions',
   abbr: 'CV',
   namespaced: false,
@@ -1038,7 +1038,7 @@ export const OAuthModel: K8sKind = {
   // t('public~OAuths')
   labelPluralKey: 'public~OAuths',
   apiVersion: 'v1',
-  apiGroup: 'config.openshift.io',
+  apiGroup: 'config.kubernetes.io',
   plural: 'oauths',
   abbr: 'OA',
   namespaced: false,
@@ -1055,7 +1055,7 @@ export const InfrastructureModel: K8sKind = {
   // t('public~Infrastructures')
   labelPluralKey: 'public~Infrastructures',
   apiVersion: 'v1',
-  apiGroup: 'config.openshift.io',
+  apiGroup: 'config.kubernetes.io',
   plural: 'infrastructures',
   abbr: 'INF',
   namespaced: false,
@@ -1068,7 +1068,7 @@ export const NetworkOperatorConfigModel: K8sKind = {
   label: 'Network',
   labelPlural: 'Networks',
   apiVersion: 'v1',
-  apiGroup: 'config.openshift.io',
+  apiGroup: 'config.kubernetes.io',
   plural: 'networks',
   abbr: 'NO',
   namespaced: false,

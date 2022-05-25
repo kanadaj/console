@@ -43,15 +43,9 @@ func (h *UserSettingsHandler) HandleUserSettings(user *auth.User, w http.Respons
 		return
 	}
 
-	// userSettingMeta, err := h.getUserSettingMeta(context, user)
-	// if err != nil {
-	// 	h.sendErrorResponse("Failed to get user data to handle user setting request: %v", err, w)
-	// 	return
-	// }
-
-	userSettingMeta, err := newUserSettingMeta(user.Username, string(user.ID))
+	userSettingMeta, err := h.getUserSettingMeta(context, user)
 	if err != nil {
-		h.sendErrorResponse("Failed to convert user token to user data to handle user setting request: %v", err, w)
+		h.sendErrorResponse("Failed to get user data to handle user setting request: %v", err, w)
 		return
 	}
 

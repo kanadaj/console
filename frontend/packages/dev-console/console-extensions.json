@@ -580,7 +580,7 @@
       "insertAfter": "topology-side-bar-tab-resource"
     },
     "flags": {
-      "required": ["OPENSHIFT", "MONITORING"]
+      "required": ["MONITORING"]
     }
   },
   {
