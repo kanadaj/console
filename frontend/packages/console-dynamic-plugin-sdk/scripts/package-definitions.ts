@@ -68,7 +68,10 @@ export const getCorePackage: GetPackageDefinition = (
     version: sdkPackage.version,
     main: 'lib/lib-core.js',
     ...commonManifestFields,
-    dependencies: parseSharedModuleDeps(rootPackage, missingDepCallback),
+    dependencies: {
+      ...parseSharedModuleDeps(rootPackage, missingDepCallback),
+      ...parseDeps(rootPackage, ['typesafe-actions', 'whatwg-fetch'], missingDepCallback),
+    },
   },
   filesToCopy: {
     ...commonFiles,
@@ -86,42 +89,6 @@ export const getInternalPackage: GetPackageDefinition = (
     name: '@openshift-console/dynamic-plugin-sdk-internal',
     version: sdkPackage.version,
     main: 'lib/lib-internal.js',
-    ...commonManifestFields,
-    dependencies: parseSharedModuleDeps(rootPackage, missingDepCallback),
-  },
-  filesToCopy: {
-    ...commonFiles,
-  },
-});
-
-export const getInternalKubevirtPackage: GetPackageDefinition = (
-  sdkPackage,
-  rootPackage,
-  missingDepCallback,
-) => ({
-  outDir: 'dist/internal-kubevirt',
-  manifest: {
-    name: '@openshift-console/dynamic-plugin-sdk-internal-kubevirt',
-    version: sdkPackage.version,
-    main: 'lib/lib-internal-kubevirt.js',
-    ...commonManifestFields,
-    dependencies: parseSharedModuleDeps(rootPackage, missingDepCallback),
-  },
-  filesToCopy: {
-    ...commonFiles,
-  },
-});
-
-export const getHostAppPackage: GetPackageDefinition = (
-  sdkPackage,
-  rootPackage,
-  missingDepCallback,
-) => ({
-  outDir: 'dist/host-app',
-  manifest: {
-    name: '@openshift-console/dynamic-plugin-sdk-host-app',
-    version: sdkPackage.version,
-    main: 'lib/lib-host-app.js',
     ...commonManifestFields,
     dependencies: parseSharedModuleDeps(rootPackage, missingDepCallback),
   },

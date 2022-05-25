@@ -392,9 +392,12 @@ export class UnconnectedEnvironmentPage extends PromiseComponent {
       name,
       namespace,
     };
-    checkAccess(resourceAttributes, impersonate).then((resp) =>
-      this.setState({ allowed: resp.status.allowed }),
-    );
+    checkAccess(resourceAttributes, impersonate)
+      .then((resp) => this.setState({ allowed: resp.status.allowed }))
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.warn('Error while check edit access for environment variables', e);
+      });
   }
 
   /**
@@ -560,7 +563,7 @@ export class UnconnectedEnvironmentPage extends PromiseComponent {
                     You can enter text or add values from a ConfigMap or Secret. Drag and drop
                     environment variables to change the order in which they are run. A variable can
                     reference any other variables that come before it in the list, for example{' '}
-                    <code>FULLDOMAIN = $(SUBDOMAIN).example.com</code>.
+                    <code className="co-code">FULLDOMAIN = $(SUBDOMAIN).example.com</code>.
                   </Trans>
                 </FieldLevelHelp>
               )}

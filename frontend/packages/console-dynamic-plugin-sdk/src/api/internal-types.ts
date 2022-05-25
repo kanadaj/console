@@ -1,13 +1,15 @@
-import { CardProps, CardBodyProps } from '@patternfly/react-core';
+import { Map as ImmutableMap } from 'immutable';
 import {
-  K8sResourceCommon,
   FirehoseResult,
-  PrometheusResponse,
   HealthState,
-  StatusGroupMapper,
+  K8sResourceCommon,
+  LIMIT_STATE,
+  PrometheusResponse,
   QueryParams,
+  StatusGroupMapper,
+  TopConsumerPopoverProps,
 } from '../extensions/console-types';
-import { K8sModel, Alert } from './common-types';
+import { Alert, K8sModel } from './common-types';
 
 type WithClassNameProps<R = {}> = R & {
   className?: string;
@@ -60,26 +62,6 @@ export type HealthItemProps = WithClassNameProps<{
   icon?: React.ReactNode;
 }>;
 
-export type DashboardCardProps = CardProps & {
-  className?: string;
-  children: React.ReactNode;
-  gradient?: boolean;
-};
-
-export type DashboardCardBodyProps = CardBodyProps & {
-  classname?: string;
-  children: React.ReactNode;
-  isLoading?: boolean;
-};
-
-export type DashboardCardHeaderProps = WithClassNameProps<{
-  children: React.ReactNode;
-}>;
-
-export type DashboardCardTitleProps = WithClassNameProps<{
-  children?: React.ReactNode;
-}>;
-
 export type ResourceInventoryItemProps = {
   resources: K8sResourceCommon[];
   additionalResources?: { [key: string]: [] };
@@ -114,19 +96,6 @@ export type UtilizationBodyProps = {
   children: React.ReactNode;
 };
 
-type LIMIT_STATE = 'ERROR' | 'WARN' | 'OK';
-
-export type TopConsumerPopoverProp = {
-  current: string;
-  max?: string;
-  limit?: string;
-  available?: string;
-  requested?: string;
-  total?: string;
-  limitState?: LIMIT_STATE;
-  requestedState?: string;
-};
-
 export enum ByteDataTypes {
   BinaryBytes = 'binaryBytes',
   BinaryBytesWithoutB = 'binaryBytesWithoutB',
@@ -146,19 +115,8 @@ export type UtilizationItemProps = {
   error: boolean;
   max?: number;
   byteDataType?: ByteDataTypes;
-  TopConsumerPopover?: React.ComponentType<TopConsumerPopoverProp>;
+  TopConsumerPopover?: React.ComponentType<TopConsumerPopoverProps>;
   setLimitReqState?: (state: { limit: LIMIT_STATE; requested: LIMIT_STATE }) => void;
-};
-
-type GridDashboarCard = {
-  Card: React.ComponentType<any>;
-  span?: 4 | 6 | 12;
-};
-
-export type DashboardGridProps = {
-  mainCards: GridDashboarCard[];
-  leftCards?: GridDashboarCard[];
-  rightCards?: GridDashboarCard[];
 };
 
 type EventInvolvedObject = {
@@ -208,29 +166,102 @@ export type UseUtilizationDuration = (
   adjustDuration?: (duration: number) => number,
 ) => UtilizationDurationState;
 
-export enum PrometheusEndpoint {
-  LABEL = 'api/v1/label',
-  RULES = 'api/v1/rules',
-  QUERY = 'api/v1/query',
-  QUERY_RANGE = 'api/v1/query_range',
-}
-
-type PrometheusPollProps = {
-  delay?: number;
-  endpoint: PrometheusEndpoint;
-  endTime?: number;
-  namespace?: string;
-  query: string;
-  samples?: number;
-  timeout?: string;
-  timespan?: number;
-};
-
-export type UsePrometheusPoll = (props: PrometheusPollProps) => [PrometheusResponse, any, boolean];
-
 export type Options = {
   ns?: string;
   name?: string;
   path?: string;
   queryParams?: QueryParams;
+  cluster?: string;
+};
+
+export type UseActiveNamespace = () => [string, (ns: string) => void];
+
+export type VirtualizedGridProps = {
+  items: VirtualizedGridItem[] | VirtualizedGridGroupedItems;
+  renderCell: VirtualizedGridRenderCell;
+  /**
+   * should be set when items are grouped/ `isItemGrouped` is set to true and each group has a heading
+   */
+  renderHeader?: VirtualizedGridRenderHeader;
+  /**
+   * Default value: false
+   * should be set true when items are grouped
+   */
+  isItemsGrouped?: boolean;
+
+  /** Grid styles */
+  className?: string;
+
+  /** Cell Measurements */
+  cellWidth?: number;
+  cellMargin?: number;
+  celldefaultHeight?: number;
+  estimatedCellHeight?: number;
+
+  overscanRowCount?: number;
+  headerHeight?: number;
+};
+
+export type VirtualizedGridItem = {
+  [key: string]: any;
+};
+
+export type VirtualizedGridGroupedItems = {
+  [key: string]: VirtualizedGridItem[];
+};
+
+export type VirtualizedGridRenderHeader = (heading: string) => React.ReactNode;
+
+export type VirtualizedGridRenderCell = (item: VirtualizedGridItem) => React.ReactNode;
+
+export type LazyActionMenuProps = {
+  context: ActionContext;
+  variant?: ActionMenuVariant;
+  label?: string;
+  isDisabled?: boolean;
+};
+
+export type ActionContext = {
+  [contextId: string]: any;
+};
+
+export enum ActionMenuVariant {
+  KEBAB = 'plain',
+  DROPDOWN = 'default',
+}
+
+type Request<R> = {
+  active: boolean;
+  timeout: NodeJS.Timer;
+  inFlight: boolean;
+  data: R;
+  error: any;
+};
+
+export type RequestMap<R> = ImmutableMap<string, Request<R>>;
+
+export type Fetch = (url: string) => Promise<any>;
+export type WatchURLProps = {
+  url: string;
+  fetch?: Fetch;
+};
+
+export type WatchPrometheusQueryProps = {
+  query: string;
+  namespace?: string;
+  timespan?: number;
+};
+
+export type UseDashboardResources = ({
+  prometheusQueries,
+  urls,
+  notificationAlertLabelSelectors,
+}: {
+  prometheusQueries?: WatchPrometheusQueryProps[];
+  urls?: WatchURLProps[];
+  notificationAlertLabelSelectors?: { [k: string]: string };
+}) => {
+  urlResults: RequestMap<any>;
+  prometheusResults: RequestMap<PrometheusResponse>;
+  notificationAlerts: { alerts: Alert[]; loaded: boolean; loadError: Error };
 };

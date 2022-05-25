@@ -37,7 +37,12 @@ describe('Kubernetes resource CRUD operations', () => {
     .set('services', { kind: 'Service' })
     .set('serviceaccounts', { kind: 'ServiceAccount', humanizeKind: false })
     .set('secrets', { kind: 'Secret', skipYamlReloadTest: true })
-    .set('configmaps', { kind: 'ConfigMap', humanizeKind: false })
+    .set('configmaps', {
+      kind: 'ConfigMap',
+      humanizeKind: false,
+      skipYamlReloadTest: true,
+      skipYamlSaveTest: true,
+    })
     .set('persistentvolumes', {
       kind: 'PersistentVolume',
       namespaced: false,
@@ -91,7 +96,7 @@ describe('Kubernetes resource CRUD operations', () => {
       skipYamlSaveTest: true,
     })
     .set('imagestreams', { kind: 'ImageStream', humanizeKind: false })
-    .set('routes', { kind: 'Route' })
+    .set('routes', { kind: 'Route', skipYamlReloadTest: true, skipYamlSaveTest: true })
     .set('user.openshift.io~v1~Group', {
       kind: 'user.openshift.io~v1~Group',
       namespaced: false,
@@ -101,11 +106,10 @@ describe('Kubernetes resource CRUD operations', () => {
   const testLabel = 'automated-test-name';
   const resourcesWithCreationForm = new Set([
     'StorageClass',
-    'Route',
     'PersistentVolumeClaim',
     'snapshot.storage.k8s.io~v1~VolumeSnapshot',
   ]);
-  const resourcesWithSyncedEditor = new Set(['NetworkPolicy']);
+  const resourcesWithSyncedEditor = new Set(['NetworkPolicy', 'ConfigMap', 'Route']);
 
   testObjs.forEach((testObj, resource) => {
     const {
@@ -135,7 +139,7 @@ describe('Kubernetes resource CRUD operations', () => {
           cy.byTestID('yaml-link').click();
         }
         if (resourcesWithSyncedEditor.has(kind)) {
-          cy.byTestID('YAML view-radio-input').click();
+          cy.byTestID('yaml-view-input').click();
         }
         // sidebar needs to be fully loaded, else it sometimes overlays the Create button
         cy.byTestID('resource-sidebar').should('exist');
@@ -146,7 +150,12 @@ describe('Kubernetes resource CRUD operations', () => {
         yamlEditor.getEditorContent().then((content) => {
           newContent = _.defaultsDeep(
             {},
-            { metadata: { name, labels: { [testLabel]: testName } } },
+            {
+              metadata: { name, labels: { [testLabel]: testName } },
+              ...(kind === 'Route'
+                ? { spec: { to: { kind: 'Service', name: 'example' }, port: { targetPort: 80 } } }
+                : {}),
+            },
             safeLoad(content),
           );
           yamlEditor.setEditorContent(safeDump(newContent, { sortKeys: true })).then(() => {

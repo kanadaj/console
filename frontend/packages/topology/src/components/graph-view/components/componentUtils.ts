@@ -14,7 +14,6 @@ import {
   DragSpecOperationType,
   CREATE_CONNECTOR_DROP_TYPE,
   CREATE_CONNECTOR_OPERATION,
-  withContextMenu as withTopologyContextMenu,
   isGraph,
   withDndDrop,
   DragEvent,
@@ -24,9 +23,10 @@ import i18next from 'i18next';
 import { action } from 'mobx';
 import { errorModal } from '@console/internal/components/modals';
 import { K8sResourceKind } from '@console/internal/module/k8s';
+import { ActionContext } from '@console/shared';
 import { createConnection, moveNodeToGroup } from '../../../utils';
 import { isWorkloadRegroupable, graphContextMenu, groupContextMenu } from './nodeContextMenu';
-
+import withTopologyContextMenu from './withTopologyContextMenu';
 import './GraphComponent.scss';
 
 const MOVE_CONNECTOR_DROP_TYPE = '#moveConnector#';
@@ -98,11 +98,7 @@ const highlightNode = (monitor: DropTargetMonitor, element: Node): boolean => {
   );
 };
 
-const nodeDragSourceSpec = (
-  type: string,
-  allowRegroup: boolean = true,
-  canEdit: boolean = false,
-): DragSourceSpec<
+export type NodeDragSourceSpecType = DragSourceSpec<
   DragObjectWithType,
   DragSpecOperationType<EditableDragOperationType>,
   Node,
@@ -111,7 +107,13 @@ const nodeDragSourceSpec = (
     regrouping?: boolean;
   },
   NodeComponentProps & { canEdit?: boolean }
-> => ({
+>;
+
+const nodeDragSourceSpec = (
+  type: string,
+  allowRegroup: boolean = true,
+  canEdit: boolean = false,
+): NodeDragSourceSpecType => ({
   item: { type: NODE_DRAG_TYPE },
   operation: (monitor, props) => {
     return (canEdit || props.canEdit) && allowRegroup && isWorkloadRegroupable(props.element)
@@ -173,10 +175,10 @@ const nodesEdgeIsDragging = (monitor, props) => {
   if (!monitor.isDragging()) {
     return false;
   }
-  if (monitor.getOperation() === MOVE_CONNECTOR_OPERATION) {
+  if (monitor.getOperation()?.type === MOVE_CONNECTOR_OPERATION) {
     return monitor.getItem().getSource() === props.element;
   }
-  if (monitor.getOperation() === CREATE_CONNECTOR_OPERATION) {
+  if (monitor.getOperation()?.type === CREATE_CONNECTOR_OPERATION) {
     return monitor.getItem() === props.element;
   }
   return false;
@@ -193,7 +195,7 @@ const nodeDropTargetSpec: DropTargetSpec<
     if (isEdge(item)) {
       return canDropEdgeOnNode(monitor.getOperation()?.type, item as Edge, props.element);
     }
-    if (item === props.element) {
+    if (!props.element || item === props.element) {
       return false;
     }
     return !props.element.getTargetEdges().find((e) => e.getSource() === item);
@@ -225,6 +227,7 @@ const graphDropTargetSpec: DropTargetSpec<
   },
   collect: (monitor) => {
     const operation = monitor.getOperation() as EditableDragOperationType;
+    const dragInProgress = monitor.isDragging();
     const dragEditInProgress =
       monitor.isDragging() && (operation?.type === CREATE_CONNECTOR_OPERATION || operation?.edit);
     const dragCreate =
@@ -232,6 +235,7 @@ const graphDropTargetSpec: DropTargetSpec<
       (monitor.getItemType() === CREATE_CONNECTOR_DROP_TYPE ||
         monitor.getItemType() === MOVE_CONNECTOR_DROP_TYPE);
     return {
+      dragInProgress,
       dragEditInProgress,
       dragCreate,
       hasDropTarget: dragEditInProgress && monitor.hasDropTarget(),
@@ -319,7 +323,7 @@ const withNoDrop = () => {
   return withDndDrop<any, any, {}, NodeComponentProps>(noDropTargetSpec);
 };
 
-const withContextMenu = <E extends GraphElement>(actions: (element: E) => React.ReactElement[]) => {
+const withContextMenu = <E extends GraphElement>(actions: (element: E) => ActionContext) => {
   return withTopologyContextMenu(
     actions,
     document.getElementById('popper-container'),

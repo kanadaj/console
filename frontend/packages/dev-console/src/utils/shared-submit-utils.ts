@@ -27,6 +27,7 @@ export const createService = (
   formData: DeployImageFormData | GitImportFormData | UploadJarFormData,
   imageStreamData?: K8sResourceKind,
   originalService?: K8sResourceKind,
+  originalRoute?: K8sResourceKind,
 ): K8sResourceKind => {
   const {
     project: { name: namespace },
@@ -76,7 +77,12 @@ export const createService = (
     !ports.some((port) => unknownTargetPort === port.containerPort.toString())
   ) {
     const port = { containerPort: _.toInteger(unknownTargetPort), protocol: 'TCP' };
-    ports = [...ports, port];
+    const existingRouteTargetPort = originalRoute?.spec?.port?.targetPort;
+    ports = [...ports.filter((p) => p.containerPort !== defaultUnknownPort), port];
+
+    if (existingRouteTargetPort) {
+      ports = [...ports.filter((p) => p.containerPort !== existingRouteTargetPort), port];
+    }
   }
 
   const newService: any = {
@@ -115,7 +121,15 @@ export const createRoute = (
     application: { name: applicationName },
     name,
     labels: userLabels,
-    route: { hostname, unknownTargetPort, defaultUnknownPort, secure, path, tls },
+    route: {
+      hostname,
+      unknownTargetPort,
+      defaultUnknownPort,
+      secure,
+      path,
+      tls,
+      labels: routeLabels,
+    },
     image: { ports: imagePorts, tag: selectedTag },
   } = formData;
 
@@ -159,7 +173,7 @@ export const createRoute = (
     metadata: {
       name,
       namespace,
-      labels: { ...defaultLabels, ...userLabels },
+      labels: { ...defaultLabels, ...userLabels, ...routeLabels },
       defaultAnnotations,
     },
     spec: {
@@ -167,7 +181,7 @@ export const createRoute = (
         kind: 'Service',
         name,
       },
-      ...(secure ? { tls } : {}),
+      tls: secure ? tls : null,
       host: hostname,
       path,
       // The service created by `createService` uses the same port as the container port.

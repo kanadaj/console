@@ -66,8 +66,6 @@ const testSuites = {
     'tests/alertmanager.scenario.ts',
     'tests/crd-extensions.scenario.ts',
     'tests/oauth.scenario.ts',
-    'tests/dashboards/cluster-dashboard.scenario.ts',
-    'tests/dashboards/project-dashboard.scenario.ts',
     'tests/event.scenario.ts',
     'tests/cluster-settings.scenario.ts',
   ]),
@@ -77,8 +75,6 @@ const testSuites = {
     'tests/deploy-image.scenario.ts',
     'tests/monitoring.scenario.ts',
     'tests/crd-extensions.scenario.ts',
-    'tests/dashboards/cluster-dashboard.scenario.ts',
-    'tests/dashboards/project-dashboard.scenario.ts',
     'tests/event.scenario.ts',
   ]),
   all: suite([
@@ -88,18 +84,12 @@ const testSuites = {
     'tests/alertmanager.scenario.ts',
     'tests/crd-extensions.scenario.ts',
     'tests/oauth.scenario.ts',
-    'tests/dashboards/cluster-dashboard.scenario.ts',
-    'tests/dashboards/project-dashboard.scenario.ts',
     'tests/event.scenario.ts',
     'tests/cluster-settings.scenario.ts',
   ]),
   clusterSettings: suite(['tests/cluster-settings.scenario.ts']),
   alertmanager: suite(['tests/alertmanager.scenario.ts']),
   login: ['tests/login.scenario.ts'],
-  dashboards: suite([
-    'tests/dashboards/cluster-dashboard.scenario.ts',
-    'tests/dashboards/project-dashboard.scenario.ts',
-  ]),
 };
 
 export const config = {
@@ -197,8 +187,6 @@ export const config = {
     // Use a string rather than boolean so it can be specified on the command line:
     // $ yarn test-protractor --params.openshift true
     openshift: 'false',
-    // Set to 'true' to enable Service Catalog resources in the crud scenario.
-    servicecatalog: 'false',
   },
 };
 
@@ -218,7 +206,7 @@ export const checkLogs = async () => {
 };
 
 function hasError() {
-  return window.windowError;
+  return (window as any).windowError;
 }
 export const checkErrors = async () =>
   await browser.executeScript(hasError).then((err) => {

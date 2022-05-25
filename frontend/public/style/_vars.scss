@@ -17,7 +17,7 @@ $fa-font-path: $consoleWebDistPath + '/';
 
 // PatternFly 4 font path.
 $pf-global--font-path: '~@patternfly/patternfly/assets/fonts';
-$table-border-color: $pf-color-black-200;
+$table-border-color: var(--pf-global--BorderColor--300);
 
 :root {
   --pf-global--FontSize--md: 14px; // Numerical value required, same as $font-size-base
@@ -49,12 +49,10 @@ $co-m-catalog-tile-width: 260px;
 // == Colors
 
 $color-alertmanager-dark: $pf-color-orange-600;
-$color-co-m-row-hover: #fafafa;
 $color-application-dark: $pf-color-green-500;
 $color-configmap-dark: $pf-color-purple-600;
 $color-container-dark: $pf-color-blue-300;
 $color-error: $pf-color-red-100;
-$color-grey-background-border: #ccc;
 $color-ingress-dark: $pf-color-purple-700;
 $color-namespace-dark: $pf-color-green-600;
 $color-node-dark: $pf-color-purple-400;

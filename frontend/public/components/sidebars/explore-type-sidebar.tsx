@@ -1,8 +1,8 @@
 import * as React from 'react';
 import * as _ from 'lodash-es';
-import { Breadcrumb, BreadcrumbItem, Button } from '@patternfly/react-core';
+import { Breadcrumb, BreadcrumbItem, Button, TextContent } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
-
+import { CamelCaseWrap } from '@console/dynamic-plugin-sdk';
 import {
   getDefinitionKey,
   getSwaggerDefinitions,
@@ -11,7 +11,7 @@ import {
   SwaggerDefinition,
   SwaggerDefinitions,
 } from '../../module/k8s';
-import { CamelCaseWrap, EmptyBox, LinkifyExternal } from '../utils';
+import { EmptyBox, LinkifyExternal } from '../utils';
 
 const getRef = (definition: SwaggerDefinition): string => {
   const ref = definition.$ref || _.get(definition, 'items.$ref');
@@ -96,7 +96,7 @@ export const ExploreType: React.FC<ExploreTypeProps> = (props) => {
   return (
     <>
       {!_.isEmpty(breadcrumbs) && (
-        <Breadcrumb className="pf-c-breadcrumb--no-padding-top co-break-word">
+        <Breadcrumb className="co-breadcrumb co-break-word">
           {breadcrumbs.map((crumb, i) => {
             const isLast = i === breadcrumbs.length - 1;
             return (
@@ -118,48 +118,50 @@ export const ExploreType: React.FC<ExploreTypeProps> = (props) => {
           })}
         </Breadcrumb>
       )}
-      {description && (
-        <p className="co-break-word co-pre-wrap">
-          <LinkifyExternal>{description}</LinkifyExternal>
-        </p>
-      )}
-      {_.isEmpty(currentProperties) ? (
-        <EmptyBox label={t('public~Properties')} />
-      ) : (
-        <ul className="co-resource-sidebar-list">
-          {_.map(currentProperties, (definition: SwaggerDefinition, name: string) => {
-            const path = getDrilldownPath(name);
-            const definitionType = definition.type || getTypeForRef(getRef(definition));
-            return (
-              <li key={name} className="co-resource-sidebar-item">
-                <h5 className="co-resource-sidebar-item__header co-break-word">
-                  <CamelCaseWrap value={name} />
-                  &nbsp;
-                  <small>
-                    <span className="co-break-word">{definitionType}</span>
-                    {required.has(name) && <> &ndash; required</>}
-                  </small>
-                </h5>
-                {definition.description && (
-                  <p className="co-break-word co-pre-wrap">
-                    <LinkifyExternal>{definition.description}</LinkifyExternal>
-                  </p>
-                )}
-                {path && (
-                  <Button
-                    type="button"
-                    onClick={(e) => drilldown(e, name, definition.description, path)}
-                    isInline
-                    variant="link"
-                  >
-                    {t('public~View details')}
-                  </Button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <TextContent>
+        {description && (
+          <p className="co-break-word co-pre-wrap">
+            <LinkifyExternal>{description}</LinkifyExternal>
+          </p>
+        )}
+        {_.isEmpty(currentProperties) ? (
+          <EmptyBox label={t('public~Properties')} />
+        ) : (
+          <ul className="co-resource-sidebar-list pf-c-list">
+            {_.map(currentProperties, (definition: SwaggerDefinition, name: string) => {
+              const path = getDrilldownPath(name);
+              const definitionType = definition.type || getTypeForRef(getRef(definition));
+              return (
+                <li key={name} className="co-resource-sidebar-item">
+                  <h5 className="co-resource-sidebar-item__header co-break-word">
+                    <CamelCaseWrap value={name} />
+                    &nbsp;
+                    <small>
+                      <span className="co-break-word">{definitionType}</span>
+                      {required.has(name) && <> &ndash; required</>}
+                    </small>
+                  </h5>
+                  {definition.description && (
+                    <p className="co-break-word co-pre-wrap">
+                      <LinkifyExternal>{definition.description}</LinkifyExternal>
+                    </p>
+                  )}
+                  {path && (
+                    <Button
+                      type="button"
+                      onClick={(e) => drilldown(e, name, definition.description, path)}
+                      isInline
+                      variant="link"
+                    >
+                      {t('public~View details')}
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </TextContent>
     </>
   );
 };

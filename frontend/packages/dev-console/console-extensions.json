@@ -72,7 +72,7 @@
       "groupId": "samples",
       "href": "/samples/ns/:namespace",
       "label": "%devconsole~Samples%",
-      "description": "%devconsole~Create an Application from a code sample%",
+      "description": "%devconsole~Create an application from a code sample%",
       "icon": { "$codeRef": "icons.samplesIconElement" },
       "accessReview": [
         { "group": "build.openshift.io", "resource": "buildconfigs", "verb": "create" },
@@ -92,7 +92,7 @@
       "href": "/import/ns/:namespace",
       "label": "%devconsole~Import from Git%",
       "description": "%devconsole~Import code from your Git repository to be built and deployed%",
-      "icon": { "$codeRef": "icons.gitIconSVG" },
+      "icon": { "$codeRef": "icons.gitIconElement" },
       "accessReview": [
         { "group": "build.openshift.io", "resource": "buildconfigs", "verb": "create" },
         { "group": "image.openshift.io", "resource": "imagestreams", "verb": "create" },
@@ -131,7 +131,7 @@
       "href": "/k8s/ns/:namespace/import",
       "label": "%devconsole~Import YAML%",
       "description": "%devconsole~Create resources from their YAML or JSON definitions%",
-      "icon": { "$codeRef": "icons.yamlIconSVG" }
+      "icon": { "$codeRef": "icons.yamlIconElement" }
     }
   },
   {
@@ -152,7 +152,7 @@
       "groupId": "developer-catalog",
       "href": "/catalog/ns/:namespace?category=databases",
       "label": "%devconsole~Database%",
-      "description": "%devconsole~Browse the catalog to discover database services to add to your Application%",
+      "description": "%devconsole~Browse the catalog to discover database services to add to your application%",
       "icon": { "$codeRef": "icons.databaseCatalogIconElement" }
     }
   },
@@ -187,6 +187,30 @@
     }
   },
   {
+    "type": "dev-console.add/action-group",
+    "properties": {
+      "id": "sharing",
+      "name": "%devconsole~Sharing%",
+      "insertAfter": "helm-chart-repositories",
+      "insertBefore": "local-machine"
+    }
+  },
+  {
+    "type": "dev-console.add/action",
+    "properties": {
+      "id": "project-access",
+      "groupId": "sharing",
+      "href": "/project-access/ns/:namespace",
+      "label": "%devconsole~Sharing%",
+      "description": "%devconsole~Project access allows you to add or remove a user's access to the project%",
+      "icon": { "$codeRef": "icons.shareProjectIconElement" },
+      "accessReview": [
+        { "group": "rbac.authorization.k8s.io", "resource": "rolebindings", "verb": "create" },
+        { "group": "rbac.authorization.k8s.io", "resource": "rolebindings", "verb": "list" }
+      ]
+    }
+  },
+  {
     "type": "dev-console.import/environment",
     "properties": {
       "imageStreamName": "nodejs",
@@ -195,7 +219,7 @@
         {
           "key": "NPM_RUN",
           "label": "%devconsole~Run command%",
-          "description": "%devconsole~Optional parameter for Node.js applications to define the npm run <command>.%",
+          "description": "%devconsole~Optional arguments for npm run.%",
           "defaultValue": "start"
         }
       ]
@@ -218,6 +242,7 @@
     "properties": {
       "catalogId": "dev-catalog",
       "type": "BuilderImage",
+      "title": "%devconsole~Builder Images%",
       "provider": { "$codeRef": "catalog.builderImageProvider" }
     },
     "flags": {
@@ -241,6 +266,7 @@
     "properties": {
       "catalogId": "dev-catalog",
       "type": "Template",
+      "title": "%devconsole~Templates%",
       "provider": { "$codeRef": "catalog.templateProvider" }
     },
     "flags": {
@@ -264,10 +290,38 @@
     "properties": {
       "catalogId": "dev-catalog",
       "type": "Devfile",
+      "title": "%devconsole~Devfiles%",
       "provider": { "$codeRef": "catalog.devfileProvider" }
     },
     "flags": {
       "required": []
+    }
+  },
+  {
+    "type": "console.catalog/item-type-metadata",
+    "properties": {
+      "type": "OperatorBackedService",
+      "filters": [
+        {
+          "label": "%devconsole~Service binding%",
+          "attribute": "bindable",
+          "description": "%devconsole~Bindable services can be easily consumed by applications because they expose their binding data (credentials, connection details, volume mounts, secrets, etc.) in a standard way.%"
+        }
+      ]
+    },
+    "flags": {
+      "required": ["ALLOW_SERVICE_BINDING"]
+    }
+  },
+  {
+    "type": "console.catalog/item-metadata",
+    "properties": {
+      "catalogId": "dev-catalog",
+      "type": "OperatorBackedService",
+      "provider": { "$codeRef": "catalog.bindableItemMetadataProvider" }
+    },
+    "flags": {
+      "required": ["ALLOW_SERVICE_BINDING"]
     }
   },
   {
@@ -285,6 +339,7 @@
     "properties": {
       "catalogId": "samples-catalog",
       "type": "Sample",
+      "title": "%devconsole~Builder Images%",
       "provider": { "$codeRef": "catalog.builderImageSamplesProvider" }
     },
     "flags": {
@@ -296,6 +351,7 @@
     "properties": {
       "catalogId": "samples-catalog",
       "type": "Sample",
+      "title": "%devconsole~Devfiles%",
       "provider": { "$codeRef": "catalog.devfileSamplesProvider" }
     },
     "flags": {
@@ -353,6 +409,7 @@
       "section": "top",
       "name": "%devconsole~Observe%",
       "href": "/dev-monitoring",
+      "namespaced": true,
       "dataAttributes": {
         "data-quickstart-id": "qs-nav-monitoring",
         "data-tour-id": "tour-monitoring-nav",
@@ -509,8 +566,8 @@
     "properties": {
       "id": "topology-tab-section-hpas",
       "tab": "topology-side-bar-tab-resource",
-      "section": {
-        "$codeRef": "topology.getHpaTabSectionForTopologySideBar"
+      "provider": {
+        "$codeRef": "topology.useHpaTabSectionForTopologySideBar"
       },
       "insertAfter": "topology-tab-section-builds-overview"
     }
@@ -521,6 +578,9 @@
       "id": "topology-side-bar-tab-observe",
       "label": "%devconsole~Observe%",
       "insertAfter": "topology-side-bar-tab-resource"
+    },
+    "flags": {
+      "required": ["OPENSHIFT", "MONITORING"]
     }
   },
   {
@@ -528,8 +588,8 @@
     "properties": {
       "id": "topology-tab-section-observe",
       "tab": "topology-side-bar-tab-observe",
-      "section": {
-        "$codeRef": "topology.getObserveSideBarTabSection"
+      "provider": {
+        "$codeRef": "topology.useObserveSideBarTabSection"
       }
     }
   },
@@ -548,8 +608,8 @@
     "properties": {
       "id": "topology-tab-section-sbr-details",
       "tab": "topology-side-bar-tab-details",
-      "section": {
-        "$codeRef": "topology.getSbrPanelDetailsSection"
+      "provider": {
+        "$codeRef": "topology.useSbrPanelDetailsSection"
       }
     },
     "flags": {
@@ -561,8 +621,8 @@
     "properties": {
       "id": "topology-tab-section-sbr-resource",
       "tab": "topology-side-bar-tab-resource",
-      "section": {
-        "$codeRef": "topology.getSbrPanelResourceSection"
+      "provider": {
+        "$codeRef": "topology.useSbrPanelResourceSection"
       }
     },
     "flags": {
@@ -587,9 +647,41 @@
     "type": "console.action/group",
     "properties": {
       "id": "add-to-application",
-      "label": "%devconsole~Add to Application%",
+      "label": "%devconsole~Add to application%",
       "submenu": true,
       "insertAfter": ["delete-application"]
+    }
+  },
+  {
+    "type": "console.user-preference/item",
+    "properties": {
+      "id": "devconsole.routingOptions",
+      "label": "",
+      "groupId": "applications",
+      "description": "",
+      "field": {
+        "type": "custom",
+        "component": { "$codeRef": "userPreferences.SecureRouteFields" }
+      },
+      "insertAfter": "console.preferredCreateEditMethod"
+    }
+  },
+  {
+    "type": "console.context-provider",
+    "properties": {
+      "provider": { "$codeRef": "serviceBindingContext.ServiceBindingContextProvider" },
+      "useValueHook": { "$codeRef": "serviceBindingContext.useValuesServiceBindingContext" }
+    },
+    "flags": {
+      "required": ["ALLOW_SERVICE_BINDING"]
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": ["/project-access/ns/:ns", "/project-access/all-namespaces"],
+      "component": { "$codeRef": "projectAccess.ProjectAccessPage" }
     }
   }
 ]

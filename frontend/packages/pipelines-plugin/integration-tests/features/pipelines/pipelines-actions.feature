@@ -26,7 +26,7 @@ Feature: Perform the actions on Pipelines page
             Given pipeline "<pipeline_name>" is present on Pipelines page
              When user searches pipeline "<pipeline_name>" in pipelines page
              Then pipelines table displayed with column names Name, Last Run, Task Status, Last Run Status and Last Run Time
-              And column Name display with value "<pipeline_name>"
+              And pipelines column Name display with value "<pipeline_name>"
               And columns Last Run, Task Run Status, Last Run Status, Last Run Time with values display "-"
               And Create Pipeline button is enabled
               And kebab menu button is displayed
@@ -58,6 +58,7 @@ Feature: Perform the actions on Pipelines page
              Then Actions menu display with options Start, Add Trigger, Edit Pipeline, Delete Pipeline
 
 
+        @regression
         Scenario Outline: Details of completed pipeline run: P-06-TC06
             Given pipeline run is available for "<pipeline_name>"
              When user clicks pipeline run of pipeline "<pipeline_name>"
@@ -85,13 +86,14 @@ Feature: Perform the actions on Pipelines page
                   | pipelines-ccc |
 
 
+        @regression
         Scenario Outline: Add the task by editing the pipeline: P-06-TC08
             Given pipeline "<pipeline_name>" is present on Pipelines page
              When user selects "Edit Pipeline" option from kebab menu of "<pipeline_name>"
-             When user clicks on Add task in parallel
+              And user clicks on Add task in parallel
+              And user clicks on Add task button
               And user searches "openshift-client" in quick search bar
-              And user clicks on Add in "openshift-client" task
-              And user adds another task "openshift-client" in parallel
+              And user clicks on Add in selected task
               And user clicks save on edit pipeline page
              Then user will be redirected to Pipeline Details page with header name "<pipeline_name>"
 
@@ -117,16 +119,16 @@ Feature: Perform the actions on Pipelines page
 
         @regression
         Scenario: Delete the Pipeline from pipelines page: P-06-TC10
-            Given pipeline "p-run-one" is present on Pipelines page
-             When user selects "Delete Pipeline" from the kebab menu for "p-run-one"
+            Given pipeline "pipe-run-one" is present on Pipelines page
+             When user selects "Delete Pipeline" from the kebab menu for "pipe-run-one"
               And user clicks Delete button on Delete Pipeline modal
              Then user will be redirected to Pipelines page
 
 
         @regression
         Scenario: Edit the Pipeline from pipelines page: P-06-TC11
-            Given pipeline "p-run-two" is present on Pipelines page
-             When user selects "Edit Pipeline" from the kebab menu for "p-run-two"
+            Given pipeline "pipe-run-two" is present on Pipelines page
+             When user selects "Edit Pipeline" from the kebab menu for "pipe-run-two"
              Then user is at the Pipeline Builder page
               And Name field will be disabled
               And Add Parameters, Add Resources, Task should be displayed
@@ -150,6 +152,7 @@ Feature: Perform the actions on Pipelines page
              Then user will be redirected to Pipeline Run Details page
 
 
+        @regression
         Scenario: Edit the workspace name for pipeline from pipelines page: P-06-TC14
             Given pipeline "pipe-edit-wp" is created with "git-wp" workspace
              When user selects "Edit Pipeline" from the kebab menu for "pipe-edit-wp"
@@ -161,6 +164,7 @@ Feature: Perform the actions on Pipelines page
               And user will see workspace mentioned as "git-opt" in the Workspaces section of Pipeline Details page
 
 
+        @regression
         Scenario: Update the pipeline workspace as optional from pipelines page: P-06-TC15
             Given pipeline "pipe-edit-wp-op" is created with "git-wp" workspace
              When user selects "Edit Pipeline" from the kebab menu for "pipe-edit-wp-op"

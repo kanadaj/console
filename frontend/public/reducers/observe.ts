@@ -66,6 +66,7 @@ export default (state: ObserveState, action: ObserveAction): ObserveState => {
         metrics: [],
         pollInterval: null,
         queries: ImmutableList([newQueryBrowserQuery()]),
+        timespan: MONITORING_DASHBOARDS_DEFAULT_TIMESPAN,
       }),
     });
   }
@@ -82,6 +83,9 @@ export default (state: ObserveState, action: ObserveAction): ObserveState => {
         ['dashboards', action.payload.perspective, 'variables'],
         ImmutableMap(action.payload.variables),
       );
+
+    case ActionType.DashboardsClearVariables:
+      return state.setIn(['dashboards', action.payload.perspective, 'variables'], ImmutableMap());
 
     case ActionType.DashboardsSetEndTime:
       return state.setIn(
@@ -158,6 +162,19 @@ export default (state: ObserveState, action: ObserveAction): ObserveState => {
         state.getIn(['queryBrowser', 'queries']).push(newQueryBrowserQuery()),
       );
 
+    case ActionType.QueryBrowserDuplicateQuery: {
+      const index = action.payload.index;
+      const originQueryText = state.getIn(['queryBrowser', 'queries', index, 'text']);
+      const duplicate = newQueryBrowserQuery().merge({
+        text: originQueryText,
+        isEnabled: false,
+      });
+      return state.setIn(
+        ['queryBrowser', 'queries'],
+        state.getIn(['queryBrowser', 'queries']).push(duplicate),
+      );
+    }
+
     case ActionType.QueryBrowserDeleteAllQueries:
       return state.setIn(['queryBrowser', 'queries'], ImmutableList([newQueryBrowserQuery()]));
 
@@ -204,7 +221,10 @@ export default (state: ObserveState, action: ObserveAction): ObserveState => {
         const text = _.trim(q.get('text'));
         return isEnabled && query !== text ? q.merge({ query: text, series: undefined }) : q;
       });
-      return state.setIn(['queryBrowser', 'queries'], queries);
+
+      return state
+        .setIn(['queryBrowser', 'queries'], queries)
+        .setIn(['queryBrowser', 'lastRequestTime'], Date.now());
     }
 
     case ActionType.QueryBrowserSetAllExpanded: {
@@ -219,6 +239,9 @@ export default (state: ObserveState, action: ObserveAction): ObserveState => {
 
     case ActionType.QueryBrowserSetPollInterval:
       return state.setIn(['queryBrowser', 'pollInterval'], action.payload.pollInterval);
+
+    case ActionType.QueryBrowserSetTimespan:
+      return state.setIn(['queryBrowser', 'timespan'], action.payload.timespan);
 
     case ActionType.QueryBrowserToggleIsEnabled: {
       const query = state.getIn(['queryBrowser', 'queries', action.payload.index]);

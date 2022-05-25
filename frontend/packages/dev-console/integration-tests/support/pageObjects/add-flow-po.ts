@@ -58,6 +58,7 @@ export const gitPO = {
       secureRoute: 'input#form-checkbox-route-secure-field',
       tlsTermination: 'button#form-dropdown-route-tls-termination-field',
       insecureTraffic: 'button#form-dropdown-route-tls-insecureEdgeTerminationPolicy-field',
+      labels: 'input[data-test="route-labels"]',
     },
     buildConfig: {
       webHookBuildTrigger: 'input#form-checkbox-build-triggers-webhook-field',
@@ -94,12 +95,14 @@ export const gitPO = {
       memoryRequestHelperText: 'div#form-resource-limit-limits-memory-request-field-helper',
       memoryLimitHelperText: 'div#form-resource-limit-limits-memory-limit-field-helper',
     },
-    labels: 'input#tags-input',
+    labels: 'input[data-test="labels"]',
   },
 };
 
 export const catalogPO = {
   search: 'input[placeholder="Filter by keyword..."]',
+  filterKeyword: 'input.pf-c-search-input__text-input',
+  templateTitle: '.catalog-tile-pf-title',
   card: '.pf-c-card',
   cardBadge: 'span.pf-c-badge',
   groupBy: '[data-test-id="dropdown-button"]',
@@ -111,6 +114,13 @@ export const catalogPO = {
   cardList: '[role="grid"]',
   cardHeader: '.pf-c-badge.pf-m-read',
   groupByMenu: 'pf-c-dropdown__menu',
+  catalogBatch: '.odc-catalog-badges',
+  batchLabel: '.odc-catalog-badges__label',
+  bindingFilterBindable: '[data-test="bindable-bindable"]',
+  filterInfoTip: '.co-field-level-help__icon',
+  filterInfoTipContent: '.pf-c-popover__content',
+  filterCheckBox: '[class="pf-c-check__input"]',
+  chartRepositoryGroup: '[data-test-group-name="chartRepositoryTitle"]',
   catalogTypeLink: 'li.vertical-tabs-pf-tab.shown.text-capitalize.co-catalog-tab__empty',
   catalogTypes: {
     operatorBacked: '[data-test="kind-cluster-service-version"]',
@@ -120,6 +130,7 @@ export const catalogPO = {
     serviceClass: '[data-test="kind-cluster-service-class"]',
     managedServices: '[data-test="kind-managed-service"]',
     eventSources: '[data-test="tab EventSource"]',
+    eventSinks: '[data-test="tab EventSink"]',
   },
   cards: {
     mariaDBTemplate: 'a[data-test="Template-MariaDB"] .catalog-tile-pf-title',
@@ -214,8 +225,12 @@ export const containerImagePO = {
 };
 
 export const eventSourcePO = {
-  search: '[placeholder="Filter by type..."]',
+  search: '[placeholder="Filter by keyword..."]',
+  yamlView: '#form-radiobutton-editorType-yaml-field',
+  formView: '#form-radiobutton-editorType-form-field',
+  addButton: 'a[role="button"]',
   apiServerSource: {
+    apiServerSourceSection: '[data-test~="ApiServerSource"][data-test~="section"]',
     apiVersion: '[data-test=pairs-list-name]',
     kind: '[data-test=pairs-list-value]',
     serviceAccountName: '[id$=ApiServerSource-serviceAccountName-field]',
@@ -223,6 +238,7 @@ export const eventSourcePO = {
     mode: '[id$=ApiServerSource-mode-field]',
   },
   sinkBinding: {
+    sinkBindingSection: '[data-test~="SinkBinding"][data-test~="section"]',
     apiVersion: '[data-test-id="sinkbinding-apiversion-field"]',
     kind: '[data-test-id="sinkbinding-kind-field"]',
     matchLabels: {
@@ -250,8 +266,28 @@ export const eventSourcePO = {
     name: '[id$="name-field"]',
   },
   containerImage: {
+    containerSourceSection: '[data-test~="ContainerSource"][data-test~="section"]',
     image: '[data-test-id="container-image-field"]',
+    name: '[data-test-id="container-name-field"]',
+    arguments: '[data-test="text-column-field"]',
+    addArgs: '[data-test="add-action"]',
+    environmentVariableName: '[data-test="pairs-list-name"]',
+    environmentVariableValue: '[data-test="pairs-list-name"]',
+    addMoreRow: '[data-test="add-button"]',
   },
+  createPingSource: {
+    data: '#form-input-formData-data-PingSource-jsonData-field',
+    schedule: '#form-input-formData-data-PingSource-schedule-field',
+    name: '#form-input-formData-name-field',
+    resourceToggleButton: '[id="form-radiobutton-formData-sinkType-resource-field"]',
+    resourceDropDownField: '[id="form-ns-dropdown-formData-sink-key-field"]',
+    resourceDropDownItem: '[data-test="dropdown-menu-item-link"]',
+    resourceSearch: '[placeholder="Select resource"]',
+  },
+};
+
+export const eventSinkPO = {
+  search: '[placeholder="Filter by keyword..."]',
 };
 
 export const devFilePO = {
@@ -269,7 +305,7 @@ export const devFilePO = {
 export const channelPO = {
   channelType: '[data-test-id="dropdown-button"]',
   channelName: '[data-test-id="channel-name"]',
-  appName: '#form-dropdown-application-name-field',
+  appName: '[data-test-id="application-form-app-input"]',
 };
 
 export const yamlPO = {
@@ -284,4 +320,15 @@ export const uploadJarFilePO = {
     runTimeIcon: '.odc-icon-dropdown',
     builderImageVersion: '#form-dropdown-image-tag-field',
   },
+};
+export const quickSearchAddPO = {
+  quickSearchButton: '[data-test="quick-search"]',
+  quickSearchBar: '[data-test="quick-search-bar"]',
+  quickSearchInput: '[data-test~="quick-search-bar"] [data-test~="input"]',
+  quickSearchListItem(itemName: string, itemType: string): string {
+    return `[data-test="item-name-${itemName}-${itemType}"]`;
+  },
+  quickSearchCreateButton: '[data-test="create-quick-search"]',
+  viewInDevCatalog: '#devCatalog',
+  quickSearchNoResults: '[data-test="quick-search-no-results"]',
 };

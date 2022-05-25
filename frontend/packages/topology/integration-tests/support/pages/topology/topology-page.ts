@@ -1,3 +1,4 @@
+import { guidedTour } from '@console/cypress-integration-tests/views/guided-tour';
 import {
   displayOptions,
   nodeActions,
@@ -22,6 +23,18 @@ export const topologyPage = {
           .should('be.enabled')
           .click({ force: true });
         cy.get(topologyPO.graph.fitToScreen).should('be.visible');
+      }
+    });
+  },
+  verifyUserIsInListView: () => {
+    cy.byLegacyTestID('topology-view-shortcuts').should('be.visible');
+    // eslint-disable-next-line promise/catch-or-return
+    cy.get('body').then(($body) => {
+      if ($body.find('.odc-topology-graph-view').length !== 0) {
+        cy.get(topologyPO.switcher)
+          .should('be.enabled')
+          .click({ force: true });
+        cy.get(topologyPO.list.switchGraph).should('be.visible');
       }
     });
   },
@@ -97,12 +110,6 @@ export const topologyPage = {
       case displayOptions.KnativeServices:
         cy.get('[id$=knativeServices]').check();
         break;
-      case displayOptions.ConnectivityMode:
-        cy.get('#showGroups').click();
-        break;
-      case displayOptions.ConsumptionMode:
-        cy.get('#hideGroups').click();
-        break;
       default:
         throw new Error('Option is not available');
         break;
@@ -158,16 +165,18 @@ export const topologyPage = {
     return cy.get(`a[href="/k8s/ns/aut/builds/${nodeName}-1/logs"]`);
   },
   componentNode: (nodeName: string) => {
-    return cy.get('g.odc-base-node__label > text').contains(nodeName);
+    return cy.get('g.pf-topology__node__label > text').contains(nodeName);
   },
   getEventSource: (eventSource: string) => {
-    return cy.get('[data-type="event-source"] g.odc-base-node__label > text').contains(eventSource);
+    return cy
+      .get('[data-type="event-source"] g.pf-topology__node__label > text')
+      .contains(eventSource);
   },
   getRevisionNode: (serviceName: string) => {
-    cy.get('[data-type="knative-service"] g.odc-base-node__label > text')
+    cy.get('[data-type="knative-service"] g.pf-topology__group__label > text')
       .contains(serviceName)
       .should('be.visible');
-    return cy.get('[data-type="knative-revision"] circle[filter$="graph#NodeShadowsFilterId)"]');
+    return cy.get('[data-type="knative-revision"] ellipse.pf-topology__node__background');
   },
   verifyContextMenuOptions: (...options: string[]) => {
     cy.get('#popper-container li[role="menuitem"]').each(($el) => {
@@ -190,8 +199,23 @@ export const topologyPage = {
       .should('be.visible')
       .contains(nodeName);
   },
-  rightClickOnNode: (releaseName: string) => {
-    topologyPage.getNode(releaseName).trigger('contextmenu', { force: true });
+  getGroup: (groupName: string) => {
+    return cy
+      .get(topologyPO.graph.groupLabel)
+      .should('be.visible')
+      .contains(groupName);
+  },
+  getDeploymentNode: (nodeName: string) => {
+    return cy
+      .get(topologyPO.graph.nodeLabel)
+      .should('be.visible')
+      .contains(new RegExp(`Deployment.*${nodeName}`));
+  },
+  rightClickOnNode: (nodeName: string) => {
+    topologyPage.getNode(nodeName).trigger('contextmenu', { force: true });
+  },
+  rightClickOnGroup: (releaseName: string) => {
+    topologyPage.getGroup(releaseName).trigger('contextmenu', { force: true });
   },
   rightClickOnApplicationGroupings: (appName: string) => {
     const id = `[data-id="group:${appName}"]`;
@@ -200,16 +224,25 @@ export const topologyPage = {
       .first()
       .trigger('contextmenu', { force: true });
   },
-  clickOnNode: (releaseName: string) => {
-    topologyPage.getNode(releaseName).click({ force: true });
+  clickOnNode: (nodeName: string) => {
+    topologyPage.getNode(nodeName).click({ force: true });
+  },
+  clickOnGroup: (groupName: string) => {
+    topologyPage.getGroup(groupName).click({ force: true });
+  },
+  clickOnDeploymentNode: (nodeName: string) => {
+    topologyPage.getDeploymentNode(nodeName).click();
   },
   clickOnApplicationGroupings: (appName: string) => {
-    const id = `[data-id="group:${appName}"] [data-test="icon application"]`;
+    const id = `[data-id="group:${appName}"] .odc-resource-icon-application`;
     cy.get(id)
       .next('text')
       .click({ force: true });
   },
   verifyApplicationGroupingsDeleted: (appName: string) => {
+    cy.reload();
+    app.waitForLoad();
+    guidedTour.close();
     const id = `[data-id="group:${appName}"]`;
     cy.get(id, { timeout: 50000 }).should('not.exist');
   },
@@ -223,13 +256,13 @@ export const topologyPage = {
   getKnativeService: (serviceName: string) => {
     return cy
       .get('[data-type="knative-service"]')
-      .find(topologyPO.graph.nodeLabel)
+      .find(topologyPO.graph.groupLabel)
       .contains(serviceName);
   },
   getKnativeRevision: (serviceName: string) => {
     return cy
       .get('[data-type="knative-service"]')
-      .find('[data-type="knative-revision"] [data-test-id="base-node-handler"]')
+      .find('[data-type="knative-revision"] g.odc-workload-node')
       .contains(serviceName);
   },
   waitForKnativeRevision: () => {

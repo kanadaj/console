@@ -4,7 +4,6 @@ import {
   ResourceDetailsPage as DynamicResourceDetailsPage,
   ResourceListPage as DynamicResourceListPage,
 } from '@console/dynamic-plugin-sdk';
-import { ReportReference, ReportGenerationQueryReference } from './chargeback';
 import { referenceForModel, GroupVersionKind, referenceForExtensionModel } from '../module/k8s';
 import {
   AlertmanagerModel,
@@ -13,9 +12,6 @@ import {
   BuildModel,
   ClusterOperatorModel,
   ClusterRoleModel,
-  ClusterServiceBrokerModel,
-  ClusterServiceClassModel,
-  ClusterServicePlanModel,
   ClusterVersionModel,
   ConfigMapModel,
   ContainerModel,
@@ -55,8 +51,6 @@ import {
   RouteModel,
   SecretModel,
   ServiceAccountModel,
-  ServiceBindingModel,
-  ServiceInstanceModel,
   ServiceModel,
   ServiceMonitorModel,
   StatefulSetModel,
@@ -67,6 +61,7 @@ import {
   VolumeSnapshotClassModel,
   ClusterRoleBindingModel,
 } from '../models';
+import { PodDisruptionBudgetModel } from '@console/app/src/models';
 
 const addResourcePage = (
   map: ImmutableMap<ResourceMapKey, ResourceMapValue>,
@@ -95,21 +90,6 @@ type ResourceMapValue = () => Promise<React.ComponentType<any>>;
 type DynamicResourcePage = DynamicResourceListPage | DynamicResourceDetailsPage;
 
 export const baseDetailsPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
-  .set(referenceForModel(ClusterServiceClassModel), () =>
-    import('./cluster-service-class' /* webpackChunkName: "cluster-service-class" */).then(
-      (m) => m.ClusterServiceClassDetailsPage,
-    ),
-  )
-  .set(referenceForModel(ClusterServiceBrokerModel), () =>
-    import('./cluster-service-broker' /* webpackChunkName: "cluster-service-broker" */).then(
-      (m) => m.ClusterServiceBrokerDetailsPage,
-    ),
-  )
-  .set(referenceForModel(ClusterServicePlanModel), () =>
-    import('./cluster-service-plan' /* webpackChunkName: "cluster-service-plan" */).then(
-      (m) => m.ClusterServicePlanDetailsPage,
-    ),
-  )
   .set(referenceForModel(ConfigMapModel), () =>
     import('./configmap' /* webpackChunkName: "configmap" */).then((m) => m.ConfigMapsDetailsPage),
   )
@@ -220,16 +200,6 @@ export const baseDetailsPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
       (m) => m.ServiceAccountsDetailsPage,
     ),
   )
-  .set(referenceForModel(ServiceInstanceModel), () =>
-    import('./service-instance' /* webpackChunkName: "service-instance" */).then(
-      (m) => m.ServiceInstanceDetailsPage,
-    ),
-  )
-  .set(referenceForModel(ServiceBindingModel), () =>
-    import('./service-binding' /* webpackChunkName: "service-binding" */).then(
-      (m) => m.ServiceBindingDetailsPage,
-    ),
-  )
   .set(referenceForModel(ServiceModel), () =>
     import('./service' /* webpackChunkName: "service" */).then((m) => m.ServicesDetailsPage),
   )
@@ -301,14 +271,6 @@ export const baseDetailsPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
       (m) => m.PersistentVolumeClaimsDetailsPage,
     ),
   )
-  .set(ReportReference, () =>
-    import('./chargeback' /* webpackChunkName: "chargeback" */).then((m) => m.ReportsDetailsPage),
-  )
-  .set(ReportGenerationQueryReference, () =>
-    import('./chargeback' /* webpackChunkName: "chargeback" */).then(
-      (m) => m.ReportGenerationQueriesDetailsPage,
-    ),
-  )
   .set(referenceForModel(StorageClassModel), () =>
     import('./storage-class' /* webpackChunkName: "storage-class" */).then(
       (m) => m.StorageClassDetailsPage,
@@ -339,6 +301,11 @@ export const baseDetailsPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
       (m) => m.OAuthDetailsPage,
     ),
   )
+  .set(referenceForModel(PodDisruptionBudgetModel), () =>
+    import('@console/app/src/components/pdb/PDBDetailsPage' /* webpackChunkName: "pdb" */).then(
+      (m) => m.PodDisruptionBudgetDetailsPage,
+    ),
+  )
   .set(referenceForModel(VolumeSnapshotModel), () =>
     import(
       '@console/app/src/components/volume-snapshot/volume-snapshot-details' /* webpackChunkName: "volume-snapshot-details" */
@@ -366,21 +333,6 @@ export const getResourceDetailsPages = (
     });
 
 export const baseListPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
-  .set(referenceForModel(ClusterServiceClassModel), () =>
-    import('./cluster-service-class' /* webpackChunkName: "cluster-service-class" */).then(
-      (m) => m.ClusterServiceClassPage,
-    ),
-  )
-  .set(referenceForModel(ClusterServiceBrokerModel), () =>
-    import('./cluster-service-broker' /* webpackChunkName: "cluster-service-broker" */).then(
-      (m) => m.ClusterServiceBrokerPage,
-    ),
-  )
-  .set(referenceForModel(ClusterServicePlanModel), () =>
-    import('./cluster-service-plan' /* webpackChunkName: "cluster-service-plan" */).then(
-      (m) => m.ClusterServicePlanPage,
-    ),
-  )
   .set(referenceForModel(ConfigMapModel), () =>
     import('./configmap' /* webpackChunkName: "configmap" */).then((m) => m.ConfigMapsPage),
   )
@@ -471,16 +423,6 @@ export const baseListPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
       (m) => m.ServiceAccountsPage,
     ),
   )
-  .set(referenceForModel(ServiceInstanceModel), () =>
-    import('./service-instance' /* webpackChunkName: "service-instance" */).then(
-      (m) => m.ServiceInstancesPage,
-    ),
-  )
-  .set(referenceForModel(ServiceBindingModel), () =>
-    import('./service-binding' /* webpackChunkName: "service-binding" */).then(
-      (m) => m.ServiceBindingsPage,
-    ),
-  )
   .set(referenceForModel(ServiceModel), () =>
     import('./service' /* webpackChunkName: "service" */).then((m) => m.ServicesPage),
   )
@@ -546,14 +488,6 @@ export const baseListPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
       (m) => m.PersistentVolumeClaimsPage,
     ),
   )
-  .set(ReportReference, () =>
-    import('./chargeback' /* webpackChunkName: "chargeback" */).then((m) => m.ReportsPage),
-  )
-  .set(ReportGenerationQueryReference, () =>
-    import('./chargeback' /* webpackChunkName: "chargeback" */).then(
-      (m) => m.ReportGenerationQueriesPage,
-    ),
-  )
   .set(referenceForModel(StorageClassModel), () =>
     import('./storage-class' /* webpackChunkName: "storage-class" */).then(
       (m) => m.StorageClassPage,
@@ -572,6 +506,11 @@ export const baseListPages = ImmutableMap<ResourceMapKey, ResourceMapValue>()
   .set(referenceForModel(ClusterOperatorModel), () =>
     import('./cluster-settings/cluster-operator' /* webpackChunkName: "cluster-operator" */).then(
       (m) => m.ClusterOperatorPage,
+    ),
+  )
+  .set(referenceForModel(PodDisruptionBudgetModel), () =>
+    import('@console/app/src/components/pdb/PDBPage' /* webpackChunkName: "pdb" */).then(
+      (m) => m.PodDisruptionBudgetsPage,
     ),
   )
   .set(referenceForModel(VolumeSnapshotModel), () =>

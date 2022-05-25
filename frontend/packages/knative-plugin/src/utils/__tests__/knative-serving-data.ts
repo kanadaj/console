@@ -3,14 +3,15 @@ import {
   DeployImageFormData,
   Resources,
 } from '@console/dev-console/src/components/import/import-types';
-import { K8sResourceKind, K8sKind, apiVersionForModel } from '@console/internal/module/k8s';
+import { K8sResourceKind, K8sKind } from '@console/internal/module/k8s';
 import {
   EventSourceSyncFormData,
   SinkType,
   AddChannelFormData,
   EventSources,
 } from '../../components/add/import-types';
-import { RevisionModel, ServiceModel, KafkaModel } from '../../models';
+import { STRIMZI_KAFKA_APIGROUP } from '../../const';
+import { RevisionModel, ServiceModel } from '../../models';
 import { getChannelKind, getChannelData } from '../create-channel-utils';
 
 export const defaultData: DeployImageFormData = {
@@ -78,7 +79,7 @@ export const defaultData: DeployImageFormData = {
       caCertificate: '',
       certificate: '',
       destinationCACertificate: '',
-      privateKey: '',
+      key: '',
     },
   },
   build: {
@@ -347,10 +348,6 @@ export const deploymentKnativeData: K8sResourceKind = {
 };
 
 const eventSourceData = {
-  [EventSources.CronJobSource]: {
-    data: '',
-    schedule: '* * * * *',
-  },
   [EventSources.PingSource]: {
     jsonData: '',
     schedule: '* * * * *',
@@ -487,8 +484,8 @@ export const getEventSourceDeploymentData = (EventSourceModel: K8sKind): K8sReso
 
 export const Kafkas: K8sResourceKind[] = [
   {
-    apiVersion: apiVersionForModel(KafkaModel),
-    kind: KafkaModel.kind,
+    apiVersion: `${STRIMZI_KAFKA_APIGROUP}/v1beta1`,
+    kind: 'Kafka',
     metadata: {
       creationTimestamp: '2020-07-06T16:43:44Z',
       generation: 1,
@@ -559,8 +556,8 @@ export const Kafkas: K8sResourceKind[] = [
     },
   },
   {
-    apiVersion: apiVersionForModel(KafkaModel),
-    kind: KafkaModel.kind,
+    apiVersion: `${STRIMZI_KAFKA_APIGROUP}/v1beta1`,
+    kind: 'Kafka',
     metadata: {
       creationTimestamp: '2020-07-06T16:56:39Z',
       generation: 1,

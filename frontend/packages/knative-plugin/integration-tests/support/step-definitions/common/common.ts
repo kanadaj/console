@@ -17,7 +17,9 @@ import {
   createGitWorkloadIfNotExistsOnTopologyPage,
   createEventSourcePage,
   verifyAndInstallKnativeOperator,
+  createChannel,
 } from '@console/dev-console/integration-tests/support/pages';
+import { eventingPO } from '@console/knative-plugin/integration-tests/support/pageObjects/global-po';
 
 Given('user is at developer perspective', () => {
   perspective.switchTo(switchPerspective.Developer);
@@ -56,7 +58,7 @@ When('user selects {string} from Context Menu', (menuOption: string) => {
 Given('user has installed eventing operator', () => {
   perspective.switchTo(switchPerspective.Administrator);
   operatorsPage.navigateToInstallOperatorsPage();
-  operatorsPage.searchOperator(operators.ServerlessOperator);
+  operatorsPage.searchOperatorInInstallPage(operators.ServerlessOperator);
   cy.get('body', {
     timeout: 50000,
   }).then(($ele) => {
@@ -71,7 +73,7 @@ Given('user has installed eventing operator', () => {
 Given('user has installed Red Hat Integration - Camel K Operator', () => {
   perspective.switchTo(switchPerspective.Administrator);
   operatorsPage.navigateToInstallOperatorsPage();
-  operatorsPage.searchOperator(operators.RedHatIntegrationCamelK);
+  operatorsPage.searchOperatorInInstallPage(operators.RedHatIntegrationCamelK);
   cy.get('body', {
     timeout: 50000,
   }).then(($ele) => {
@@ -86,7 +88,7 @@ Given('user has installed Red Hat Integration - Camel K Operator', () => {
 Given('user has installed Knative Apache Kafka Operator', () => {
   perspective.switchTo(switchPerspective.Administrator);
   operatorsPage.navigateToInstallOperatorsPage();
-  operatorsPage.searchOperator(operators.ApacheKafka);
+  operatorsPage.searchOperatorInInstallPage(operators.ApacheKafka);
   cy.get('body', {
     timeout: 50000,
   }).then(($ele) => {
@@ -106,6 +108,7 @@ Given(
 );
 
 Given('user has created knative service {string}', (knativeServiceName: string) => {
+  perspective.switchTo(switchPerspective.Developer);
   createGitWorkloadIfNotExistsOnTopologyPage(
     'https://github.com/sclorg/nodejs-ex.git',
     knativeServiceName,
@@ -131,4 +134,22 @@ Then('modal with {string} appears', (header: string) => {
 
 Given('user has installed OpenShift Serverless Operator', () => {
   verifyAndInstallKnativeOperator();
+});
+
+Given('user has created channel {string}', (channelName: string) => {
+  createChannel(channelName);
+});
+
+Given('user is at eventing page', () => {
+  operatorsPage.navigateToEventingPage();
+});
+
+Given('user is at Serving page', () => {
+  operatorsPage.navigateToServingPage();
+});
+
+When('user clicks on Create button', () => {
+  cy.get(eventingPO.createEventDropDownMenu)
+    .contains('Create')
+    .click({ force: true });
 });

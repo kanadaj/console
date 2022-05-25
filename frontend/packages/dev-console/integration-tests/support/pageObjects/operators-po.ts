@@ -8,7 +8,10 @@ export const operatorsPO = {
     link: 'li.pf-c-nav__item.pf-m-expandable',
     menuItems: '#page-sidebar ul li',
     serverless: '[data-quickstart-id="qs-nav-serverless"]',
-    eventing: 'a[href="/eventing"]',
+    eventing: `a[href^="/eventing/"]`,
+    serving: `a[href^="/serving/"]`,
+    administration: '[data-quickstart-id="qs-nav-administration"]',
+    customResourceDefinitions: 'a[href="/k8s/cluster/customresourcedefinitions"]',
   },
   operatorHub: {
     numOfItems: 'div.co-catalog-page__num-items',
@@ -32,6 +35,13 @@ export const operatorsPO = {
     redHatSourceType: '[data-test-group-name="catalogSourceDisplayName"] [title="Red Hat"]',
     redHatCodeReadyWorkspacesCard:
       '[data-test^="codeready-workspaces-redhat-operators-openshift-marketplace"]',
+    gitopsPrimer: '[data-test="gitops-primer-community-operators-openshift-marketplace"]',
+    serviceBinding:
+      '[data-test="rh-service-binding-operator-redhat-operators-openshift-marketplace"]',
+    CrunchyPostgresforKubernetes:
+      '[data-test="crunchy-postgres-operator-certified-operators-openshift-marketplace"]',
+    quayContainerSecurity:
+      '[data-test="container-security-operator-redhat-operators-openshift-marketplace"]',
   },
   subscription: {
     logo: 'h1.co-clusterserviceversion-logo__name__clusterserviceversion',
@@ -53,6 +63,7 @@ export const operatorsPO = {
     uninstall: '[data-test-id="operator-uninstall-btn"]',
   },
   alertDialog: '[role="dialog"]',
+  warningAlert: '[aria-label="Warning Alert"]',
   uninstallPopup: {
     uninstall: '#confirm-action',
   },

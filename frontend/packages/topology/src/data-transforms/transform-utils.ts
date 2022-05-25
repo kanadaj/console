@@ -1,4 +1,4 @@
-import { EdgeModel, Model, NodeModel } from '@patternfly/react-topology';
+import { EdgeModel, Model, NodeModel, NodeShape } from '@patternfly/react-topology';
 import i18next from 'i18next';
 import * as _ from 'lodash';
 import { WatchK8sResources } from '@console/dynamic-plugin-sdk';
@@ -100,6 +100,7 @@ export const getTopologyNodeItem = (
   nodeProps?: Omit<OdcNodeModel, 'type' | 'data' | 'children' | 'id' | 'label'>,
   children?: string[],
   resourceKind?: K8sResourceKindReference,
+  shape?: NodeShape,
 ): OdcNodeModel => {
   const uid = resource?.metadata.uid;
   const name = resource?.metadata.name;
@@ -109,6 +110,7 @@ export const getTopologyNodeItem = (
     id: uid,
     type,
     label: label || name,
+    shape,
     resource,
     resourceKind: kind,
     data,
@@ -356,6 +358,12 @@ export const getBaseWatchedResources = (namespace: string): WatchK8sResources<an
     statefulSets: {
       isList: true,
       kind: 'StatefulSet',
+      namespace,
+      optional: true,
+    },
+    services: {
+      isList: true,
+      kind: 'Service',
       namespace,
       optional: true,
     },

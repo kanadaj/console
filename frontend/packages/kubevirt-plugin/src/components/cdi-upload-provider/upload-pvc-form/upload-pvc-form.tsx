@@ -18,8 +18,6 @@ import { TFunction } from 'i18next';
 import { Helmet } from 'react-helmet';
 import { Trans, useTranslation } from 'react-i18next';
 import { match } from 'react-router';
-import { AccessModeSelector } from '@console/app/src/components/access-modes/access-mode';
-import { VolumeModeSelector } from '@console/app/src/components/volume-modes/volume-mode';
 import { WatchK8sResource } from '@console/dynamic-plugin-sdk';
 import { dropdownUnits, initialAccessModes } from '@console/internal/components/storage/shared';
 import {
@@ -49,7 +47,6 @@ import {
   TemplateKind,
 } from '@console/internal/module/k8s';
 import {
-  TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER,
   TEMPLATE_TYPE_BASE,
   TEMPLATE_TYPE_LABEL,
   TEMPLATE_VM_COMMON_NAMESPACE,
@@ -65,12 +62,14 @@ import {
 import { DataVolumeModel } from '../../../models';
 import { getKubevirtModelAvailableAPIVersion } from '../../../models/kubevirtReferenceForModel';
 import { getDefaultStorageClass } from '../../../selectors/config-map/sc-defaults';
-import { getName, getNamespace, getParameterValue } from '../../../selectors/selectors';
+import { getName, getNamespace, getPVCNamespace } from '../../../selectors/selectors';
 import { getTemplateOperatingSystems } from '../../../selectors/vm-template/advanced';
 import { OperatingSystemRecord } from '../../../types';
 import { V1alpha1DataVolume } from '../../../types/api';
+import { AccessModeSelector } from '../../AccessMode/AccessModeSelector';
 import { FormSelectPlaceholderOption } from '../../form/form-select-placeholder-option';
 import { BinaryUnit } from '../../form/size-unit-utils';
+import { VolumeModeSelector } from '../../VolumeMode/VolumeModeSelector';
 import { CDIUploadContext } from '../cdi-upload-provider';
 import {
   CDI_UPLOAD_OS_URL_PARAM,
@@ -203,7 +202,7 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
           source: {
             upload: {},
           },
-          pvc: {
+          storage: {
             storageClassName,
             accessModes: [accessMode],
             volumeMode,
@@ -218,7 +217,7 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
 
       return obj;
     };
-    onChange(updateDV);
+    onChange(updateDV());
   }, [
     accessMode,
     volumeMode,
@@ -392,7 +391,7 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
                   onChange={handlePvcSizeTemplate}
                 />
                 <Checkbox
-                  id="golden-os-checkbox-pvc-size-template"
+                  id="golden-os-checkbox-cdrom-boot-source-template"
                   className="kv--create-upload__golden-switch"
                   isChecked={!!mountAsCDROM}
                   data-checked-state={!!mountAsCDROM}
@@ -531,6 +530,9 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
               provisioner={provisioner}
               loaded
               availableAccessModes={initialAccessModes}
+              initialAccessMode={
+                isSPSettingProvided && storageClassName ? spAccessMode?.getValue() : undefined
+              }
             />
           </div>
           <div className="form-group">
@@ -540,6 +542,9 @@ export const UploadPVCForm: React.FC<UploadPVCFormProps> = ({
               accessMode={accessMode}
               storageClass={storageClassName}
               loaded
+              initialVolumeMode={
+                isSPSettingProvided && storageClassName ? spVolumeMode?.getValue() : undefined
+              }
             />
           </div>
         </div>
@@ -567,9 +572,7 @@ export const UploadPVCPage: React.FC<UploadPVCPageProps> = (props) => {
   const goldenNamespacesResources = React.useMemo(() => {
     const goldenNamespaces = [
       ...new Set(
-        (commonTemplates || [])
-          .map((template) => getParameterValue(template, TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER))
-          .filter((ns) => !!ns),
+        (commonTemplates || []).map((template) => getPVCNamespace(template)).filter((ns) => !!ns),
       ),
     ];
 
@@ -585,9 +588,7 @@ export const UploadPVCPage: React.FC<UploadPVCPageProps> = (props) => {
   const allowedTemplates = commonTemplates.filter((tmp) =>
     goldenAccessReviews.some(
       (accessReview) =>
-        accessReview.allowed &&
-        accessReview.resourceAttributes.namespace ===
-          getParameterValue(tmp, TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER),
+        accessReview.allowed && accessReview.resourceAttributes.namespace === getPVCNamespace(tmp),
     ),
   );
 

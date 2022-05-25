@@ -32,13 +32,18 @@ import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { VictoryPortal } from 'victory-core';
 
+import { PrometheusEndpoint } from '@console/dynamic-plugin-sdk/src/api/common-types';
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 
-import { queryBrowserDeleteAllSeries, queryBrowserPatchQuery } from '../../actions/observe';
+import {
+  queryBrowserDeleteAllSeries,
+  queryBrowserPatchQuery,
+  queryBrowserSetTimespan,
+} from '../../actions/observe';
 import { RootState } from '../../redux';
 import { PrometheusLabels, PrometheusResponse, PrometheusResult, PrometheusValue } from '../graphs';
 import { GraphEmpty } from '../graphs/graph-empty';
-import { getPrometheusURL, PrometheusEndpoint } from '../graphs/helpers';
+import { getPrometheusURL } from '../graphs/helpers';
 import { queryBrowserTheme } from '../graphs/themes';
 import {
   Dropdown,
@@ -99,7 +104,7 @@ const GraphEmptyState: React.FC<GraphEmptyStateProps> = ({ children, title }) =>
 );
 
 const SpanControls: React.FC<SpanControlsProps> = React.memo(
-  ({ defaultSpanText, onChange, span }) => {
+  ({ defaultSpanText, onChange, span, hasReducedResolution }) => {
     const [isValid, setIsValid] = React.useState(true);
     const [text, setText] = React.useState(formatPrometheusDuration(span));
 
@@ -148,14 +153,26 @@ const SpanControls: React.FC<SpanControlsProps> = React.memo(
         >
           {t('public~Reset zoom')}
         </Button>
+        {hasReducedResolution && (
+          <Alert
+            isInline
+            isPlain
+            className="query-browser__reduced-resolution"
+            title={t('public~Displaying with reduced resolution due to large dataset.')}
+            variant="info"
+            truncateTitle={1}
+          />
+        )}
       </>
     );
   },
 );
 
 const TOOLTIP_MAX_ENTRIES = 20;
-const TOOLTIP_MAX_WIDTH = 300;
+const TOOLTIP_MAX_WIDTH = 400;
 const TOOLTIP_MAX_HEIGHT = 400;
+const TOOLTIP_MAX_LEFT_JUT_OUT = 85;
+const TOOLTIP_MAX_RIGHT_JUT_OUT = 45;
 
 type TooltipSeries = {
   color: string;
@@ -180,8 +197,10 @@ const Tooltip_: React.FC<TooltipProps> = ({ activePoints, center, height, style,
   }
 
   // Pick tooltip width and location (left or right of the cursor) to maximize its available space
-  const tooltipMaxWidth: number = Math.min(width / 2 + 60, TOOLTIP_MAX_WIDTH);
-  const isOnLeft: boolean = x > (width - 40) / 2;
+  const spaceOnLeft = x + TOOLTIP_MAX_LEFT_JUT_OUT;
+  const spaceOnRight = width - x + TOOLTIP_MAX_RIGHT_JUT_OUT;
+  const isOnLeft = spaceOnLeft > spaceOnRight;
+  const tooltipMaxWidth = Math.min(isOnLeft ? spaceOnLeft : spaceOnRight, TOOLTIP_MAX_WIDTH);
 
   // Sort the entries in the tooltip from largest to smallest (to match the position of points in
   // the graph) and limit to the maximum number we can display. There could be a large number of
@@ -223,12 +242,15 @@ const Tooltip_: React.FC<TooltipProps> = ({ activePoints, center, height, style,
     [(k) => -_.uniq(allSeries.map((s) => s.labels[k])).length, (k) => k.length],
   );
   const getSeriesName = (series: TooltipSeries): string => {
-    if (series.name) {
+    if (_.isString(series.name)) {
       return series.name;
     }
-    const name = series.labels?.__name__ ?? '';
+    if (_.isEmpty(series.labels)) {
+      return '{}';
+    }
+    const name = series.labels.__name__ ?? '';
     const otherLabels = _.intersection(allSeriesSorted, Object.keys(series.labels));
-    return `${name}{${_.map(otherLabels, (l) => `${l}=${series.labels[l]}`).join(',')}}`;
+    return `${name}{${otherLabels.map((l) => `${l}=${series.labels[l]}`).join(',')}}`;
   };
 
   return (
@@ -285,7 +307,7 @@ const LegendContainer = ({ children }: { children?: React.ReactNode }) => {
   const width = children?.[0]?.[0]?.props?.width ?? '100%';
   return (
     <foreignObject height={75} width="100%" y={245}>
-      <div className="monitoring-dashboards__legend-wrap">
+      <div className="monitoring-dashboards__legend-wrap horizontal-scroll">
         <svg width={width}>{children}</svg>
       </div>
     </foreignObject>
@@ -447,7 +469,7 @@ const Graph: React.FC<GraphProps> = React.memo(
             itemsPerRow={4}
             orientation="vertical"
             style={{
-              labels: { fontSize: 11 },
+              labels: { fontSize: 11, fill: 'var(--pf-global--Color--100)' },
             }}
             symbolSpacer={4}
           />
@@ -634,6 +656,9 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   const tickInterval = useSelector(
     ({ observe }: RootState) => pollInterval ?? observe.getIn(['queryBrowser', 'pollInterval']),
   );
+  const lastRequestTime = useSelector(({ observe }: RootState) =>
+    observe.getIn(['queryBrowser', 'lastRequestTime']),
+  );
 
   const dispatch = useDispatch();
 
@@ -707,7 +732,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
               namespace,
               query,
               samples,
-              timeout: '30s',
+              timeout: '60s',
               timespan: span,
             }),
           ),
@@ -780,7 +805,17 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   }
 
   const queriesKey = _.reject(queries, _.isEmpty).join();
-  usePoll(tick, delay, endTime, filterLabels, namespace, queriesKey, samples, span);
+  usePoll(
+    tick,
+    delay,
+    endTime,
+    filterLabels,
+    namespace,
+    queriesKey,
+    samples,
+    span,
+    lastRequestTime,
+  );
 
   React.useLayoutEffect(() => setUpdating(true), [endTime, namespace, queriesKey, samples, span]);
 
@@ -789,9 +824,10 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
       setGraphData(null);
       setXDomain(undefined);
       setSpan(newSpan);
+      dispatch(queryBrowserSetTimespan(newSpan));
       setSamples(defaultSamples || getMaxSamplesForSpan(newSpan));
     },
-    [defaultSamples],
+    [defaultSamples, dispatch],
   );
 
   const isRangeVector = _.get(error, 'json.error', '').match(
@@ -848,6 +884,7 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
   };
 
   const isGraphDataEmpty = !graphData || graphData.every((d) => d.length === 0);
+  const hasReducedResolution = !isGraphDataEmpty && samples < maxSamplesForSpan && !updating;
 
   return (
     <div
@@ -861,7 +898,12 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
       ) : (
         <div className="query-browser__controls">
           <div className="query-browser__controls--left">
-            <SpanControls defaultSpanText={defaultSpanText} onChange={onSpanChange} span={span} />
+            <SpanControls
+              defaultSpanText={defaultSpanText}
+              onChange={onSpanChange}
+              span={span}
+              hasReducedResolution={hasReducedResolution}
+            />
             {updating && <Loading />}
           </div>
           <div className="query-browser__controls--right">
@@ -881,54 +923,44 @@ const QueryBrowser_: React.FC<QueryBrowserProps> = ({
       {error && <Error error={error} />}
       {isGraphDataEmpty && !updating && <GraphEmpty />}
       {!isGraphDataEmpty && (
-        <>
-          {samples < maxSamplesForSpan && !updating && (
-            <Alert
-              isInline
-              className="co-alert"
-              title={t('public~Displaying with reduced resolution due to large dataset.')}
-              variant="info"
-            />
-          )}
-          <div
-            className={classNames('graph-wrapper graph-wrapper--query-browser', {
-              'graph-wrapper--query-browser--with-legend': showLegend && !!formatSeriesTitle,
-            })}
-          >
-            <div ref={containerRef} style={{ width: '100%' }}>
-              {width > 0 && (
-                <>
-                  {disableZoom ? (
-                    <Graph
-                      allSeries={graphData}
-                      disabledSeries={disabledSeries}
-                      fixedXDomain={xDomain}
-                      formatSeriesTitle={formatSeriesTitle}
-                      isStack={canStack && isStacked}
-                      showLegend={showLegend}
-                      span={span}
-                      units={units}
-                      width={width}
-                    />
-                  ) : (
-                    <ZoomableGraph
-                      allSeries={graphData}
-                      disabledSeries={disabledSeries}
-                      fixedXDomain={xDomain}
-                      formatSeriesTitle={formatSeriesTitle}
-                      isStack={canStack && isStacked}
-                      onZoom={zoomableGraphOnZoom}
-                      showLegend={showLegend}
-                      span={span}
-                      units={units}
-                      width={width}
-                    />
-                  )}
-                </>
-              )}
-            </div>
+        <div
+          className={classNames('graph-wrapper graph-wrapper--query-browser', {
+            'graph-wrapper--query-browser--with-legend': showLegend && !!formatSeriesTitle,
+          })}
+        >
+          <div ref={containerRef} style={{ width: '100%' }}>
+            {width > 0 && (
+              <>
+                {disableZoom ? (
+                  <Graph
+                    allSeries={graphData}
+                    disabledSeries={disabledSeries}
+                    fixedXDomain={xDomain}
+                    formatSeriesTitle={formatSeriesTitle}
+                    isStack={canStack && isStacked}
+                    showLegend={showLegend}
+                    span={span}
+                    units={units}
+                    width={width}
+                  />
+                ) : (
+                  <ZoomableGraph
+                    allSeries={graphData}
+                    disabledSeries={disabledSeries}
+                    fixedXDomain={xDomain}
+                    formatSeriesTitle={formatSeriesTitle}
+                    isStack={canStack && isStacked}
+                    onZoom={zoomableGraphOnZoom}
+                    showLegend={showLegend}
+                    span={span}
+                    units={units}
+                    width={width}
+                  />
+                )}
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -1007,6 +1039,7 @@ type SpanControlsProps = {
   defaultSpanText: string;
   onChange: (span: number) => void;
   span: number;
+  hasReducedResolution: boolean;
 };
 
 type TooltipProps = {

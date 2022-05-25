@@ -1,9 +1,16 @@
 import { SupportedActionExtensions } from '../extensions/actions';
 import { AddAction, AddActionGroup } from '../extensions/add-actions';
 import { SupportedCatalogExtensions } from '../extensions/catalog';
+import {
+  ClusterOverviewInventoryItem,
+  ClusterOverviewUtilizationItem,
+  ClusterOverviewMultilineUtilizationItem,
+  OverviewDetailItem,
+} from '../extensions/cluster-overview';
 import { ClusterGlobalConfig } from '../extensions/cluster-settings';
 import { ContextProvider } from '../extensions/context-providers';
 import { CreateResource } from '../extensions/create-resource';
+import { CustomExtension } from '../extensions/custom';
 import {
   DashboardsTab,
   DashboardsCard,
@@ -13,9 +20,16 @@ import {
   DashboardsOverviewHealthOperator,
   DashboardsInventoryItemGroup,
   DashboardsOverviewInventoryItem,
+  DashboardsOverviewInventoryItemReplacement,
+  DashboardsProjectOverviewInventoryItem,
   DashboardsOverviewResourceActivity,
+  DashboardsOverviewPrometheusActivity,
 } from '../extensions/dashboards';
-import { FeatureFlag, ModelFeatureFlag } from '../extensions/feature-flags';
+import {
+  FeatureFlag,
+  ModelFeatureFlag,
+  FeatureFlagHookProvider,
+} from '../extensions/feature-flags';
 import { FileUpload } from '../extensions/file-upload';
 import { HorizontalNavTab } from '../extensions/horizontal-nav-tabs';
 import { ImportEnvironment } from '../extensions/import-environments';
@@ -55,6 +69,7 @@ import { YAMLTemplate } from '../extensions/yaml-templates';
 export type SupportedExtension =
   | FeatureFlag
   | ModelFeatureFlag
+  | FeatureFlagHookProvider
   | ReduxReducer
   | ContextProvider
   | StandaloneRoutePage
@@ -92,7 +107,10 @@ export type SupportedExtension =
   | DashboardsOverviewHealthOperator
   | DashboardsInventoryItemGroup
   | DashboardsOverviewInventoryItem
+  | DashboardsOverviewInventoryItemReplacement
+  | DashboardsProjectOverviewInventoryItem
   | DashboardsOverviewResourceActivity
+  | DashboardsOverviewPrometheusActivity
   | TopologyComponentFactory
   | TopologyCreateConnector
   | TopologyDataModelFactory
@@ -104,9 +122,13 @@ export type SupportedExtension =
   | UserPreferenceGroup
   | UserPreferenceItem
   | Perspective
-  | HorizontalNavTab;
+  | HorizontalNavTab
+  | ClusterOverviewInventoryItem
+  | ClusterOverviewUtilizationItem
+  | ClusterOverviewMultilineUtilizationItem
+  | OverviewDetailItem;
 
 /**
  * Schema of Console plugin's `console-extensions.json` file.
  */
-export type ConsoleExtensionsJSON = SupportedExtension[];
+export type ConsoleExtensionsJSON = (SupportedExtension | CustomExtension)[];

@@ -16,8 +16,8 @@ Feature: Perform Actions on repository
              Then user will be redirected to Repository details page with header name "<repository_name>"
 
         Examples:
-                  | repository_yaml                                 | repository_name |
-                  | testData/repository-crd-testdata/test-repo.yaml | test-repo       |
+                  | repository_yaml                                  | repository_name |
+                  | testData/repository-crd-testdata/repository.yaml | test-repo       |
 
 
         @smoke
@@ -26,7 +26,7 @@ Feature: Perform Actions on repository
              When user clicks on the repository "<repository_name>" on Repositories page
              Then user will be redirected to Repository details page with header "<repository_name>"
               And user is able to see Details, YAML, Pipeline Runs tabs
-              And Details tab is displayed with field names Name, Namespace, Labels, Annotations, Created at, Owner, Repository, Branch and Event type
+              And Details tab is displayed with field names Name, Namespace, Labels, Annotations, Created at, Owner, Repository
               And Actions menu display with options Edit labels, Edit annotations, Edit repository, Delete repository
 
         Examples:
@@ -93,10 +93,10 @@ Feature: Perform Actions on repository
 
 
         # test data needs to be created using before execuitng below 2 scenarios : https://docs.google.com/document/d/1nUFtwtuZooDhOGg1YrjXn0zrOhZDrJ4h1oE6h35Noao/edit#
-        @regression @to-do
+        @regression
         Scenario Outline: Pipeline Run Details page for the repository: P-11-TC09
             Given pipeline run is displayed for "<repository_name>"
-              And user is at the repositories page
+              And user is at repositories page
              When user clicks Last Run value of repository "<repository_name>"
              Then user will be redirected to Pipeline Run Details page
               And user is able to see Details, YAML, TaskRuns, Logs and Events tabs
@@ -108,7 +108,7 @@ Feature: Perform Actions on repository
                   | test-repo       |
 
 
-        @regression @to-do
+        @regression
         Scenario: Pipeline Runs tab of the Repository details page: P-11-TC10
             Given repository "test-repo" is present on the Repositories page
              When user searches repository "test-repo" in repositories page
@@ -132,3 +132,23 @@ Feature: Perform Actions on repository
         Examples:
                   | repository_name |
                   | test-repo       |
+
+
+        @regression @odc-6460
+        Scenario: Setup GitHub page: P-11-TC12
+            Given user is at Pipelines tab in admin page
+             When user clicks on Setup GitHub App button
+             Then user can see "GitHub application name", "See GitHub permissions" and "View all steps in documentation"
+
+
+        @regression @manual @odc-6460
+        #This test case is manual as it navigates to github in between the process
+        Scenario: Create and configure the GitHub Application to work with Pipelines as code: P-11-TC13
+            Given user is at Pipelines tab in admin page
+             When user clicks on Setup GitHub App button
+              And user enters GitHub application name as "pac-app123"
+              And user clicks on Setup button
+              And user confirms access in github
+              And user clicks Create GitHub App button in Create GitHub App page
+             Then user will be redirected to GitHub App details
+              And user will see App Name as "pac-app123", App Link as "https://github.com/apps/pac-app123" and Secret as "pipelines-as-code-secret" in "openshift-pipelines" namespace

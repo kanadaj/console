@@ -9,7 +9,7 @@ import { Route, Router, Switch } from 'react-router-dom';
 import 'abort-controller/polyfill';
 import store, { applyReduxExtensions } from '../redux';
 import { withTranslation, useTranslation } from 'react-i18next';
-import { coFetchJSON } from '../co-fetch';
+import { coFetchJSON, appInternalFetch } from '../co-fetch';
 
 import { detectFeatures } from '../actions/features';
 import AppContents from './app-contents';
@@ -17,7 +17,7 @@ import { getBrandingDetails, Masthead } from './masthead';
 import { ConsoleNotifier } from './console-notifier';
 import { ConnectedNotificationDrawer } from './notification-drawer';
 import { Navigation } from './nav';
-import { history, AsyncComponent, LoadingBox } from './utils';
+import { history, AsyncComponent, LoadingBox, useSafeFetch, usePoll } from './utils';
 import * as UIActions from '../actions/ui';
 import { fetchSwagger, getCachedResources } from '../module/k8s';
 import { receivedResources, startAPIDiscovery } from '../actions/k8s';
@@ -26,8 +26,10 @@ import { pluginStore } from '../plugins';
 import CloudShell from '@console/app/src/components/cloud-shell/CloudShell';
 import CloudShellTab from '@console/app/src/components/cloud-shell/CloudShellTab';
 import DetectPerspective from '@console/app/src/components/detect-perspective/DetectPerspective';
+import DetectCluster from '@console/app/src/components/detect-cluster/DetectCluster';
 import DetectNamespace from '@console/app/src/components/detect-namespace/DetectNamespace';
 import DetectLanguage from '@console/app/src/components/detect-language/DetectLanguage';
+import FeatureFlagExtensionLoader from '@console/app/src/components/flags/FeatureFlagExtensionLoader';
 import { useExtensions } from '@console/plugin-sdk';
 import {
   useResolvedExtensions,
@@ -44,17 +46,16 @@ import ToastProvider from '@console/shared/src/components/toast/ToastProvider';
 import { useToast } from '@console/shared/src/components/toast';
 import { useTelemetry } from '@console/shared/src/hooks/useTelemetry';
 import { useDebounceCallback } from '@console/shared/src/hooks/debounce';
-import {
-  useURLPoll,
-  URL_POLL_DEFAULT_DELAY,
-} from '@console/internal/components/utils/url-poll-hook';
+import { URL_POLL_DEFAULT_DELAY } from '@console/internal/components/utils/url-poll-hook';
+import { ThemeProvider } from './ThemeProvider';
 import { init as initI18n } from '../i18n';
+import { Page, SkipToContent, AlertVariant } from '@patternfly/react-core'; // PF4 Imports
 import '../vendor.scss';
 import '../style.scss';
 import '@patternfly/quickstarts/dist/quickstarts.min.css';
-
-// PF4 Imports
-import { Page, SkipToContent, AlertVariant } from '@patternfly/react-core';
+// load dark theme here as MiniCssExtractPlugin ignores load order of sass and dark theme must load after all other css
+import '@patternfly/patternfly/patternfly-theme-dark.css';
+import '@patternfly/patternfly/patternfly-charts-theme-dark.css';
 
 const breakpointMD = 1200;
 const NOTIFICATION_DRAWER_BREAKPOINT = 1800;
@@ -206,11 +207,12 @@ class App_ extends React.PureComponent {
           <div id="modal-container" role="dialog" aria-modal="true" />
         </QuickStartDrawer>
         <ConsoleNotifier location="BannerBottom" />
+        <FeatureFlagExtensionLoader />
       </>
     );
 
     return (
-      <>
+      <DetectCluster>
         <DetectPerspective>
           <DetectNamespace>
             {contextProviderExtensions.reduce(
@@ -224,12 +226,12 @@ class App_ extends React.PureComponent {
           </DetectNamespace>
         </DetectPerspective>
         <DetectLanguage />
-      </>
+      </DetectCluster>
     );
   }
 }
 
-const AppWithExtensions = withTranslation()((props) => {
+const AppWithExtensions = withTranslation()(function AppWithExtensions(props) {
   const [reduxReducerExtensions, reducersResolved] = useResolvedExtensions(isReduxReducer);
   const [contextProviderExtensions, providersResolved] = useResolvedExtensions(isContextProvider);
 
@@ -240,8 +242,6 @@ const AppWithExtensions = withTranslation()((props) => {
 
   return <LoadingBox />;
 });
-
-initConsolePlugins(pluginStore, store);
 
 render(<LoadingBox />, document.getElementById('app'));
 
@@ -267,7 +267,7 @@ const AppRouter = () => {
   );
 };
 
-const CaptureTelemetry = React.memo(() => {
+const CaptureTelemetry = React.memo(function CaptureTelemetry() {
   const fireTelemetryEvent = useTelemetry();
 
   // notify of identity change
@@ -302,7 +302,7 @@ const CaptureTelemetry = React.memo(() => {
   return null;
 });
 
-const PollConsoleUpdates = React.memo(() => {
+const PollConsoleUpdates = React.memo(function PollConsoleUpdates() {
   const toastContext = useToast();
   const { t } = useTranslation();
 
@@ -311,9 +311,20 @@ const PollConsoleUpdates = React.memo(() => {
   const [consoleChanged, setConsoleChanged] = React.useState(false);
   const [isFetchingPluginEndpoints, setIsFetchingPluginEndpoints] = React.useState(false);
   const [allPluginEndpointsReady, setAllPluginEndpointsReady] = React.useState(false);
-  const [pluginsData, pluginsError] = useURLPoll(
-    `${window.SERVER_FLAGS.basePath}api/check-updates`,
-  );
+
+  const [pluginsData, setPluginsData] = React.useState();
+  const [pluginsError, setPluginsError] = React.useState();
+  const safeFetch = React.useCallback(useSafeFetch(), []);
+  const tick = React.useCallback(() => {
+    safeFetch(`${window.SERVER_FLAGS.basePath}api/check-updates`)
+      .then((response) => {
+        setPluginsData(response);
+        setPluginsError(null);
+      })
+      .catch(setPluginsError);
+  }, [safeFetch]);
+  usePoll(tick, URL_POLL_DEFAULT_DELAY);
+
   const prevPluginsDataRef = React.useRef();
   React.useEffect(() => {
     prevPluginsDataRef.current = pluginsData;
@@ -398,41 +409,64 @@ const PollConsoleUpdates = React.memo(() => {
   return null;
 });
 
-graphQLReady.onReady(() => {
-  // Load cached API resources from localStorage to speed up page load.
+let updateSwaggerInterval;
+
+/**
+ * Fetch OpenAPI definitions immediately upon application start and
+ * then poll swagger definitions every 5 minutes to ensure they stay up to date.
+ */
+const updateSwaggerDefinitionContinual = () => {
+  fetchSwagger().catch((e) => {
+    // eslint-disable-next-line no-console
+    console.error('Could not fetch OpenAPI after application start:', e);
+  });
+  clearInterval(updateSwaggerInterval);
+  updateSwaggerInterval = setInterval(() => {
+    fetchSwagger().catch((e) => {
+      // eslint-disable-next-line no-console
+      console.error('Could not fetch OpenAPI to stay up to date:', e);
+    });
+  }, 5 * 60 * 1000);
+};
+
+const initPlugins = (storeInstance) => {
+  return initConsolePlugins(pluginStore, storeInstance);
+};
+// Load cached API resources from localStorage to speed up page load.
+const initApiDiscovery = (storeInstance) => {
   getCachedResources()
     .then((resources) => {
       if (resources) {
-        store.dispatch(receivedResources(resources));
+        storeInstance.dispatch(receivedResources(resources));
       }
       // Still perform discovery to refresh the cache.
-      store.dispatch(startAPIDiscovery());
+      storeInstance.dispatch(startAPIDiscovery());
     })
-    .catch(() => store.dispatch(startAPIDiscovery()));
+    .catch(() => storeInstance.dispatch(startAPIDiscovery()));
+  updateSwaggerDefinitionContinual();
+};
 
+graphQLReady.onReady(() => {
   store.dispatch(detectFeatures());
 
   // Global timer to ensure all <Timestamp> components update in sync
   setInterval(() => store.dispatch(UIActions.updateTimestamps(Date.now())), 10000);
 
-  // Fetch swagger definitions immediately upon application start
-  fetchSwagger();
-  // then poll swagger definitions every 5 minutes to ensure they stay up to date
-  setInterval(fetchSwagger, 5 * 60 * 1000);
-
   // Used by GUI tests to check for unhandled exceptions
   window.windowError = null;
   window.onerror = (message, source, lineno, colno, error) => {
     const formattedStack = error?.stack?.replace(/\\n/g, '\n');
-    window.windowError = `unhandled error: ${message} ${formattedStack || ''}`;
+    const formattedMessage = `unhandled error: ${message} ${formattedStack || ''}`;
+    window.windowError = formattedMessage;
     // eslint-disable-next-line no-console
-    console.error(window.windowError);
+    console.error(formattedMessage, error || message);
   };
   window.onunhandledrejection = (promiseRejectionEvent) => {
     const { reason } = promiseRejectionEvent;
-    window.windowError = `unhandled promise rejection: ${reason}`;
+    const formattedMessage = `unhandled promise rejection: ${reason}`;
+    window.windowError = formattedMessage;
     // eslint-disable-next-line no-console
-    console.error(window.windowError);
+    console.error(formattedMessage, reason);
   };
 
   if ('serviceWorker' in navigator) {
@@ -466,13 +500,21 @@ graphQLReady.onReady(() => {
   render(
     <React.Suspense fallback={<LoadingBox />}>
       <Provider store={store}>
-        <AppInitSDK>
-          <CaptureTelemetry />
-          <ToastProvider>
-            <PollConsoleUpdates />
-            <AppRouter />
-          </ToastProvider>
-        </AppInitSDK>
+        <ThemeProvider>
+          <AppInitSDK
+            configurations={{
+              appFetch: appInternalFetch,
+              apiDiscovery: initApiDiscovery,
+              initPlugins,
+            }}
+          >
+            <CaptureTelemetry />
+            <ToastProvider>
+              <PollConsoleUpdates />
+              <AppRouter />
+            </ToastProvider>
+          </AppInitSDK>
+        </ThemeProvider>
       </Provider>
     </React.Suspense>,
     document.getElementById('app'),

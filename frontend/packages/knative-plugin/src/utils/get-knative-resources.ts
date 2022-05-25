@@ -3,8 +3,9 @@ import { WatchK8sResources } from '@console/dynamic-plugin-sdk';
 import { FirehoseResource } from '@console/internal/components/utils';
 import { K8sResourceKind, PodKind, referenceForModel } from '@console/internal/module/k8s';
 import { KafkaConnectionModel } from '@console/rhoas-plugin/src/models';
-import { KNATIVE_SERVING_LABEL } from '../const';
+import { GLOBAL_OPERATOR_NS, KNATIVE_SERVING_LABEL } from '../const';
 import {
+  CamelKameletModel,
   ServiceModel,
   RevisionModel,
   ConfigurationModel,
@@ -39,6 +40,7 @@ export type KnativeItem = {
   eventSourceSinkbinding?: K8sResourceKind[];
   domainMappings?: K8sResourceKind[];
   pods?: PodKind[];
+  associatedDeployment?: K8sResourceKind;
 };
 
 const isKnativeDeployment = (dc: K8sResourceKind) => {
@@ -48,8 +50,9 @@ const isKnativeDeployment = (dc: K8sResourceKind) => {
 const getKsResource = (dc: K8sResourceKind, { data }: K8sResourceKind): K8sResourceKind[] => {
   let ksResource = [];
   if (isKnativeDeployment(dc)) {
+    const name = dc.metadata.labels?.[KNATIVE_SERVING_LABEL];
     ksResource = _.filter(data, (config: K8sResourceKind) => {
-      return dc.metadata.labels[KNATIVE_SERVING_LABEL] === _.get(config, 'metadata.name');
+      return name === _.get(config, 'metadata.name');
     });
   }
   return ksResource;
@@ -58,8 +61,9 @@ const getKsResource = (dc: K8sResourceKind, { data }: K8sResourceKind): K8sResou
 const getRevisions = (dc: K8sResourceKind, { data }): K8sResourceKind[] => {
   let revisionResource = [];
   if (isKnativeDeployment(dc)) {
+    const ownerUid = dc.metadata.ownerReferences?.[0]?.uid;
     revisionResource = _.filter(data, (revision: K8sResourceKind) => {
-      return dc.metadata.ownerReferences[0].uid === revision.metadata.uid;
+      return ownerUid && ownerUid === revision.metadata.uid;
     });
   }
   return revisionResource;
@@ -147,6 +151,20 @@ export const knativeServingResourcesRoutes = (namespace: string): FirehoseResour
       namespace,
       prop: 'ksroutes',
       optional: true,
+    },
+  ];
+  return knativeResource;
+};
+
+export const k8sServices = (namespace: string, limit?: number): FirehoseResource[] => {
+  const knativeResource = [
+    {
+      isList: true,
+      kind: 'Service',
+      namespace,
+      prop: 'services',
+      optional: true,
+      ...(limit && { limit }),
     },
   ];
   return knativeResource;
@@ -304,6 +322,23 @@ export const knativeCamelIntegrationsResourceWatchers = (
   };
 };
 
+export const knativeCamelKameletResourceWatchers = (namespace: string) => {
+  return {
+    [CamelKameletModel.plural]: {
+      isList: true,
+      kind: referenceForModel(CamelKameletModel),
+      namespace,
+      optional: true,
+    },
+    kameletGlobalNS: {
+      isList: true,
+      kind: referenceForModel(CamelKameletModel),
+      namespace: GLOBAL_OPERATOR_NS,
+      optional: true,
+    },
+  };
+};
+
 export const strimziResourcesWatcher = (namespace: string): WatchK8sResources<any> => {
   const strimziResources = {
     [KafkaModel.plural]: {
@@ -374,6 +409,12 @@ export const getTrafficByRevision = (revName: string, service: K8sResourceKind) 
   };
 };
 
+export const getSinkableResources = (namespace: string): FirehoseResource[] => {
+  return namespace
+    ? [...k8sServices(namespace), ...knativeServingResourcesServices(namespace)]
+    : [];
+};
+
 export const getKnativeResources = (namespace: string) => {
   return {
     ...knativeServingResourcesRevisionWatchers(namespace),
@@ -388,5 +429,6 @@ export const getKnativeResources = (namespace: string) => {
     ...knativeCamelIntegrationsResourceWatchers(namespace),
     ...knativeCamelKameletBindingResourceWatchers(namespace),
     ...knativeCamelDomainMappingResourceWatchers(namespace),
+    ...knativeCamelKameletResourceWatchers(namespace),
   };
 };

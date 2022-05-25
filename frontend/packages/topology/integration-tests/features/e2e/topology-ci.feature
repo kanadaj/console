@@ -14,7 +14,6 @@ Feature: Perform actions on topology
              Then user sees Topology page with message "No resources found"
               And user is able to see Start building your application, Add page links
               And Display options dropdown, Filter by resource and Find by name fields are disabled
-              And Zoom in, Zoom out, Fit to Screen, Reset view, layout icons are displayed
               And switch view is disabled
 
 
@@ -22,7 +21,7 @@ Feature: Perform actions on topology
             Given user is at Topology Graph view
              When user clicks Start building your application
               And user enters ".NET" builder image in Quick Search bar
-              And user clicks Create Application on Quick Search Dialog
+              And user clicks Create application on Quick Search Dialog
               And user enters Git Repo URL as "https://github.com/redhat-developer/s2i-dotnetcore-ex" in Create Source-to-Image Application
               And user enters Application Name as "dotnet-app"
               And user enters Name as "dotnet"
@@ -46,25 +45,9 @@ Feature: Perform actions on topology
         Scenario: Default state of Display dropdown: T-16-TC01
             Given user is at Topology Graph view
              When user clicks on the Display dropdown
-             Then user will see the Connectivity Mode is checked
-              And user will see the Expand is checked
+             Then user will see the Expand is checked
               And user will see the Pod count is unchecked
               And user will see the Labels is checked
-
-
-        Scenario: Check the Consumption Mode: T-16-TC02
-            Given user is at Topology page
-             When user clicks on the Display dropdown
-              And user checks the Consumption Mode
-             Then user will see that the Expand options are disabled
-              And user will see the Application groupings option is disabled
-              And app icon is not displayed
-
-
-        Scenario: Topology List view: T-12-TC01
-            Given user selected the Display options with Connectivity Mode
-             When user clicks on List view button
-             Then user will see workloads are segregated by applications groupings
 
 
         Scenario: Deleting a workload through Action menu: T-15-TC01

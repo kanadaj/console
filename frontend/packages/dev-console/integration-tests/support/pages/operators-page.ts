@@ -6,15 +6,23 @@ import { app } from './app';
 
 export const operatorsPage = {
   navigateToOperatorHubPage: () => {
-    cy.get(operatorsPO.nav.operators).click();
-    cy.get(operatorsPO.nav.operatorHub).click({ force: true });
+    cy.get(operatorsPO.nav.operatorHub).then(($nav) => {
+      if (!$nav.is(':visible')) {
+        cy.get(operatorsPO.nav.operators).click();
+      }
+      cy.get(operatorsPO.nav.operatorHub).click({ force: true });
+    });
     detailsPage.titleShouldContain(pageTitle.OperatorHub);
     cy.get('.skeleton-catalog--grid').should('not.exist');
   },
 
   navigateToInstallOperatorsPage: () => {
-    cy.get(operatorsPO.nav.operators).click();
-    cy.get(operatorsPO.nav.installedOperators).click({ force: true });
+    cy.get(operatorsPO.nav.installedOperators).then(($nav) => {
+      if (!$nav.is(':visible')) {
+        cy.get(operatorsPO.nav.operators).click();
+      }
+      cy.get(operatorsPO.nav.installedOperators).click({ force: true });
+    });
     app.waitForLoad();
     detailsPage.titleShouldContain(pageTitle.InstalledOperators);
   },
@@ -23,6 +31,16 @@ export const operatorsPage = {
     cy.get(operatorsPO.nav.serverless).click();
     cy.get(operatorsPO.nav.eventing).click({ force: true });
     detailsPage.titleShouldContain(pageTitle.Eventing);
+  },
+  navigateToServingPage: () => {
+    cy.get(operatorsPO.nav.serverless).click();
+    cy.get(operatorsPO.nav.serving).click({ force: true });
+    detailsPage.titleShouldContain(pageTitle.Serving);
+  },
+  navigateToCustomResourceDefinitions: () => {
+    cy.get(operatorsPO.nav.administration).click();
+    cy.get(operatorsPO.nav.customResourceDefinitions).click({ force: true });
+    detailsPage.titleShouldContain(pageTitle.CustomResourceDefinitions);
   },
 
   selectSourceType: (sourceType: string = 'redHat') => {
@@ -41,6 +59,7 @@ export const operatorsPage = {
   },
 
   searchOperatorInInstallPage: (operatorName: string | operators) => {
+    cy.get('.co-installed-operators').should('be.visible');
     cy.get('body').then(($body) => {
       if ($body.find(operatorsPO.installOperators.noOperatorsDetails).length === 0) {
         cy.get(operatorsPO.installOperators.search)
@@ -63,7 +82,7 @@ export const operatorsPage = {
       .clear()
       .type(operatorName);
     cy.get(operatorsPO.installOperators.operatorStatus, {
-      timeout: 50000,
+      timeout: 100000,
     }).should('contain.text', 'Succeeded');
   },
 
@@ -130,6 +149,26 @@ export const operatorsPage = {
       case 'Web Terminal':
       case operators.WebTerminalOperator: {
         cy.get(operatorsPO.operatorHub.webTerminalOperatorCard).click();
+        break;
+      }
+      case 'gitops-primer':
+      case operators.GitopsPrimer: {
+        cy.get(operatorsPO.operatorHub.gitopsPrimer).click();
+        break;
+      }
+      case 'Service Binding':
+      case operators.ServiceBinding: {
+        cy.get(operatorsPO.operatorHub.serviceBinding).click();
+        break;
+      }
+      case 'Crunchy Postgres for Kubernetes':
+      case operators.CrunchyPostgresforKubernetes: {
+        cy.get(operatorsPO.operatorHub.CrunchyPostgresforKubernetes).click();
+        break;
+      }
+      case 'Quay Container Security':
+      case operators.QuayContainerSecurity: {
+        cy.get(operatorsPO.operatorHub.quayContainerSecurity).click();
         break;
       }
       default: {

@@ -488,15 +488,15 @@ const PodStatuses: React.FC<PodStatusesProps> = ({ kindObj, obj, podStatusDescri
     <div className="row">
       {podStatusDescriptors.map((statusDescriptor: StatusDescriptor) => {
         return (
-          <div key={statusDescriptor.displayName} className="col-sm-6">
-            <DescriptorDetailsItem
-              type={DescriptorType.status}
-              descriptor={statusDescriptor}
-              model={kindObj}
-              obj={obj}
-              schema={schema}
-            />
-          </div>
+          <DescriptorDetailsItem
+            className="col-sm-6"
+            key={statusDescriptor.path}
+            type={DescriptorType.status}
+            descriptor={statusDescriptor}
+            model={kindObj}
+            obj={obj}
+            schema={schema}
+          />
         );
       })}
     </div>
@@ -572,15 +572,15 @@ export const OperandDetails = connectToModel(({ crd, csv, kindObj, obj }: Operan
               <ResourceSummary resource={obj} />
             </div>
             {mainStatusDescriptor && (
-              <div className="col-sm-6" key={mainStatusDescriptor.path}>
-                <DescriptorDetailsItem
-                  descriptor={mainStatusDescriptor}
-                  model={kindObj}
-                  obj={obj}
-                  schema={schema}
-                  type={DescriptorType.status}
-                />
-              </div>
+              <DescriptorDetailsItem
+                key={mainStatusDescriptor.path}
+                className="col-sm-6"
+                descriptor={mainStatusDescriptor}
+                model={kindObj}
+                obj={obj}
+                schema={schema}
+                type={DescriptorType.status}
+              />
             )}
             {otherStatusDescriptors?.length > 0 && (
               <DescriptorDetailsItemList
@@ -621,7 +621,12 @@ export const OperandDetails = connectToModel(({ crd, csv, kindObj, obj }: Operan
         )}
       {conditionsStatusDescriptors?.length > 0 &&
         conditionsStatusDescriptors.map((descriptor) => (
-          <DescriptorConditions descriptor={descriptor} schema={schema} obj={obj} />
+          <DescriptorConditions
+            key={descriptor.path}
+            descriptor={descriptor}
+            schema={schema}
+            obj={obj}
+          />
         ))}
     </div>
   );
@@ -641,6 +646,7 @@ export const OperandDetailsPage = (props: OperandDetailsPageProps) => {
     () => getOperandActions(props.match.params.plural, actionExtensions),
     [props.match.params.plural, actionExtensions],
   );
+
   return model ? (
     <DetailsPage
       match={props.match}
@@ -663,6 +669,7 @@ export const OperandDetailsPage = (props: OperandDetailsPageProps) => {
         },
       ]}
       menuActions={menuActions}
+      createRedirect
       breadcrumbsFor={() => [
         {
           name: t('olm~Installed Operators'),
@@ -683,7 +690,7 @@ export const OperandDetailsPage = (props: OperandDetailsPageProps) => {
         )),
         navFactory.editYaml(),
         {
-          name: 'Resources',
+          name: t('olm~Resources'),
           href: 'resources',
           component: ResourcesTab,
         },

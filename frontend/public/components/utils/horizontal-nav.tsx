@@ -6,6 +6,7 @@ import * as _ from 'lodash-es';
 import { useTranslation, withTranslation, WithTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import {
+  Redirect,
   Route,
   Switch,
   Link,
@@ -34,7 +35,7 @@ import {
 } from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import { useExtensions, HorizontalNavTab, isHorizontalNavTab } from '@console/plugin-sdk/src';
 
-const editYamlComponent = (props) => (
+export const editYamlComponent = (props) => (
   <AsyncComponent loader={() => import('../edit-yaml').then((c) => c.EditYAML)} obj={props.obj} />
 );
 export const viewYamlComponent = (props) => (
@@ -131,24 +132,6 @@ export const navFactory: NavFactory = {
     nameKey: 'public~Environment',
     component,
   }),
-  clusterServiceClasses: (component) => ({
-    href: 'serviceclasses',
-    // t('public~ServiceClasses')
-    nameKey: 'public~ServiceClasses',
-    component,
-  }),
-  clusterServicePlans: (component) => ({
-    href: 'serviceplans',
-    // t('public~ServicePlans')
-    nameKey: 'public~ServicePlans',
-    component,
-  }),
-  serviceBindings: (component) => ({
-    href: 'servicebindings',
-    // t('public~ServiceBindings')
-    nameKey: 'public~ServiceBindings',
-    component,
-  }),
   clusterOperators: (component) => ({
     href: 'clusteroperators',
     // t('public~Cluster Operators')
@@ -184,6 +167,12 @@ export const navFactory: NavFactory = {
     // t('public~Metrics')
     nameKey: 'public~Metrics',
     component: component ?? ResourceMetricsDashboard,
+  }),
+  terminal: (component) => ({
+    href: 'terminal',
+    // t('public~Terminal')
+    nameKey: 'public~Terminal',
+    component,
   }),
 };
 
@@ -322,12 +311,17 @@ export const HorizontalNav = React.memo((props: HorizontalNavProps) => {
             {...extraResources}
             {...p.pageData}
             customData={props.customData}
+            params={params}
           />
         </ErrorBoundary>
       );
     };
     return <Route path={path} exact key={p.nameKey || p.name} render={render} />;
   });
+  // Handle cases where matching Routes do not exist and show the details page instead of a blank page
+  if (props.createRedirect && routes.length >= 1) {
+    routes.push(<Redirect key="fallback_redirect" to={routes[0].props.path} />);
+  }
 
   return (
     <div className={classNames('co-m-page__body', props.className)}>
@@ -390,6 +384,7 @@ export type HorizontalNavProps = Omit<HorizontalNavFacadeProps, 'pages' | 'resou
   /* The facade support a limited set of properties for pages */
   match: Match<any>;
   className?: string;
+  createRedirect?: boolean;
   pages: Page[];
   label?: string;
   obj?: { data: K8sResourceCommon; loaded: boolean };

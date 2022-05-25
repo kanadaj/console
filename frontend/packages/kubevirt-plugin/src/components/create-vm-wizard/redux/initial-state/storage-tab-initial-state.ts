@@ -1,27 +1,20 @@
-import { ConfigMapKind } from '@console/internal/module/k8s';
 import { VM_TEMPLATE_NAME_PARAMETER } from '../../../../constants';
-import {
-  DUMMY_VM_NAME,
-  ROOT_DISK_NAME,
-  TEMPLATE_BASE_IMAGE_NAME_PARAMETER,
-  TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER,
-} from '../../../../constants/vm';
+import { DUMMY_VM_NAME, ROOT_DISK_NAME } from '../../../../constants/vm';
 import { ProvisionSource } from '../../../../constants/vm/provision-source';
 import {
+  AccessMode,
   DataVolumeSourceType,
   DiskBus,
   DiskType,
+  VolumeMode,
   VolumeType,
 } from '../../../../constants/vm/storage';
 import { DataVolumeWrapper } from '../../../../k8s/wrapper/vm/data-volume-wrapper';
 import { DiskWrapper } from '../../../../k8s/wrapper/vm/disk-wrapper';
 import { VolumeWrapper } from '../../../../k8s/wrapper/vm/volume-wrapper';
+import { iGetPVCName, iGetPVCNamespace } from '../../../../selectors/immutable/common';
 import {
-  getDefaultSCAccessModes,
-  getDefaultSCVolumeMode,
-} from '../../../../selectors/config-map/sc-defaults';
-import { iGetPrameterValue } from '../../../../selectors/immutable/common';
-import {
+  iGetCommonTemplateDataVolumeSize,
   iGetCommonTemplateDiskBus,
   iGetRelevantTemplate,
 } from '../../../../selectors/immutable/template/combined';
@@ -34,6 +27,7 @@ import {
   iGetCommonData,
   iGetLoadedCommonData,
   iGetName,
+  iGetNamespace,
 } from '../../selectors/immutable/selectors';
 import { iGetProvisionSourceStorage } from '../../selectors/immutable/storage';
 import {
@@ -49,19 +43,20 @@ import {
   VMWizardStorage,
   VMWizardStorageType,
 } from '../../types';
+import { findDataSourcePVC } from '../../utils/utils';
 import { InitialStepStateGetter } from './types';
 
 const WINTOOLS_DISK_NAME = 'windows-guest-tools';
 
 const getContainerStorage = (
-  storageClassConfigMap: ConfigMapKind,
   bus = DiskBus.VIRTIO,
   size = '15Gi',
   diskType = DiskType.DISK,
   url = '',
+  accessMode = undefined,
+  volumeMode = undefined,
 ): VMWizardStorage => {
   const dataVolumeName = generateDataVolumeName(DUMMY_VM_NAME, ROOT_DISK_NAME);
-
   return {
     type: VMWizardStorageType.PROVISION_SOURCE_DISK,
     disk: new DiskWrapper()
@@ -79,8 +74,8 @@ const getContainerStorage = (
         unit: '',
       })
       .setType(DataVolumeSourceType.REGISTRY, { url })
-      .setVolumeMode(getDefaultSCVolumeMode(storageClassConfigMap))
-      .setAccessModes(getDefaultSCAccessModes(storageClassConfigMap))
+      .setVolumeMode(VolumeMode.fromString(volumeMode))
+      .setAccessModes([AccessMode.fromString(accessMode)])
       .asResource(),
     editConfig: {
       isFieldEditableOverride: {
@@ -111,11 +106,12 @@ export const windowsToolsStorage = (containerImages: {
 };
 
 export const getBaseImageStorage = (
-  storageClassConfigMap: ConfigMapKind,
   pvcName,
   pvcNamespace,
   pvcSize = '15Gi',
   diskBus: DiskBus,
+  accessMode = undefined,
+  volumeMode = undefined,
 ) => {
   const dataVolumeName = generateDataVolumeName(DUMMY_VM_NAME, ROOT_DISK_NAME);
   const [size, unit] = stringValueUnitSplit(pvcSize);
@@ -140,8 +136,8 @@ export const getBaseImageStorage = (
         unit,
       })
       .setType(DataVolumeSourceType.PVC, { name: pvcName, namespace: pvcNamespace })
-      .setVolumeMode(getDefaultSCVolumeMode(storageClassConfigMap))
-      .setAccessModes(getDefaultSCAccessModes(storageClassConfigMap))
+      .setVolumeMode(VolumeMode.fromString(volumeMode))
+      .setAccessModes([AccessMode.fromString(accessMode)])
       .asResource(),
     editConfig: {
       isFieldEditableOverride: {
@@ -152,11 +148,12 @@ export const getBaseImageStorage = (
 };
 
 const getUrlStorage = (
-  storageClassConfigMap: ConfigMapKind,
   bus = DiskBus.VIRTIO,
   size = '15Gi',
   diskType = DiskType.DISK,
   url = '',
+  accessMode = undefined,
+  volumeMode = undefined,
 ): VMWizardStorage => {
   const dataVolumeName = generateDataVolumeName(DUMMY_VM_NAME, ROOT_DISK_NAME);
 
@@ -180,8 +177,8 @@ const getUrlStorage = (
         unit: '',
       })
       .setType(DataVolumeSourceType.HTTP, { url })
-      .setVolumeMode(getDefaultSCVolumeMode(storageClassConfigMap))
-      .setAccessModes(getDefaultSCAccessModes(storageClassConfigMap))
+      .setVolumeMode(VolumeMode.fromString(volumeMode))
+      .setAccessModes([AccessMode.fromString(accessMode)])
       .asResource(),
     editConfig: {
       isFieldEditableOverride: {
@@ -192,12 +189,13 @@ const getUrlStorage = (
 };
 
 const getPVCStorage = (
-  storageClassConfigMap: ConfigMapKind,
   diskType = DiskType.DISK,
   bus = DiskBus.VIRTIO,
   size = '15Gi',
   pvcName = '',
   pvcNamespace = '',
+  accessMode = undefined,
+  volumeMode = undefined,
 ): VMWizardStorage => {
   const dataVolumeName = generateDataVolumeName(DUMMY_VM_NAME, ROOT_DISK_NAME);
 
@@ -221,8 +219,8 @@ const getPVCStorage = (
         unit: '',
       })
       .setType(DataVolumeSourceType.PVC, { name: pvcName, namespace: pvcNamespace })
-      .setVolumeMode(getDefaultSCVolumeMode(storageClassConfigMap))
-      .setAccessModes(getDefaultSCAccessModes(storageClassConfigMap))
+      .setVolumeMode(VolumeMode.fromString(volumeMode))
+      .setAccessModes([AccessMode.fromString(accessMode)])
       .asResource(),
     editConfig: {
       isFieldEditableOverride: {
@@ -242,6 +240,7 @@ export const getNewProvisionSourceStorage = (state: any, id: string): VMWizardSt
     VMSettingsField.CLONE_COMMON_BASE_DISK_IMAGE,
   );
 
+  const isCDRomBootSource = iGetVmSettingValue(state, id, VMSettingsField.IS_CDROM_BOOT_SOURCE);
   const relevantOptions = iGetRelevantTemplateSelectors(state, id);
   const iUserTemplate = iGetCommonData(state, id, VMWizardProps.userTemplate);
   const iCommonTemplates = iGetLoadedCommonData(state, id, VMWizardProps.commonTemplates);
@@ -249,8 +248,9 @@ export const getNewProvisionSourceStorage = (state: any, id: string): VMWizardSt
   const tmpDiskBus = DiskBus.fromString(
     iGetCommonTemplateDiskBus(iTemplate, VM_TEMPLATE_NAME_PARAMETER),
   );
+  const tmpDiskSize = iGetCommonTemplateDataVolumeSize(iTemplate, VM_TEMPLATE_NAME_PARAMETER);
   const initialData = getInitialData(state, id);
-  const { source } = initialData;
+  const { source, accessMode, volumeMode } = initialData;
   const storagesUpdate = getStorages(state, id);
   const rootStorage = storagesUpdate.find((s) => s.disk.bootOrder === 1) || storagesUpdate[0];
   const diskBus = tmpDiskBus || new DiskWrapper(rootStorage?.disk).getDiskBus();
@@ -270,49 +270,66 @@ export const getNewProvisionSourceStorage = (state: any, id: string): VMWizardSt
   if (provisionSource === ProvisionSource.URL) {
     if (source?.url) {
       return getUrlStorage(
-        storageClassConfigMap,
         diskBus,
-        source.size,
-        source.cdRom ? DiskType.CDROM : DiskType.DISK,
+        tmpDiskSize ?? source.size,
+        source.cdRom || isCDRomBootSource ? DiskType.CDROM : DiskType.DISK,
         source.url,
+        accessMode,
+        volumeMode,
       );
     }
-    return getUrlStorage(storageClassConfigMap, diskBus, source?.size);
+    return getUrlStorage(
+      diskBus,
+      tmpDiskSize ?? source.size,
+      isCDRomBootSource ? DiskType.CDROM : undefined,
+      undefined,
+      accessMode,
+      volumeMode,
+    );
   }
   if (provisionSource === ProvisionSource.CONTAINER) {
     if (source?.container) {
       return getContainerStorage(
-        storageClassConfigMap,
         diskBus,
-        source.size,
-        source.cdRom ? DiskType.CDROM : DiskType.DISK,
+        tmpDiskSize ?? source.size,
+        source.cdRom || isCDRomBootSource ? DiskType.CDROM : DiskType.DISK,
         source.container,
+        accessMode,
+        volumeMode,
       );
     }
-    return getContainerStorage(storageClassConfigMap, diskBus, source?.size);
+    return getContainerStorage(
+      diskBus,
+      tmpDiskSize ?? source?.size,
+      isCDRomBootSource ? DiskType.CDROM : undefined,
+      undefined,
+      accessMode,
+      volumeMode,
+    );
   }
   if (provisionSource === ProvisionSource.DISK && !iUserTemplate && cloneCommonBaseDiskImage) {
-    const iStorageClassConfigMap = iGetLoadedCommonData(
-      state,
-      id,
-      VMWizardProps.storageClassConfigMap,
-    );
-
-    const pvcName = iGetPrameterValue(iTemplate, TEMPLATE_BASE_IMAGE_NAME_PARAMETER);
-    const pvcNamespace = iGetPrameterValue(iTemplate, TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER);
-
+    const pvcName = iGetPVCName(iTemplate);
+    const pvcNamespace = iGetPVCNamespace(iTemplate);
+    const [dataSources] = iGetCommonData(state, id, VMWizardProps.dataSources);
+    const [pvcs] = iGetCommonData(state, id, VMWizardProps.pvcs);
     const iBaseImage = iGetLoadedCommonData(state, id, VMWizardProps.openshiftCNVBaseImages)
-      .valueSeq()
-      .find((iPVC) => iGetName(iPVC) === pvcName);
-    const pvcSize = iGetIn(iBaseImage, ['spec', `resources`, `requests`, `storage`]);
+      ?.valueSeq()
+      ?.find((iPVC) => iGetName(iPVC) === pvcName);
+    const { dsBaseImage, dataSource } = findDataSourcePVC(dataSources, pvcs, pvcName, pvcNamespace);
+    const image = dsBaseImage || iBaseImage;
+    const pvcSize = iGetIn(image, ['spec', `resources`, `requests`, `storage`]);
 
-    return getBaseImageStorage(
-      toShallowJS(iStorageClassConfigMap),
-      pvcName,
-      pvcNamespace,
-      pvcSize,
-      diskBus,
-    );
+    return {
+      ...getBaseImageStorage(
+        iGetName(image),
+        iGetNamespace(image),
+        pvcSize,
+        diskBus,
+        accessMode,
+        volumeMode,
+      ),
+      sourceRef: dataSource,
+    };
   }
   if (provisionSource === ProvisionSource.DISK && !iUserTemplate) {
     const iOldSourceStorage = iGetProvisionSourceStorage(state, id);
@@ -325,21 +342,23 @@ export const getNewProvisionSourceStorage = (state: any, id: string): VMWizardSt
       const diskWrapper = new DiskWrapper(oldSourceStorage.disk);
       const size = dataVolumeWrapper.getSize();
       return getPVCStorage(
-        storageClassConfigMap,
         diskWrapper.getType(),
         diskWrapper.getDiskBus(),
         `${size.value}${size.unit}`,
         dataVolumeWrapper.getPersistentVolumeClaimName(),
         dataVolumeWrapper.getPersistentVolumeClaimNamespace(),
+        dataVolumeWrapper.getAccessModes()?.[0],
+        dataVolumeWrapper.getVolumeMode(),
       );
     }
     return getPVCStorage(
-      storageClassConfigMap,
       source?.cdRom ? DiskType.CDROM : DiskType.DISK,
       diskBus,
       source?.size,
       source?.pvcName,
       source?.pvcNamespace,
+      accessMode,
+      volumeMode,
     );
   }
   return null;

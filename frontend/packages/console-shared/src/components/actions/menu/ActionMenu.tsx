@@ -1,8 +1,7 @@
 import * as React from 'react';
 import { Menu, MenuContent, MenuList, Popper } from '@patternfly/react-core';
 import * as _ from 'lodash';
-import { Action } from '@console/dynamic-plugin-sdk';
-import { useSafetyFirst } from '@console/internal/components/safety-first';
+import { Action, useSafetyFirst } from '@console/dynamic-plugin-sdk';
 import { checkAccess } from '@console/internal/components/utils';
 import { ActionMenuVariant, MenuOption } from '../types';
 import ActionMenuContent from './ActionMenuContent';
@@ -29,7 +28,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   const menuRef = React.useRef<HTMLDivElement>(null);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const menuOptions = options.length > 0 ? options : actions;
+  const menuOptions = options?.length > 0 ? options : actions;
 
   const hideMenu = () => {
     setIsOpen(false);
@@ -40,7 +39,10 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     // This depends on `checkAccess` being memoized.
     _.each(actions, (action: Action) => {
       if (action.accessReview) {
-        checkAccess(action.accessReview);
+        checkAccess(action.accessReview).catch((e) =>
+          // eslint-disable-next-line no-console
+          console.warn('Could not check access for action menu', e),
+        );
       }
     });
   }, [actions]);
@@ -75,7 +77,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     <Menu ref={menuRef} containsFlyout onSelect={hideMenu}>
       <MenuContent data-test-id="action-items" translate="no">
         <MenuList>
-          <ActionMenuContent options={menuOptions} onClick={hideMenu} focusItem={options[0]} />
+          <ActionMenuContent options={menuOptions} onClick={hideMenu} focusItem={menuOptions[0]} />
         </MenuList>
       </MenuContent>
     </Menu>

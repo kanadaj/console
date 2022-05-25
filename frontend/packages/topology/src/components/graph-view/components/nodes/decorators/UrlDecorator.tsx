@@ -18,7 +18,6 @@ const UrlDecorator: React.FC<DefaultDecoratorProps> = ({ element, radius, x, y }
   const { t } = useTranslation();
   const resourceObj = getResource(element);
   const url = useRoutesURL(resourceObj);
-
   if (!url) {
     return null;
   }

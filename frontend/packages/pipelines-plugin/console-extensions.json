@@ -446,6 +446,16 @@
   {
     "type": "console.page/route",
     "properties": {
+      "exact": false,
+      "path": ["/pac/all-namespaces", "/pac/ns/:ns"],
+      "component": {
+        "$codeRef": "pacComponent.PacPage"
+      }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
       "exact": true,
       "perspective": "dev",
       "path": [
@@ -474,6 +484,16 @@
       "path": "/k8s/ns/:ns/tekton.dev~v1beta1~Pipeline/:pipelineName/builder",
       "component": {
         "$codeRef": "pipelinesComponent.PipelineBuilderEditPage"
+      }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/k8s/ns/:ns/pipelinesascode.tekton.dev~v1alpha1~Repository/~new/form",
+      "component": {
+        "$codeRef": "pipelinesComponent.RepositoryFormPage"
       }
     }
   },
@@ -543,7 +563,7 @@
       "groupId": "pipelines",
       "href": "/k8s/ns/:namespace/tekton.dev~v1beta1~Pipeline/~new/builder",
       "label": "%pipelines-plugin~Pipelines%",
-      "description": "%pipelines-plugin~Create a Tekton Pipeline to automate delivery of your Application%",
+      "description": "%pipelines-plugin~Create a Tekton Pipeline to automate delivery of your application%",
       "icon": { "$codeRef": "icons.pipelineIconSVG" },
       "accessReview": [
         {
@@ -563,6 +583,7 @@
       "insertAfter": "builds",
       "name": "%pipelines-plugin~Pipelines%",
       "href": "/dev-pipelines",
+      "namespaced": true,
       "dataAttributes": {
         "data-quickstart-id": "qs-nav-pipelines",
         "data-test-id": "pipeline-header"
@@ -704,6 +725,7 @@
     "properties": {
       "catalogId": "pipelines-task-catalog",
       "type": "Red Hat",
+      "title": "%pipelines-plugin~Tasks%",
       "provider": { "$codeRef": "catalog.TektonTaskProvider" }
     },
     "flags": {
@@ -715,6 +737,7 @@
     "properties": {
       "catalogId": "pipelines-task-catalog",
       "type": "Community",
+      "title": "%pipelines-plugin~Tasks%",
       "provider": { "$codeRef": "catalog.TektonHubTaskProvider" }
     },
     "flags": {
@@ -727,8 +750,8 @@
       "id": "topology-tab-section-pipelines-overview",
       "tab": "topology-side-bar-tab-resource",
       "insertBefore": "topology-tab-section-network-overview",
-      "section": {
-        "$codeRef": "topology.getPipelinesSideBarTabSection"
+      "provider": {
+        "$codeRef": "topology.usePipelinesSideBarTabSection"
       }
     },
     "flags": {
@@ -760,6 +783,23 @@
     },
     "flags": {
       "required": ["OPENSHIFT_PIPELINE_AS_CODE"]
+    }
+  },
+  {
+    "type": "console.navigation/section",
+    "properties": {
+      "perspective": "admin",
+      "id": "pipelines",
+      "name": "%pipelines-plugin~Pipelines%",
+      "insertAfter": "builds",
+      "insertBefore": "servicecatalog",
+      "dataAttributes": {
+        "data-quickstart-id": "qs-nav-pipelines",
+        "data-test": "nav-pipelines"
+      }
+    },
+    "flags": {
+      "required": ["OPENSHIFT_PIPELINE"]
     }
   }
 ]

@@ -7,6 +7,7 @@ import {
   withDndDrop,
   withCreateConnector,
 } from '@patternfly/react-topology';
+import { ViewComponentFactory } from '@console/dynamic-plugin-sdk/src/extensions/topology-types';
 import { contextMenuActions } from '@console/topology/src/actions';
 import {
   NodeComponentProps,
@@ -16,6 +17,7 @@ import {
   createConnectorCallback,
   CreateConnector,
   EditableDragOperationType,
+  BaseEdge,
 } from '@console/topology/src/components/graph-view';
 import { withEditReviewAccess } from '@console/topology/src/utils';
 import {
@@ -29,10 +31,13 @@ import {
   TYPE_SINK_URI,
   TYPE_EVENT_SOURCE_KAFKA,
   TYPE_KAFKA_CONNECTION_LINK,
+  TYPE_EVENT_SINK,
+  TYPE_EVENT_SINK_LINK,
+  TYPE_KAFKA_SINK,
 } from '../const';
 import EventingPubSubLink from './edges/EventingPubSubLink';
+import EventSinkLink from './edges/EventSinkLink';
 import EventSourceLink from './edges/EventSourceLink';
-import KafkaConnectionLink from './edges/KafkaConnectionLink';
 import TrafficLink from './edges/TrafficLink';
 import KnativeService from './groups/KnativeService';
 import {
@@ -48,6 +53,7 @@ import {
   kafkaSourceCreateConnectorCallback,
 } from './knativeComponentUtils';
 import EventingPubSubNode from './nodes/EventingPubSubNode';
+import EventSink from './nodes/EventSink';
 import EventSource from './nodes/EventSource';
 import RevisionNode from './nodes/RevisionNode';
 import SinkUriNode from './nodes/SinkUriNode';
@@ -95,6 +101,12 @@ export const getKnativeComponentFactory = (
           ),
         ),
       );
+    case TYPE_EVENT_SINK:
+      return withEditReviewAccess('patch')(
+        withDragNode(nodeDragSourceSpec(type))(
+          withSelection({ controlled: true })(withContextMenu(contextMenuActions)(EventSink)),
+        ),
+      );
     case TYPE_EVENT_PUB_SUB:
       return withCreateConnector(createConnectorCallback(), CreateConnector, '', {
         dragOperation,
@@ -129,6 +141,8 @@ export const getKnativeComponentFactory = (
       return TrafficLink;
     case TYPE_EVENT_SOURCE_LINK:
       return withTargetDrag(eventSourceLinkDragSourceSpec())(EventSourceLink);
+    case TYPE_EVENT_SINK_LINK:
+      return EventSinkLink;
     case TYPE_EVENT_SOURCE_KAFKA:
       return withCreateConnector(kafkaSourceCreateConnectorCallback, CreateConnector, '', {
         dragOperation: dragOperationKafka,
@@ -144,7 +158,7 @@ export const getKnativeComponentFactory = (
         ),
       );
     case TYPE_KAFKA_CONNECTION_LINK:
-      return withTargetDrag(eventSourceKafkaLinkDragSourceSpec())(KafkaConnectionLink);
+      return withTargetDrag(eventSourceKafkaLinkDragSourceSpec())(BaseEdge);
     case TYPE_EVENT_PUB_SUB_LINK:
       return withContextMenu(contextMenuActions)(
         withTargetDrag(eventingPubSubLinkDragSourceSpec())(EventingPubSubLink),
@@ -152,4 +166,15 @@ export const getKnativeComponentFactory = (
     default:
       return undefined;
   }
+};
+
+export const getKafkaSinkComponentFactory: ViewComponentFactory = (kind, type) => {
+  if (type === TYPE_KAFKA_SINK) {
+    return withEditReviewAccess('patch')(
+      withDragNode(nodeDragSourceSpec(type))(
+        withSelection({ controlled: true })(withContextMenu(contextMenuActions)(EventSink)),
+      ),
+    );
+  }
+  return undefined;
 };

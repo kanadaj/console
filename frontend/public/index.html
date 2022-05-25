@@ -22,8 +22,8 @@
       <meta name="application-name" content="Red Hat OpenShift">
       [[ end ]]
       [[ if eq .Branding "ocp" ]]
-      <title>Red Hat OpenShift Container Platform</title>
-      <meta name="application-name" content="Red Hat OpenShift Container Platform">
+      <title>Red Hat OpenShift</title>
+      <meta name="application-name" content="Red Hat OpenShift">
       [[ end ]]
       [[ if eq .Branding "online" ]]
       <title>Red Hat OpenShift Online</title>
@@ -63,6 +63,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script type="text/javascript">
       window.SERVER_FLAGS = [[.]];
+      let theme = localStorage.getItem('bridge/theme') || 'systemDefault';
+      if (theme === 'systemDefault' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        theme = 'dark';
+      }
+      if (theme === 'dark') {
+        document.documentElement.classList.add('pf-theme-dark');
+      }
     </script>
   </head>
 

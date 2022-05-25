@@ -1,7 +1,6 @@
 export enum addOptions {
-  Git = 'From Git',
+  ImportFromGit = 'Import From Git',
   ContainerImage = 'Container Image',
-  DockerFile = 'From Dockerfile',
   YAML = 'YAML',
   DeveloperCatalog = 'From Catalog',
   Database = 'Database',
@@ -9,9 +8,10 @@ export enum addOptions {
   HelmChart = 'Helm Chart',
   Pipeline = 'Pipeline',
   EventSource = 'Event Source',
-  DevFile = 'From Devfile',
   Channel = 'Channel',
   UploadJARFile = 'Upload JAR file',
+  Broker = 'Broker',
+  EventSink = 'Event Sink',
 }
 
 export enum buildConfigOptions {
@@ -57,6 +57,7 @@ export enum catalogTypes {
   ServiceClass = 'Service Class',
   ManagedServices = 'Managed Services',
   EventSources = 'Event Sources',
+  EventSinks = 'Event Sinks',
 }
 
 export enum builderImages {
@@ -73,8 +74,8 @@ export enum builderImages {
 }
 
 export enum eventSourceCards {
-  ApiServerSource = 'Api Server Source',
-  ContainerSource = 'Container Source',
-  PingSource = 'Ping Source',
-  SinkBinding = 'Sink Binding',
+  ApiServerSource = 'ApiServerSource',
+  ContainerSource = 'ContainerSource',
+  PingSource = 'PingSource',
+  SinkBinding = 'SinkBinding',
 }

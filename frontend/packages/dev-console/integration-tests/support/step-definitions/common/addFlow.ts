@@ -1,4 +1,4 @@
-import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
+import { Given, When, Then, And } from 'cypress-cucumber-preprocessor/steps';
 import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
 import {
   switchPerspective,
@@ -19,6 +19,7 @@ import {
   navigateTo,
   topologySidePane,
   app,
+  createGitWorkloadIfNotExistsOnTopologyPage,
 } from '../../pages';
 
 Given('user is at Add page', () => {
@@ -32,7 +33,7 @@ Given('user is at Topology page', () => {
 Given(
   'user has created workload {string} with resource type {string}',
   (componentName: string, resourceType: string = 'Deployment') => {
-    createGitWorkload(
+    createGitWorkloadIfNotExistsOnTopologyPage(
       'https://github.com/sclorg/nodejs-ex.git',
       componentName,
       resourceType,
@@ -69,10 +70,6 @@ When('user clicks Instantiate Template button on side bar', () => {
   catalogPage.clickButtonOnCatalogPageSidePane();
 });
 
-Given('user is at DevFile page', () => {
-  addPage.selectCardFromOptions(addOptions.DevFile);
-});
-
 When('user navigates to Add page', () => {
   navigateTo(devNavigationMenu.Add);
 });
@@ -103,11 +100,17 @@ When('user enters run command for {string} as {string}', (envKey: string, value:
 });
 
 Then(
-  'user is able to navigate to Build {string} for deployment {string} and see environment variable {string} with value {string} in Environment tab of details page',
-  (build: string, name: string, envKey: string, envVal: string) => {
+  'user is able to navigate to Build {string} for deployment {string}',
+  (build: string, name: string) => {
     topologyPage.clickOnNode(name);
     topologySidePane.selectTab('Resources');
     topologySidePane.selectResource(resources.Builds, 'aut-addflow-git', build);
+  },
+);
+
+And(
+  'see environment variable {string} with value {string} in Environment tab of details page',
+  (envKey: string, envVal: string) => {
     app.waitForLoad();
     detailsPage.selectTab('Environment');
     app.waitForLoad();

@@ -35,6 +35,8 @@ import {
   detectManagedODF,
   detectComponents,
   MCG_STANDALONE,
+  FEATURES,
+  RGW_FLAG,
 } from './features';
 import { ODF_MODEL_FLAG } from './constants';
 import { getObcStatusGroups } from './components/dashboards/object-service/buckets-card/utils';
@@ -88,11 +90,19 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       detect: detectOCSSupportedFeatures,
     },
+    flags: {
+      required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.COMMON_FLAG],
+    },
   },
   {
     type: 'FeatureFlag/Custom',
     properties: {
       detect: detectOCS,
+    },
+    flags: {
+      required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.ODF_WIZARD],
     },
   },
   {
@@ -101,7 +111,8 @@ const plugin: Plugin<ConsumedExtensions> = [
       detect: detectRGW,
     },
     flags: {
-      required: [MCG_FLAG],
+      required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.COMMON_FLAG],
     },
   },
   {
@@ -111,6 +122,7 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.COMMON_FLAG],
     },
   },
   {
@@ -120,6 +132,7 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [ODF_MODEL_FLAG],
+      disallowed: [FEATURES.COMMON_FLAG],
     },
   },
   {
@@ -128,7 +141,8 @@ const plugin: Plugin<ConsumedExtensions> = [
       detect: detectComponents,
     },
     flags: {
-      required: [OCS_FLAG],
+      required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.COMMON_FLAG],
     },
   },
   {
@@ -151,6 +165,9 @@ const plugin: Plugin<ConsumedExtensions> = [
         import(
           './components/create-storage-system/create-storage-system' /* webpackChunkName: "create-storage-system" */
         ).then((m) => m.default),
+    },
+    flags: {
+      disallowed: [FEATURES.ODF_WIZARD],
     },
   },
   {
@@ -240,6 +257,9 @@ const plugin: Plugin<ConsumedExtensions> = [
           });
       },
     },
+    flags: {
+      disallowed: [FEATURES.BLOCK_POOL],
+    },
   },
   {
     type: 'Dashboards/Overview/Activity/Resource',
@@ -273,6 +293,9 @@ const plugin: Plugin<ConsumedExtensions> = [
           (m) => m.default,
         ),
     },
+    flags: {
+      disallowed: [FEATURES.MCG_RESOURCE],
+    },
   },
   {
     type: 'Page/Route',
@@ -288,6 +311,9 @@ const plugin: Plugin<ConsumedExtensions> = [
         import(
           './components/create-backingstore-page/create-bs-page' /* webpackChunkName: "create-bs" */
         ).then((m) => m.default),
+    },
+    flags: {
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
   {
@@ -305,6 +331,9 @@ const plugin: Plugin<ConsumedExtensions> = [
           './components/namespace-store/create-namespace-store' /* webpackChunkName: "create-namespace-store" */
         ).then((m) => m.default),
     },
+    flags: {
+      disallowed: [FEATURES.MCG_RESOURCE],
+    },
   },
   {
     type: 'Page/Resource/List',
@@ -316,7 +345,8 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.ObjectBucketsPage),
     },
     flags: {
-      required: [MCG_FLAG],
+      required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
   {
@@ -329,7 +359,8 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.ObjectBucketDetailsPage),
     },
     flags: {
-      required: [MCG_FLAG],
+      required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
   {
@@ -342,7 +373,8 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.ObjectBucketClaimsPage),
     },
     flags: {
-      required: [MCG_FLAG],
+      required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
   {
@@ -355,7 +387,8 @@ const plugin: Plugin<ConsumedExtensions> = [
         ).then((m) => m.ObjectBucketClaimsDetailsPage),
     },
     flags: {
-      required: [MCG_FLAG],
+      required: [OCS_MODEL_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
   {
@@ -369,6 +402,22 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [MCG_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
+    },
+  },
+  // When RGW is available without MCG
+  {
+    type: 'Page/Route',
+    properties: {
+      path: `/k8s/ns/:ns/${referenceForModel(models.NooBaaObjectBucketClaimModel)}/~new/form`,
+      loader: () =>
+        import(
+          './components/object-bucket-claim-page/create-obc' /* webpackChunkName: "create-obc" */
+        ).then((m) => m.CreateOBCPage),
+    },
+    flags: {
+      required: [RGW_FLAG],
+      disallowed: [MCG_FLAG, FEATURES.MCG_RESOURCE],
     },
   },
   {
@@ -415,10 +464,11 @@ const plugin: Plugin<ConsumedExtensions> = [
         import('./components/bucket-class/modals/edit-backingstore-modal')
           .then((m) => m.default({ bucketClass: obj, modalClassName: 'nb-modal' }))
           // eslint-disable-next-line no-console
-          .catch((e) => console.error(e)),
+          .catch((e) => console.error('BucketClassEditModal could not be loaded', e)),
     },
     flags: {
       required: [MCG_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
   {
@@ -430,6 +480,9 @@ const plugin: Plugin<ConsumedExtensions> = [
         import(
           './components/block-pool/create-block-pool' /* webpackChunkName: "create-block-pool" */
         ).then((m) => m.default),
+    },
+    flags: {
+      disallowed: [FEATURES.BLOCK_POOL],
     },
   },
   {
@@ -450,6 +503,9 @@ const plugin: Plugin<ConsumedExtensions> = [
             console.error('Error loading block Pool Modal', e);
           });
       },
+    },
+    flags: {
+      disallowed: [FEATURES.BLOCK_POOL],
     },
   },
   {
@@ -478,7 +534,7 @@ const plugin: Plugin<ConsumedExtensions> = [
       },
     },
     flags: {
-      disallowed: [OCS_INDEPENDENT_FLAG, MCG_STANDALONE],
+      disallowed: [OCS_INDEPENDENT_FLAG, MCG_STANDALONE, FEATURES.ADD_CAPACITY],
     },
   },
   // Adding this Extension because dynamic endpoint is not avbl
@@ -497,6 +553,9 @@ const plugin: Plugin<ConsumedExtensions> = [
             './components/odf-system/odf-system-list' /* webpackChunkName: "odf-system-list" */
           )
         ).default,
+    },
+    flags: {
+      disallowed: [FEATURES.SS_LIST],
     },
   },
   // Adding this Extension because dynamic endpoint is not avbl
@@ -519,6 +578,7 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [MCG_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
   // Adding this Extension because dynamic endpoint is not avbl
@@ -541,6 +601,7 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [MCG_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
   // Adding this Extension because dynamic endpoint is not avbl
@@ -563,6 +624,7 @@ const plugin: Plugin<ConsumedExtensions> = [
     },
     flags: {
       required: [MCG_FLAG],
+      disallowed: [FEATURES.MCG_RESOURCE],
     },
   },
 ];

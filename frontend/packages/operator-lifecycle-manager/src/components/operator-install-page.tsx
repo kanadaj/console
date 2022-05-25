@@ -11,13 +11,13 @@ import {
 import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ResourceStatus, StatusIconAndText } from '@console/dynamic-plugin-sdk';
 import { SyncMarkdownView } from '@console/internal/components/markdown-view';
 import { errorModal } from '@console/internal/components/modals';
 import {
   Firehose,
   FirehoseResult,
   ResourceLink,
-  ResourceStatus,
   resourcePathFromModel,
   useAccessReview,
 } from '@console/internal/components/utils';
@@ -28,7 +28,7 @@ import {
   referenceFor,
   K8sResourceKind,
 } from '@console/internal/module/k8s';
-import { parseJSONAnnotation, StatusIconAndText } from '@console/shared';
+import { parseJSONAnnotation } from '@console/shared';
 import {
   GreenCheckCircleIcon,
   RedExclamationCircleIcon,
@@ -125,25 +125,24 @@ const InstallNeedsApprovalMessage: React.FC<InstallNeedsApprovalMessageProps> = 
       </h2>
       <ActionGroup className="pf-c-form pf-c-form__group--no-top-margin">
         <InstallPlanReview installPlan={installObj} />
-        {(installObjIsInstallPlan && canPatchInstallPlans) ||
-          (!installObjIsInstallPlan && (
-            <>
-              <Button variant="primary" onClick={approve}>
-                {t('olm~Approve')}
+        {((installObjIsInstallPlan && canPatchInstallPlans) || !installObjIsInstallPlan) && (
+          <>
+            <Button variant="primary" onClick={approve}>
+              {t('olm~Approve')}
+            </Button>
+            <Link
+              to={`${resourcePathFromModel(
+                SubscriptionModel,
+                subscriptionObj?.metadata?.name,
+                namespace,
+              )}?showDelete=true`}
+            >
+              <Button className="co-clusterserviceversion__button" variant="secondary">
+                {t('olm~Deny')}
               </Button>
-              <Link
-                to={`${resourcePathFromModel(
-                  SubscriptionModel,
-                  subscriptionObj?.metadata?.name,
-                  namespace,
-                )}?showDelete=true`}
-              >
-                <Button className="co-clusterserviceversion__button" variant="secondary">
-                  {t('olm~Deny')}
-                </Button>
-              </Link>
-            </>
-          ))}
+            </Link>
+          </>
+        )}
         {!canPatchInstallPlans && installObjIsInstallPlan && (
           <NeedInstallPlanPermissions installPlan={installObj as InstallPlanKind} />
         )}

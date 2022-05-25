@@ -23,13 +23,11 @@ export const RecommendedOperatorsCard: React.FC = () => {
       id: 'openshift-virtualization-ocs',
       title: t('kubevirt-plugin~OpenShift Container Storage'),
       href: '/operatorhub/all-namespaces?keyword=OCS',
-      external: true,
     },
     {
       id: 'openshift-virtualization-mtv',
       title: t('kubevirt-plugin~Migration Toolkit for Virtualization'),
       href: '/operatorhub/all-namespaces?keyword=MTV',
-      external: true,
     },
   ];
 
@@ -44,7 +42,7 @@ export const RecommendedOperatorsCard: React.FC = () => {
         />
       }
       title={t('kubevirt-plugin~Recommended Operators')}
-      titleColor={'var(--pf-global--palette--blue-600)'}
+      titleColor={'var(--co-global--palette--blue-400)'}
       description={t(
         'kubevirt-plugin~Ease operational complexity with virtualization by using Operators.',
       )}

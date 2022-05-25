@@ -2,6 +2,7 @@ import * as React from 'react';
 import { ToolbarItem, Button, AlertVariant } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { useTranslation, Trans } from 'react-i18next';
+import { getGroupVersionKindForResource } from '@console/dynamic-plugin-sdk/src/utils/k8s/k8s-ref';
 import { useAccessReview } from '@console/internal/components/utils';
 import { dateTimeFormatter } from '@console/internal/components/utils/datetime';
 import {
@@ -10,6 +11,8 @@ import {
   USERSETTINGS_PREFIX,
   useToast,
   useUserSettings,
+  TOAST_TIMEOUT_DEFAULT,
+  TOAST_TIMEOUT_LONG,
 } from '@console/shared/src';
 import { ALLOW_EXPORT_APP, EXPORT_CR_NAME } from '../../const';
 import { ExportModel } from '../../models';
@@ -20,6 +23,7 @@ import {
   killExportResource,
 } from '../../utils/export-app-utils';
 import exportApplicationModal from './ExportApplicationModal';
+import ExportViewLogButton from './ExportViewLogButton';
 import { ExportAppUserSettings } from './types';
 
 type ExportApplicationProps = {
@@ -38,6 +42,7 @@ const ExportApplication: React.FC<ExportApplicationProps> = ({ namespace, isDisa
     verb: 'create',
     namespace,
   });
+
   const toast = useToast();
   const [exportAppToast, setExportAppToast] = useUserSettings<ExportAppUserSettings>(
     `${USERSETTINGS_PREFIX}.exportApp`,
@@ -47,27 +52,31 @@ const ExportApplication: React.FC<ExportApplicationProps> = ({ namespace, isDisa
 
   const createExportCR = async () => {
     try {
-      const exportResp = await createExportResource(getExportAppData(namespace));
-      const key = `${namespace}-${exportResp.metadata.name}`;
+      const name = EXPORT_CR_NAME;
+      const exportResp = await createExportResource(getExportAppData(name, namespace));
+      const key = `${namespace}-${name}`;
       const exportAppToastConfig = {
         ...exportAppToast,
         [key]: {
+          groupVersionKind: getGroupVersionKindForResource(exportResp),
           uid: exportResp.metadata.uid,
-          name: exportResp.metadata.name,
-          kind: exportResp.kind,
+          name,
           namespace,
         },
       };
       toast.addToast({
         variant: AlertVariant.info,
-        title: t('topology~Export Application'),
+        title: t('topology~Export application'),
         content: (
-          <Trans t={t} ns="topology">
-            Export of resources in <strong>{{ namespace }}</strong> has started.
-          </Trans>
+          <>
+            <Trans t={t} ns="topology">
+              Export of resources in <strong>{{ namespace }}</strong> has started.
+            </Trans>
+            <ExportViewLogButton name={name} namespace={namespace} />
+          </>
         ),
         dismissible: true,
-        timeout: true,
+        timeout: TOAST_TIMEOUT_LONG,
       });
       setExportAppToast(exportAppToastConfig);
       setIsCreating(false);
@@ -75,7 +84,7 @@ const ExportApplication: React.FC<ExportApplicationProps> = ({ namespace, isDisa
       setIsCreating(false);
       toast.addToast({
         variant: AlertVariant.danger,
-        title: t('topology~Export Application'),
+        title: t('topology~Export application'),
         content: (
           <Trans t={t} ns="topology">
             Export of resources in <strong>{{ namespace }}</strong> has failed with error:{' '}
@@ -83,13 +92,14 @@ const ExportApplication: React.FC<ExportApplicationProps> = ({ namespace, isDisa
           </Trans>
         ),
         dismissible: true,
-        timeout: true,
+        timeout: TOAST_TIMEOUT_DEFAULT,
       });
     }
   };
 
   const killExportCR = async (): Promise<boolean> => {
-    const exportResData = await getExportResource(namespace);
+    const name = EXPORT_CR_NAME;
+    const exportResData = await getExportResource(name, namespace);
     if (exportResData) {
       await killExportResource(exportResData);
     }
@@ -103,16 +113,18 @@ const ExportApplication: React.FC<ExportApplicationProps> = ({ namespace, isDisa
   };
 
   const exportAppClickHandle = async () => {
+    const name = EXPORT_CR_NAME;
     if (isCreating) {
-      exportApplicationModal({ namespace });
+      exportApplicationModal({ name, namespace });
       return;
     }
     try {
       setIsCreating(true);
-      const exportRes = await getExportResource(namespace);
+      const exportRes = await getExportResource(name, namespace);
       if (exportRes && exportRes.status?.completed !== true) {
         const startTime = dateTimeFormatter.format(new Date(exportRes.metadata.creationTimestamp));
         exportApplicationModal({
+          name,
           namespace,
           startTime,
           onCancelExport: killExportCR,
@@ -121,7 +133,7 @@ const ExportApplication: React.FC<ExportApplicationProps> = ({ namespace, isDisa
         setIsCreating(false);
       } else if (exportRes && exportRes.status?.completed) {
         await killExportResource(exportRes);
-        const exportAppToastConfig = _.omit(exportAppToast, `${namespace}-${EXPORT_CR_NAME}`);
+        const exportAppToastConfig = _.omit(exportAppToast, `${namespace}-${name}`);
         setExportAppToast(exportAppToastConfig);
         await createExportCR();
       }
@@ -140,11 +152,11 @@ const ExportApplication: React.FC<ExportApplicationProps> = ({ namespace, isDisa
       <Button
         variant="secondary"
         data-test="export-app-btn"
-        aria-label={t('topology~Export Application')}
+        aria-label={t('topology~Export application')}
         isDisabled={isDisabled}
         onClick={exportAppClickHandle}
       >
-        {t('topology~Export Application')}
+        {t('topology~Export application')}
       </Button>
     </ToolbarItem>
   ) : null;

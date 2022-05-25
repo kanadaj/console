@@ -17,19 +17,22 @@ export const topologySidePane = {
       .get(topologyPO.sidePane.tabName)
       .contains(tabName)
       .should('be.visible'),
+  verifyTabNotVisible: (tabName: string) =>
+    cy
+      .get(topologyPO.sidePane.tabName)
+      .contains(tabName)
+      .should('not.be.visible'),
   verifyActionsDropDown: () => cy.get(topologyPO.sidePane.actionsDropDown).should('be.visible'),
   clickActionsDropDown: () => cy.get(topologyPO.sidePane.actionsDropDown).click(),
   selectTab: (tabName: string) => {
-    app.waitForLoad();
+    app.waitForLoad(160000, true);
     cy.get(topologyPO.sidePane.tabName)
       .contains(tabName)
-      .click();
+      .click({ force: true });
   },
   verifySection: (sectionTitle: string) => {
     cy.get(topologyPO.sidePane.dialog).within(() => {
-      cy.get(topologyPO.sidePane.sectionTitle)
-        .contains(sectionTitle)
-        .should('be.visible');
+      cy.contains(topologyPO.sidePane.sectionTitle, sectionTitle).should('be.visible');
     });
   },
   verifyActions: (...actions: string[]) => {
@@ -122,7 +125,7 @@ export const topologySidePane = {
     cy.byTestID(deploymentName).should('be.visible');
   },
   verifyActionsOnApplication: () => {
-    cy.byTestActionID('Delete Application').should('be.visible');
+    cy.byTestActionID('Delete application').should('be.visible');
     cy.get(topologyPO.addToApplicationInContext).should('be.visible');
   },
   selectResource: (opt: resources | string, namespace: string, name: string) => {

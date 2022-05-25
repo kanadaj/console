@@ -6,19 +6,20 @@ import {
   LaptopCodeIcon,
   OsImageIcon,
   FileUploadIcon,
+  GitAltIcon,
+  OutlinedFileCodeIcon,
+  ShareSquareIcon,
 } from '@patternfly/react-icons';
 import * as devfileIcon from '../images/devfile.svg';
 import * as dockerfileIcon from '../images/dockerfile.svg';
-import * as gitIcon from '../images/from-git.svg';
-import * as yamlIcon from '../images/yaml.svg';
 
-export const gitIconSVG = gitIcon;
+export const gitIconElement = <GitAltIcon />;
 
 export const devfileIconSVG = devfileIcon;
 
 export const dockerfileIconSVG = dockerfileIcon;
 
-export const yamlIconSVG = yamlIcon;
+export const yamlIconElement = <OutlinedFileCodeIcon />;
 
 export const deployIconElement = <OsImageIcon />;
 
@@ -31,3 +32,5 @@ export const databaseCatalogIconElement = <DatabaseIcon />;
 export const operatorCatalogIconElement = <BoltIcon />;
 
 export const uploadJarIconElement = <FileUploadIcon />;
+
+export const shareProjectIconElement = <ShareSquareIcon />;

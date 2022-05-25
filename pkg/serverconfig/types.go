@@ -1,22 +1,27 @@
 package serverconfig
 
+import (
+	configv1 "github.com/openshift/api/config/v1"
+)
+
 // This file is a copy of the struct within the console operator:
 //   https://github.com/openshift/console-operator/blob/master/pkg/console/subresource/consoleserver/types.go
 // These structs need to remain in sync.
 
 // Config is the top-level console server cli configuration.
 type Config struct {
-	APIVersion     string `yaml:"apiVersion"`
-	Kind           string `yaml:"kind"`
-	ServingInfo    `yaml:"servingInfo"`
-	ClusterInfo    `yaml:"clusterInfo"`
-	Auth           `yaml:"auth"`
-	Customization  `yaml:"customization"`
-	Providers      `yaml:"providers"`
-	Helm           `yaml:"helm"`
-	MonitoringInfo `yaml:"monitoringInfo,omitempty"`
-	Plugins        map[string]string `yaml:"plugins,omitempty"`
-	Proxy          Proxy             `yaml:"proxy,omitempty"`
+	APIVersion               string `yaml:"apiVersion"`
+	Kind                     string `yaml:"kind"`
+	ServingInfo              `yaml:"servingInfo"`
+	ClusterInfo              `yaml:"clusterInfo"`
+	Auth                     `yaml:"auth"`
+	Customization            `yaml:"customization"`
+	Providers                `yaml:"providers"`
+	Helm                     `yaml:"helm"`
+	MonitoringInfo           `yaml:"monitoringInfo,omitempty"`
+	Plugins                  map[string]string `yaml:"plugins,omitempty"`
+	ManagedClusterConfigFile string            `yaml:"managedClusterConfigFile,omitempty"`
+	Proxy                    Proxy             `yaml:"proxy,omitempty"`
 }
 
 type Proxy struct {
@@ -58,9 +63,10 @@ type MonitoringInfo struct {
 
 // ClusterInfo holds information the about the cluster such as master public URL and console public URL.
 type ClusterInfo struct {
-	ConsoleBaseAddress string `yaml:"consoleBaseAddress,omitempty"`
-	ConsoleBasePath    string `yaml:"consoleBasePath,omitempty"`
-	MasterPublicURL    string `yaml:"masterPublicURL,omitempty"`
+	ConsoleBaseAddress   string                `yaml:"consoleBaseAddress,omitempty"`
+	ConsoleBasePath      string                `yaml:"consoleBasePath,omitempty"`
+	MasterPublicURL      string                `yaml:"masterPublicURL,omitempty"`
+	ControlPlaneTopology configv1.TopologyMode `yaml:"controlPlaneTopology,omitempty"`
 }
 
 // Auth holds configuration for authenticating with OpenShift. The auth method is assumed to be "openshift".
@@ -140,4 +146,24 @@ type HelmChartRepo struct {
 
 type Helm struct {
 	ChartRepo HelmChartRepo `yaml:"chartRepository"`
+}
+
+// ManagedClusterAPIServerConfig enables proxying managed cluster API server requests
+type ManagedClusterAPIServerConfig struct {
+	URL    string `json:"url" yaml:"url"`
+	CAFile string `json:"caFile" yaml:"caFile"`
+}
+
+// ManagedClusterOauthConfig enables proxying managed cluster auth
+type ManagedClusterOAuthConfig struct {
+	ClientID     string `json:"clientID" yaml:"clientID"`
+	ClientSecret string `json:"clientSecret" yaml:"clientSecret"`
+	CAFile       string `json:"caFile" yaml:"caFile"`
+}
+
+// ManagedClusterConfig enables proxying to an ACM managed cluster
+type ManagedClusterConfig struct {
+	Name      string                        `json:"name" yaml:"name"` // ManagedCluster name, provided through ACM
+	APIServer ManagedClusterAPIServerConfig `json:"apiServer" yaml:"apiServer"`
+	OAuth     ManagedClusterOAuthConfig     `json:"oauth" yaml:"oauth"`
 }

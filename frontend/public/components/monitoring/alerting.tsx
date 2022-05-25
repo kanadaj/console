@@ -1,7 +1,13 @@
 import * as classNames from 'classnames';
 import i18next from 'i18next';
 import * as _ from 'lodash-es';
-import { Alert as PFAlert, Button, Popover, Split, SplitItem } from '@patternfly/react-core';
+import {
+  Alert as PFAlert,
+  Button,
+  CodeBlock,
+  CodeBlockCode,
+  Popover,
+} from '@patternfly/react-core';
 import { sortable } from '@patternfly/react-table';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
@@ -18,7 +24,7 @@ import {
   OutlinedBellIcon,
 } from '@patternfly/react-icons';
 
-import { useActivePerspective } from '@console/dynamic-plugin-sdk';
+import { useActivePerspective, ResourceStatus } from '@console/dynamic-plugin-sdk';
 import {
   BlueInfoCircleIcon,
   GreenCheckCircleIcon,
@@ -53,9 +59,11 @@ import { PrometheusLabels } from '../graphs';
 import { AlertmanagerYAMLEditorWrapper } from './alert-manager-yaml-editor';
 import { AlertmanagerConfigWrapper } from './alert-manager-config';
 import MonitoringDashboardsPage from './dashboards';
+import { Label, Labels } from './labels';
 import { QueryBrowserPage, ToggleGraph } from './metrics';
 import { FormatSeriesTitle, QueryBrowser } from './query-browser';
 import { CreateSilence, EditSilence } from './silence-form';
+import { TargetsUI } from './targets';
 import {
   Alert,
   Alerts,
@@ -91,7 +99,6 @@ import { SectionHeading, ActionButtons, BreadCrumbs } from '../utils/headings';
 import { Kebab } from '../utils/kebab';
 import { getURLSearchParams, LinkifyExternal } from '../utils/link';
 import { ResourceLink } from '../utils/resource-link';
-import { ResourceStatus } from '../utils/resource-status';
 import { history } from '../utils/router';
 import { LoadingInline, StatusBox } from '../utils/status-box';
 import { Timestamp } from '../utils/timestamp';
@@ -104,7 +111,7 @@ const pollers = {};
 const pollerTimeouts = {};
 
 const silenceAlert = (alert: Alert) => ({
-  callback: () => history.replace(`${SilenceResource.plural}/~new?${labelsToParams(alert.labels)}`),
+  callback: () => history.push(`${SilenceResource.plural}/~new?${labelsToParams(alert.labels)}`),
   label: i18next.t('public~Silence alert'),
 });
 
@@ -428,14 +435,6 @@ const SourceHelp: React.FC<{}> = React.memo(() => {
   );
 });
 
-const Label = ({ k, v }) => (
-  <div className="co-m-label co-m-label--expand" key={k}>
-    <span className="co-m-label__key">{k}</span>
-    <span className="co-m-label__eq">=</span>
-    <span className="co-m-label__value">{v}</span>
-  </div>
-);
-
 const queryBrowserURL = (query: string, namespace: string) =>
   namespace
     ? `/dev-monitoring/ns/${namespace}/metrics?query0=${encodeURIComponent(query)}`
@@ -589,9 +588,11 @@ const AlertMessage: React.FC<AlertMessageProps> = ({ alertText, labels, template
   });
 
   return (
-    <p>
-      <LinkifyExternal>{messageParts}</LinkifyExternal>
-    </p>
+    <div className="co-alert-manager">
+      <p>
+        <LinkifyExternal>{messageParts}</LinkifyExternal>
+      </p>
+    </div>
   );
 };
 
@@ -688,7 +689,7 @@ const AlertsDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
         loaded={alerts?.loaded}
         loadError={alerts?.loadError}
       >
-        <div className="co-m-nav-title co-m-nav-title--detail co-m-nav-title--breadcrumbs">
+        <div className="pf-c-page__main-breadcrumb">
           <BreadCrumbs
             breadcrumbs={[
               {
@@ -698,6 +699,8 @@ const AlertsDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
               { name: t('public~Alert details'), path: undefined },
             ]}
           />
+        </div>
+        <div className="co-m-nav-title co-m-nav-title--detail co-m-nav-title--breadcrumbs">
           <h1 className="co-m-pane__heading">
             <div data-test="resource-title" className="co-resource-item">
               <MonitoringResourceIcon className="co-m-resource-icon--lg" resource={AlertResource} />
@@ -790,15 +793,7 @@ const AlertsDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
                 <dl className="co-m-pane__details" data-test="label-list">
                   <dt>{t('public~Labels')}</dt>
                   <dd>
-                    {_.isEmpty(labels) ? (
-                      <div className="text-muted">{t('public~No labels')}</div>
-                    ) : (
-                      <div className={`co-text-${AlertResource.kind.toLowerCase()}`}>
-                        {_.map(labels, (v, k) => (
-                          <Label key={k} k={k} v={v} />
-                        ))}
-                      </div>
-                    )}
+                    <Labels kind="alert" labels={labels} />
                   </dd>
                 </dl>
               </div>
@@ -858,7 +853,7 @@ const PrometheusTemplate = ({ text }) => (
   <>
     {text?.split(/(\{\{[^{}]*\}\})/)?.map((part: string, i: number) =>
       part.match(/^\{\{[^{}]*\}\}$/) ? (
-        <code className="prometheus-template-tag" key={i}>
+        <code className="co-code prometheus-template-tag" key={i}>
           {part}
         </code>
       ) : (
@@ -942,7 +937,7 @@ const AlertRulesDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
         <title>{t('public~{{name}} details', { name: rule?.name || RuleResource.label })}</title>
       </Helmet>
       <StatusBox data={rule} label={RuleResource.label} loaded={loaded} loadError={loadError}>
-        <div className="co-m-nav-title co-m-nav-title--detail co-m-nav-title--breadcrumbs">
+        <div className="pf-c-page__main-breadcrumb">
           <BreadCrumbs
             breadcrumbs={[
               {
@@ -954,6 +949,8 @@ const AlertRulesDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
               { name: t('public~Alerting rule details'), path: undefined },
             ]}
           />
+        </div>
+        <div className="co-m-nav-title co-m-nav-title--detail co-m-nav-title--breadcrumbs">
           <h1 className="co-m-pane__heading">
             <div data-test="resource-title" className="co-resource-item">
               <MonitoringResourceIcon className="co-m-resource-icon--lg" resource={RuleResource} />
@@ -1019,7 +1016,9 @@ const AlertRulesDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
                   <dt>{t('public~Expression')}</dt>
                   <dd>
                     <Link to={queryBrowserURL(rule?.query, namespace)}>
-                      <pre className="co-pre-wrap monitoring-query">{rule?.query}</pre>
+                      <CodeBlock>
+                        <CodeBlockCode>{rule?.query}</CodeBlockCode>
+                      </CodeBlock>
                     </Link>
                   </dd>
                 </dl>
@@ -1030,15 +1029,7 @@ const AlertRulesDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
                 <dl className="co-m-pane__details">
                   <dt>{t('public~Labels')}</dt>
                   <dd>
-                    {_.isEmpty(rule?.labels) ? (
-                      <div className="text-muted">{t('public~No labels')}</div>
-                    ) : (
-                      <div className={`co-text-${RuleResource.kind.toLowerCase()}`}>
-                        {_.map(rule.labels, (v, k) => (
-                          <Label key={k} k={k} v={v} />
-                        ))}
-                      </div>
-                    )}
+                    <Labels kind="alertrule" labels={rule?.labels} />
                   </dd>
                 </dl>
               </div>
@@ -1139,7 +1130,7 @@ const SilencesDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
         loaded={silences?.loaded}
         loadError={silences?.loadError}
       >
-        <div className="co-m-nav-title co-m-nav-title--detail co-m-nav-title--breadcrumbs">
+        <div className="pf-c-page__main-breadcrumb">
           <BreadCrumbs
             breadcrumbs={[
               {
@@ -1152,6 +1143,8 @@ const SilencesDetailsPage_: React.FC<{ match: any }> = ({ match }) => {
               { name: t('public~Silence details'), path: undefined },
             ]}
           />
+        </div>
+        <div className="co-m-nav-title co-m-nav-title--detail co-m-nav-title--breadcrumbs">
           <h1 className="co-m-pane__heading">
             <div data-test="resource-title" className="co-resource-item">
               <MonitoringResourceIcon
@@ -1350,14 +1343,9 @@ const MonitoringListPage: React.FC<ListPageProps & {
   Row,
   rowFilters,
   getRowProps,
+  TopAlert,
 }) => {
-  const { t } = useTranslation();
-
   const filters = useSelector(({ k8s }: RootState) => k8s.getIn([reduxID, 'filters']));
-
-  const silencesLoadError = useSelector(
-    ({ observe }: RootState) => observe.get('silences')?.loadError,
-  );
 
   return (
     <>
@@ -1379,18 +1367,7 @@ const MonitoringListPage: React.FC<ListPageProps & {
           rowFilters={rowFilters}
           textFilter={nameFilterID}
         />
-        {silencesLoadError && !loadError && (
-          <PFAlert
-            className="co-alert"
-            isInline
-            title={t(
-              'public~Error loading silences from Alertmanager. Some of the alerts below may actually be silenced.',
-            )}
-            variant="warning"
-          >
-            {silencesLoadError.json?.error || silencesLoadError.message}
-          </PFAlert>
-        )}
+        {TopAlert}
         <div className="row">
           <div className="col-xs-12">
             <Table
@@ -1419,11 +1396,30 @@ const getRowProps = (obj: Alert | Rule) => ({
   title: obj.annotations?.description || obj.annotations?.message,
 });
 
+const SilencesNotLoadedWarning: React.FC<{ silencesLoadError: any }> = ({ silencesLoadError }) => {
+  const { t } = useTranslation();
+  return (
+    <PFAlert
+      className="co-alert"
+      isInline
+      title={t(
+        'public~Error loading silences from Alertmanager. Some of the alerts below may actually be silenced.',
+      )}
+      variant="warning"
+    >
+      {silencesLoadError.json?.error || silencesLoadError.message}
+    </PFAlert>
+  );
+};
+
 const AlertsPage_: React.FC<Alerts> = () => {
   const { t } = useTranslation();
 
   const { data, loaded, loadError }: Alerts = useSelector(
     ({ observe }: RootState) => observe.get('alerts') || {},
+  );
+  const silencesLoadError = useSelector(
+    ({ observe }: RootState) => observe.get('silences')?.loadError,
   );
 
   const Header = () => [
@@ -1472,6 +1468,9 @@ const AlertsPage_: React.FC<Alerts> = () => {
       Row={AlertTableRow}
       rowFilters={alertsRowFilters()}
       getRowProps={getRowProps}
+      TopAlert={
+        silencesLoadError && <SilencesNotLoadedWarning silencesLoadError={silencesLoadError} />
+      }
     />
   );
 };
@@ -1536,6 +1535,9 @@ const RulesPage_: React.FC<{}> = () => {
   const { loaded, loadError }: Alerts = useSelector(
     ({ observe }: RootState) => observe.get('alerts') || {},
   );
+  const silencesLoadError = useSelector(
+    ({ observe }: RootState) => observe.get('silences')?.loadError,
+  );
 
   const Header = () => [
     {
@@ -1594,6 +1596,9 @@ const RulesPage_: React.FC<{}> = () => {
       Row={RuleTableRow}
       rowFilters={rulesRowFilters}
       getRowProps={getRowProps}
+      TopAlert={
+        silencesLoadError && <SilencesNotLoadedWarning silencesLoadError={silencesLoadError} />
+      }
     />
   );
 };
@@ -1648,6 +1653,20 @@ const SilencesPage_: React.FC<Silences> = () => {
       reduxID="monitoringSilences"
       Row={SilenceTableRow}
       rowFilters={silencesRowFilters}
+      TopAlert={
+        loadError && (
+          <PFAlert
+            className="co-alert"
+            isInline
+            title={t(
+              'public~Error loading silences from Alertmanager. Alertmanager may be unavailable.',
+            )}
+            variant="danger"
+          >
+            {typeof loadError === 'string' ? loadError : loadError.message}
+          </PFAlert>
+        )
+      }
     />
   );
 };
@@ -1713,23 +1732,21 @@ const AlertingPage: React.FC<{ match: any }> = ({ match }) => {
 
   return (
     <>
+      {isAlertmanager && (
+        <div className="pf-c-page__main-breadcrumb">
+          <BreadCrumbs
+            breadcrumbs={breadcrumbsForGlobalConfig(
+              'Alertmanager',
+              '/monitoring/alertmanagerconfig',
+            )}
+          />
+        </div>
+      )}
       <div
         className={classNames('co-m-nav-title', 'co-m-nav-title--detail', {
           'co-m-nav-title--breadcrumbs': isAlertmanager,
         })}
       >
-        {isAlertmanager && (
-          <Split style={{ alignItems: 'baseline' }}>
-            <SplitItem isFilled>
-              <BreadCrumbs
-                breadcrumbs={breadcrumbsForGlobalConfig(
-                  'Alertmanager',
-                  '/monitoring/alertmanagerconfig',
-                )}
-              />
-            </SplitItem>
-          </Split>
-        )}
         <h1 className="co-m-pane__heading">
           <div className="co-m-pane__name co-resource-item">
             <span className="co-resource-item__resource-name" data-test-id="resource-title">
@@ -1818,12 +1835,24 @@ const PollerPages = () => {
   );
 };
 
+// Handles links that have the Prometheus UI's URL format (expected for links in alerts sent by
+// Alertmanager). The Prometheus UI specifies the PromQL query with the GET param `g0.expr`, so we
+// use that if it exists. Otherwise, just go to the query browser page with no query.
+const PrometheusUIRedirect = () => {
+  const params = getURLSearchParams();
+  return <Redirect to={`/monitoring/query-browser?query0=${params['g0.expr'] || ''}`} />;
+};
+
 export const MonitoringUI = () => (
   <Switch>
+    {/* This redirect also handles the `/monitoring/#/alerts?...` link URLs generated by
+    Alertmanager (because the `#` is considered the end of the URL) */}
     <Redirect from="/monitoring" exact to="/monitoring/alerts" />
     <Route path="/monitoring/dashboards/:board?" exact component={MonitoringDashboardsPage} />
+    <Route path="/monitoring/graph" exact component={PrometheusUIRedirect} />
     <Route path="/monitoring/query-browser" exact component={QueryBrowserPage} />
     <Route path="/monitoring/silences/~new" exact component={CreateSilence} />
+    <Route path="/monitoring/targets" component={TargetsUI} />
     <Route component={PollerPages} />
   </Switch>
 );

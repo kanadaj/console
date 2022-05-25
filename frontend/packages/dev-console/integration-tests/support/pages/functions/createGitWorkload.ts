@@ -11,7 +11,7 @@ export const createGitWorkload = (
   appName: string = 'nodejs-ex-git-app',
   isPipelineSelected: boolean = false,
 ) => {
-  addPage.selectCardFromOptions(addOptions.Git);
+  addPage.selectCardFromOptions(addOptions.ImportFromGit);
   gitPage.enterGitUrl(gitUrl);
   gitPage.verifyValidatedMessage(gitUrl);
   gitPage.enterComponentName(componentName);
@@ -40,6 +40,8 @@ export const createGitWorkloadIfNotExistsOnTopologyPage = (
   gitUrl: string = 'https://github.com/sclorg/nodejs-ex.git',
   componentName: string = 'nodejs-ex-git',
   resourceType: string = 'Deployment',
+  appName?: string,
+  isPipelineSelected: boolean = false,
 ) => {
   navigateTo(devNavigationMenu.Topology);
   topologyPage.waitForLoad();
@@ -47,7 +49,7 @@ export const createGitWorkloadIfNotExistsOnTopologyPage = (
     if ($body.find(topologyPO.emptyStateIcon).length) {
       cy.log(`Topology doesn't have workload "${componentName}", lets create it`);
       navigateTo(devNavigationMenu.Add);
-      createGitWorkload(gitUrl, componentName, resourceType);
+      createGitWorkload(gitUrl, componentName, resourceType, appName);
       topologyPage.verifyWorkloadInTopologyPage(componentName);
     } else {
       topologyPage.search(componentName);
@@ -56,7 +58,7 @@ export const createGitWorkloadIfNotExistsOnTopologyPage = (
           cy.log(`knative service: ${componentName} is already created`);
         } else {
           navigateTo(devNavigationMenu.Add);
-          createGitWorkload(gitUrl, componentName, resourceType);
+          createGitWorkload(gitUrl, componentName, resourceType, appName, isPipelineSelected);
           topologyPage.verifyWorkloadInTopologyPage(componentName);
         }
       });

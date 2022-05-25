@@ -4,19 +4,22 @@ import { useTranslation } from 'react-i18next';
 import { match } from 'react-router';
 import { RowFilter } from '@console/dynamic-plugin-sdk';
 import { ListPage, MultiListPage } from '@console/internal/components/factory';
+import { isUpstream } from '@console/internal/components/utils';
 import { PersistentVolumeClaimModel, PodModel, TemplateModel } from '@console/internal/models';
-import { CDI_APP_LABEL, VMWizardName } from '../../constants';
 import {
-  customizeWizardBaseURLBuilder,
-  VIRTUALMACHINES_TEMPLATES_BASE_URL,
-} from '../../constants/url-params';
+  CDI_APP_LABEL,
+  KUBEVIRT_OS_IMAGES_NS,
+  OPENSHIFT_OS_IMAGES_NS,
+  VMWizardName,
+} from '../../constants';
+import { VIRTUALMACHINES_TEMPLATES_BASE_URL } from '../../constants/url-params';
+import { TEMPLATE_TYPE_BASE, TEMPLATE_TYPE_LABEL, VM_CUSTOMIZE_LABEL } from '../../constants/vm';
 import {
-  TEMPLATE_TYPE_BASE,
-  TEMPLATE_TYPE_LABEL,
-  TEMPLATE_TYPE_VM,
-  VM_CUSTOMIZE_LABEL,
-} from '../../constants/vm';
-import { DataVolumeModel, VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
+  DataSourceModel,
+  DataVolumeModel,
+  VirtualMachineInstanceModel,
+  VirtualMachineModel,
+} from '../../models';
 import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
 import { getTemplateProviderType, templateProviders } from '../../selectors/vm-template/basic';
 import { VirtualMachineTemplateBundle } from './table/types';
@@ -67,7 +70,12 @@ const VirtualMachineTemplatesPage: React.FC<VirtualMachineTemplatesPageProps &
       namespace,
       prop: 'vmTemplates',
       selector: {
-        matchLabels: { [TEMPLATE_TYPE_LABEL]: TEMPLATE_TYPE_VM },
+        matchExpressions: [
+          {
+            key: TEMPLATE_TYPE_LABEL,
+            operator: 'Exists',
+          },
+        ],
       },
     },
     {
@@ -90,6 +98,13 @@ const VirtualMachineTemplatesPage: React.FC<VirtualMachineTemplatesPageProps &
       isList: true,
       namespace,
       prop: 'pvcs',
+    },
+    {
+      kind: kubevirtReferenceForModel(DataSourceModel),
+      isList: true,
+      prop: 'dataSources',
+      namespace: isUpstream() ? KUBEVIRT_OS_IMAGES_NS : OPENSHIFT_OS_IMAGES_NS,
+      optional: true,
     },
     {
       kind: PodModel.kind,
@@ -126,17 +141,9 @@ const VirtualMachineTemplatesPage: React.FC<VirtualMachineTemplatesPageProps &
       [VMWizardName.YAML]: t('kubevirt-plugin~With YAML'),
     },
     createLink: (itemName: string) => {
-      const baseUrlWizard = customizeWizardBaseURLBuilder(namespace);
-      const baseURLYaml = `/k8s/ns/${namespace || 'default'}/${VIRTUALMACHINES_TEMPLATES_BASE_URL}`;
-
-      switch (itemName) {
-        case VMWizardName.WIZARD:
-          return `${baseUrlWizard}?mode=template`;
-        case VMWizardName.YAML:
-          return `${baseURLYaml}/~new?mode=template`;
-        default:
-          return `${baseUrlWizard}?mode=template`;
-      }
+      const customize = itemName === VMWizardName.WIZARD ? '/customize' : '';
+      return `/k8s/ns/${namespace ||
+        'default'}/${VIRTUALMACHINES_TEMPLATES_BASE_URL}/~new${customize}?mode=template`;
     },
   };
 

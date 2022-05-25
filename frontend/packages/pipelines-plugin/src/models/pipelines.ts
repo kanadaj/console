@@ -220,3 +220,37 @@ export const RepositoryModel: K8sKind = {
   badge: BadgeType.DEV,
   color,
 };
+
+export const TektonConfigModel: K8sKind = {
+  apiGroup: 'operator.tekton.dev',
+  apiVersion: 'v1alpha1',
+  label: 'TektonConfig',
+  // t('pipelines-plugin~TektonConfig')
+  labelKey: 'pipelines-plugin~TektonConfig',
+  // t('pipelines-plugin~TektonConfigs')
+  labelPluralKey: 'pipelines-plugin~TektonConfigs',
+  plural: 'tektonconfigs',
+  abbr: 'TC',
+  namespaced: false,
+  kind: 'TektonConfig',
+  id: 'tektonconfig',
+  labelPlural: 'TektonConfigs',
+  crd: true,
+};
+
+export const TektonHubModel: K8sKind = {
+  apiGroup: 'operator.tekton.dev',
+  apiVersion: 'v1alpha1',
+  label: 'TektonHub',
+  // t('pipelines-plugin~TektonHub')
+  labelKey: 'pipelines-plugin~TektonHub',
+  // t('pipelines-plugin~TektonHubs')
+  labelPluralKey: 'pipelines-plugin~TektonHubs',
+  plural: 'tektonhubs',
+  abbr: 'TH',
+  namespaced: false,
+  kind: 'TektonHub',
+  id: 'tektonhub',
+  labelPlural: 'TektonHubs',
+  crd: true,
+};

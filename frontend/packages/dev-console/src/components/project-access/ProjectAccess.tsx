@@ -1,10 +1,12 @@
 import * as React from 'react';
 import { Formik } from 'formik';
 import * as _ from 'lodash';
+import Helmet from 'react-helmet';
 import { useTranslation, Trans } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getActiveNamespace } from '@console/internal/actions/ui';
 import {
+  history,
   LoadingBox,
   isUpstream,
   openshiftHelpBase,
@@ -13,15 +15,15 @@ import {
   StatusBox,
 } from '@console/internal/components/utils';
 import { RoleBindingModel, RoleModel } from '@console/internal/models';
+import NamespacedPage, { NamespacedPageVariants } from '../NamespacedPage';
 import {
   getRolesWithNameChange,
-  sendRoleBindingRequest,
   getNewRoles,
   getRemovedRoles,
-  sendK8sRequest,
-  getGroupedRole,
+  sendRoleBindingRequest,
+  getRolesWithMultipleSubjects,
 } from './project-access-form-submit-utils';
-import { filterRoleBindings, getUserRoleBindings, Roles } from './project-access-form-utils';
+import { getUserRoleBindings, Roles } from './project-access-form-utils';
 import { Verb, UserRoleBinding, roleBinding } from './project-access-form-utils-types';
 import { validationSchema } from './project-access-form-validation-utils';
 import ProjectAccessForm from './ProjectAccessForm';
@@ -30,17 +32,24 @@ export interface ProjectAccessProps {
   namespace: string;
   roleBindings?: { data: []; loaded: boolean; loadError: {} };
   roles: { data: Roles; loaded: boolean };
+  fullFormView?: boolean;
 }
 
-const ProjectAccess: React.FC<ProjectAccessProps> = ({ namespace, roleBindings, roles }) => {
+const ProjectAccess: React.FC<ProjectAccessProps> = ({
+  namespace,
+  roleBindings,
+  roles,
+  fullFormView,
+}) => {
   const { t } = useTranslation();
   if ((!roleBindings.loaded && _.isEmpty(roleBindings.loadError)) || !roles.loaded) {
     return <LoadingBox />;
   }
 
-  const filteredRoleBindings = filterRoleBindings(roleBindings.data, Object.keys(roles.data));
-
-  const userRoleBindings: UserRoleBinding[] = getUserRoleBindings(filteredRoleBindings);
+  const userRoleBindings: UserRoleBinding[] = getUserRoleBindings(
+    roleBindings.data,
+    Object.keys(roles.data),
+  );
 
   const rbacLink = isUpstream()
     ? `${openshiftHelpBase}authentication/using-rbac.html`
@@ -48,6 +57,7 @@ const ProjectAccess: React.FC<ProjectAccessProps> = ({ namespace, roleBindings, 
 
   const initialValues = {
     projectAccess: roleBindings.loaded && userRoleBindings,
+    namespace,
   };
 
   const handleSubmit = (values, actions) => {
@@ -55,36 +65,31 @@ const ProjectAccess: React.FC<ProjectAccessProps> = ({ namespace, roleBindings, 
     let removeRoles = getRemovedRoles(initialValues.projectAccess, values.projectAccess);
     const updateRoles = getRolesWithNameChange(newRoles, removeRoles);
 
-    if (!_.isEmpty(updateRoles)) {
-      newRoles = _.filter(
-        newRoles,
+    const updateRolesWithMultipleSubjects = getRolesWithMultipleSubjects(
+      newRoles,
+      removeRoles,
+      updateRoles,
+    );
+
+    if (updateRoles.length > 0) {
+      newRoles = newRoles.filter(
         (o1) => !updateRoles.find((o2) => o1.roleBindingName === o2.roleBindingName),
       );
-      removeRoles = _.filter(
-        removeRoles,
+      removeRoles = removeRoles.filter(
         (o1) => !updateRoles.find((o2) => o1.roleBindingName === o2.roleBindingName),
       );
     }
-
+    updateRoles.push(...updateRolesWithMultipleSubjects);
     const roleBindingRequests = [];
     roleBinding.metadata.namespace = namespace;
 
-    removeRoles = _.filter(removeRoles, (removeRole) => {
-      const groupedRole = getGroupedRole(removeRole, roleBindings.data);
-      if (groupedRole) {
-        roleBindingRequests.push(sendK8sRequest(Verb.Patch, groupedRole));
-        return false;
-      }
-      return true;
-    });
-
-    if (!_.isEmpty(updateRoles)) {
+    if (updateRoles.length > 0) {
       roleBindingRequests.push(...sendRoleBindingRequest(Verb.Patch, updateRoles, roleBinding));
     }
-    if (!_.isEmpty(removeRoles)) {
+    if (removeRoles.length > 0) {
       roleBindingRequests.push(...sendRoleBindingRequest(Verb.Remove, removeRoles, roleBinding));
     }
-    if (!_.isEmpty(newRoles)) {
+    if (newRoles.length > 0) {
       roleBindingRequests.push(...sendRoleBindingRequest(Verb.Create, newRoles, roleBinding));
     }
 
@@ -106,9 +111,9 @@ const ProjectAccess: React.FC<ProjectAccessProps> = ({ namespace, roleBindings, 
     actions.resetForm({ status: { success: null }, values: initialValues });
   };
 
-  return (
+  const projectAccessForm = (
     <>
-      <PageHeading>
+      <PageHeading title={fullFormView ? t('devconsole~Project access') : null}>
         <Trans t={t} ns="devconsole">
           {
             "Project access allows you to add or remove a user's access to the project. More advanced management of role-based access control appear in "
@@ -131,11 +136,27 @@ const ProjectAccess: React.FC<ProjectAccessProps> = ({ namespace, roleBindings, 
           validationSchema={validationSchema}
         >
           {(formikProps) => (
-            <ProjectAccessForm {...formikProps} roles={roles.data} roleBindings={initialValues} />
+            <ProjectAccessForm
+              {...formikProps}
+              roles={roles.data}
+              roleBindings={initialValues}
+              onCancel={fullFormView ? history.goBack : null}
+            />
           )}
         </Formik>
       )}
     </>
+  );
+
+  return fullFormView ? (
+    <NamespacedPage hideApplications variant={NamespacedPageVariants.light} disabled>
+      <Helmet>
+        <title>{t('devconsole~Project access')}</title>
+      </Helmet>
+      {projectAccessForm}
+    </NamespacedPage>
+  ) : (
+    projectAccessForm
   );
 };
 

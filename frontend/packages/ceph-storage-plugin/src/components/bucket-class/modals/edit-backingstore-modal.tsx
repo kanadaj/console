@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
-import { Button } from '@patternfly/react-core';
+import { ActionGroup, Button } from '@patternfly/react-core';
 import { k8sUpdate, K8sKind } from '@console/internal/module/k8s';
 import {
   ModalTitle,
@@ -11,11 +11,7 @@ import {
   createModalLauncher,
   CreateModalLauncherProps,
 } from '@console/internal/components/factory';
-import {
-  withHandlePromise,
-  HandlePromiseProps,
-  ButtonBar,
-} from '@console/internal/components/utils';
+import { withHandlePromise, HandlePromiseProps } from '@console/internal/components/utils';
 import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
 import { getName, useFlag } from '@console/shared';
 import {
@@ -39,14 +35,14 @@ import { SingleNamespaceStorePage } from '../wizard-pages/namespace-store-pages/
 import { CacheNamespaceStorePage } from '../wizard-pages/namespace-store-pages/cache-namespace-store';
 import { MultiNamespaceStorePage } from '../wizard-pages/namespace-store-pages/multi-namespace-store';
 import { validateDuration } from '../../../utils/bucket-class';
-import { GUARDED_FEATURES } from '../../../features';
+import { FEATURES } from '../../../features';
 
 const BucketClassEditModal = withHandlePromise<
   HandlePromiseProps & BucketClassEditModalProps & ModalComponentProps & CreateModalLauncherProps
 >((props) => {
   const { t } = useTranslation();
   const { bucketClass, inProgress, errorMessage, handlePromise, close, cancel } = props;
-  const isNamespaceStoreSupported = useFlag(GUARDED_FEATURES.OCS_NAMESPACE_STORE);
+  const isNamespaceStoreSupported = useFlag(FEATURES.OCS_NAMESPACE_STORE);
   const isNamespaceType = isNamespaceStoreSupported && !!bucketClass.spec?.namespacePolicy;
   const [state, dispatch] = React.useReducer(reducer, initialState);
   const [data, loaded, loadError] = useK8sGet(
@@ -260,7 +256,7 @@ const BucketClassEditModal = withHandlePromise<
         </ModalBody>
       </div>
       <ModalFooter errorMessage={errorMessage} inProgress={inProgress}>
-        <ButtonBar>
+        <ActionGroup>
           <Button
             onClick={cancel}
             aria-label={t('ceph-storage-plugin~Cancel ')}
@@ -277,7 +273,7 @@ const BucketClassEditModal = withHandlePromise<
           >
             {t('ceph-storage-plugin~Save')}
           </Button>
-        </ButtonBar>
+        </ActionGroup>
       </ModalFooter>
     </>
   );

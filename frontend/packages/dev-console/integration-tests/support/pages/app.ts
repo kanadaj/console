@@ -12,8 +12,22 @@ export const app = {
       .its('readyState')
       .should('eq', 'complete');
   },
-  waitForLoad: (timeout: number = 160000) => {
-    cy.get('.co-m-loader', { timeout }).should('not.exist');
+  waitForLoad: (timeout: number = 160000, skipInline = false) => {
+    // observe dashboard contains lots of loaders that only disappear when scrolled into view
+    // skip these, otherwise wait as normal
+    cy.url().then((url) => {
+      if (url.includes('/dev-monitoring/') || skipInline) {
+        cy.get('body').then((body) => {
+          body.find('.co-m-loader').each(function() {
+            if (!this.className.includes('co-m-loader--inline')) {
+              cy.wrap(this).should('not.exist');
+            }
+          });
+        });
+      } else {
+        cy.get('.co-m-loader', { timeout }).should('not.exist');
+      }
+    });
     cy.get('.pf-c-spinner', { timeout }).should('not.exist');
     cy.get('.skeleton-catalog--grid', { timeout }).should('not.exist');
     cy.get('.loading-skeleton--table', { timeout }).should('not.exist');
@@ -104,7 +118,7 @@ export const navigateTo = (opt: devNavigationMenu) => {
       break;
     }
     case devNavigationMenu.Pipelines: {
-      cy.get(devNavigationMenuPO.pipelines).click();
+      cy.get(devNavigationMenuPO.pipelines, { timeout: 80000 }).click();
       detailsPage.titleShouldContain(pageTitle.Pipelines);
       // Bug: ODC-5119 is created related to Accessibility violation - Until bug fix, below line is commented to execute the scripts in CI
       // cy.testA11y('Pipelines Page in dev perspective');
@@ -124,7 +138,7 @@ export const navigateTo = (opt: devNavigationMenu) => {
     }
     case devNavigationMenu.Project: {
       cy.get(devNavigationMenuPO.project).click();
-      detailsPage.titleShouldContain(pageTitle.Project);
+      detailsPage.titleShouldContain(Cypress.env('NAMESPACE'));
       cy.testA11y('Projects Page in dev perspective');
       break;
     }
@@ -174,6 +188,12 @@ export const projectNameSpace = {
   },
 
   selectOrCreateProject: (projectName: string) => {
+    app.waitForLoad();
+    cy.url().then((url) => {
+      if (url.includes('add/all-namespaces')) {
+        cy.get('tr[data-test-rows="resource-row"]').should('have.length.at.least', 1);
+      }
+    });
     projectNameSpace.clickProjectDropdown();
     cy.byTestID('showSystemSwitch').check(); // Ensure that all projects are showing
     cy.byTestID('dropdown-menu-item-link').should('have.length.gt', 5);
@@ -191,6 +211,11 @@ export const projectNameSpace = {
           cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
           projectNameSpace.enterProjectName(projectName);
           cy.byTestID('confirm-action').click();
+          const namespaces: string[] = Cypress.env('NAMESPACES') || [];
+          if (!namespaces.includes(projectName)) {
+            namespaces.push(projectName);
+          }
+          Cypress.env('NAMESPACES', namespaces);
           app.waitForLoad();
         } else {
           cy.get('[data-test="namespace-dropdown-menu"]')
@@ -204,6 +229,11 @@ export const projectNameSpace = {
               cy.byTestDropDownMenu('#CREATE_RESOURCE_ACTION#').click();
               projectNameSpace.enterProjectName(projectName);
               cy.byTestID('confirm-action').click();
+              const namespaces: string[] = Cypress.env('NAMESPACES') || [];
+              if (!namespaces.includes(projectName)) {
+                namespaces.push(projectName);
+              }
+              Cypress.env('NAMESPACES', namespaces);
               app.waitForLoad();
             }
           });

@@ -1,14 +1,11 @@
 import * as React from 'react';
+import { OverviewDetailItem } from '@openshift-console/plugin-shared/src';
+import { Card, CardBody, CardHeader, CardTitle } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
 import {
   SourceMissingStatus,
   SubscriptionStatus,
 } from '@console/operator-lifecycle-manager/src/components/subscription';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import DetailItem from '@console/shared/src/components/dashboard/details-card/DetailItem';
 import DetailsBody from '@console/shared/src/components/dashboard/details-card/DetailsBody';
 import { useKubevirtCsvDetails } from '../../hooks/use-kubevirt-csv-details';
 
@@ -25,22 +22,22 @@ export const VirtOverviewDetailsCard: React.FC = () => {
     loaded,
     loadError,
   } = kvCsvDetails;
-  const isLoading = !loaded && !loadError;
+  const isLoading = !loaded && !loadError && !kubevirtSub;
 
   return (
-    <DashboardCard data-test-id="kubevirt-overview-dashboard--details-card">
-      <DashboardCardHeader>
-        <DashboardCardTitle>{t('kubevirt-plugin~Details')}</DashboardCardTitle>
-      </DashboardCardHeader>
-      <DashboardCardBody>
+    <Card data-test-id="kubevirt-overview-dashboard--details-card">
+      <CardHeader>
+        <CardTitle>{t('kubevirt-plugin~Details')}</CardTitle>
+      </CardHeader>
+      <CardBody>
         <DetailsBody>
-          <DetailItem isLoading={isLoading} title={t('kubevirt-plugin~Service name')}>
+          <OverviewDetailItem isLoading={isLoading} title={t('kubevirt-plugin~Service name')}>
             {name}
-          </DetailItem>
-          <DetailItem isLoading={isLoading} title={t('kubevirt-plugin~Provider')}>
+          </OverviewDetailItem>
+          <OverviewDetailItem isLoading={isLoading} title={t('kubevirt-plugin~Provider')}>
             {provider}
-          </DetailItem>
-          <DetailItem
+          </OverviewDetailItem>
+          <OverviewDetailItem
             isLoading={isLoading}
             title={t('kubevirt-plugin~OpenShift Virtualization version')}
           >
@@ -52,12 +49,12 @@ export const VirtOverviewDetailsCard: React.FC = () => {
                 <SubscriptionStatus subscription={kubevirtSub} />
               )}
             </div>
-          </DetailItem>
-          <DetailItem isLoading={isLoading} title={t('kubevirt-plugin~Update Channel')}>
+          </OverviewDetailItem>
+          <OverviewDetailItem isLoading={isLoading} title={t('kubevirt-plugin~Update Channel')}>
             {updateChannel}
-          </DetailItem>
+          </OverviewDetailItem>
         </DetailsBody>
-      </DashboardCardBody>
-    </DashboardCard>
+      </CardBody>
+    </Card>
   );
 };

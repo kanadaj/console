@@ -10,11 +10,13 @@ import {
 } from '@patternfly/react-core';
 import { RocketIcon, VirtualMachineIcon } from '@patternfly/react-icons';
 import { sortable } from '@patternfly/react-table';
+import * as classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { match } from 'react-router';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { QuickStartModel } from '@console/app/src/models';
+import { GenericStatus } from '@console/dynamic-plugin-sdk';
 import {
   MultiListPage,
   RowFunctionArgs,
@@ -27,14 +29,14 @@ import {
   Kebab,
   ResourceLink,
   Timestamp,
+  useAccessReview2,
 } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { NamespaceModel, NodeModel } from '@console/internal/models';
 import { LazyActionMenu } from '@console/shared';
-import GenericStatus from '@console/shared/src/components/status/GenericStatus';
 import { VMWizardMode, VMWizardName } from '../../constants';
 import { V2VVMImportStatus } from '../../constants/v2v-import/ovirt/v2v-vm-import-status';
-import { printableToVMStatus, VMStatus } from '../../constants/vm/vm-status';
+import { getVmStatusFromPrintable, VMStatus } from '../../constants/vm/vm-status';
 import { useNamespace } from '../../hooks/use-namespace';
 import { VirtualMachineInstanceModel, VirtualMachineModel } from '../../models';
 import { kubevirtReferenceForModel } from '../../models/kubevirtReferenceForModel';
@@ -70,9 +72,9 @@ import VMIP from './VMIP';
 
 import './vm.scss';
 
-const tableColumnClasses = [
+const tableColumnClasses = (showNamespace: boolean) => [
   'pf-u-w-16-on-xl pf-u-w-50-on-xs',
-  'pf-m-hidden pf-m-visible-on-lg',
+  classNames('pf-m-hidden', { 'pf-m-visible-on-lg': showNamespace }),
   '',
   'pf-m-hidden pf-m-visible-on-xl',
   'pf-m-hidden pf-m-visible-on-xl',
@@ -81,7 +83,7 @@ const tableColumnClasses = [
   Kebab.columnClass,
 ];
 
-const VMHeader = (t: TFunction) => () =>
+const VMHeader = (t: TFunction, showNamespace: boolean) => () =>
   dimensifyHeader(
     [
       {
@@ -119,7 +121,7 @@ const VMHeader = (t: TFunction) => () =>
         title: '',
       },
     ],
-    tableColumnClasses,
+    tableColumnClasses(showNamespace),
   );
 
 const VMRow: React.FC<RowFunctionArgs<VMRowObjType, VmStatusResourcesValue>> = ({
@@ -128,10 +130,11 @@ const VMRow: React.FC<RowFunctionArgs<VMRowObjType, VmStatusResourcesValue>> = (
 }) => {
   const { vm, vmi } = obj;
   const { name, namespace, creationTimestamp, node } = obj.metadata;
-  const dimensify = dimensifyRow(tableColumnClasses);
+  const activeNamespace = useNamespace();
+  const dimensify = dimensifyRow(tableColumnClasses(!activeNamespace));
   const arePendingChanges = hasPendingChanges(vm, vmi);
   const printableStatus = obj?.metadata?.status;
-  const status: VMStatus = printableToVMStatus?.[printableStatus];
+  const status: VMStatus = getVmStatusFromPrintable(printableStatus);
 
   const model = (vm && VirtualMachineModel) || (vmi && VirtualMachineInstanceModel);
   const context = getVMActionContext(vm || vmi);
@@ -180,8 +183,14 @@ const VMRow: React.FC<RowFunctionArgs<VMRowObjType, VmStatusResourcesValue>> = (
 
 const VMListEmpty: React.FC = () => {
   const { t } = useTranslation();
-  const location = useLocation();
   const namespace = useNamespace();
+
+  const [canCreate] = useAccessReview2({
+    group: VirtualMachineModel?.apiGroup,
+    resource: VirtualMachineModel?.plural,
+    verb: 'create',
+    namespace,
+  });
 
   const searchText = 'virtual machine';
   const [quickStarts, quickStartsLoaded] = useK8sWatchResource<QuickStart[]>({
@@ -205,10 +214,7 @@ const VMListEmpty: React.FC = () => {
       <EmptyStateBody>
         <Trans ns="kubevirt-plugin">
           See the{' '}
-          <Link
-            data-test="vm-empty-templates"
-            to={`${location.pathname}${location.pathname.endsWith('/') ? '' : '/'}templates`}
-          >
+          <Link data-test="vm-empty-templates" to={`/k8s/ns/${namespace}/virtualmachinetemplates`}>
             templates tab
           </Link>{' '}
           to quickly create a virtual machine from the available templates.
@@ -217,6 +223,7 @@ const VMListEmpty: React.FC = () => {
       <Button
         data-test="create-vm-empty"
         variant="primary"
+        isDisabled={!canCreate}
         onClick={() =>
           history.push(
             getVMWizardCreateLink({
@@ -247,13 +254,14 @@ const VMListEmpty: React.FC = () => {
 
 const VMList: React.FC<React.ComponentProps<typeof Table> & VMListProps> = (props) => {
   const { t } = useTranslation();
+  const activeNamespace = useNamespace();
   return (
     <div className="kv-vm-list">
       <Table
         {...props}
         EmptyMsg={VMListEmpty}
         aria-label={t('kubevirt-plugin~Virtual Machines')}
-        Header={VMHeader(t)}
+        Header={VMHeader(t, !activeNamespace)}
         Row={VMRow}
         virtualize
       />

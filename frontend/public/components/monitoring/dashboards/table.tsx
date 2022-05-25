@@ -10,12 +10,13 @@ import {
   TableVariant,
 } from '@patternfly/react-table';
 
+import { PrometheusEndpoint } from '@console/dynamic-plugin-sdk/src/api/common-types';
 import ErrorAlert from '@console/shared/src/components/alerts/error';
 
 import { formatNumber } from '../format';
 import { ColumnStyle, Panel } from './types';
 import { PrometheusResponse } from '../../graphs';
-import { getPrometheusURL, PrometheusEndpoint } from '../../graphs/helpers';
+import { getPrometheusURL } from '../../graphs/helpers';
 import { EmptyBox, usePoll, useSafeFetch } from '../../utils';
 import TablePagination from '../table-pagination';
 
@@ -38,6 +39,9 @@ const getColumns = (styles: ColumnStyle[]): AugmentedColumnStyle[] => {
 
     if (col.pattern.startsWith('Value #')) {
       valueColumns.push(col);
+    } else if (col.pattern === 'Value') {
+      // Set the column to use the first group pattern because the panel has a single target
+      valueColumns.push({ ...col, pattern: 'Value #A' });
     } else {
       labelColumns.push({
         ...col,
@@ -113,6 +117,9 @@ const Table: React.FC<Props> = ({ panel, pollInterval, queries, namespace }) => 
   }
   if (error) {
     return <ErrorAlert message={error} />;
+  }
+  if (_.isEmpty(panel.styles)) {
+    return <ErrorAlert message={t('public~panel.styles attribute not found')} />;
   }
   if (_.isEmpty(data)) {
     return <EmptyBox label={t('public~Data')} />;

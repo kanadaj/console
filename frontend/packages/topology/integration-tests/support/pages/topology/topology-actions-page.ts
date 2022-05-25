@@ -11,7 +11,7 @@ export const topologyActions = {
   selectAction: (action: nodeActions | string | applicationGroupingsActions) => {
     switch (action) {
       case 'Edit Application Grouping':
-      case 'Edit Application grouping':
+      case 'Edit application grouping':
       case nodeActions.EditApplicationGrouping: {
         cy.byTestActionID(action)
           .should('be.visible')
@@ -122,14 +122,22 @@ export const topologyActions = {
         detailsPage.titleShouldContain(action);
         break;
       }
-      case 'Delete Application':
+      case 'Create Service Binding':
+      case nodeActions.CreateServiceBinding: {
+        cy.byTestActionID(action)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
+        break;
+      }
+      case 'Delete application':
       case applicationGroupingsActions.DeleteApplication: {
         cy.byTestActionID(action)
           .should('be.visible')
           .click();
         break;
       }
-      case 'Add to Application':
+      case 'Add to application':
       case applicationGroupingsActions.AddtoApplication: {
         cy.get(topologyPO.addToApplication)
           .should('be.visible')
@@ -146,6 +154,7 @@ export const topologyActions = {
 export const addToApplication = {
   selectAction: (action: addToApplicationGroupings | string) => {
     switch (action) {
+      // TODO (ODC-6455): Tests should use latest UI labels like "Import from Git" instead of mapping strings
       case addToApplicationGroupings.FromGit:
       case 'From Git': {
         cy.byTestActionID(action)
@@ -153,6 +162,7 @@ export const addToApplication = {
           .click();
         break;
       }
+      // TODO (ODC-6455): Tests should use latest UI labels like "Import from Git" instead of mapping strings
       case addToApplicationGroupings.FromDevfile:
       case 'From Devfile': {
         cy.byTestActionID(action)
@@ -160,6 +170,7 @@ export const addToApplication = {
           .click();
         break;
       }
+      // TODO (ODC-6455): Tests should use latest UI labels like "Import from Git" instead of mapping strings
       case addToApplicationGroupings.FromDockerfile:
       case 'From Dockerfile': {
         cy.byTestActionID(action)

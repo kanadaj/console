@@ -52,7 +52,7 @@ const PodStatus: React.FC<PodStatusProps> = ({
   standalone = false,
   showTooltip = true,
   title,
-  subTitle,
+  subTitle = '',
   titleComponent,
   subTitleComponent,
   data,
@@ -93,9 +93,9 @@ const PodStatus: React.FC<PodStatusProps> = ({
   const chartDonut = React.useMemo(() => {
     return (
       <ChartDonut
-        ariaTitle={`${title} ${subTitle}`}
+        ariaTitle={`${title}${subTitle && ` ${subTitle}`}`}
         animate={{
-          duration: ANIMATION_DURATION,
+          duration: prevVData.current ? ANIMATION_DURATION : 0,
           onEnd: updateOnEnd ? forceUpdate : undefined,
         }}
         standalone={standalone}

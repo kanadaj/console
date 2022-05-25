@@ -4,29 +4,34 @@ import {
   PodKind,
   K8sResourceConditionStatus,
   referenceForModel,
-  K8sKind,
   K8sResourceKind,
 } from '@console/internal/module/k8s';
 import { TopologyDataResources } from '@console/topology/src/topology-types';
-import { SERVERLESS_FUNCTION_LABEL } from '../../const';
 import {
-  ConfigurationModel,
-  RouteModel,
-  RevisionModel,
+  SERVERLESS_FUNCTION_LABEL,
+  EVENTING_IMC_KIND,
+  EVENT_SOURCE_API_SERVER_KIND,
+  EVENT_SOURCE_CAMEL_KIND,
+  EVENT_SOURCE_KAFKA_KIND,
+  EVENT_SOURCE_SINK_BINDING_KIND,
+  KNATIVE_EVENT_MESSAGE_APIGROUP,
+  KNATIVE_EVENT_SOURCE_APIGROUP,
+  EVENT_SOURCE_CONTAINER_KIND,
+  KNATIVE_EVENT_SOURCE_APIGROUP_DEP,
+  EVENT_SOURCE_PING_KIND,
+} from '../../const';
+import {
+  CamelKameletModel,
+  DomainMappingModel,
   ServiceModel,
-  EventSourceCronJobModel,
-  EventSourceContainerModel,
-  EventSourceCamelModel,
-  EventSourceKafkaModel,
-  EventSourcePingModel,
-  EventSourceSinkBindingModel,
-  EventSourceApiServerModel,
+  RevisionModel,
+  RouteModel,
   EventingSubscriptionModel,
-  EventingIMCModel,
   EventingBrokerModel,
   EventingTriggerModel,
   CamelKameletBindingModel,
-  DomainMappingModel,
+  ConfigurationModel,
+  KafkaSinkModel,
 } from '../../models';
 import {
   RevisionKind,
@@ -421,6 +426,105 @@ const sampleKnativeBuilds: FirehoseResult = {
   data: [],
 };
 
+export const sampleKnativeBuildConfigs2: FirehoseResult = {
+  loaded: true,
+  loadError: '',
+  data: [
+    {
+      metadata: {
+        name: 'overlayimage',
+        namespace: 'testproject3',
+        uid: '73d2d812-29aa-4b6a-87e0-d69fcf3ed0cd',
+        resourceVersion: '58983',
+        creationTimestamp: '2020-06-24T11:17:40Z',
+        labels: {
+          app: 'overlayimage',
+        },
+      },
+      spec: {
+        nodeSelector: null,
+        output: {
+          to: {
+            kind: 'ImageStreamTag',
+            name: 'py-cron:1.0',
+          },
+        },
+        resources: {},
+        successfulBuildsHistoryLimit: 5,
+        failedBuildsHistoryLimit: 5,
+        strategy: {
+          type: 'Source',
+          sourceStrategy: {
+            from: {
+              kind: 'ImageStreamTag',
+              namespace: 'openshift',
+              name: 'python:3.6',
+            },
+          },
+        },
+        postCommit: {},
+        source: {
+          type: 'Git',
+          git: {
+            uri: 'https://github.com/clcollins/openshift-cronjob-example.git',
+            ref: 'master',
+          },
+        },
+        runPolicy: 'Serial',
+      },
+      status: {
+        lastVersion: 1,
+      },
+    },
+    {
+      metadata: {
+        name: 'overlayimage2',
+        namespace: 'testproject3',
+        uid: '73d2d812-29aa-4b6a-87e0-d69fcf3ed0cd',
+        resourceVersion: '58983',
+        creationTimestamp: '2020-06-24T11:17:40Z',
+        labels: {
+          app: 'overlayimage',
+        },
+      },
+      spec: {
+        nodeSelector: null,
+        output: {
+          to: {
+            kind: 'ImageStreamTag',
+            name: 'py-cron:1.0',
+          },
+        },
+        resources: {},
+        successfulBuildsHistoryLimit: 5,
+        failedBuildsHistoryLimit: 5,
+        strategy: {
+          type: 'Source',
+          sourceStrategy: {
+            from: {
+              kind: 'ImageStreamTag',
+              namespace: 'openshift',
+              name: 'python:3.6',
+            },
+          },
+        },
+        postCommit: {},
+        source: {
+          type: 'Git',
+          git: {
+            uri: 'https://github.com/clcollins/openshift-cronjob-example.git',
+            ref: 'master',
+          },
+        },
+        runPolicy: 'Serial',
+      },
+      status: {
+        lastVersion: 1,
+      },
+    },
+  ],
+};
+
 export const sampleKnativeConfigurations: FirehoseResult = {
   loaded: true,
   loadError: '',
@@ -621,14 +725,18 @@ export const sampleKnativeServices: FirehoseResult = {
   data: [knativeServiceObj],
 };
 
-export const getEventSourceResponse = (eventSourceModel: K8sKind): FirehoseResult => {
+export const getEventSourceResponse = (
+  apiGroup: string,
+  apiVersion: string,
+  kind: string,
+): FirehoseResult => {
   return {
     loaded: true,
     loadError: '',
     data: [
       {
-        apiVersion: `${eventSourceModel.apiGroup}/${eventSourceModel.apiVersion}`,
-        kind: eventSourceModel.kind,
+        apiVersion: `${apiGroup}/${apiVersion}`,
+        kind,
         metadata: {
           name: 'overlayimage',
           namespace: 'testproject3',
@@ -686,8 +794,8 @@ export const sampleEventSourceSinkbinding: FirehoseResult = {
   loadError: '',
   data: [
     {
-      apiVersion: `${EventSourceSinkBindingModel.apiGroup}/${EventSourceSinkBindingModel.apiVersion}`,
-      kind: EventSourceSinkBindingModel.kind,
+      apiVersion: `${KNATIVE_EVENT_SOURCE_APIGROUP}/v1`,
+      kind: EVENT_SOURCE_SINK_BINDING_KIND,
       metadata: {
         name: 'bind-wss',
         namespace: 'testproject3',
@@ -730,7 +838,7 @@ export const sampleSourceKameletBinding: FirehoseResult = {
             'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIuNjY3IiB4Mj0iLjQxNyIgeTE9Ii4xNjciIHkyPSIuNzUiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzM3YWVlMiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFlOTZjOCIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iLjY2IiB4Mj0iLjg1MSIgeTE9Ii40MzciIHkyPSIuODAyIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNlZmY3ZmMiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZmYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48Y2lyY2xlIGN4PSIxMjAiIGN5PSIxMjAiIHI9IjEyMCIgZmlsbD0idXJsKCNhKSIvPjxwYXRoIGZpbGw9IiNjOGRhZWEiIGQ9Ik05OCAxNzVjLTMuODg4IDAtMy4yMjctMS40NjgtNC41NjgtNS4xN0w4MiAxMzIuMjA3IDE3MCA4MCIvPjxwYXRoIGZpbGw9IiNhOWM5ZGQiIGQ9Ik05OCAxNzVjMyAwIDQuMzI1LTEuMzcyIDYtM2wxNi0xNS41NTgtMTkuOTU4LTEyLjAzNSIvPjxwYXRoIGZpbGw9InVybCgjYikiIGQ9Ik0xMDAuMDQgMTQ0LjQxbDQ4LjM2IDM1LjcyOWM1LjUxOSAzLjA0NSA5LjUwMSAxLjQ2OCAxMC44NzYtNS4xMjNsMTkuNjg1LTkyLjc2M2MyLjAxNS04LjA4LTMuMDgtMTEuNzQ2LTguMzYtOS4zNDlsLTExNS41OSA0NC41NzFjLTcuODkgMy4xNjUtNy44NDMgNy41NjctMS40MzggOS41MjhsMjkuNjYzIDkuMjU5IDY4LjY3My00My4zMjVjMy4yNDItMS45NjYgNi4yMTgtLjkxIDMuNzc2IDEuMjU4Ii8+PC9zdmc+',
         },
         resourceVersion: '267611',
-        name: 'overlayimage',
+        name: 'overlayimage-kb',
         uid: '3343caf6-f23f-420a-888e-e2c06aaaa843',
         creationTimestamp: '2020-11-17T07:06:51Z',
         generation: 3,
@@ -748,6 +856,44 @@ export const sampleSourceKameletBinding: FirehoseResult = {
             name: 'telegram-source',
           },
         },
+      },
+      status: {
+        conditions: [
+          {
+            lastTransitionTime: '2020-11-17T08:19:41Z',
+            lastUpdateTime: '2020-11-17T08:19:41Z',
+            status: 'True',
+            type: 'Ready',
+          },
+        ],
+        phase: 'Ready',
+      },
+    },
+  ],
+};
+
+export const sampleSourceKafkaSink: FirehoseResult = {
+  loaded: true,
+  loadError: '',
+  data: [
+    {
+      kind: KafkaSinkModel.kind,
+      apiVersion: `${KafkaSinkModel.apiGroup}/${KafkaSinkModel.apiVersion}`,
+      metadata: {
+        annotations: {
+          'camel.apache.org/kamelet.icon':
+            'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIuNjY3IiB4Mj0iLjQxNyIgeTE9Ii4xNjciIHkyPSIuNzUiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzM3YWVlMiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFlOTZjOCIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iLjY2IiB4Mj0iLjg1MSIgeTE9Ii40MzciIHkyPSIuODAyIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNlZmY3ZmMiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZmYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48Y2lyY2xlIGN4PSIxMjAiIGN5PSIxMjAiIHI9IjEyMCIgZmlsbD0idXJsKCNhKSIvPjxwYXRoIGZpbGw9IiNjOGRhZWEiIGQ9Ik05OCAxNzVjLTMuODg4IDAtMy4yMjctMS40NjgtNC41NjgtNS4xN0w4MiAxMzIuMjA3IDE3MCA4MCIvPjxwYXRoIGZpbGw9IiNhOWM5ZGQiIGQ9Ik05OCAxNzVjMyAwIDQuMzI1LTEuMzcyIDYtM2wxNi0xNS41NTgtMTkuOTU4LTEyLjAzNSIvPjxwYXRoIGZpbGw9InVybCgjYikiIGQ9Ik0xMDAuMDQgMTQ0LjQxbDQ4LjM2IDM1LjcyOWM1LjUxOSAzLjA0NSA5LjUwMSAxLjQ2OCAxMC44NzYtNS4xMjNsMTkuNjg1LTkyLjc2M2MyLjAxNS04LjA4LTMuMDgtMTEuNzQ2LTguMzYtOS4zNDlsLTExNS41OSA0NC41NzFjLTcuODkgMy4xNjUtNy44NDMgNy41NjctMS40MzggOS41MjhsMjkuNjYzIDkuMjU5IDY4LjY3My00My4zMjVjMy4yNDItMS45NjYgNi4yMTgtLjkxIDMuNzc2IDEuMjU4Ii8+PC9zdmc+',
+        },
+        resourceVersion: '267611',
+        name: 'kafkasink-dummy',
+        uid: '3343caf6-dg43-420a-888e-e2c06aaaa843',
+        creationTimestamp: '2020-11-17T07:06:51Z',
+        generation: 3,
+        namespace: 'testproject3',
+      },
+      spec: {
+        topic: 'kafka-demo',
+        bootstrapServers: 'localhost:9092',
       },
       status: {
         conditions: [
@@ -841,7 +987,7 @@ export const sampleServices: FirehoseResult = {
         },
         ownerReferences: [
           {
-            apiVersion: `networking.internal.knative.dev/${ServiceModel.apiVersion}`,
+            apiVersion: `networking.internal.knative.dev/v1`,
             kind: 'ServerlessService',
             name: 'overlayimage-9jsl8',
             uid: 'bcf5bfcf-8ce0-11e9-9020-0ab4b49bd478',
@@ -927,8 +1073,8 @@ export const sampleEventSourceDeployments: FirehoseResult<DeploymentKind[]> = {
         },
         ownerReferences: [
           {
-            apiVersion: `${EventSourceApiServerModel.apiGroup}/${EventSourceApiServerModel.apiVersion}`,
-            kind: EventSourceApiServerModel.kind,
+            apiVersion: `${KNATIVE_EVENT_SOURCE_APIGROUP}/v1`,
+            kind: EVENT_SOURCE_API_SERVER_KIND,
             name: 'testevents',
             uid: '1317f615-9636-11e9-b134-06a61d886b689_1',
             controller: true,
@@ -986,8 +1132,8 @@ export const EventSubscriptionObj: EventSubscriptionKind = {
   },
   spec: {
     channel: {
-      apiVersion: `${EventingIMCModel.apiGroup}/${EventingIMCModel.apiVersion}`,
-      kind: EventingIMCModel.kind,
+      apiVersion: `${KNATIVE_EVENT_MESSAGE_APIGROUP}/v1`,
+      kind: EVENTING_IMC_KIND,
       name: 'testchannel',
     },
     subscriber: {
@@ -1003,8 +1149,8 @@ export const EventSubscriptionObj: EventSubscriptionKind = {
 };
 
 export const EventIMCObj: EventChannelKind = {
-  apiVersion: `${EventingIMCModel.apiGroup}/${EventingIMCModel.apiVersion}`,
-  kind: EventingIMCModel.kind,
+  apiVersion: `${KNATIVE_EVENT_MESSAGE_APIGROUP}/v1`,
+  kind: EVENTING_IMC_KIND,
   metadata: {
     name: 'testchannel',
     namespace: 'testproject3',
@@ -1026,6 +1172,12 @@ export const EventIMCObj: EventChannelKind = {
       url: 'http://channel-display1.testproject3.svc.cluster.local',
     },
   },
+};
+
+export const sampleKnativeChannels: FirehoseResult = {
+  loaded: true,
+  loadError: '',
+  data: [EventIMCObj],
 };
 
 export const EventBrokerObj: EventChannelKind = {
@@ -1087,6 +1239,12 @@ const sampleTriggers: FirehoseResult = {
   data: [EventTriggerObj],
 };
 
+const sampleKamelets: FirehoseResult = {
+  loaded: true,
+  loadError: '',
+  data: [],
+};
+
 export const MockKnativeResources: TopologyDataResources = {
   deployments: sampleKnativeDeployments,
   deploymentConfigs: sampleKnativeDeploymentConfigs,
@@ -1101,18 +1259,39 @@ export const MockKnativeResources: TopologyDataResources = {
   ksroutes: sampleKnativeRoutes,
   configurations: sampleKnativeConfigurations,
   revisions: sampleKnativeRevisions,
-  [referenceForModel(EventSourceCronJobModel)]: getEventSourceResponse(EventSourceCronJobModel),
-  [referenceForModel(EventSourceContainerModel)]: getEventSourceResponse(EventSourceContainerModel),
-  [referenceForModel(EventSourceCamelModel)]: getEventSourceResponse(EventSourceCamelModel),
-  [referenceForModel(EventSourceKafkaModel)]: getEventSourceResponse(EventSourceKafkaModel),
-  [referenceForModel(EventSourceSinkBindingModel)]: sampleEventSourceSinkbinding,
-  [referenceForModel(EventSourcePingModel)]: getEventSourceResponse(EventSourcePingModel),
-  [referenceForModel(EventSourceApiServerModel)]: getEventSourceResponse(EventSourceApiServerModel),
+  [EVENT_SOURCE_CONTAINER_KIND]: getEventSourceResponse(
+    KNATIVE_EVENT_SOURCE_APIGROUP,
+    'v1',
+    EVENT_SOURCE_CONTAINER_KIND,
+  ),
+  [EVENT_SOURCE_CAMEL_KIND]: getEventSourceResponse(
+    KNATIVE_EVENT_SOURCE_APIGROUP,
+    'v1alpha1',
+    EVENT_SOURCE_CAMEL_KIND,
+  ),
+  [EVENT_SOURCE_KAFKA_KIND]: getEventSourceResponse(
+    KNATIVE_EVENT_SOURCE_APIGROUP,
+    'v1beta1',
+    EVENT_SOURCE_KAFKA_KIND,
+  ),
+  [EVENT_SOURCE_SINK_BINDING_KIND]: sampleEventSourceSinkbinding,
+  [EVENT_SOURCE_PING_KIND]: getEventSourceResponse(
+    KNATIVE_EVENT_SOURCE_APIGROUP,
+    'v1',
+    EVENT_SOURCE_PING_KIND,
+  ),
+  [EVENT_SOURCE_API_SERVER_KIND]: getEventSourceResponse(
+    KNATIVE_EVENT_SOURCE_APIGROUP,
+    'v1',
+    EVENT_SOURCE_API_SERVER_KIND,
+  ),
   clusterServiceVersions: sampleClusterServiceVersions,
   triggers: sampleTriggers,
   brokers: sampleBrokers,
   [CamelKameletBindingModel.plural]: sampleSourceKameletBinding,
+  [KafkaSinkModel.plural]: sampleSourceKafkaSink,
   [DomainMappingModel.plural]: sampleDomainMapping,
+  [CamelKameletModel.plural]: sampleKamelets,
 };
 
 export const MockKnativeBuildConfig = {
@@ -1218,7 +1397,8 @@ export const sinkUriUid = '1317f615-9636-11e9-b134-06a61d886b689_1_nodesinkuri';
 const sinkUri = 'http://overlayimage.testproject3.svc.cluster.local';
 
 export const eventSourceWithSinkUri: K8sResourceKind = {
-  ...getEventSourceResponse(EventSourceCronJobModel).data[0],
+  ...getEventSourceResponse(KNATIVE_EVENT_SOURCE_APIGROUP_DEP, 'v1alpha1', EVENT_SOURCE_PING_KIND)
+    .data[0],
   spec: { sink: { uri: sinkUri } },
 };
 

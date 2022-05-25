@@ -28,6 +28,8 @@ export const TEMPLATE_VM_NAME_LABEL = 'vm.kubevirt.io/name';
 export const TEMPLATE_OS_NAME_ANNOTATION = 'name.os.template.kubevirt.io';
 export const TEMPLATE_BASE_IMAGE_NAME_PARAMETER = 'SRC_PVC_NAME';
 export const TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER = 'SRC_PVC_NAMESPACE';
+export const TEMPLATE_DATA_SOURCE_NAME_PARAMETER = 'DATA_SOURCE_NAME';
+export const TEMPLATE_DATA_SOURCE_NAMESPACE_PARAMETER = 'DATA_SOURCE_NAMESPACE';
 export const TEMPLATE_VM_DOMAIN_LABEL = 'kubevirt.io/domain';
 export const TEMPLATE_VM_SIZE_LABEL = 'kubevirt.io/size';
 export const TEMPLATE_VM_COMMON_NAMESPACE = 'openshift';
@@ -45,6 +47,8 @@ export const LABEL_USED_TEMPLATE_NAME = 'vm.kubevirt.io/template';
 export const LABEL_USED_TEMPLATE_NAMESPACE = 'vm.kubevirt.io/template.namespace';
 
 export const DEFAULT_RDP_PORT = 3389;
+
+export const DESCHEDULER_EVICT_LABEL = 'descheduler.alpha.kubernetes.io/evict';
 
 export const VM_DETAIL_DETAILS_HREF = 'details';
 export const VM_DETAIL_DISKS_HREF = 'disks';
@@ -79,7 +83,12 @@ export const ROOT_DISK_INSTALL_NAME = 'install';
 
 export const TEMPLATE_PIN = 'kubevirt.templates.pins';
 export const TEMPLATE_PIN_PROMOTED = 'kubevirt.templates.pins.promoted';
+export const TEMPLATE_PIN_RHEL_7 = 'rhel7-server-small';
+export const TEMPLATE_PIN_RHEL_8 = 'rhel8-server-small';
+export const TEMPLATE_PIN_RHEL_9 = 'rhel9-server-small';
 export const TEMPLATE_WARN_SUPPORT = 'kubevirt.templates.warnSupport';
 export const TEMPLATE_CUSTOMIZE_SOURCE = 'kubevirt.templates.customizeSource';
 
 export const DEFAULT_DISK_SIZE = '20Gi';
+
+export const RED_HAT = 'Red Hat';

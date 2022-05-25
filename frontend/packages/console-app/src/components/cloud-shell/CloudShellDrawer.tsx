@@ -2,7 +2,6 @@ import * as React from 'react';
 import { Tooltip, Flex, FlexItem, Button } from '@patternfly/react-core';
 import { ExternalLinkAltIcon } from '@patternfly/react-icons';
 import { useTranslation } from 'react-i18next';
-import { InlineTechPreviewBadge } from '@console/shared';
 import CloseButton from '@console/shared/src/components/close-button';
 import Drawer from '@console/shared/src/components/drawer/Drawer';
 import MinimizeRestoreButton from './MinimizeRestoreButton';
@@ -30,12 +29,9 @@ const CloudShellDrawer: React.FC<CloudShellDrawerProps> = ({ children, onClose }
     setExpanded(openState);
   };
   const header = (
-    <Flex style={{ flexGrow: 1 }}>
+    <Flex style={{ flexGrow: 1 }} data-test="cloudshell-drawer-header">
       <FlexItem className="co-cloud-shell-drawer__heading">
         {t('console-app~Command line terminal')}
-      </FlexItem>
-      <FlexItem>
-        <InlineTechPreviewBadge />
       </FlexItem>
       <FlexItem align={{ default: 'alignRight' }}>
         <Tooltip content={t('console-app~Open terminal in new tab')}>
@@ -56,7 +52,11 @@ const CloudShellDrawer: React.FC<CloudShellDrawerProps> = ({ children, onClose }
           onClick={onMRButtonClick}
         />
         <Tooltip content={t('console-app~Close terminal')}>
-          <CloseButton ariaLabel={t('console-app~Close terminal')} onClick={onClose} />
+          <CloseButton
+            ariaLabel={t('console-app~Close terminal')}
+            onClick={onClose}
+            data-test="cloudshell-drawer-close-button"
+          />
         </Tooltip>
       </FlexItem>
     </Flex>
@@ -70,7 +70,7 @@ const CloudShellDrawer: React.FC<CloudShellDrawerProps> = ({ children, onClose }
       onChange={handleChange}
       resizable
     >
-      {children}
+      <div className="co-cloud-shell-drawer__body">{children}</div>
     </Drawer>
   );
 };

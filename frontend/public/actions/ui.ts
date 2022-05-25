@@ -31,6 +31,7 @@ export enum ActionType {
   SetActiveNamespace = 'setActiveNamespace',
   SetCreateProjectMessage = 'setCreateProjectMessage',
   SetCurrentLocation = 'setCurrentLocation',
+  SetServiceLevel = 'setServiceLevel',
   NotificationDrawerToggleExpanded = 'notificationDrawerExpanded',
   SetClusterID = 'setClusterID',
   SortList = 'sortList',
@@ -125,7 +126,12 @@ export const getPVCMetric = (pvc: K8sResourceKind, metric: string): number => {
   return metrics?.[metric]?.[pvc.metadata.namespace]?.[pvc.metadata.name] ?? 0;
 };
 
-export const formatNamespaceRoute = (activeNamespace, originalPath, location?) => {
+export const formatNamespaceRoute = (
+  activeNamespace,
+  originalPath,
+  location?,
+  forceList?: boolean,
+) => {
   let path = originalPath.substr(window.SERVER_FLAGS.basePath.length);
 
   let parts = path.split('/').filter((p) => p);
@@ -147,7 +153,8 @@ export const formatNamespaceRoute = (activeNamespace, originalPath, location?) =
   if (
     (previousNS !== activeNamespace &&
       (parts[1] !== 'new' || activeNamespace !== ALL_NAMESPACES_KEY)) ||
-    (activeNamespace === ALL_NAMESPACES_KEY && parts[1] === 'new')
+    (activeNamespace === ALL_NAMESPACES_KEY && parts[1] === 'new') ||
+    forceList
   ) {
     // a given resource will not exist when we switch namespaces, so pop off the tail end
     parts = parts.slice(0, 1);
@@ -170,6 +177,21 @@ export const formatNamespaceRoute = (activeNamespace, originalPath, location?) =
 
 export const setCurrentLocation = (location: string) =>
   action(ActionType.SetCurrentLocation, { location });
+
+export const setServiceLevel = (
+  serviceLevel: string,
+  daysRemaining: number = null,
+  clusterID: string = '',
+  trialDateEnd: string = null,
+  hasSecretAccess: boolean = false,
+) =>
+  action(ActionType.SetServiceLevel, {
+    serviceLevel,
+    daysRemaining,
+    clusterID,
+    trialDateEnd,
+    hasSecretAccess,
+  });
 
 export const setActiveApplication = (application: string) => {
   return action(ActionType.SetActiveApplication, { application });
@@ -302,6 +324,7 @@ const uiActions = {
   setClusterID,
   selectOverviewItem,
   selectOverviewDetailsTab,
+  setServiceLevel,
   updateOverviewMetrics,
   updateOverviewResources,
   updateTimestamps,

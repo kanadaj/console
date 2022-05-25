@@ -12,7 +12,7 @@ import { withFallback } from '@console/shared/src/components/error/error-boundar
 import { useDocumentListener, KEYBOARD_SHORTCUTS, useDeepCompareMemoize } from '@console/shared';
 import { ColumnLayout } from '@console/dynamic-plugin-sdk';
 
-import { filterList } from '../../actions/k8s';
+import { filterList } from '@console/dynamic-plugin-sdk/src/app/k8s/actions/k8s';
 import { storagePrefix } from '../row-filter';
 import { ErrorPage404, ErrorBoundaryFallback } from '../error';
 import { K8sKind, K8sResourceCommon, referenceForModel, Selector } from '../../module/k8s';
@@ -76,8 +76,8 @@ export const TextFilter: React.FC<TextFilterProps> = (props) => {
         tabIndex={0}
         type="text"
       />
-      <span className="form-control-feedback form-control-feedback--keyboard-hint">
-        <kbd>{KEYBOARD_SHORTCUTS.focusFilterInput}</kbd>
+      <span className="co-text-filter-feedback">
+        <kbd className="co-kbd co-kbd__filter-input">{KEYBOARD_SHORTCUTS.focusFilterInput}</kbd>
       </span>
     </div>
   );
@@ -181,6 +181,7 @@ export type FireManProps = {
   helpText?: React.ReactNode;
   title: string;
   autoFocus?: boolean;
+  cluster?: string;
 };
 
 type FireManState = {
@@ -202,14 +203,22 @@ export const FireMan = connect<{}, { filterList: typeof filterList }, FireManPro
       this.applyFilter = this.applyFilter.bind(this);
 
       const reduxIDs = props.resources.map((r) =>
-        makeReduxID(kindObj(r.kind), makeQuery(r.namespace, r.selector, r.fieldSelector, r.name)),
+        makeReduxID(
+          kindObj(r.kind),
+          makeQuery(r.namespace, r.selector, r.fieldSelector, r.name),
+          this.props.cluster,
+        ),
       );
       this.state = { reduxIDs };
     }
 
-    UNSAFE_componentWillReceiveProps({ resources }) {
+    UNSAFE_componentWillReceiveProps({ resources, cluster }: FireManProps) {
       const reduxIDs = resources.map((r) =>
-        makeReduxID(kindObj(r.kind), makeQuery(r.namespace, r.selector, r.fieldSelector, r.name)),
+        makeReduxID(
+          kindObj(r.kind),
+          makeQuery(r.namespace, r.selector, r.fieldSelector, r.name),
+          cluster,
+        ),
       );
       if (_.isEqual(reduxIDs, this.state.reduxIDs)) {
         return;

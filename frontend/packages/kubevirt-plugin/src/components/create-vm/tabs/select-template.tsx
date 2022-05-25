@@ -45,12 +45,12 @@ import {
 } from '../../../selectors/vm-template/basic';
 import { getTemplateSourceStatus } from '../../../statuses/template/template-source-status';
 import { isTemplateSourceError, TemplateSourceStatus } from '../../../statuses/template/types';
+import { DataSourceKind } from '../../../types';
 import { V1alpha1DataVolume } from '../../../types/api';
 import { TemplateItem } from '../../../types/template';
 import { FormPFSelect } from '../../form/form-pf-select';
 import { getTemplateOSIcon, PinnedIcon } from '../../vm-templates/os-icons';
 import { TemplateSource } from '../../vm-templates/vm-template-source';
-import { VMTemplateCommnunityLabel } from '../../vm-templates/VMTemplateCommnunityLabel';
 import VMTemplateSupport from '../../vm-templates/VMTemplateSupport';
 import { useVmTemplatesFilters } from '../hooks/use-vm-templates-filters';
 
@@ -92,7 +92,7 @@ export const TemplateTile: React.FC<TemplateTileProps> = ({
         'pf-m-selectable pf-m-selected': isSelected,
       })}
       icon={<img src={getTemplateOSIcon(template)} alt="" />}
-      badges={[<VMTemplateCommnunityLabel template={template} />, isPinned && <PinnedIcon />]}
+      badges={[...(isPinned ? [<PinnedIcon />] : [])]}
       title={
         <Stack>
           <StackItem>
@@ -137,6 +137,7 @@ type SelectTemplateProps = {
   selectedTemplate: TemplateItem;
   pods: PodKind[];
   dataVolumes: V1alpha1DataVolume[];
+  dataSources: DataSourceKind[];
   pvcs: PersistentVolumeClaimKind[];
   templates: TemplateItem[];
   namespace: string;
@@ -152,6 +153,7 @@ export const SelectTemplate: React.FC<SelectTemplateProps> = ({
   selectedTemplate,
   pods,
   dataVolumes,
+  dataSources,
   templates,
   pvcs,
   namespace,
@@ -176,6 +178,7 @@ export const SelectTemplate: React.FC<SelectTemplateProps> = ({
         pvcs,
         dataVolumes,
         template: template.variants[0],
+        dataSources,
       }),
       isPinned: isPinned(template),
     }))

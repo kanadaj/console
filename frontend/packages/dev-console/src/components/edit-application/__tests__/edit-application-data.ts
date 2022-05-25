@@ -1,15 +1,11 @@
+import { GitProvider } from '@console/git-service/src';
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import { ServiceModel } from '@console/knative-plugin';
 import { UNASSIGNED_KEY } from '@console/topology/src/const';
 import { healthChecksData } from '../../health-checks/__tests__/create-health-checks-probe-data';
 import { healthChecksProbeInitialData } from '../../health-checks/health-checks-probe-utils';
 import { serverlessInitialValues } from '../../import/__mocks__/serverless-mock';
-import {
-  DeployImageFormData,
-  GitImportFormData,
-  GitTypes,
-  Resources,
-} from '../../import/import-types';
+import { DeployImageFormData, GitImportFormData, Resources } from '../../import/import-types';
 import { AppResources } from '../edit-application-types';
 
 export const knativeService: K8sResourceKind = {
@@ -508,8 +504,9 @@ export const gitImportInitialValues: GitImportFormData = {
       caCertificate: '',
       certificate: '',
       destinationCACertificate: '',
-      privateKey: '',
+      key: '',
     },
+    labels: {},
   },
   resources: Resources.OpenShift,
   serverless: serverlessInitialValues,
@@ -539,7 +536,7 @@ export const gitImportInitialValues: GitImportFormData = {
   },
   git: {
     url: 'https://github.com/divyanshiGupta/nationalparks-py',
-    type: GitTypes.github,
+    type: GitProvider.GITHUB,
     ref: '',
     dir: '/',
     showGitType: false,
@@ -591,8 +588,9 @@ export const externalImageValues: DeployImageFormData = {
       caCertificate: '',
       certificate: '',
       destinationCACertificate: '',
-      privateKey: '',
+      key: '',
     },
+    labels: {},
   },
   resources: Resources.OpenShift,
   serverless: serverlessInitialValues,
@@ -664,8 +662,9 @@ export const internalImageValues: DeployImageFormData = {
       caCertificate: '',
       certificate: '',
       destinationCACertificate: '',
-      privateKey: '',
+      key: '',
     },
+    labels: {},
   },
   resources: Resources.OpenShift,
   serverless: serverlessInitialValues,
@@ -786,10 +785,11 @@ export const knExternalImageValues: DeployImageFormData = {
       certificate: '',
       destinationCACertificate: '',
       insecureEdgeTerminationPolicy: '',
-      privateKey: '',
+      key: '',
       termination: '',
     },
     unknownTargetPort: '',
+    labels: {},
   },
   searchTerm: 'openshift/hello-openshift',
   allowInsecureRegistry: false,

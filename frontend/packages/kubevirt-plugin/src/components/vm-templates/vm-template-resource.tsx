@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LabelList, ResourceSummary } from '@console/internal/components/utils';
+import { LabelList, ResourceSummary, useAccessReview2 } from '@console/internal/components/utils';
 import { TemplateKind } from '@console/internal/module/k8s';
 import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
+import { HyperConvergedModel } from '../../models';
 import { getDescription } from '../../selectors/selectors';
 import { getTemplateOperatingSystems } from '../../selectors/vm-template/advanced';
 import {
@@ -22,6 +23,9 @@ import { BootOrderSummary } from '../boot-order';
 import { vmFlavorModal } from '../modals';
 import { BootOrderModal } from '../modals/boot-order-modal';
 import { descriptionModal } from '../modals/description-modal';
+import { gpuDevicesModal } from '../modals/hardware-devices/GPUDeviceModal';
+import { hostDevicesModal } from '../modals/hardware-devices/HostDevicesModal';
+import { permissionsErrorModal } from '../modals/permissions-error-modal/permissions-error-modal';
 import affinityModal from '../modals/scheduling-modals/affinity-modal/connected-affinity-modal';
 import { getRowsDataFromAffinity } from '../modals/scheduling-modals/affinity-modal/helpers';
 import dedicatedResourcesModal from '../modals/scheduling-modals/dedicated-resources-modal/connected-dedicated-resources-modal';
@@ -29,6 +33,7 @@ import evictionStrategyModal from '../modals/scheduling-modals/eviction-strategy
 import nodeSelectorModal from '../modals/scheduling-modals/node-selector-modal/connected-node-selector-modal';
 import tolerationsModal from '../modals/scheduling-modals/tolerations-modal/connected-tolerations-modal';
 import VMDetailsItem from '../vms/VMDetailsItem';
+import VMEditWithPencil from '../vms/VMEditWithPencil';
 import { getVMTemplateResourceFlavorData } from './utils';
 import { VMTemplateLink } from './vm-template-link';
 import { TemplateSource } from './vm-template-source';
@@ -64,7 +69,7 @@ export const VMTemplateResourceSummary: React.FC<VMTemplateResourceSummaryProps>
       </VMDetailsItem>
 
       <VMDetailsItem
-        title={t('kubevirt-plugin~Operating System')}
+        title={t('kubevirt-plugin~Operating system')}
         idValue={prefixedID(id, 'os')}
         isNotAvail={!os}
       >
@@ -72,7 +77,7 @@ export const VMTemplateResourceSummary: React.FC<VMTemplateResourceSummaryProps>
       </VMDetailsItem>
 
       <VMDetailsItem
-        title={t('kubevirt-plugin~Workload Profile')}
+        title={t('kubevirt-plugin~Workload profile')}
         idValue={prefixedID(id, 'workload-profile')}
         isNotAvail={!workloadProfile}
       >
@@ -80,7 +85,7 @@ export const VMTemplateResourceSummary: React.FC<VMTemplateResourceSummaryProps>
       </VMDetailsItem>
 
       <VMDetailsItem
-        title={t('kubevirt-plugin~Base Template')}
+        title={t('kubevirt-plugin~Base template')}
         idValue={prefixedID(id, 'base-template')}
         isNotAvail={!templateNamespacedName}
       >
@@ -130,11 +135,18 @@ export const VMTemplateDetailsList: React.FC<VMTemplateResourceListProps> = ({
 
   const id = getBasicID(template);
   const devices = getTransformedDevices(template);
+  const vmWrapper = new VMWrapper(asVM(template));
+
+  const [canWatchHC] = useAccessReview2({
+    group: HyperConvergedModel?.apiGroup,
+    resource: HyperConvergedModel?.plural,
+    verb: 'watch',
+  });
 
   return (
     <dl className="co-m-pane__details">
       <VMDetailsItem
-        title={t('kubevirt-plugin~Boot Order')}
+        title={t('kubevirt-plugin~Boot order')}
         canEdit={!isCommonTemplate(template)}
         editButtonId={prefixedID(id, 'boot-order-edit')}
         onEditClick={() => BootOrderModal({ vmLikeEntity: template, modalClassName: 'modal-lg' })}
@@ -159,6 +171,57 @@ export const VMTemplateDetailsList: React.FC<VMTemplateResourceListProps> = ({
       </VMDetailsItem>
       <VMDetailsItem title={t('kubevirt-plugin~Support')}>
         <VMTemplateSupportDescription template={template} />
+      </VMDetailsItem>
+      <VMDetailsItem
+        title={t('kubevirt-plugin~Hardware devices')}
+        idValue={prefixedID(id, 'hardware-devices')}
+        editButtonId={prefixedID(id, 'hardware-devices-edit')}
+      >
+        <VMEditWithPencil
+          isEdit={!isCommonTemplate(template)}
+          onEditClick={
+            canWatchHC
+              ? () =>
+                  gpuDevicesModal({
+                    vmLikeEntity: template,
+                    vmDevices: vmWrapper.getGPUDevices(),
+                  })
+              : () =>
+                  permissionsErrorModal({
+                    title: t('kubevirt-plugin~Attach GPU device to VM'),
+                    errorMsg: t(
+                      'kubevirt-plugin~You do not have permissions to attach GPU devices. Contact your system administrator for more information.',
+                    ),
+                  })
+          }
+        >
+          {t('kubevirt-plugin~{{gpusCount}} GPU devices', {
+            gpusCount: vmWrapper.getGPUDevices()?.length || [].length,
+          })}
+        </VMEditWithPencil>
+        <br />
+        <VMEditWithPencil
+          isEdit={!isCommonTemplate(template)}
+          onEditClick={
+            canWatchHC
+              ? () =>
+                  hostDevicesModal({
+                    vmLikeEntity: template,
+                    vmDevices: vmWrapper.getHostDevices(),
+                  })
+              : () =>
+                  permissionsErrorModal({
+                    title: t('kubevirt-plugin~Attach Host device to VM'),
+                    errorMsg: t(
+                      'kubevirt-plugin~You do not have permissions to attach Host devices. Contact your system administrator for more information.',
+                    ),
+                  })
+          }
+        >
+          {t('kubevirt-plugin~{{hostDevicesCount}} Host devices', {
+            hostDevicesCount: vmWrapper.getHostDevices()?.length || [].length,
+          })}
+        </VMEditWithPencil>
       </VMDetailsItem>
     </dl>
   );
@@ -192,7 +255,7 @@ export const VMTemplateSchedulingList: React.FC<VMTemplateResourceSummaryProps> 
         <dl className="co-m-pane__details">
           <VMDetailsItem
             canEdit={canUpdateTemplate}
-            title={t('kubevirt-plugin~Node Selector')}
+            title={t('kubevirt-plugin~Node selector')}
             idValue={prefixedID(id, 'node-selector')}
             editButtonId={prefixedID(id, 'node-selector-edit')}
             onEditClick={() => nodeSelectorModal({ vmLikeEntity: template, blocking: true })}
@@ -218,7 +281,7 @@ export const VMTemplateSchedulingList: React.FC<VMTemplateResourceSummaryProps> 
 
           <VMDetailsItem
             canEdit={canUpdateTemplate}
-            title={t('kubevirt-plugin~Affinity Rules')}
+            title={t('kubevirt-plugin~Affinity rules')}
             idValue={prefixedID(id, 'affinity')}
             editButtonId={prefixedID(id, 'affinity-edit')}
             onEditClick={() =>
@@ -247,7 +310,7 @@ export const VMTemplateSchedulingList: React.FC<VMTemplateResourceSummaryProps> 
           </VMDetailsItem>
 
           <VMDetailsItem
-            title={t('kubevirt-plugin~Dedicated Resources')}
+            title={t('kubevirt-plugin~Dedicated resources')}
             idValue={prefixedID(id, 'dedicated-resources')}
             canEdit={canUpdateTemplate}
             onEditClick={() =>
@@ -263,7 +326,7 @@ export const VMTemplateSchedulingList: React.FC<VMTemplateResourceSummaryProps> 
               : t('kubevirt-plugin~No Dedicated resources applied')}
           </VMDetailsItem>
           <VMDetailsItem
-            title={t('kubevirt-plugin~Eviction Strategy')}
+            title={t('kubevirt-plugin~Eviction strategy')}
             idValue={prefixedID(id, 'eviction-strategy')}
             canEdit={canUpdateTemplate}
             onEditClick={() =>
@@ -272,7 +335,7 @@ export const VMTemplateSchedulingList: React.FC<VMTemplateResourceSummaryProps> 
             editButtonId={prefixedID(id, 'eviction-strategy-edit')}
           >
             {evictionStrategy || (
-              <p className="text-muted">{t('kubevirt-plugin~No Eviction Strategy')}</p>
+              <p className="text-muted">{t('kubevirt-plugin~No eviction strategy')}</p>
             )}
           </VMDetailsItem>
         </dl>

@@ -36,8 +36,8 @@ export const FeatureHighlightsCard: React.FC = () => {
     },
     {
       id: 'item2',
-      title: getTitle(t('kubevirt-plugin~OpenShift Virtualization 4.7 Highlights'), '5 min'),
-      href: 'https://www.openshift.com/blog/openshift-virtualization-4.7-highlights',
+      title: getTitle(t('kubevirt-plugin~What’s New in OpenShift Virtualization 4.10?'), '5 min'),
+      href: 'https://cloud.redhat.com/blog/whats-new-in-openshift-virtualization-4.10',
       external: true,
     },
   ];
@@ -46,14 +46,10 @@ export const FeatureHighlightsCard: React.FC = () => {
     <GettingStartedCard
       id="feature-highlights"
       icon={
-        <i
-          className="fas fa-blog"
-          color="var(--pf-global--primary-color--100)"
-          aria-hidden="true"
-        />
+        <i className="fas fa-blog" color="var(--co-global--palette--blue-400)" aria-hidden="true" />
       }
       title={t('kubevirt-plugin~Feature highlights')}
-      titleColor={'var(--pf-global--palette--blue-600)'}
+      titleColor={'var(--co-global--palette--blue-400)'}
       description={t(
         'kubevirt-plugin~Read about the latest information and key virtualization features on the Virtualization highlights.',
       )}

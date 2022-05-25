@@ -23,6 +23,8 @@ import {
   ClusterGlobalConfig,
   isClusterGlobalConfig,
 } from '@console/dynamic-plugin-sdk/src/extensions/cluster-settings';
+import { useCanClusterUpgrade } from '@console/shared';
+import filterNonUpgradableResources from './filterNonUpgradableResources';
 
 type ConfigDataType = { model: K8sKind; id: string; name: string; namespace: string };
 
@@ -169,7 +171,7 @@ const GlobalConfigPage_: React.FC<GlobalConfigPageProps & GlobalConfigPageExtens
     <div className="co-m-pane__body">
       {!loading && (
         <>
-          <p className="co-help-text">
+          <p className="co-help-text co-cluster-paragraph">
             {t('public~Edit the following resources to manage the configuration of your cluster.')}
           </p>
           <div className="co-m-pane__filter-row">
@@ -210,9 +212,21 @@ const GlobalConfigPage_: React.FC<GlobalConfigPageProps & GlobalConfigPageExtens
   );
 };
 
-export const GlobalConfigPage = connect(stateToProps)((props) => {
+export const GlobalConfigPage = connect(stateToProps)(({ configResources, ...props }) => {
   const [resolvedExtensions] = useResolvedExtensions<ClusterGlobalConfig>(isClusterGlobalConfig);
-  return <GlobalConfigPage_ globalConfigs={resolvedExtensions} {...props} />;
+
+  const canClusterUpgrade = useCanClusterUpgrade();
+  const adjustedConfigResources = canClusterUpgrade
+    ? configResources
+    : configResources.filter(filterNonUpgradableResources);
+
+  return (
+    <GlobalConfigPage_
+      globalConfigs={resolvedExtensions}
+      configResources={adjustedConfigResources}
+      {...props}
+    />
+  );
 });
 
 type GlobalConfigPageExtensionProps = {

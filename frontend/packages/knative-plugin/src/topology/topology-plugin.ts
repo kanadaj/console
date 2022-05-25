@@ -15,12 +15,7 @@ import {
   FLAG_KNATIVE_SERVING_ROUTE,
   FLAG_KNATIVE_SERVING_SERVICE,
 } from '../const';
-import { fetchEventSourcesCrd, fetchChannelsCrd } from '../utils/fetch-dynamic-eventsources-utils';
 import { getKnativeResources } from '../utils/get-knative-resources';
-
-// Added it to perform discovery of Dynamic event sources on cluster on app load as kebab option needed models upfront
-fetchEventSourcesCrd();
-fetchChannelsCrd();
 
 const getKnativeTopologyDataModel = () =>
   import('./data-transformer' /* webpackChunkName: "knative-components" */).then(

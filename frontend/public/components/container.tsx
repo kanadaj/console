@@ -1,7 +1,7 @@
 import * as React from 'react';
 import * as _ from 'lodash-es';
 import { Trans, useTranslation } from 'react-i18next';
-
+import { CodeBlock, CodeBlockCode, Divider } from '@patternfly/react-core';
 import { Status } from '@console/shared';
 import {
   ContainerLifecycle,
@@ -23,13 +23,16 @@ import {
   MsgBox,
   NodeLink,
   PageHeading,
+  resourcePath,
   ResourceLink,
   ScrollToTopOnMount,
   SectionHeading,
   Timestamp,
+  LoadingBox,
 } from './utils';
-import { resourcePath } from './utils/resource-link';
 import { getBreadcrumbPath } from '@console/internal/components/utils/breadcrumbs';
+import i18n from 'i18next';
+import { ErrorPage404 } from './error';
 
 const formatComputeResources = (resources: ResourceList) =>
   _.map(resources, (v, k) => `${k}: ${v}`).join(', ');
@@ -59,14 +62,14 @@ const Lifecycle: React.FC<LifecycleProps> = ({ lifecycle }) => {
       {postStart && (
         <div>
           <Trans t={t} ns="public">
-            PostStart: {{ postStartLabel }} <code>{{ postStart }}</code>
+            PostStart: {{ postStartLabel }} <code className="co-code">{{ postStart }}</code>
           </Trans>
         </div>
       )}
       {preStop && (
         <div>
           <Trans t={t} ns="public">
-            PreStop: {{ preStopLabel }} <code>{{ preStop }}</code>
+            PreStop: {{ preStopLabel }} <code className="co-code">{{ preStop }}</code>
           </Trans>
         </div>
       )}
@@ -83,7 +86,11 @@ const Probe: React.FC<ProbeProps> = ({ probe, podIP }) => {
     return <>-</>;
   }
   const isMultiline = value.indexOf('\n') !== -1;
-  const formattedValue = isMultiline ? <pre>{value}</pre> : <code>{value}</code>;
+  const formattedValue = isMultiline ? (
+    <pre className="co-pre">{value}</pre>
+  ) : (
+    <code className="co-code">{value}</code>
+  );
   return (
     <>
       {label} {formattedValue}
@@ -226,23 +233,33 @@ const getImageNameAndTag = (image: string) => {
   return { imageName, imageTag };
 };
 
-const ContainerDetails: React.FC<ContainerDetailsProps> = (props) => {
-  const { t } = useTranslation();
-  const pod = props.obj;
-  const container =
-    (_.find(pod.spec.containers, { name: props.match.params.name }) as ContainerSpec) ||
-    (_.find(pod.spec.initContainers, { name: props.match.params.name }) as ContainerSpec);
-  if (!container) {
+const getContainer = (pod: PodKind, name: String): ContainerSpec => {
+  if (!pod.spec) {
     return null;
   }
 
-  const status: ContainerStatus =
-    getContainerStatus(pod, container.name) || ({} as ContainerStatus);
+  return _.find(pod.spec.containers, { name }) || _.find(pod.spec.initContainers, { name });
+};
+
+const getContainerStateValue = (state: any) => {
+  const containerTerminated = state.value === 'terminated' && _.isFinite(state.exitCode);
+  return containerTerminated
+    ? i18n.t('public~{{label}} with exit code {{exitCode}}', { state })
+    : state.label;
+};
+
+export const ContainerDetailsList: React.FC<ContainerDetailsListProps> = (props) => {
+  const { t } = useTranslation();
+  const pod = props.obj;
+  const container = getContainer(pod, props.match.params.name);
+
+  if (!container) {
+    return <ErrorPage404 />;
+  }
+
+  const status: ContainerStatus = getContainerStatus(pod, container.name);
   const state = getContainerState(status);
-  const stateValue =
-    state.value === 'terminated' && _.isFinite(state.exitCode)
-      ? t('public~{{label}} with exit code {{exitCode}}', { state })
-      : state.label;
+  const stateValue = getContainerStateValue(state);
   const { imageName, imageTag } = getImageNameAndTag(container.image);
 
   return (
@@ -314,9 +331,9 @@ const ContainerDetails: React.FC<ContainerDetailsProps> = (props) => {
             <dt>{t('public~Command')}</dt>
             <dd>
               {container.command ? (
-                <pre>
-                  <code>{container.command.join(' ')}</code>
-                </pre>
+                <CodeBlock className="co-code-block--no-header">
+                  <CodeBlockCode>{container.command.join(' ')}</CodeBlockCode>
+                </CodeBlock>
               ) : (
                 <span>-</span>
               )}
@@ -324,9 +341,9 @@ const ContainerDetails: React.FC<ContainerDetailsProps> = (props) => {
             <dt>{t('public~Args')}</dt>
             <dd>
               {container.args ? (
-                <pre>
-                  <code>{container.args.join(' ')}</code>
-                </pre>
+                <CodeBlock>
+                  <CodeBlockCode>{container.args.join(' ')}</CodeBlockCode>
+                </CodeBlock>
               ) : (
                 <span>-</span>
               )}
@@ -349,7 +366,7 @@ const ContainerDetails: React.FC<ContainerDetailsProps> = (props) => {
         </div>
       </div>
 
-      <hr />
+      <Divider className="co-divider" />
 
       <div className="row">
         <div className="col-lg-4">
@@ -376,47 +393,77 @@ const ContainerDetails: React.FC<ContainerDetailsProps> = (props) => {
     </div>
   );
 };
-ContainerDetails.displayName = 'ContainerDetails';
+ContainerDetailsList.displayName = 'ContainerDetailsList';
 
-export const ContainersDetailsPage: React.FC<ContainerDetailsPageProps> = (props) => {
-  const { t } = useTranslation();
+export const ContainersDetailsPage: React.FC<ContainerDetailsProps> = (props) => {
   return (
-    <div>
-      <Firehose
-        resources={[
-          {
-            name: props.match.params.podName,
-            namespace: props.match.params.ns,
-            kind: 'Pod',
-            isList: false,
-            prop: 'obj',
-          },
-        ]}
-      >
-        <PageHeading
-          detail={true}
-          title={props.match.params.name}
-          kind="Container"
-          breadcrumbsFor={() => [
-            { name: t('public~Pods'), path: getBreadcrumbPath(props.match, 'pods') },
-            {
-              name: props.match.params.podName,
-              path: resourcePath('Pod', props.match.params.podName, props.match.params.ns),
-            },
-            { name: t('public~Container details'), path: props.match.url },
-          ]}
-        />
-        <HorizontalNav
-          hideNav={true}
-          pages={[{ name: 'container', href: '', component: ContainerDetails }]}
-          match={props.match}
-        />
-      </Firehose>
-    </div>
+    <Firehose
+      resources={[
+        {
+          name: props.match.params.podName,
+          namespace: props.match.params.ns,
+          kind: 'Pod',
+          isList: false,
+          prop: 'obj',
+        },
+      ]}
+    >
+      <ContainerDetails {...props} />
+    </Firehose>
   );
 };
-
 ContainersDetailsPage.displayName = 'ContainersDetailsPage';
+
+const getContainerStatusStateValue = (pod: PodKind, containerName: string) => {
+  const status: ContainerStatus = getContainerStatus(pod, containerName);
+  const state = getContainerState(status);
+
+  return getContainerStateValue(state);
+};
+
+export const ContainerDetails: React.FC<ContainerDetailsProps> = (props) => {
+  const { t } = useTranslation();
+
+  if (!props.loaded) {
+    return <LoadingBox />;
+  }
+
+  const pod = props.obj.data;
+  const container = getContainer(pod, props.match.params.name);
+
+  if (!container) {
+    return <ErrorPage404 />;
+  }
+
+  const containerStateValue = getContainerStatusStateValue(pod, container.name);
+
+  return (
+    <>
+      <PageHeading
+        detail={true}
+        title={props.match.params.name}
+        kind="Container"
+        getResourceStatus={() => containerStateValue}
+        breadcrumbsFor={() => [
+          { name: t('public~Pods'), path: getBreadcrumbPath(props.match, 'pods') },
+          {
+            name: props.match.params.podName,
+            path: resourcePath('Pod', props.match.params.podName, props.match.params.ns),
+          },
+          { name: t('public~Container details'), path: props.match.url },
+        ]}
+        obj={props.obj}
+      />
+      <HorizontalNav
+        hideNav={true}
+        pages={[{ name: 'container', href: '', component: ContainerDetailsList }]}
+        match={props.match}
+        obj={props.obj}
+      />
+    </>
+  );
+};
+ContainerDetails.displayName = 'ContainerDetails';
 
 type LifecycleProps = {
   lifecycle: ContainerLifecycle;
@@ -439,11 +486,13 @@ type EnvProps = {
   env: EnvVar[];
 };
 
-type ContainerDetailsProps = {
+export type ContainerDetailsListProps = {
   match: any;
   obj: PodKind;
 };
 
-type ContainerDetailsPageProps = {
+export type ContainerDetailsProps = {
   match: any;
+  obj?: any;
+  loaded?: boolean;
 };

@@ -141,7 +141,9 @@ class MastheadToolbarContents_ extends React.Component {
     const { flags, user } = this.props;
     clearTimeout(this.userInactivityTimeout);
     this.userInactivityTimeout = setTimeout(() => {
-      if (flags[FLAGS.OPENSHIFT]) {
+      if (isMultiClusterEnabled()) {
+        authSvc.logoutMulticluster();
+      } else if (flags[FLAGS.OPENSHIFT]) {
         authSvc.logoutOpenShift(user?.metadata?.name === 'kube:admin');
       } else {
         authSvc.logout();
@@ -273,7 +275,7 @@ class MastheadToolbarContents_ extends React.Component {
       window.SERVER_FLAGS.branding !== 'azure'
     ) {
       sections.push({
-        name: t('public~Red Hat applications'),
+        name: t('public~Red Hat Applications'),
         isSection: true,
         actions: [
           {
@@ -285,6 +287,18 @@ class MastheadToolbarContents_ extends React.Component {
               fireTelemetryEvent('Launcher Menu Accessed', {
                 id: 'OpenShift Cluster Manager',
                 name: 'OpenShift Cluster Manager',
+              });
+            },
+          },
+          {
+            label: t('public~Red Hat Hybrid Cloud Console'),
+            externalLink: true,
+            href: 'https://console.redhat.com',
+            image: <img src={redhatLogoImg} alt="" />,
+            callback: () => {
+              fireTelemetryEvent('Launcher Menu Accessed', {
+                id: 'Red Hat Hybrid Cloud Console',
+                name: 'Red Hat Hybrid Cloud Console',
               });
             },
           },
@@ -509,7 +523,9 @@ class MastheadToolbarContents_ extends React.Component {
     if (flags[FLAGS.AUTH_ENABLED]) {
       const logout = (e) => {
         e.preventDefault();
-        if (flags[FLAGS.OPENSHIFT]) {
+        if (isMultiClusterEnabled()) {
+          authSvc.logoutMulticluster();
+        } else if (flags[FLAGS.OPENSHIFT]) {
           authSvc.logoutOpenShift(this.state.isKubeAdmin);
         } else {
           authSvc.logout();
@@ -596,6 +612,7 @@ class MastheadToolbarContents_ extends React.Component {
         onToggle={this._onUserDropdownToggle}
         isOpen={isUserDropdownOpen}
         items={this._renderApplicationItems(actions)}
+        data-tour-id="tour-user-button"
         data-quickstart-id="qs-masthead-usermenu"
         position="right"
         toggleIcon={userToggle}

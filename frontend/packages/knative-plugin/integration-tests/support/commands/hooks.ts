@@ -18,11 +18,12 @@ before(() => {
   //  To ignore the resizeObserverLoopErrors on CI, adding below code
   const resizeObserverLoopErrRe = /^[^(ResizeObserver loop limit exceeded)]/;
   /* eslint-disable consistent-return */
-  Cypress.on('uncaught:exception', (err) => {
+  Cypress.on('uncaught:exception', (err, runnable, promise) => {
     /* returning false here prevents Cypress from failing the test */
     if (resizeObserverLoopErrRe.test(err.message)) {
       return false;
     }
+    cy.log('uncaught:exception', err, runnable, promise);
   });
 });
 
@@ -32,7 +33,8 @@ beforeEach(() => {
 });
 
 after(() => {
-  cy.exec(`oc delete namespace ${Cypress.env('NAMESPACE')}`, { failOnNonZeroExit: false });
+  const namespaces: string[] = Cypress.env('NAMESPACES') || [];
+  cy.exec(`oc delete namespace ${namespaces.join(' ')}`, { failOnNonZeroExit: false });
   // cy.logout();
 });
 

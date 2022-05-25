@@ -22,6 +22,15 @@ $catalog-tile-width: $co-m-catalog-tile-width;
   min-width: 515px; // in order to accommodate filters and tiles at mobile
 }
 
+.co-catalog-item-info {
+  margin-bottom: 20px;
+}
+
+// Prevents our tile text from inheriting the link color
+.co-catalog-tile {
+  color: var(--pf-global--Color--100);
+}
+
 .co-catalog-tile-view {
   display: flex;
   flex-wrap: wrap;
@@ -95,7 +104,7 @@ $catalog-tile-width: $co-m-catalog-tile-width;
 }
 
 .co-catalog-page {
-  background: $pf-color-white;
+  background: var(--pf-global--BackgroundColor--100);
   border: 1px solid var(--pf-global--BorderColor--300);
   display: flex;
   flex: 1;
@@ -118,7 +127,7 @@ $catalog-tile-width: $co-m-catalog-tile-width;
 
   &__description {
     margin-top: -10px;
-    padding: 0 $pf-global-gutter 10px;
+    padding: 0 $pf-global-gutter $pf-global-gutter;
     @media (min-width: $pf-global--breakpoint--xl) {
       padding-left: $pf-global-gutter--md;
       padding-right: $pf-global-gutter--md;
@@ -135,7 +144,7 @@ $catalog-tile-width: $co-m-catalog-tile-width;
   }
 
   &__grid {
-    background-color: $pf-color-black-150;
+    background-color: var(--pf-global--BackgroundColor--200);
   }
 
   &__grouped-items {
@@ -164,13 +173,14 @@ $catalog-tile-width: $co-m-catalog-tile-width;
   }
 
   &__input {
-    display: inline-flex !important;
     margin: 0 $pf-global-gutter $pf-global-gutter--md;
+    @media (max-width: $pf-global--breakpoint--md) {
+      max-width: 165px;
+    }
     @media (min-width: $pf-global--breakpoint--xl) {
       margin-left: $pf-global-gutter--md;
       margin-right: $pf-global-gutter--md;
     }
-    width: auto !important;
   }
 
   &__sort {
@@ -275,7 +285,7 @@ $catalog-tile-width: $co-m-catalog-tile-width;
     h1,
     h2,
     h3 {
-      color: #333; // same color as styles hardcoded in markdown text component
+      color: var(--pf-global--Color--100); // same color as styles hardcoded in markdown text component
     }
 
     h2 {
@@ -285,7 +295,7 @@ $catalog-tile-width: $co-m-catalog-tile-width;
     p,
     li,
     ol {
-      color: #333; // same color as styles hardcoded in markdown text component
+      color: var(--pf-global--Color--100); // same color as styles hardcoded in markdown text component
       font-size: $font-size-base !important;
     }
 
@@ -299,6 +309,10 @@ $catalog-tile-width: $co-m-catalog-tile-width;
   &__tabs {
     flex: 0 0 220px;
     margin: 0 $pf-global-gutter 0 0;
+  }
+
+  &__searchfilter {
+    display: inline-flex;
   }
 }
 

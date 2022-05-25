@@ -4,7 +4,7 @@ import { useFormikContext, FormikErrors, FormikTouched } from 'formik';
 import { isEmpty } from 'lodash';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { RepoStatus, ImportStrategy, getGitService } from '@console/git-service';
+import { RepoStatus, ImportStrategy, getGitService, GitProvider } from '@console/git-service';
 import { DetectedBuildType } from '@console/git-service/src/utils/build-tool-type-detector';
 import { detectImportStrategies } from '@console/git-service/src/utils/import-strategy-detector';
 import { BuildStrategyType } from '@console/internal/components/build';
@@ -21,7 +21,7 @@ import {
   getSampleContextDir,
   NormalizedBuilderImages,
 } from '../../../utils/imagestream-utils';
-import { GitData, GitReadableTypes, GitTypes, DetectedStrategyFormData } from '../import-types';
+import { GitData, GitReadableTypes, DetectedStrategyFormData } from '../import-types';
 import { detectGitRepoName, detectGitType } from '../import-validation-utils';
 import FormSection from '../section/FormSection';
 import AdvancedGitOptions from './AdvancedGitOptions';
@@ -176,7 +176,7 @@ const GitSection: React.FC<GitSectionProps> = ({
   );
 
   const handleDevfileStrategyDetection = React.useCallback(
-    async (devfilePath: string, gitType: any) => {
+    async (devfilePath: string, gitType: GitProvider) => {
       if (gitUrlError) {
         setFieldValue('devfile.devfileContent', null);
         setFieldValue('devfile.devfileHasError', true);
@@ -230,24 +230,32 @@ const GitSection: React.FC<GitSectionProps> = ({
         return;
       }
       const detectedGitType = detectGitType(url);
-      const gitType = values.git.showGitType ? values.git.type : detectedGitType;
+      const isUnsureDetectedGitType = detectedGitType === GitProvider.UNSURE;
       const gitRepoName = formType !== 'sample' && detectGitRepoName(url);
 
       // Updated detectedType only
       if (detectedGitType !== values.git.detectedType) {
-        setFieldValue('git.detectedType', gitType);
+        setFieldValue('git.detectedType', detectedGitType);
       }
-      if (detectedGitType === GitTypes.unsure && !values.git.showGitType) {
+      if (isUnsureDetectedGitType && !values.git.showGitType) {
         setFieldValue('git.showGitType', true);
       }
+
+      if (!isUnsureDetectedGitType && values.git.showGitType) {
+        setFieldValue('git.showGitType', false);
+      }
+
+      const gitType =
+        isUnsureDetectedGitType && values.git.showGitType ? values.git.type : detectedGitType;
+
       if (gitType !== values.git.type) {
+        setFieldTouched('git.type', false, false);
         setFieldValue('git.type', gitType);
       }
 
       const gitService = getGitService(
         url,
-        // TODO: ODC-6250 - GitTypes is not compatibily to git service type GitProvider
-        gitType as any,
+        gitType,
         ref,
         dir,
         values.git.secretResource,
@@ -275,9 +283,9 @@ const GitSection: React.FC<GitSectionProps> = ({
           loadError: null,
           strategies: [],
           selectedStrategy: {
-            name: 'Devfile',
-            type: ImportStrategy.DEVFILE,
-            priority: 2,
+            name: 'Builder Image',
+            type: ImportStrategy.S2I,
+            priority: 0,
             detectedFiles: [],
           },
           recommendedStrategy: null,
@@ -398,7 +406,7 @@ const GitSection: React.FC<GitSectionProps> = ({
   }, [handleGitUrlChange, sampleRepo, setFieldTouched, setFieldValue, tag]);
 
   React.useEffect(() => {
-    (!dirty || gitDirTouched || gitTypeTouched || formReloadCount) &&
+    (!dirty || gitDirTouched || gitTypeTouched || formReloadCount || values.git.secretResource) &&
       values.git.url &&
       debouncedHandleGitUrlChange(values.git.url, values.git.ref, values.git.dir);
   }, [
@@ -411,6 +419,7 @@ const GitSection: React.FC<GitSectionProps> = ({
     values.git.ref,
     values.git.dir,
     values.git.type,
+    values.git.secretResource,
     gitTypeTouched,
   ]);
 
@@ -481,13 +490,16 @@ const GitSection: React.FC<GitSectionProps> = ({
         helpText={helpText}
         helpTextInvalid={helpText}
         validated={validated}
-        onChange={(e: React.SyntheticEvent) => {
+        onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+          const trimmedURL = e.target.value.trim();
+          if (e.target.value !== trimmedURL) {
+            setFieldValue('git.url', trimmedURL);
+            debouncedHandleGitUrlChange(trimmedURL, values.git.ref, values.git.dir);
+          }
+        }}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
           resetFields();
-          debouncedHandleGitUrlChange(
-            (e.target as HTMLInputElement).value,
-            values.git.ref,
-            values.git.dir,
-          );
+          debouncedHandleGitUrlChange(e.target.value.trim(), values.git.ref, values.git.dir);
         }}
         data-test-id="git-form-input-url"
         required
@@ -504,7 +516,7 @@ const GitSection: React.FC<GitSectionProps> = ({
             fullWidth
             required
           />
-          {values.git.detectedType === GitTypes.unsure && (
+          {values.git.detectedType === GitProvider.UNSURE && (
             <Alert isInline variant="info" title={t('devconsole~Defaulting Git type to other')}>
               {t('devconsole~We failed to detect the Git type.')}
             </Alert>

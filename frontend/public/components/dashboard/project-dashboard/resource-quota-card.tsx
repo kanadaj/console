@@ -1,14 +1,10 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
+import { Card, CardBody, CardHeader, CardTitle } from '@patternfly/react-core';
 import ResourceQuotaBody from '@console/shared/src/components/dashboard/resource-quota-card/ResourceQuotaBody';
 import ResourceQuotaItem from '@console/shared/src/components/dashboard/resource-quota-card/ResourceQuotaItem';
 import AppliedClusterResourceQuotaItem from '@console/shared/src/components/dashboard/resource-quota-card/AppliedClusterResourceQuotaItem';
-import { getQuotaResourceTypes, hasComputeResources } from '../../resource-quota';
 import { FirehoseResult, FirehoseResource } from '../../utils';
 import { AppliedClusterResourceQuotaModel, ResourceQuotaModel } from '../../../models';
 import { withDashboardResources, DashboardItemProps } from '../with-dashboard-resources';
@@ -53,35 +49,36 @@ export const ResourceQuotaCard = withDashboardResources(
     const { t } = useTranslation();
 
     return (
-      <DashboardCard data-test-id="resource-quotas-card">
-        <DashboardCardHeader>
-          <DashboardCardTitle>{t('public~ResourceQuotas')}</DashboardCardTitle>
-        </DashboardCardHeader>
-        <DashboardCardBody>
+      <Card data-test-id="resource-quotas-card">
+        <CardHeader>
+          <CardTitle>{t('public~ResourceQuotas')}</CardTitle>
+        </CardHeader>
+        <CardBody>
           <ResourceQuotaBody error={!!rqLoadError} isLoading={!rqLoaded}>
-            {quotas
-              .filter((rq) => hasComputeResources(getQuotaResourceTypes(rq)))
-              .map((rq) => (
-                <ResourceQuotaItem key={rq.metadata.uid} resourceQuota={rq} />
-              ))}
+            {quotas.map((rq) => (
+              <ResourceQuotaItem key={rq.metadata.uid} resourceQuota={rq} />
+            ))}
           </ResourceQuotaBody>
+        </CardBody>
+        <CardHeader>
+          <CardTitle>{t('public~AppliedClusterResourceQuotas')}</CardTitle>
+        </CardHeader>
+        <CardBody>
           <ResourceQuotaBody
             error={!!acrqLoadError}
             isLoading={!acrqLoaded}
             noText={t('public~No AppliedClusterResourceQuotas')}
           >
-            {clusterQuotas
-              .filter((rq) => hasComputeResources(getQuotaResourceTypes(rq)))
-              .map((rq) => (
-                <AppliedClusterResourceQuotaItem
-                  key={rq.metadata.uid}
-                  resourceQuota={rq}
-                  namespace={obj.metadata.name}
-                />
-              ))}
+            {clusterQuotas.map((rq) => (
+              <AppliedClusterResourceQuotaItem
+                key={rq.metadata.uid}
+                resourceQuota={rq}
+                namespace={obj.metadata.name}
+              />
+            ))}
           </ResourceQuotaBody>
-        </DashboardCardBody>
-      </DashboardCard>
+        </CardBody>
+      </Card>
     );
   },
 );

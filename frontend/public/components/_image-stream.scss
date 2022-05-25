@@ -19,13 +19,13 @@
 
 .co-images-stream-tag-timeline__circle-icon,
 .co-images-stream-tag-timeline__square-icon {
-  color: $pf-color-black-300;
+  color: var(--pf-global--BorderColor--100);
   left: 8px;
   position: relative;
 }
 
 .co-images-stream-tag-timeline__info {
-  background: $pf-color-black-150;
+  background-color: var(--pf-global--BackgroundColor--200);
   border-radius: 3px;
   line-height: 30px;
   margin: 8px 0 24px 40px;
@@ -43,7 +43,7 @@
 }
 
 .co-images-stream-tag-timeline__line {
-  border: 2px solid $pf-color-black-300;
+  border: var(--pf-global--BorderWidth--md) solid var(--pf-global--BorderColor--100);
   left: 14px;
   position: relative;
 }

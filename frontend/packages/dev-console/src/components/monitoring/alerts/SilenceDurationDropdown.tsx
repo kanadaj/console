@@ -8,15 +8,15 @@ import { useSelector, useDispatch } from 'react-redux';
 import { getUser } from '@console/dynamic-plugin-sdk';
 import { alertingSetRules } from '@console/internal/actions/observe';
 import { coFetchJSON } from '@console/internal/co-fetch';
-import { ALERT_MANAGER_TENANCY_BASE_PATH } from '@console/internal/components/graphs';
+import { ALERTMANAGER_TENANCY_BASE_PATH } from '@console/internal/components/graphs';
 import {
   AlertStates,
   Rule,
   RuleStates,
+  Silence,
   SilenceStates,
 } from '@console/internal/components/monitoring/types';
 import { isSilenced } from '@console/internal/components/monitoring/utils';
-import { refreshNotificationPollers } from '@console/internal/components/notification-drawer';
 import { Dropdown, LoadingInline } from '@console/internal/components/utils';
 import { parsePrometheusDuration } from '@console/internal/components/utils/datetime';
 import { RootState } from '@console/internal/redux';
@@ -25,6 +25,7 @@ import './SilenceDurationDropdown.scss';
 type SilenceDurationDropDownProps = {
   rule: Rule;
   silenceInProgress?: (progress: boolean) => void;
+  namespace: string;
 };
 
 const durations = {
@@ -37,6 +38,7 @@ const durations = {
 const SilenceDurationDropDown: React.FC<SilenceDurationDropDownProps> = ({
   rule,
   silenceInProgress,
+  namespace,
 }) => {
   const { t } = useTranslation();
   const [silencing, setSilencing] = React.useState(false);
@@ -68,28 +70,26 @@ const SilenceDurationDropDown: React.FC<SilenceDurationDropDownProps> = ({
     setSilencing(true);
     silenceInProgress && silenceInProgress(true);
     coFetchJSON
-      .post(`${ALERT_MANAGER_TENANCY_BASE_PATH}/api/v2/silences`, payload)
-      .then(() => {
-        // eslint-disable-next-line promise/no-nesting
-        return coFetchJSON(`${ALERT_MANAGER_TENANCY_BASE_PATH}/api/v2/silences`).then(
-          (silences) => {
-            refreshNotificationPollers();
-            rule.silencedBy = _.filter(
-              silences,
-              (s) => s.status.state === SilenceStates.Active && _.some(rule.alerts, isSilenced),
-            );
-            if (!_.isEmpty(rule.silencedBy)) {
-              _.each(rule.alerts, (a) => (a.state = AlertStates.Silenced));
-              rule.state = RuleStates.Silenced;
-            }
-            const ruleIndex = rules.findIndex((r) => r.id === rule.id);
-            const updatedRules = _.cloneDeep(rules);
-            updatedRules.splice(ruleIndex, 1, rule);
-            dispatch(alertingSetRules('devRules', updatedRules, 'dev'));
-            setSilencing(false);
-            silenceInProgress && silenceInProgress(false);
-          },
+      .post(`${ALERTMANAGER_TENANCY_BASE_PATH}/api/v2/silences?namespace=${namespace}`, payload)
+      .then(() =>
+        coFetchJSON(`${ALERTMANAGER_TENANCY_BASE_PATH}/api/v2/silences?namespace=${namespace}`),
+      )
+      .then((silences: Silence[]) => {
+        rule.silencedBy = _.filter(
+          silences,
+          (s: Silence) =>
+            s.status.state === SilenceStates.Active && _.some(rule.alerts, isSilenced),
         );
+        if (!_.isEmpty(rule.silencedBy)) {
+          _.each(rule.alerts, (a) => (a.state = AlertStates.Silenced));
+          rule.state = RuleStates.Silenced;
+        }
+        const ruleIndex = rules.findIndex((r) => r.id === rule.id);
+        const updatedRules = _.cloneDeep(rules);
+        updatedRules.splice(ruleIndex, 1, rule);
+        dispatch(alertingSetRules('devRules', updatedRules, 'dev'));
+        setSilencing(false);
+        silenceInProgress && silenceInProgress(false);
       })
       .catch((err) => {
         setSilencing(false);

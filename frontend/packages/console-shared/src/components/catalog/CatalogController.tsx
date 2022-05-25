@@ -3,6 +3,7 @@ import * as _ from 'lodash';
 import Helmet from 'react-helmet';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import { ResolvedExtension, CatalogItemType } from '@console/dynamic-plugin-sdk';
 import { CatalogItem, CatalogItemAttribute } from '@console/dynamic-plugin-sdk/src/extensions';
 import {
   PageHeading,
@@ -24,6 +25,7 @@ import {
   CatalogService,
   CatalogStringMap,
   CatalogType,
+  CatalogFilterGroupMap,
 } from './utils/types';
 
 type CatalogControllerProps = CatalogService & {
@@ -51,13 +53,21 @@ const CatalogController: React.FC<CatalogControllerProps> = ({
   const { pathname } = useLocation();
   const queryParams = useQueryParams();
 
-  const typeExtension = React.useMemo(
+  const typeExtension: ResolvedExtension<CatalogItemType> = React.useMemo(
     () => catalogExtensions?.find((extension) => extension.properties.type === type),
     [catalogExtensions, type],
   );
 
-  const title = typeExtension?.properties.title ?? defaultTitle;
-  const description = typeExtension?.properties.catalogDescription ?? defaultDescription;
+  const title = typeExtension?.properties?.title ?? defaultTitle;
+  const getCatalogTypeDescription = () => {
+    if (typeof typeExtension?.properties?.catalogDescription === 'string') {
+      return typeExtension?.properties?.catalogDescription;
+    }
+    if (typeof typeExtension?.properties?.catalogDescription === 'function') {
+      return typeExtension?.properties?.catalogDescription();
+    }
+    return defaultDescription;
+  };
 
   const filterGroups: string[] = React.useMemo(() => {
     return (
@@ -66,10 +76,10 @@ const CatalogController: React.FC<CatalogControllerProps> = ({
     );
   }, [typeExtension]);
 
-  const filterGroupNameMap: CatalogStringMap = React.useMemo(() => {
+  const filterGroupMap: CatalogFilterGroupMap = React.useMemo(() => {
     return (
       typeExtension?.properties.filters?.reduce((map, filter: CatalogItemAttribute) => {
-        map[filter.attribute] = filter.label;
+        map[filter.attribute] = filter;
         return map;
       }, {}) ?? {}
     );
@@ -174,7 +184,9 @@ const CatalogController: React.FC<CatalogControllerProps> = ({
       <div className="co-m-page__body">
         <div className="co-catalog">
           <PageHeading title={title} breadcrumbs={type ? breadcrumbs : null} />
-          <p className="co-catalog-page__description">{description}</p>
+          <p data-test-id="catalog-page-description" className="co-catalog-page__description">
+            {getCatalogTypeDescription()}
+          </p>
           <div className="co-catalog__body">
             <StatusBox
               skeleton={skeletonCatalog}
@@ -190,7 +202,7 @@ const CatalogController: React.FC<CatalogControllerProps> = ({
                 categories={categories}
                 filters={availableFilters}
                 filterGroups={filterGroups}
-                filterGroupNameMap={filterGroupNameMap}
+                filterGroupMap={filterGroupMap}
                 groupings={groupings}
                 renderTile={renderTile}
                 hideSidebar={hideSidebar}

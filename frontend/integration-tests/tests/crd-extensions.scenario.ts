@@ -12,7 +12,7 @@ describe('CRD extensions', () => {
     checkErrors();
   });
 
-  describe('ConsoleClIDownload CRD', () => {
+  describe('ConsoleCLIDownload CRD', () => {
     const crd = 'ConsoleCLIDownload';
     const name = `${testName}-ccd`;
     // cannot use default YAML template since it contains new lines
@@ -31,8 +31,10 @@ describe('CRD extensions', () => {
       },
     };
 
-    it(`displays YAML editor for creating a new ${crd} instance`, async () => {
-      await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+    it(`displays YAML editor for creating a new ${crd} instance and creates it`, async () => {
+      await browser.get(
+        `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+      );
       await crudView.isLoaded();
       await crudView.clickKebabAction(crd, 'View instances');
       await crudView.isLoaded();
@@ -40,14 +42,14 @@ describe('CRD extensions', () => {
       await yamlView.isLoaded();
       await yamlView.setEditorContent(safeDump(crdObj));
       expect(yamlView.getEditorContent()).toContain(`kind: ${crd}`);
-    });
-
-    it(`creates a new ${crd} instance`, async () => {
       await yamlView.saveButton.click();
+      await crudView.isLoaded();
       expect(crudView.errorMessage.isPresent()).toBe(false);
     });
 
     it(`displays detail view for ${crd} instance`, async () => {
+      await browser.get(`${appHost}/k8s/cluster/console.openshift.io~v1~${crd}/${name}`);
+      await crudView.isLoaded();
       await browser.wait(until.presenceOf(crudView.resourceTitle));
       expect(browser.getCurrentUrl()).toContain(`/${name}`);
       expect(crudView.resourceTitle.getText()).toEqual(name);
@@ -60,7 +62,9 @@ describe('CRD extensions', () => {
     });
 
     it(`deletes the ${crd} instance`, async () => {
-      await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+      await browser.get(
+        `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+      );
       await crudView.isLoaded();
       await crudView.clickKebabAction(crd, 'View instances');
       await crudView.resourceRowsPresent();
@@ -98,8 +102,10 @@ describe('CRD extensions', () => {
         menuLinkLocation,
         menuLinkText,
       }) => {
-        it(`displays YAML editor for creating a new ${crd} ${dropdownMenuName} instance`, async () => {
-          await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+        it(`displays YAML editor for creating a new ${crd} ${dropdownMenuName} instance and creates it`, async () => {
+          await browser.get(
+            `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+          );
           await crudView.isLoaded();
           await crudView.clickKebabAction(crd, 'View instances');
           await crudView.isLoaded();
@@ -116,14 +122,14 @@ describe('CRD extensions', () => {
           );
           await yamlView.setEditorContent(safeDump(newContent));
           expect(yamlView.getEditorContent()).toContain(`kind: ${crd}`);
-        });
-
-        it(`creates a new ${crd} ${dropdownMenuName} instance`, async () => {
           await yamlView.saveButton.click();
+          await crudView.isLoaded();
           expect(crudView.errorMessage.isPresent()).toBe(false);
         });
 
         it(`displays detail view for ${crd} ${dropdownMenuName} instance`, async () => {
+          await browser.get(`${appHost}/k8s/cluster/console.openshift.io~v1~${crd}/${name}`);
+          await crudView.isLoaded();
           await browser.wait(until.presenceOf(crudView.resourceTitle));
           expect(browser.getCurrentUrl()).toContain(`/${instanceName}`);
           expect(crudView.resourceTitle.getText()).toEqual(instanceName);
@@ -146,7 +152,9 @@ describe('CRD extensions', () => {
         });
 
         it(`deletes the ${crd} ${dropdownMenuName} instance`, async () => {
-          await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+          await browser.get(
+            `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+          );
           await crudView.isLoaded();
           await crudView.clickKebabAction(crd, 'View instances');
           await crudView.resourceRowsPresent();
@@ -163,8 +171,10 @@ describe('CRD extensions', () => {
     let text = `${name} notification that appears ${location}`;
     let notification = $(`[data-test=${name}-${location}]`);
 
-    it(`displays YAML editor for creating a new ${crd} instance`, async () => {
-      await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+    it(`displays YAML editor for creating a new ${crd} instance and creates it`, async () => {
+      await browser.get(
+        `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+      );
       await crudView.isLoaded();
       await crudView.clickKebabAction(crd, 'View instances');
       await crudView.isLoaded();
@@ -178,14 +188,14 @@ describe('CRD extensions', () => {
       );
       await yamlView.setEditorContent(safeDump(newContent));
       expect(yamlView.getEditorContent()).toContain(`kind: ${crd}`);
-    });
-
-    it(`creates a new ${crd} instance`, async () => {
       await yamlView.saveButton.click();
+      await crudView.isLoaded();
       expect(crudView.errorMessage.isPresent()).toBe(false);
     });
 
     it(`displays detail view for ${crd} instance`, async () => {
+      await browser.get(`${appHost}/k8s/cluster/console.openshift.io~v1~${crd}/${name}`);
+      await crudView.isLoaded();
       await browser.wait(until.presenceOf(crudView.resourceTitle));
       expect(browser.getCurrentUrl()).toContain(`/${name}`);
       expect(crudView.resourceTitle.getText()).toEqual(name);
@@ -220,7 +230,9 @@ describe('CRD extensions', () => {
     });
 
     it(`deletes the ${crd} instance`, async () => {
-      await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+      await browser.get(
+        `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+      );
       await crudView.isLoaded();
       await crudView.clickKebabAction(crd, 'View instances');
       await crudView.resourceRowsPresent();
@@ -236,8 +248,10 @@ describe('CRD extensions', () => {
     const text = `${name} Logs`;
     const namespaceFilter = '^openshift-';
 
-    it(`displays YAML editor for creating a new ${crd} instance`, async () => {
-      await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+    it(`displays YAML editor for creating a new ${crd} instance and creates it`, async () => {
+      await browser.get(
+        `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+      );
       await crudView.isLoaded();
       await crudView.clickKebabAction(crd, 'View instances');
       await crudView.isLoaded();
@@ -251,14 +265,14 @@ describe('CRD extensions', () => {
       );
       await yamlView.setEditorContent(safeDump(newContent));
       expect(yamlView.getEditorContent()).toContain(`kind: ${crd}`);
-    });
-
-    it(`creates a new ${crd} instance`, async () => {
       await yamlView.saveButton.click();
+      await crudView.isLoaded();
       expect(crudView.errorMessage.isPresent()).toBe(false);
     });
 
     it(`displays detail view for ${crd} instance`, async () => {
+      await browser.get(`${appHost}/k8s/cluster/console.openshift.io~v1~${crd}/${name}`);
+      await crudView.isLoaded();
       await browser.wait(until.presenceOf(crudView.resourceTitle));
       expect(browser.getCurrentUrl()).toContain(`/${name}`);
       expect(crudView.resourceTitle.getText()).toEqual(name);
@@ -276,19 +290,25 @@ describe('CRD extensions', () => {
         safeLoad(content),
       );
       await yamlView.setEditorContent(safeDump(newContent));
+      expect(yamlView.getEditorContent()).toContain(`kind: Pod`);
       await yamlView.saveButton.click();
+      await crudView.isLoaded();
       expect(crudView.errorMessage.isPresent()).toBe(false);
     });
 
     it(`displays the ${crd} instance on the test pod`, async () => {
-      await browser.wait(until.presenceOf(crudView.resourceTitle));
-      await browser.getCurrentUrl().then((url) => browser.get(`${url}/logs`));
+      await browser.get(`${appHost}/k8s/ns/${testName}/pods/${podName}/logs`);
+      // Don't use `crudView.isLoaded` here since it will block until the log
+      // content itself is loaded and sometimes time out.
+      await browser.wait(crudView.untilLoadingBoxLoaded);
       await browser.wait(until.presenceOf(cell));
       expect(cell.getText()).toContain(text);
     });
 
     it(`displays YAML editor for adding namespaceFilter to the ${crd} instance`, async () => {
-      await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+      await browser.get(
+        `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+      );
       await crudView.isLoaded();
       await crudView.clickKebabAction(crd, 'View instances');
       await crudView.resourceRowsPresent();
@@ -319,7 +339,9 @@ describe('CRD extensions', () => {
     });
 
     it(`deletes the ${crd} instance`, async () => {
-      await browser.get(`${appHost}/k8s/cluster/customresourcedefinitions?name=${crd}`);
+      await browser.get(
+        `${appHost}/k8s/cluster/customresourcedefinitions?custom-resource-definition-name=${crd}`,
+      );
       await crudView.isLoaded();
       await crudView.clickKebabAction(crd, 'View instances');
       await crudView.resourceRowsPresent();

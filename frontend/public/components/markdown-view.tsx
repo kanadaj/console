@@ -1,10 +1,11 @@
 import * as React from 'react';
 import * as cx from 'classnames';
 import * as _ from 'lodash-es';
-import { Converter } from 'showdown';
+import { Converter, ShowdownOptions } from 'showdown';
 import * as sanitizeHtml from 'sanitize-html';
 import { useTranslation } from 'react-i18next';
 import { useForceRender, useResizeObserver } from '@console/shared';
+import { updateThemeClass, ThemeContext } from './ThemeProvider';
 
 import './_markdown-view.scss';
 
@@ -16,13 +17,21 @@ type ShowdownExtension = {
   replace?: (...args: any[]) => string;
 };
 
-const markdownConvert = (markdown, extensions: ShowdownExtension[]) => {
+const markdownConvert = (
+  markdown,
+  extensions: ShowdownExtension[],
+  options: ShowdownOptions = {},
+) => {
   const converter = new Converter({
     tables: true,
     openLinksInNewWindow: true,
     strikethrough: true,
     emoji: true,
   });
+
+  for (const [key, value] of Object.entries(options)) {
+    converter.setOption(key, value);
+  }
 
   extensions && converter.addExtension(extensions);
 
@@ -76,6 +85,7 @@ type SyncMarkdownProps = {
   extensions?: ShowdownExtension[];
   renderExtension?: (contentDocument: HTMLDocument, rootSelector: string) => React.ReactNode;
   inline?: boolean;
+  options?: ShowdownOptions;
 };
 
 type InnerSyncMarkdownProps = Pick<SyncMarkdownProps, 'renderExtension' | 'exactHeight'> & {
@@ -91,6 +101,7 @@ export const SyncMarkdownView: React.FC<SyncMarkdownProps> = ({
   renderExtension,
   exactHeight,
   inline,
+  options,
 }) => {
   const { t } = useTranslation();
   const markup = React.useMemo(() => {
@@ -101,8 +112,12 @@ export const SyncMarkdownView: React.FC<SyncMarkdownProps> = ({
           omission: '\u2026',
         })
       : content;
-    return markdownConvert(truncatedContent || emptyMsg || t('public~Not available'), extensions);
-  }, [content, emptyMsg, extensions, t, truncateContent]);
+    return markdownConvert(
+      truncatedContent || emptyMsg || t('public~Not available'),
+      extensions,
+      options,
+    );
+  }, [content, emptyMsg, extensions, options, t, truncateContent]);
   const innerProps: InnerSyncMarkdownProps = {
     renderExtension: extensions?.length > 0 ? renderExtension : undefined,
     exactHeight,
@@ -172,6 +187,8 @@ const IFrameMarkdownView: React.FC<InnerSyncMarkdownProps> = ({
   const [frame, setFrame] = React.useState<HTMLIFrameElement>();
   const [frameHeight, setFrameHeight] = React.useState(0);
   const [loaded, setLoaded] = React.useState(false);
+  const theme = React.useContext(ThemeContext);
+  const htmlTagElement = frame?.contentDocument?.documentElement;
 
   const updateDimensions = React.useCallback(
     _.debounce(() => {
@@ -186,9 +203,14 @@ const IFrameMarkdownView: React.FC<InnerSyncMarkdownProps> = ({
   );
 
   const onLoad = React.useCallback(() => {
+    htmlTagElement && updateThemeClass(htmlTagElement, theme);
     updateDimensions();
     setLoaded(true);
-  }, [updateDimensions]);
+  }, [htmlTagElement, theme, updateDimensions]);
+
+  React.useEffect(() => {
+    htmlTagElement && updateThemeClass(htmlTagElement, theme);
+  }, [frame, htmlTagElement, theme]);
 
   useResizeObserver(updateDimensions, frame);
 
@@ -220,7 +242,7 @@ const IFrameMarkdownView: React.FC<InnerSyncMarkdownProps> = ({
   }
   td,
   th {
-    border-bottom: 1px solid #ededed;
+    border-bottom: var(--pf-global--BorderWidth--sm) solid var(--pf-global--BorderColor--300);
     padding: 10px;
     vertical-align: top;
   }
@@ -228,7 +250,7 @@ const IFrameMarkdownView: React.FC<InnerSyncMarkdownProps> = ({
     padding-top: 0;
   }
   </style>
-  <body class="pf-m-redhat-font"><div style="overflow-y: auto;">${markup}</div></body>`;
+  <body class="pf-m-redhat-font pf-c-content co-iframe"><div style="overflow-y: auto;">${markup}</div></body>`;
   return (
     <>
       <iframe

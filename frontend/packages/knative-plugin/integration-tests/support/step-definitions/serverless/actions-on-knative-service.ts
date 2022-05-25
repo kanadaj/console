@@ -87,7 +87,7 @@ Given(
       .contains('Labels')
       .scrollIntoView()
       .click();
-    editLabels.enterLabel('app=frontend');
+    gitPage.enterLabels('app=frontend');
     cy.get(formPO.create).click();
     topologyPage.verifyTopologyPage();
     topologyPage.clickOnKnativeService(knativeService);
@@ -112,7 +112,7 @@ Given('user created another revision for knative Service {string}', (knativeServ
     .contains('Labels')
     .scrollIntoView()
     .click();
-  editLabels.enterLabel('app=frontend');
+  gitPage.enterLabels('app=frontend');
   cy.get(formPO.create).click();
   navigateTo(devNavigationMenu.Topology);
   topologyPage.clickOnKnativeService(knativeService);
@@ -130,7 +130,7 @@ When('user modifies the details of knative service', () => {
     .contains('Labels')
     .scrollIntoView()
     .click();
-  editLabels.enterLabel('app=frontend');
+  gitPage.enterLabels('app=frontend');
 });
 
 Then(
@@ -200,7 +200,7 @@ Given('service should have at least 2 revisions', () => {
 When(
   'user selects {string} context menu option of knative service {string}',
   (option: string, knativeServiceName: string) => {
-    topologyPage.rightClickOnNode(knativeServiceName);
+    topologyPage.rightClickOnGroup(knativeServiceName);
     topologyPage.selectContextMenuAction(option);
   },
 );
@@ -212,7 +212,7 @@ When('user clicks Add button on the Edit Annotations modal', () => {
 Given(
   'number of annotations present in topology side bar for {string} service',
   (serviceName: string) => {
-    topologyPage.clickOnNode(serviceName);
+    topologyPage.clickOnGroup(serviceName);
     topologySidePane.verify();
     topologySidePane.selectTab('Details');
     cy.get(topologyPO.sidePane.editAnnotations).then(($el) => {
@@ -252,7 +252,7 @@ When('user selects another revision from Revision drop down', () => {
 Then(
   'user will see the label {string} in {string} service side bar details',
   (label: string, serviceName: string) => {
-    topologyPage.clickOnNode(serviceName);
+    topologyPage.clickOnGroup(serviceName);
     topologySidePane.verify();
     topologySidePane.selectTab('Details');
     topologySidePane.verifyLabel(label);
@@ -262,7 +262,7 @@ Then(
 Then(
   'user will not see the label {string} in {string} service side bar details',
   (label: string, serviceName: string) => {
-    topologyPage.clickOnNode(serviceName);
+    topologyPage.clickOnGroup(serviceName);
     topologySidePane.verify();
     topologySidePane.selectTab('Details');
     cy.byTestID('label-list')
@@ -275,7 +275,7 @@ Then(
 Given(
   'label {string} is added to the knative service {string}',
   (labelName: string, knativeServiceName: string) => {
-    topologyPage.rightClickOnNode(knativeServiceName);
+    topologyPage.rightClickOnGroup(knativeServiceName);
     topologyPage.selectContextMenuAction(nodeActions.EditLabels);
     modal.shouldBeOpened();
     editLabels.enterLabel(labelName);
@@ -286,7 +286,7 @@ Given(
 Then(
   'number of Annotations increased for {string} service in topology side bar details',
   (serviceName: string) => {
-    topologyPage.clickOnNode(serviceName);
+    topologyPage.clickOnGroup(serviceName);
     topologySidePane.verify();
     topologySidePane.selectTab('Details');
     cy.get(topologyPO.sidePane.editAnnotations).then(($el) => {
@@ -301,7 +301,7 @@ Then(
 Then(
   'number of Annotations display as {string} in {string} service side bar details',
   (numOfAnnotations: string, serviceName: string) => {
-    topologyPage.clickOnNode(serviceName);
+    topologyPage.clickOnGroup(serviceName);
     topologySidePane.verify();
     topologySidePane.selectTab('Details');
     topologySidePane.verifyNumberOfAnnotations(numOfAnnotations);
@@ -394,7 +394,7 @@ When(
 Then(
   'number of Annotations decreased for {string} service in topology side bar details',
   (serviceName: string) => {
-    topologyPage.clickOnNode(serviceName);
+    topologyPage.clickOnGroup(serviceName);
     topologySidePane.verify();
     topologySidePane.selectTab('Details');
     cy.get(topologyPO.sidePane.editAnnotations).then(($el) => {

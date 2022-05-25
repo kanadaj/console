@@ -2,10 +2,7 @@ import * as React from 'react';
 import * as _ from 'lodash-es';
 import { useTranslation } from 'react-i18next';
 import { DashboardItemProps, withDashboardResources } from '../with-dashboard-resources';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
+import { Card, CardBody, CardHeader, CardTitle } from '@patternfly/react-core';
 import {
   PodModel,
   DeploymentModel,
@@ -38,8 +35,8 @@ import {
 } from '@console/plugin-sdk';
 import {
   useResolvedExtensions,
-  ProjectDashboardInventoryItem as DynamicProjectDashboardInventoryItem,
-  isProjectDashboardInventoryItem as isDynamicProjectDashboardInventoryItem,
+  DashboardsProjectOverviewInventoryItem as DynamicProjectDashboardInventoryItem,
+  isDashboardsProjectOverviewInventoryItem as isDynamicProjectDashboardInventoryItem,
   K8sResourceCommon,
   WatchK8sResources,
 } from '@console/dynamic-plugin-sdk';
@@ -118,6 +115,7 @@ const ProjectInventoryItem = withDashboardResources(
         resources={resourceData}
         additionalResources={additionalResourcesData}
         mapper={mapper}
+        dataTest="resource-inventory-item"
       />
     );
   },
@@ -141,11 +139,11 @@ export const InventoryCard = () => {
   const { t } = useTranslation();
 
   return (
-    <DashboardCard data-test-id="inventory-card">
-      <DashboardCardHeader>
-        <DashboardCardTitle>{t('public~Inventory')}</DashboardCardTitle>
-      </DashboardCardHeader>
-      <DashboardCardBody>
+    <Card data-test-id="inventory-card">
+      <CardHeader>
+        <CardTitle>{t('public~Inventory')}</CardTitle>
+      </CardHeader>
+      <CardBody>
         <ProjectInventoryItem projectName={projectName} model={DeploymentModel} />
         <ProjectInventoryItem projectName={projectName} model={DeploymentConfigModel} />
         <ProjectInventoryItem projectName={projectName} model={StatefulSetModel} />
@@ -186,8 +184,8 @@ export const InventoryCard = () => {
           model={VolumeSnapshotModel}
           mapper={getVSStatusGroups}
         />
-      </DashboardCardBody>
-    </DashboardCard>
+      </CardBody>
+    </Card>
   );
 };
 

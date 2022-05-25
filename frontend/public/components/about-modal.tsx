@@ -8,10 +8,9 @@ import {
 } from '@patternfly/react-core';
 import { Link } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
-import { useClusterVersion, BlueArrowCircleUpIcon } from '@console/shared';
+import { useClusterVersion, BlueArrowCircleUpIcon, useCanClusterUpgrade } from '@console/shared';
 import { getBrandingDetails } from './masthead';
-import { ReleaseNotesLink, useAccessReview } from './utils';
-import { ClusterVersionModel } from '../models';
+import { ReleaseNotesLink, ServiceLevel, useServiceLevelTitle, ServiceLevelText } from './utils';
 import { k8sVersion } from '../module/status';
 import {
   getClusterID,
@@ -30,21 +29,15 @@ const AboutModalItems: React.FC<AboutModalItemsProps> = ({ closeAboutModal }) =>
       .catch(() => setKubernetesVersion(t('public~unknown')));
   }, [t]);
   const clusterVersion = useClusterVersion();
+  const canUpgrade = useCanClusterUpgrade();
 
   const clusterID = getClusterID(clusterVersion);
   const channel: string = clusterVersion?.spec?.channel;
   const openshiftVersion = getOpenShiftVersion(clusterVersion);
-  const clusterVersionIsEditable =
-    useAccessReview({
-      group: ClusterVersionModel.apiGroup,
-      resource: ClusterVersionModel.plural,
-      verb: 'patch',
-      name: 'version',
-    }) && window.SERVER_FLAGS.branding !== 'dedicated';
 
   return (
     <>
-      {clusterVersion && hasAvailableUpdates(clusterVersion) && clusterVersionIsEditable && (
+      {canUpgrade && hasAvailableUpdates(clusterVersion) && (
         <Alert
           className="co-alert co-about-modal__alert"
           title={
@@ -93,6 +86,15 @@ const AboutModalItems: React.FC<AboutModalItemsProps> = ({ closeAboutModal }) =>
           <TextListItem component="dd" className="co-select-to-copy">
             {window.SERVER_FLAGS.kubeAPIServerURL}
           </TextListItem>
+
+          <ServiceLevel clusterID={clusterID}>
+            <>
+              <TextListItem component="dt">{useServiceLevelTitle()}</TextListItem>
+              <TextListItem component="dd" className="co-select-to-copy">
+                <ServiceLevelText inline clusterID={clusterID} />
+              </TextListItem>
+            </>
+          </ServiceLevel>
         </TextList>
       </TextContent>
     </>

@@ -1,5 +1,6 @@
 import * as Octokit from '@octokit/rest';
 import * as GitUrlParse from 'git-url-parse';
+import { Base64 } from 'js-base64';
 import {
   GitSource,
   SecretType,
@@ -18,16 +19,19 @@ export class GithubService extends BaseService {
 
   constructor(gitsource: GitSource) {
     super(gitsource);
-    const opts = this.getAuthProvider();
+    const authOpts = this.getAuthProvider();
     this.metadata = this.getRepoMetadata();
-    this.client = new Octokit(opts);
+    const baseUrl =
+      this.metadata.host === 'github.com' ? null : `https://${this.metadata.host}/api/v3`;
+    this.client = new Octokit({ ...authOpts, baseUrl });
   }
 
   protected getAuthProvider = (): Octokit.Options => {
     switch (this.gitsource.secretType) {
       case SecretType.PERSONAL_ACCESS_TOKEN:
       case SecretType.BASIC_AUTH:
-        return { auth: this.gitsource.secretContent };
+      case SecretType.OAUTH:
+        return { auth: Base64.decode(this.gitsource.secretContent.password) };
       default:
         return null;
     }

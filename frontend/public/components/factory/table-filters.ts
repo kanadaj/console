@@ -9,12 +9,10 @@ import { roleType } from '../RBAC';
 import {
   K8sResourceKind,
   MachineKind,
-  serviceCatalogStatus,
-  serviceClassDisplayName,
-  servicePlanDisplayName,
   getClusterOperatorStatus,
   getTemplateInstanceStatus,
   VolumeSnapshotKind,
+  CustomResourceDefinitionKind,
 } from '../../module/k8s';
 import {
   alertDescription,
@@ -23,9 +21,10 @@ import {
   alertSource,
   alertState,
   silenceState,
+  targetSource,
 } from '../monitoring/utils';
 
-import { Alert, AlertStates, Rule, Silence } from '../monitoring/types';
+import { Alert, AlertStates, Rule, Silence, Target } from '../monitoring/types';
 import { requesterFilter } from '@console/shared/src/components/namespace';
 
 export const fuzzyCaseInsensitive = (a: string, b: string): boolean =>
@@ -85,6 +84,19 @@ export const tableFilters: FilterMap = {
   'alerting-rule-source': (filter, rule: Rule) =>
     filter.selected?.includes(alertingRuleSource(rule)) || _.isEmpty(filter.selected),
 
+  'observe-target-labels': (values, target: Target) =>
+    !values.all || values.all.every((v) => getLabelsAsString(target, 'labels').includes(v)),
+
+  'observe-target-health': (filter, target: Target) =>
+    filter.selected?.includes(target.health) || _.isEmpty(filter.selected),
+
+  'observe-target-source': (filter, target: Target) =>
+    filter.selected?.includes(targetSource(target)) || _.isEmpty(filter.selected),
+
+  'observe-target-text': (filter, target: Target) =>
+    fuzzyCaseInsensitive(filter.selected?.[0], target.scrapeUrl) ||
+    fuzzyCaseInsensitive(filter.selected?.[0], target.labels?.namespace),
+
   'silence-name': (filter, silence: Silence) =>
     fuzzyCaseInsensitive(filter.selected?.[0], silence.name),
 
@@ -102,10 +114,10 @@ export const tableFilters: FilterMap = {
   },
 
   // Filter role bindings by roleRef name
-  'role-binding-roleRef-name': (name, binding) => binding.roleRef.name === name.selected?.[0],
+  'role-binding-roleRef-name': (name, binding) => binding.roleRef.name === name,
 
   // Filter role bindings by roleRef kind
-  'role-binding-roleRef-kind': (kind, binding) => binding.roleRef.kind === kind.selected?.[0],
+  'role-binding-roleRef-kind': (kind, binding) => binding.roleRef.kind === kind,
 
   // Filter role bindings by user name
   'role-binding-user': (userName, { subject }) => subject.name === userName,
@@ -181,15 +193,6 @@ export const tableFilters: FilterMap = {
     return statuses.selected.includes(status) || !_.includes(statuses.all, status);
   },
 
-  'catalog-status': (statuses, catalog) => {
-    if (!statuses || !statuses.selected || !statuses.selected.length) {
-      return true;
-    }
-
-    const status = serviceCatalogStatus(catalog);
-    return statuses.selected.includes(status) || !_.includes(statuses.all, status);
-  },
-
   'secret-type': (types, secret) => {
     if (!types || !types.selected || !types.selected.length) {
       return true;
@@ -213,17 +216,6 @@ export const tableFilters: FilterMap = {
 
     const phase = pvc.status.phase;
     return phases.selected.includes(phase) || !_.includes(phases.all, phase);
-  },
-
-  // Filter service classes by text match
-  'service-class': (str, serviceClass) => {
-    const displayName = serviceClassDisplayName(serviceClass);
-    return fuzzyCaseInsensitive(str.selected?.[0], displayName);
-  },
-
-  'service-plan': (str, servicePlan) => {
-    const displayName = servicePlanDisplayName(servicePlan);
-    return fuzzyCaseInsensitive(str.selected?.[0], displayName);
   },
 
   'cluster-operator-status': (statuses, operator) => {
@@ -270,6 +262,13 @@ export const tableFilters: FilterMap = {
   'cluster-service-version': (str, csv) => {
     const value = clusterServiceVersionDisplayName(csv);
     return fuzzyCaseInsensitive(str.selected?.[0], value);
+  },
+  'custom-resource-definition-name': (str, crd: CustomResourceDefinitionKind) => {
+    const displayName = _.get(crd, 'spec.names.kind');
+    return (
+      fuzzyCaseInsensitive(str.selected?.[0], crd.metadata.name) ||
+      fuzzyCaseInsensitive(str.selected?.[0], displayName)
+    );
   },
 };
 

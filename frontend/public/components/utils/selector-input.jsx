@@ -2,6 +2,7 @@ import * as _ from 'lodash-es';
 import * as React from 'react';
 import * as classNames from 'classnames';
 import * as TagsInput from 'react-tagsinput';
+import { Label as PfLabel } from '@patternfly/react-core';
 
 import { split, selectorFromString } from '../../module/k8s/selector';
 import * as k8sSelectorRequirement from '../../module/k8s/selector-requirement';
@@ -23,6 +24,11 @@ export class SelectorInput extends React.Component {
     };
   }
 
+  componentDidUpdate(prevProps) {
+    if (!_.isEqual(prevProps.tags, this.props.tags)) {
+      this.setState({ tags: this.props.tags });
+    }
+  }
   static arrayify(obj) {
     return _.map(obj, (v, k) => (v ? `${k}=${v}` : k));
   }
@@ -36,6 +42,25 @@ export class SelectorInput extends React.Component {
     return result;
   }
 
+  static arrayObjectsToArrayStrings(obj) {
+    return _.map(obj, (v) => `${v.key} ${v.operator.toLowerCase()} (${v.values.join(',')})`);
+  }
+
+  static arrayToArrayOfObjects(arr) {
+    const result = [];
+    for (const item of arr) {
+      if (item.includes('(')) {
+        const [key, operator, values] = item.split(' ');
+        result.push({
+          key,
+          operator: _.capitalize(operator),
+          // eslint-disable-next-line no-useless-escape
+          values: values.replace(/[\(\)]/g, '').split(','),
+        });
+      }
+    }
+    return result;
+  }
   focus() {
     this.ref_ && this.ref_.focus();
   }
@@ -107,13 +132,14 @@ export class SelectorInput extends React.Component {
 
     const renderTag = ({ tag, key, onRemove, getTagDisplayValue }) => {
       return (
-        <span className={classNames('tag-item', this.props.labelClassName)} key={key}>
-          <span className="tag-item__content">{getTagDisplayValue(tag)}</span>
-          &nbsp;
-          <a className="remove-button" onClick={() => onRemove(key)}>
-            ×
-          </a>
-        </span>
+        <PfLabel
+          className={classNames('co-label tag-item-content', this.props.labelClassName)}
+          key={key}
+          onClose={() => onRemove(key)}
+          isTruncated
+        >
+          {getTagDisplayValue(tag)}
+        </PfLabel>
       );
     };
 

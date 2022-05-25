@@ -7,6 +7,11 @@ import { Map as ImmutableMap } from 'immutable';
 import { inject } from './inject';
 import { makeReduxID, makeQuery } from './k8s-watcher';
 import * as k8sActions from '../../actions/k8s';
+import {
+  getActiveCluster,
+  INTERNAL_REDUX_IMMUTABLE_TOARRAY_CACHE_SYMBOL,
+  INTERNAL_REDUX_IMMUTABLE_TOJSON_CACHE_SYMBOL,
+} from '@console/dynamic-plugin-sdk';
 
 const shallowMapEquals = (a, b) => {
   if (a === b || (a.size === 0 && b.size === 0)) {
@@ -18,7 +23,7 @@ const shallowMapEquals = (a, b) => {
   return a.every((v, k) => b.get(k) === v);
 };
 
-const processReduxId = ({ k8s }, props) => {
+export const processReduxId = ({ k8s }, props) => {
   const { reduxID, isList, filters } = props;
 
   if (!reduxID) {
@@ -27,19 +32,37 @@ const processReduxId = ({ k8s }, props) => {
 
   if (!isList) {
     let stuff = k8s.get(reduxID);
-    if (stuff) {
-      stuff = stuff.toJS();
-      stuff.optional = props.optional;
+    if (!stuff) {
+      return {};
     }
-    return stuff || {};
+    if (!stuff[INTERNAL_REDUX_IMMUTABLE_TOJSON_CACHE_SYMBOL]) {
+      stuff[INTERNAL_REDUX_IMMUTABLE_TOJSON_CACHE_SYMBOL] = stuff.toJSON();
+    }
+    stuff = stuff[INTERNAL_REDUX_IMMUTABLE_TOJSON_CACHE_SYMBOL];
+    return { ...stuff, optional: props.optional };
   }
 
-  const data = k8s.getIn([reduxID, 'data']);
+  let data = k8s.getIn([reduxID, 'data']);
   const _filters = k8s.getIn([reduxID, 'filters']);
   const selected = k8s.getIn([reduxID, 'selected']);
 
+  if (data && data.toArray) {
+    if (!data[INTERNAL_REDUX_IMMUTABLE_TOARRAY_CACHE_SYMBOL]) {
+      data[INTERNAL_REDUX_IMMUTABLE_TOARRAY_CACHE_SYMBOL] = data.toArray().map((a) => {
+        if (a.toJSON) {
+          if (!a[INTERNAL_REDUX_IMMUTABLE_TOJSON_CACHE_SYMBOL]) {
+            a[INTERNAL_REDUX_IMMUTABLE_TOJSON_CACHE_SYMBOL] = a.toJSON();
+          }
+          return a[INTERNAL_REDUX_IMMUTABLE_TOJSON_CACHE_SYMBOL];
+        }
+        return a;
+      });
+    }
+    data = data[INTERNAL_REDUX_IMMUTABLE_TOARRAY_CACHE_SYMBOL];
+  }
+
   return {
-    data: data && data.toArray().map((p) => p.toJSON()),
+    data,
     // This is a hack to allow filters passed down from props to make it to
     // the injected component. Ideally filters should all come from redux.
     filters: _.extend({}, _filters && _filters.toJS(), filters),
@@ -113,7 +136,9 @@ const ConnectToState = connect(mapStateToProps)(
   }, propsAreEqual),
 );
 
-const stateToProps = ({ k8s }, { resources }) => {
+const stateToProps = (state, { resources }) => {
+  const { k8s } = state;
+  const cluster = getActiveCluster(state);
   const k8sModels = resources.reduce(
     (models, { kind }) => models.set(kind, k8s.getIn(['RESOURCES', 'models', kind])),
     ImmutableMap(),
@@ -124,6 +149,7 @@ const stateToProps = ({ k8s }, { resources }) => {
       makeReduxID(
         k8sModels.get(r.kind),
         makeQuery(r.namespace, r.selector, r.fieldSelector, r.name),
+        cluster,
       ),
       'loaded',
     ]);
@@ -132,6 +158,7 @@ const stateToProps = ({ k8s }, { resources }) => {
     k8sModels,
     loaded: resources.every(loaded),
     inFlight: k8s.getIn(['RESOURCES', 'inFlight']),
+    cluster,
   };
 };
 
@@ -148,6 +175,7 @@ export const Firehose = connect(
     areStatePropsEqual: (next, prev) =>
       next.loaded === prev.loaded &&
       next.inFlight === prev.inFlight &&
+      next.cluster === prev.cluster &&
       shallowMapEquals(next.k8sModels, prev.k8sModels),
   },
 )(
@@ -182,6 +210,7 @@ export const Firehose = connect(
     }
 
     componentDidUpdate(prevProps) {
+      const clusterChanged = prevProps.cluster !== this.props.cluster;
       const discoveryComplete =
         !this.props.inFlight && !this.props.loaded && this.state.firehoses.length === 0;
       const resourcesChanged =
@@ -189,14 +218,14 @@ export const Firehose = connect(
         _.intersectionWith(prevProps.resources, this.props.resources, _.isEqual).length !==
           this.props.resources.length;
 
-      if (discoveryComplete || resourcesChanged) {
+      if (discoveryComplete || clusterChanged || resourcesChanged) {
         this.clear();
         this.start();
       }
     }
 
     start() {
-      const { watchK8sList, watchK8sObject, resources, k8sModels, inFlight } = this.props;
+      const { watchK8sList, watchK8sObject, resources, k8sModels, inFlight, cluster } = this.props;
 
       let firehoses = [];
       if (!(inFlight && _.some(resources, ({ kind }) => !k8sModels.get(kind)))) {
@@ -210,7 +239,7 @@ export const Firehose = connect(
               resource.limit,
             );
             const k8sKind = k8sModels.get(resource.kind);
-            const id = makeReduxID(k8sKind, query);
+            const id = makeReduxID(k8sKind, query, cluster);
             return _.extend({}, resource, { query, id, k8sKind });
           })
           .filter((f) => {
@@ -222,10 +251,10 @@ export const Firehose = connect(
           });
       }
 
-      firehoses.forEach(({ id, query, k8sKind, isList, name, namespace }) =>
+      firehoses.forEach(({ id, query, k8sKind, isList, name, namespace, partialMetadata }) =>
         isList
-          ? watchK8sList(id, query, k8sKind)
-          : watchK8sObject(id, name, namespace, query, k8sKind),
+          ? watchK8sList(id, query, k8sKind, null, partialMetadata)
+          : watchK8sObject(id, name, namespace, query, k8sKind, partialMetadata),
       );
       this.setState({ firehoses });
     }
@@ -280,6 +309,7 @@ Firehose.propTypes = {
       isList: PropTypes.bool,
       optional: PropTypes.bool, // do not block children-rendering while resource is still being loaded; do not fail if resource is missing (404)
       limit: PropTypes.number,
+      partialMetadata: PropTypes.bool,
     }),
   ).isRequired,
 };

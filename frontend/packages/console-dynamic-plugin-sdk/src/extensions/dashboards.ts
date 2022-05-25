@@ -11,7 +11,7 @@ import {
   FirehoseResult,
 } from './console-types';
 import {
-  DashboardCardSpan,
+  CardSpan,
   GetOperatorsWithStatuses,
   K8sActivityProps,
   OperatorRowProps,
@@ -46,7 +46,7 @@ export type DashboardsCard = ExtensionDeclaration<
     /** Dashboard card component. */
     component: CodeRef<React.ComponentType>;
     /** Card's vertical span in the column. Ignored for small screens, defaults to 12. */
-    span?: DashboardCardSpan;
+    span?: CardSpan;
   }
 >;
 
@@ -66,8 +66,8 @@ export type DashboardsOverviewHealthPrometheusSubsystem = ExtensionDeclaration<
     popupComponent?: CodeRef<React.ComponentType<PrometheusHealthPopupProps>>;
     /** The title of the popover. */
     popupTitle?: string;
-    /** Cloud providers which for which the subsystem should be hidden. */
-    disallowedProviders?: string[];
+    /** Control plane topology for which the subsystem should be hidden. */
+    disallowedControlPlaneTopology?: string[];
   }
 >;
 
@@ -167,7 +167,7 @@ export type DashboardsOverviewInventoryItemReplacement<
 >;
 
 /** Adds a resource tile to the project overview inventory card. */
-export type ProjectDashboardInventoryItem<
+export type DashboardsProjectOverviewInventoryItem<
   T extends K8sModel = K8sModel,
   R extends { [key: string]: K8sResourceCommon[] } = { [key: string]: K8sResourceCommon[] }
 > = ExtensionDeclaration<
@@ -264,7 +264,9 @@ export const isDashboardsOverviewInventoryItemReplacement = (
 ): e is DashboardsOverviewInventoryItemReplacement =>
   e.type === 'console.dashboards/overview/inventory/item/replacement';
 
-export const isProjectDashboardInventoryItem = (e: Extension): e is ProjectDashboardInventoryItem =>
+export const isDashboardsProjectOverviewInventoryItem = (
+  e: Extension,
+): e is DashboardsProjectOverviewInventoryItem =>
   e.type === 'console.dashboards/project/overview/item';
 
 export const isDashboardsOverviewResourceActivity = (

@@ -46,8 +46,9 @@ declare interface Window {
     addPage: string; // JSON encoded configuration
     consolePlugins: string[]; // Console dynamic plugins enabled on the cluster
     quickStarts: string;
-    clusters: string[];
     projectAccessClusterRoles: string;
+    clusters: string[];
+    controlPlaneTopology: string;
   };
   windowError?: string;
   __REDUX_DEVTOOLS_EXTENSION_COMPOSE__?: Function;
@@ -57,8 +58,19 @@ declare interface Window {
   Cypress?: {};
 }
 
-// TODO: Remove when upgrading to TypeScript 4.1.2+, which has a type for RelativeTimeFormat.
+// TODO: Remove when upgrading to TypeScript 4.1.2+, which has a type for ListFormat and RelativeTimeFormat.
 declare namespace Intl {
+  type ListFormatOptions = {
+    localeMatcher: string;
+    type: string;
+    style: string;
+  };
+
+  class ListFormat {
+    constructor(locales?: Locale | string | undefined, options?: Partial<ListFormatOptions>);
+    public format(list?: Iterable<string>): string;
+  }
+
   class RelativeTimeFormat {
     constructor(locale: string);
     format(n: number, unit: string);

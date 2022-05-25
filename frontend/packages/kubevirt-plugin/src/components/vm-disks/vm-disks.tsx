@@ -2,21 +2,21 @@ import * as React from 'react';
 import { sortable } from '@patternfly/react-table';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { useSafetyFirst } from '@console/dynamic-plugin-sdk';
 import {
   Flatten,
   MultiListPage,
   RowFunctionArgs,
   Table,
 } from '@console/internal/components/factory';
-import { useSafetyFirst } from '@console/internal/components/safety-first';
-import { FieldLevelHelp, FirehoseResult } from '@console/internal/components/utils';
+import {
+  FieldLevelHelp,
+  FirehoseResult,
+  useAccessReview2,
+} from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { PersistentVolumeClaimModel, TemplateModel } from '@console/internal/models';
-import {
-  K8sResourceKind,
-  PersistentVolumeClaimKind,
-  TemplateKind,
-} from '@console/internal/module/k8s';
+import { PersistentVolumeClaimKind, TemplateKind } from '@console/internal/module/k8s';
 import { CombinedDiskFactory } from '../../k8s/wrapper/vm/combined-disk';
 import { VMTemplateWrapper } from '../../k8s/wrapper/vm/vm-template-wrapper';
 import { VMWrapper } from '../../k8s/wrapper/vm/vm-wrapper';
@@ -31,13 +31,13 @@ import {
   getTemplateValidationsFromTemplate,
   getVMTemplateNamespacedName,
 } from '../../selectors/vm-template/selectors';
-import { isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
+import { isVMIReady, isVMRunningOrExpectedRunning } from '../../selectors/vm/selectors';
 import { asVM } from '../../selectors/vm/vm';
 import { getVMStatus } from '../../statuses/vm/vm-status';
 import { VMIKind } from '../../types';
 import { V1alpha1DataVolume } from '../../types/api';
 import { VMGenericLikeEntityKind } from '../../types/vmLike';
-import { dimensifyHeader, getResource } from '../../utils';
+import { dimensifyHeader, getLoadedData, getResource } from '../../utils';
 import { wrapWithProgress } from '../../utils/utils';
 import { diskModalEnhanced } from '../modals/disk-modal/disk-modal-enhanced';
 import { VMTabProps } from '../vms/types';
@@ -53,7 +53,7 @@ const getStoragesData = ({
   pvcs,
 }: {
   vmLikeEntity: VMGenericLikeEntityKind;
-  pvcs: FirehoseResult<K8sResourceKind[]>;
+  pvcs: PersistentVolumeClaimKind[];
   datavolumes: FirehoseResult<V1alpha1DataVolume[]>;
 }): StorageBundle[] => {
   const combinedDiskFactory = CombinedDiskFactory.initializeFromVMLikeEntity(
@@ -161,7 +161,7 @@ type VMDisksProps = VMTabProps & {
   vmi?: VMIKind;
 };
 
-export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi }) => {
+export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi, pvcs }) => {
   const commonTemplate = new VMTemplateWrapper(vmLikeEntity).asResource(true);
   const isCommon = isCommonTemplate(commonTemplate);
   const vmTemplateQuery = getVMTemplateNamespacedName(vmLikeEntity);
@@ -176,11 +176,19 @@ export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi }) => {
   const [isLocked, setIsLocked] = useSafetyFirst(false);
   const withProgress = wrapWithProgress(setIsLocked);
   const templateValidations = getTemplateValidationsFromTemplate(vmTemplate);
-  const isVMRunning = isVM(vmLikeEntity) && isVMRunningOrExpectedRunning(asVM(vmLikeEntity), vmi);
+  const isVMRunning =
+    isVM(vmLikeEntity) && isVMRunningOrExpectedRunning(asVM(vmLikeEntity), vmi) && isVMIReady(vmi);
   const pendingChangesDisks: Set<string> =
     isVMRunning && vmi
       ? new Set(changedDisks(new VMWrapper(asVM(vmLikeEntity)), new VMIWrapper(vmi)))
       : null;
+
+  const [canCreate] = useAccessReview2({
+    group: DataVolumeModel?.apiGroup,
+    resource: DataVolumeModel?.plural,
+    verb: 'create',
+    namespace,
+  });
 
   const resources = [
     getResource(PersistentVolumeClaimModel, {
@@ -198,12 +206,12 @@ export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi }) => {
 
   const flatten: Flatten<{
     datavolumes: V1alpha1DataVolume[];
-    pvcs: PersistentVolumeClaimKind[];
-  }> = ({ datavolumes, pvcs }) =>
+    persistentvolumeclaims: PersistentVolumeClaimKind[];
+  }> = ({ datavolumes, persistentvolumeclaims }) =>
     getStoragesData({
       vmLikeEntity: !isVMRunning ? vmLikeEntity : vmi,
       datavolumes,
-      pvcs,
+      pvcs: getLoadedData(persistentvolumeclaims) || pvcs,
     });
 
   const createFn = () =>
@@ -226,7 +234,7 @@ export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi }) => {
       createButtonText={t('kubevirt-plugin~Add disk')}
       canCreate
       createProps={{
-        isDisabled: isLocked || isCommon || isVMI(vmLikeEntity),
+        isDisabled: isLocked || isCommon || isVMI(vmLikeEntity) || !canCreate,
         onClick: createFn,
         id: 'add-disk',
       }}
@@ -240,6 +248,7 @@ export const VMDisks: React.FC<VMDisksProps> = ({ obj: vmLikeEntity, vmi }) => {
         columnClasses: diskTableColumnClasses,
         showGuestAgentHelp: true,
         pendingChangesDisks,
+        pvcs,
       }}
       hideLabelFilter
     />
@@ -283,7 +292,7 @@ export const VMDisksAndFileSystemsPage: React.FC<VMTabProps> = (props) => {
 
   return (
     <>
-      <VMDisks {...props} vmi={vmi} />
+      <VMDisks {...props} vmi={vmi} pvcs={pvcs} />
       <FileSystemsList vmi={vmi} vmStatusBundle={vmStatusBundle} />
     </>
   );

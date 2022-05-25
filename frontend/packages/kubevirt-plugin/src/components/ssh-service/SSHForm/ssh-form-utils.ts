@@ -59,18 +59,12 @@ export const createOrDeleteSSHService = async (
         ],
         type: 'NodePort',
         selector: {
-          ...Object.fromEntries(
-            Object.entries(metadata?.labels).filter(
-              ([objectKey]) => !objectKey.startsWith('vm') && !objectKey.startsWith('app'),
-            ),
-          ),
-          'kubevirt.io/domain': metadata?.name,
           'vm.kubevirt.io/name': metadata?.name,
         },
       },
     });
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.log(e.message);
+    console.log(`Failed to ${enableSSHService ? 'create' : 'delete'} SSH service:`, e.message);
   }
 };

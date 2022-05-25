@@ -3,11 +3,11 @@ import { Button, EmptyState, EmptyStateBody } from '@patternfly/react-core';
 import { Base64 } from 'js-base64';
 import { useTranslation } from 'react-i18next';
 import { connect, Dispatch } from 'react-redux';
+import { impersonateStateToProps } from '@console/dynamic-plugin-sdk';
 import { PodModel } from '@console/internal/models';
 import { resourceURL, K8sKind } from '@console/internal/module/k8s';
 import { WSFactory } from '@console/internal/module/ws-factory';
 import { connectToFlags, WithFlagsProps } from '@console/internal/reducers/connectToFlags';
-import { impersonateStateToProps } from '@console/internal/reducers/ui';
 import { FLAGS } from '@console/shared';
 import { setCloudShellActive } from '../../redux/actions/cloud-shell-actions';
 import {
@@ -19,7 +19,7 @@ import {
 import ExecuteCommand from './ExecuteCommand';
 import Terminal, { ImperativeTerminalType } from './Terminal';
 import TerminalLoadingBox from './TerminalLoadingBox';
-import useActivityTick from './useActivityTick';
+import useActivityTick, { TICK_INTERVAL } from './useActivityTick';
 
 import './CloudShellExec.scss';
 
@@ -36,6 +36,7 @@ type Props = {
   namespace: string;
   shcommand?: string[];
   workspaceModel: K8sKind;
+  isActiveTab?: boolean;
 };
 
 type StateProps = {
@@ -48,7 +49,7 @@ type DispatchProps = {
   onActivate: (active: boolean) => void;
 };
 
-type CloudShellExecProps = Props & DispatchProps & StateProps & WithFlagsProps;
+export type CloudShellExecProps = Props & DispatchProps & StateProps & WithFlagsProps;
 
 const NO_SH =
   'starting container process caused "exec: \\"sh\\": executable file not found in $PATH"';
@@ -62,6 +63,7 @@ const CloudShellExec: React.FC<CloudShellExecProps> = ({
   flags,
   impersonate,
   workspaceModel,
+  isActiveTab = false,
   onActivate,
 }) => {
   const [wsOpen, setWsOpen] = React.useState<boolean>(false);
@@ -74,13 +76,27 @@ const CloudShellExec: React.FC<CloudShellExecProps> = ({
 
   const tick = useActivityTick(workspaceName, namespace);
 
-  const onData = React.useCallback(
-    (data: string): void => {
-      tick();
-      ws.current?.send(`0${Base64.encode(data)}`);
-    },
-    [tick],
-  );
+  React.useEffect(() => {
+    let startTime;
+    let tickReq;
+    const handleTick = (timestamp) => {
+      if ((!startTime || timestamp - startTime >= TICK_INTERVAL) && isActiveTab) {
+        startTime = timestamp;
+        tick();
+      }
+      tickReq = window.requestAnimationFrame(handleTick);
+    };
+
+    tickReq = window.requestAnimationFrame(handleTick);
+
+    return () => {
+      window.cancelAnimationFrame(tickReq);
+    };
+  }, [isActiveTab, tick]);
+
+  const onData = (data: string): void => {
+    ws.current?.send(`0${Base64.encode(data)}`);
+  };
 
   const handleResize = React.useCallback((cols: number, rows: number) => {
     const data = Base64.encode(JSON.stringify({ Height: rows, Width: cols }));
@@ -144,7 +160,6 @@ const CloudShellExec: React.FC<CloudShellExecProps> = ({
             return;
           }
         }
-        tick();
         const data = Base64.decode(msg.slice(1));
         currentTerminal && currentTerminal.onDataReceived(data);
         previous = data;
@@ -189,7 +204,7 @@ const CloudShellExec: React.FC<CloudShellExecProps> = ({
           })
           .catch((e) => {
             // eslint-disable-next-line no-console
-            console.error(e);
+            console.error('Cloud shell error', e);
           });
       }) // eslint-disable-next-line no-console
       .onerror((evt) => console.error(`WS error?! ${evt}`));
@@ -211,7 +226,6 @@ const CloudShellExec: React.FC<CloudShellExecProps> = ({
       websocket.destroy();
     };
   }, [
-    tick,
     container,
     flags,
     impersonate,
@@ -266,6 +280,9 @@ const CloudShellExec: React.FC<CloudShellExecProps> = ({
     </div>
   );
 };
+
+// For testing
+export const InternalCloudShellExec = CloudShellExec;
 
 const dispatchToProps = (dispatch: Dispatch): DispatchProps => ({
   onActivate: (active: boolean) => dispatch(setCloudShellActive(active)),

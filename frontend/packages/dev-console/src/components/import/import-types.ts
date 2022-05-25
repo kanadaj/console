@@ -1,5 +1,6 @@
 import { ValidatedOptions } from '@patternfly/react-core';
 import { WatchK8sResultsObject } from '@console/dynamic-plugin-sdk';
+import { GitProvider } from '@console/git-service/src';
 import { DetectedStrategy } from '@console/git-service/src/utils/import-strategy-detector';
 import { DeploymentModel, DeploymentConfigModel } from '@console/internal/models';
 import { K8sResourceKind, ContainerPort } from '@console/internal/module/k8s';
@@ -165,8 +166,8 @@ export interface ProjectData {
 
 export interface GitData {
   url: string;
-  detectedType?: GitTypes;
-  type: GitTypes;
+  detectedType?: GitProvider;
+  type: GitProvider;
   ref: string;
   dir: string;
   showGitType: boolean;
@@ -207,13 +208,14 @@ export interface RouteData {
   hostname?: string;
   secure?: boolean;
   tls?: TLSData;
+  labels?: { [name: string]: string };
 }
 
 export interface TLSData {
   termination: string;
   insecureEdgeTerminationPolicy: string;
   certificate: string;
-  privateKey: string;
+  key: string;
   caCertificate: string;
   destinationCACertificate: string;
 }
@@ -267,19 +269,11 @@ export interface ServerlessScaling {
   concurrencyutilization: number | '';
 }
 
-export enum GitTypes {
-  github = 'github',
-  gitlab = 'gitlab',
-  bitbucket = 'bitbucket',
-  unsure = 'other',
-  invalid = '',
-}
-
 export const GitReadableTypes = {
-  [GitTypes.github]: 'GitHub',
-  [GitTypes.gitlab]: 'GitLab',
-  [GitTypes.bitbucket]: 'Bitbucket',
-  [GitTypes.unsure]: 'Other',
+  [GitProvider.GITHUB]: 'GitHub',
+  [GitProvider.GITLAB]: 'GitLab',
+  [GitProvider.BITBUCKET]: 'Bitbucket',
+  [GitProvider.UNSURE]: 'Other',
 };
 
 export enum ImportTypes {
@@ -310,20 +304,28 @@ export interface ImportData {
 }
 
 export enum TerminationTypes {
-  edge = 'Edge',
-  passthrough = 'Passthrough',
-  reencrypt = 'Re-encrypt',
+  // t('devconsole~Edge')
+  edge = 'devconsole~Edge',
+  // t('devconsole~Passthrough')
+  passthrough = 'devconsole~Passthrough',
+  // t('devconsole~Re-encrypt')
+  reencrypt = 'devconsole~Re-encrypt',
 }
 
 export enum InsecureTrafficTypes {
-  None = 'None',
-  Allow = 'Allow',
-  Redirect = 'Redirect',
+  // t('devconsole~None')
+  None = 'devconsole~None',
+  // t('devconsole~Allow')
+  Allow = 'devconsole~Allow',
+  // t('devconsole~Redirect')
+  Redirect = 'devconsole~Redirect',
 }
 
 export enum PassthroughInsecureTrafficTypes {
-  None = 'None',
-  Redirect = 'Redirect',
+  // t('devconsole~None')
+  None = 'devconsole~None',
+  // t('devconsole~Redirect')
+  Redirect = 'devconsole~Redirect',
 }
 
 export interface AutoscaleWindowType {

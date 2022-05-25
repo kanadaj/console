@@ -4,7 +4,6 @@ import { FieldArray, useField } from 'formik';
 import { useFormikValidationFix } from '../../../hooks/formik-validation-fix';
 import { getFieldId } from '../field-utils';
 import MultiColumnFieldFooter from '../multi-column-field/MultiColumnFieldFooter';
-import DragAndDrop from './DragAndDrop';
 import { TextColumnFieldProps, TextColumnItemProps } from './text-column-types';
 import TextColumnItem from './TextColumnItem';
 import TextColumnItemWithDnd from './TextColumnItemWithDnd';
@@ -44,7 +43,7 @@ const TextColumnField: React.FC<TextColumnFieldProps> = (props) => {
           >
             {helpText && <div className="pf-c-form__helper-text">{helpText}</div>}
             {dndEnabled ? (
-              <DragAndDrop>
+              <>
                 {rowValues.map((v, idx) => {
                   return (
                     <TextColumnItemWithDnd
@@ -54,7 +53,7 @@ const TextColumnField: React.FC<TextColumnFieldProps> = (props) => {
                     </TextColumnItemWithDnd>
                   );
                 })}
-              </DragAndDrop>
+              </>
             ) : (
               <>
                 {rowValues.map((v, idx) => {

@@ -4,14 +4,17 @@ import { FormikValues, useFormikContext } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { getGitService, ImportStrategy } from '@console/git-service/src';
 import { InputField } from '@console/shared/src';
+import { useTelemetry } from '@console/shared/src/hooks/useTelemetry';
 import { safeYAMLToJS } from '@console/shared/src/utils/yaml';
 import FormSection from '../section/FormSection';
 import { useDevfileServer, useDevfileSource, useSelectedDevfileSample } from './devfileHooks';
 import DevfileInfo from './DevfileInfo';
+import './DevfileStrategySection.scss';
 
 const DevfileStrategySection: React.FC = () => {
   const { t } = useTranslation();
   const { values, setFieldValue, setFieldTouched } = useFormikContext<FormikValues>();
+  const fireTelemetryEvent = useTelemetry();
   const {
     import: { showEditImportStrategy, strategies, recommendedStrategy },
     git: { url, type, ref, dir, secretResource },
@@ -46,11 +49,28 @@ const DevfileStrategySection: React.FC = () => {
       setFieldValue('devfile.devfileHasError', true);
       setValidated(ValidatedOptions.error);
     } else {
+      if (selectedSample != null) {
+        fireTelemetryEvent('Download Devfile from Git', {
+          client: 'openshift-console',
+          devfileName: selectedSample.name,
+        });
+      }
+
       setFieldValue('devfile.devfileContent', devfileContents);
       setFieldValue('devfile.devfileHasError', false);
       setValidated(ValidatedOptions.success);
     }
-  }, [devfile.devfilePath, dir, ref, secretResource, setFieldValue, type, url]);
+  }, [
+    devfile,
+    dir,
+    fireTelemetryEvent,
+    ref,
+    secretResource,
+    selectedSample,
+    setFieldValue,
+    type,
+    url,
+  ]);
 
   const helpText = React.useMemo(() => {
     if (validated === ValidatedOptions.success) {
@@ -93,9 +113,16 @@ const DevfileStrategySection: React.FC = () => {
   return (
     <>
       {devfileParseError && (
-        <Alert isInline variant="danger" title={t('devconsole~Import is not possible.')}>
-          {devfileParseError}
-        </Alert>
+        <FormSection>
+          <Alert
+            isInline
+            className="odc-devfile-strategy-section__error-alert"
+            variant="danger"
+            title={t('devconsole~Import is not possible.')}
+          >
+            {devfileParseError}
+          </Alert>
+        </FormSection>
       )}
       {showEditImportStrategy && importType !== 'devfile' && (
         <FormSection>

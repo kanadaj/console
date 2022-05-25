@@ -40,12 +40,12 @@ import { isTopologyComponentFactory, TopologyComponentFactory } from '../../exte
 import { getTopologyGraphModel, setTopologyGraphModel } from '../../redux/action';
 import { SHOW_GROUPING_HINT_EVENT, ShowGroupingHintEventListener } from '../../topology-types';
 import { componentFactory } from './components';
-import { COLA_LAYOUT, layoutFactory } from './layouts/layoutFactory';
+import { DEFAULT_LAYOUT, SUPPORTED_LAYOUTS, layoutFactory } from './layouts/layoutFactory';
 import TopologyControlBar from './TopologyControlBar';
 
 import './Topology.scss';
 
-const STORED_NODE_LAYOUT_FIELDS = ['id', 'x', 'y', 'collapsed', 'visible', 'style', 'shape'];
+const STORED_NODE_LAYOUT_FIELDS = ['id', 'x', 'y'];
 
 const setTopologyLayout = (namespace: string, nodes: NodeModel[], layout: string) => {
   const currentStore = {};
@@ -97,7 +97,7 @@ const graphModel: Model = {
   graph: {
     id: TOPOLOGY_GRAPH_ID,
     type: 'graph',
-    layout: COLA_LAYOUT,
+    layout: DEFAULT_LAYOUT,
     layers: [BOTTOM_LAYER, GROUPS_LAYER, 'groups2', DEFAULT_LAYER, TOP_LAYER],
   },
 };
@@ -177,7 +177,16 @@ const Topology: React.FC<TopologyProps &
     newVisualization.addEventListener(GRAPH_POSITION_CHANGE_EVENT, onCurrentGraphModelChange);
 
     if (storedLayout) {
-      graphModel.graph.layout = storedLayout.layout;
+      // Cleanup removed layouts, otherwise the `newVisualization.fromModel` call
+      // will crash in @patternfly/react-topology Visualization `getLayout(type: string)`
+      if (!SUPPORTED_LAYOUTS.includes(storedLayout.layout)) {
+        graphModel.graph.layout = DEFAULT_LAYOUT;
+        setTopologyLayoutData((prevState) => {
+          return { ...prevState, layout: DEFAULT_LAYOUT };
+        });
+      } else {
+        graphModel.graph.layout = storedLayout.layout;
+      }
     }
     newVisualization.fromModel(graphModel);
     newVisualization.addEventListener<SelectionEventListener>(SELECTION_EVENT, (ids: string[]) => {
@@ -217,7 +226,7 @@ const Topology: React.FC<TopologyProps &
           model.nodes.forEach((n) => {
             const storedNode = storedLayout.nodes.find((sn) => sn.id === n.id);
             if (storedNode) {
-              Object.keys(storedNode).forEach((key) => {
+              STORED_NODE_LAYOUT_FIELDS.forEach((key) => {
                 n[key] = storedNode[key];
               });
             }
@@ -225,6 +234,20 @@ const Topology: React.FC<TopologyProps &
         }
         storedLayoutApplied.current = true;
       }
+
+      model.nodes.forEach((n) => {
+        const oldNode = visualization.getNodeById(n.id);
+        if (oldNode && _.isEqual(oldNode.getData(), n.data)) {
+          n.data = oldNode.getData();
+        }
+      });
+      model.edges.forEach((e) => {
+        const oldEdge = visualization.getEdgeById(e.id);
+        if (oldEdge && _.isEqual(oldEdge.getData(), e.data)) {
+          e.data = oldEdge.getData();
+        }
+      });
+
       visualization.fromModel(model);
       const selectedItem = selectedId ? visualization.getElementById(selectedId) : null;
       if (!selectedItem || !selectedItem.isVisible()) {

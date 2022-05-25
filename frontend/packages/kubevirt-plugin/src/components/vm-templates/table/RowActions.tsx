@@ -21,7 +21,6 @@ import {
 import { TemplateSourceStatus } from '../../../statuses/template/types';
 import { permissionsErrorModal } from '../../modals/permissions-error-modal/permissions-error-modal';
 import { createVMAction } from '../utils';
-import { VMTemplateCommnunityLabel } from '../VMTemplateCommnunityLabel';
 import './vm-template-table.scss';
 
 type VMTemplateDetailsBodyProps = {
@@ -40,11 +39,6 @@ const VMTemplateDetailsBody: React.FC<VMTemplateDetailsBodyProps> = ({
   const storage = getTemplateSizeRequirementInBytes(template, sourceStatus);
   return (
     <Stack hasGutter>
-      {
-        <StackItem>
-          <VMTemplateCommnunityLabel template={template} />
-        </StackItem>
-      }
       {osName && <StackItem>{osName}</StackItem>}
       <StackItem>
         <div className="kubevirt-vm-template-popover">
@@ -97,6 +91,7 @@ const RowActions: React.FC<RowActionsProps> = ({
   const { t } = useTranslation();
   const [createVmAllowed] = useAccessReview2({
     namespace,
+    group: VirtualMachineModel.apiGroup,
     resource: VirtualMachineModel.plural,
     verb: 'create' as K8sVerb,
   });
@@ -107,7 +102,7 @@ const RowActions: React.FC<RowActionsProps> = ({
       : permissionsErrorModal({
           title: t('kubevirt-plugin~Create Virtual Machine from template'),
           errorMsg: t(
-            'kubevirt-plugin~You do not have permissions to create Virtual Machine. Contact your system administrator for more information.',
+            'kubevirt-plugin~You do not have permissions to create the Virtual Machine. Contact your system administrator for more information.',
           ),
         });
   };

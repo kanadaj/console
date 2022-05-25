@@ -27,47 +27,47 @@ Feature: Create the pipeline from builder page
         Scenario Outline: Create a pipeline with series tasks: P-02-TC02
             Given user is at Pipeline Builder page
              When user enters pipeline name as "<pipeline_name>"
-              And user clicks on Add task
+              And user clicks Add task button under Tasks section
               And user searches "<cluster_task_name>" in quick search bar
-              And user clicks on "Add" in "<cluster_task_name>" task
+              And user clicks on Add in selected task
               And user adds another task "<cluster_task_name_1>" in series
               And user clicks Create button on Pipeline Builder page
              Then user will be redirected to Pipeline Details page with header name "<pipeline_name>"
 
         Examples:
                   | pipeline_name | cluster_task_name | cluster_task_name_1 |
-                  | p-one         | kn                | openshift-client    |
+                  | pipe-one      | kn                | openshift-client    |
 
 
         @regression
         Scenario Outline: Create a pipeline with parallel tasks: P-02-TC03
             Given user is at Pipeline Builder page
              When user enters pipeline name as "<pipeline_name>"
-              And user clicks on Add task
+              And user clicks Add task button under Tasks section
               And user searches "<cluster_task_name>" in quick search bar
-              And user clicks on "Add" in "<cluster_task_name>" task
+              And user clicks on Add in selected task
               And user adds another task "<cluster_task_name_1>" in parallel
               And user clicks Create button on Pipeline Builder page
              Then user will be redirected to Pipeline Details page with header name "<pipeline_name>"
 
         Examples:
                   | pipeline_name | cluster_task_name | cluster_task_name_1 |
-                  | p-two         | kn                | openshift-client    |
+                  | pipe-two      | kn                | openshift-client    |
 
 
         @smoke
         Scenario Outline: Create a basic pipeline from pipeline builder page: P-02-TC04
             Given user is at Pipeline Builder page
              When user enters pipeline name as "<pipeline_name>"
-              And user clicks on Add task
+              And user clicks Add task button under Tasks section
               And user searches "<cluster_task_name>" in quick search bar
-              And user clicks on "Add" in "<cluster_task_name>" task
+              And user clicks on Add in selected task
               And user clicks Create button on Pipeline Builder page
              Then user will be redirected to Pipeline Details page with header name "<pipeline_name>"
 
         Examples:
                   | pipeline_name | cluster_task_name |
-                  | p-three-1     | kn                |
+                  | pipe-three    | kn                |
 
 
         @un-verified
@@ -95,9 +95,9 @@ Feature: Create the pipeline from builder page
         Scenario: Add Parameters to the pipeline in pipeline builder page: P-02-TC06
             Given user is at Pipeline Builder page
              When user enters pipeline name as "pipeline-params"
-              And user clicks on Add task
+              And user clicks Add task button under Tasks section
               And user searches "s2i-nodejs" in quick search bar
-              And user clicks on "Add" in "s2i-nodejs" task
+              And user clicks on Add in selected task
               And user adds the parameter details like Name, Description and Default Value
               And user clicks on Add workspace
               And user adds the Workspace name as "empty"
@@ -107,65 +107,49 @@ Feature: Create the pipeline from builder page
              Then user will be redirected to Pipeline Details page with header name "pipeline-params"
 
 
-        @regression @to-do
+        @regression
         Scenario: Deleting added task with delete icon in pipeline builder page: P-02-TC07
             Given user is at Pipeline Builder page
-             When user clicks on Add task
+             When user enters pipeline name as "pipeline-delete-task"
+              And user clicks Add task button under Tasks section
               And user searches "kn" in quick search bar
-              And user clicks on "Add" in "kn" task
+              And user clicks on Add button
               And user adds a task in series
               And user hovers over the newly added task
               And user clicks on delete icon
              Then user can see the task in series gets removed
 
 
-        @regression @to-do
+        @regression
         Scenario Outline: Create a pipeline with TektonHub task not present in cluster from pipeline builder page: P-02-TC08
             Given user is at Pipeline Builder page
              When user enters pipeline name as "<pipeline_name>"
-              And user clicks on Add task
-              And user searches and select "<task_name>" in the list of items based on the "tekton" provider in quick search bar
-              And user clicks on "Install and Add" in "<task_name>" task
-              And user should see the loading node until the installation is complete
-              And user should see the Create button enabled after installation
+              And user clicks Add task button under Tasks section
+              And user searches and select "<task_name>" in the list of items based on the "Community" provider in quick search bar
+              And user clicks on Install and add button
               And user clicks Create button on Pipeline Builder page
              Then user will be redirected to Pipeline Details page with header name "<pipeline_name>"
 
         Examples:
                   | pipeline_name | task_name |
-                  | p-task-1      | kn        |
+                  | ptask-1       | kn        |
 
 
-        @regression @to-do
+        @regression
         Scenario: Upgrade tasks that are already installed on the cluster in pipeline builder page: P-02-TC09
             Given user is at Pipeline Builder page
              When user enters pipeline name as "pipeline-client"
-              And user clicks on Add task
+              And user installs and removes "openshift-client" of "Community" provider
+              And user clicks Add task button under Tasks section
               And user searches "openshift-client" in quick search bar
-              And user changes version to latest
-              And user clicks on "Update and Add" button
+              And user changes version to "0.1"
+              And user clicks on Update and Add button
               And user clicks Create button on Pipeline Builder page
              Then user will be redirected to Pipeline Details page with header name "pipeline-client"
 
 
-        @regression @to-do
-        Scenario Outline: Create a pipeline with TektonHub task present in cluster from pipeline builder page: P-02-TC010
-            Given user is at Pipeline Builder page
-              And user has installed tekton hub "<task_name>" in cluster
-             When user enters pipeline name as "<pipeline_name>"
-              And user clicks on Add task
-              And user searches and select "<task_name>" in the list of items based on the "tekton" provider in quick search bar
-              And user clicks on "Add" in "<task_name>" task
-              And user clicks Create button on Pipeline Builder page
-             Then user will be redirected to Pipeline Details page with header name "<pipeline_name>"
-
-        Examples:
-                  | pipeline_name | task_name |
-                  | p-task-1      | kn        |
-
-
         @regression @manual
-        Scenario: Create the pipeline from yaml editor: P-02-TC11
+        Scenario: Create the pipeline from yaml editor: P-02-TC10
             Given user is at Pipeline Builder page
              When user selects YAML view
               And user clicks Create button on Pipeline Yaml page
@@ -173,12 +157,13 @@ Feature: Create the pipeline from builder page
 
 
         @regression
-        Scenario: Create pipeline with Workspaces: P-02-TC12
+        Scenario: Create pipeline with Workspaces: P-02-TC11
             Given user is at Pipeline Builder page
              When user enters pipeline name as "pipeline-workspace"
               And user clicks Add task button under Tasks section
               And user searches "git-clone" in quick search bar
-              And user clicks on Add in "git-clone" task
+              And user selects "git-clone" from git community
+              And user clicks on Install and add button
               And user selects the "git-clone" node
               And user adds the git url in the url Parameter in cluster task sidebar
               And user clicks on Add workspace
@@ -191,12 +176,13 @@ Feature: Create the pipeline from builder page
 
 
         @regression
-        Scenario: Create pipeline with optional Workspaces: P-02-TC13
+        Scenario: Create pipeline with optional Workspaces: P-02-TC12
             Given user is at Pipeline Builder page
              When user enters pipeline name as "pipe-opt-workspace"
               And user clicks Add task button under Tasks section
               And user searches "git-clone" in quick search bar
-              And user clicks on Add in "git-clone" task
+              And user selects "git-clone" from git community
+              And user clicks on Add button
               And user selects the "git-clone" node
               And user adds the git url in the url Parameter in cluster task sidebar
               And user clicks on Add workspace
@@ -210,7 +196,7 @@ Feature: Create the pipeline from builder page
 
 
         @regression @manual
-        Scenario: Add finally task node: P-02-TC14
+        Scenario: Add finally task node: P-02-TC13
             Given user is at Pipeline Builder page
              When user clicks on Add finally task
               And user clicks on Add task
@@ -228,25 +214,21 @@ Feature: Create the pipeline from builder page
         @regression
         Scenario: Create a pipeline with finally task node: P-02-TC15
             Given user is at Pipeline Builder page
-             When user enters pipeline name "pipeline-finally"
-              And user clicks on Add task
-              And user searches "openshift-client-v0-22-0" in quick search bar
-              And user clicks on Add in "openshift-client-v0-22-0" task
+             When user enters pipeline name as "pipeline-finally"
+              And user clicks Add task button under Tasks section
+              And user searches "openshift-client" in quick search bar
+              And user clicks on Add in selected task
               And user clicks on Add finally task
-              And user clicks on Add task
-              And user searches "tkn" in quick search bar
-              And user clicks on Add in "tkn" task
-              And user clicks on Add finally task again
-              And user selects "openshift-client" from Add task quick search
+              And user selects "tkn" from Add task quick search
               And user clicks on Add finally task again
               And user selects "kn" from Add task quick search
               And user clicks on Create
              Then user will be redirected to Pipeline Details page with header name "pipeline-finally"
-              And user is able to see finally tasks "tkn", "openshift-client" and "kn" mentioned under "Finally tasks" section in the Pipeline details page
+              And user is able to see finally tasks "tkn" and "kn" mentioned under "Finally tasks" section in the Pipeline details page
 
 
         @regression
-        Scenario: When expression in the Pipeline Builder: P-02-TC16
+        Scenario: When expression in the Pipeline Builder: P-02-TC15
             Given user is at Pipeline Builder page
               And user has chain of 3 tasks created in series
             # user uses yaml content "sum-and-multiply-pipeline/sum-and-multiply-pipeline.yaml"
@@ -260,7 +242,7 @@ Feature: Create the pipeline from builder page
 
 
         @regression
-        Scenario: Start pipeline with When expression in the Pipeline Builder: P-02-TC17
+        Scenario: Start pipeline with When expression in the Pipeline Builder: P-02-TC16
             Given user is at Pipeline Builder page
               And user has named pipeline as "pipeline-when-expression"
               And user has tasks "tkn" and "kn" in series
@@ -279,9 +261,9 @@ Feature: Create the pipeline from builder page
         @regression
         Scenario: Code assistance for referencing params in the Pipeline Builder: P-02-TC18
             Given user is at Pipeline Builder page
-             When user clicks on Add task
+             When user clicks Add task button under Tasks section
               And user searches "git-clone" in quick search bar
-              And user clicks on Add in "git-clone" task
+              And user clicks on Add in selected task
               And user enters pipeline name as "pipeline-code-assistance"
               And user clicks on Add Parameter
               And user adds Name as "git-url"
@@ -289,13 +271,13 @@ Feature: Create the pipeline from builder page
               And user clicks on Add Workspace and add name as "git-workspace"
               And user clicks on "git-clone" task node
               And user enters url under Parameters section "$(params.git-url)"
-              And user adds workspace as "git-workspace"
+              And user adds "output" workspace as "git-workspace"
               And user clicks on Create
              Then user will be redirected to Pipeline Details page with header name "pipeline-code-assistance"
 
 
         @regression
-        Scenario: Code assistance for referencing workspaces in the Pipeline Builder: P-02-TC19
+        Scenario: Code assistance for referencing workspaces in the Pipeline Builder: P-02-TC18
             Given user has applied yaml "configMap-test-motd.yaml"
             # user uses yaml content "using-optional-workspaces-in-when-expressions-pipelineRun/configMap-test-motd.yaml" in editor
               And user is at YAML view
@@ -308,7 +290,7 @@ Feature: Create the pipeline from builder page
 
 
         @regression
-        Scenario: Code assistance for referencing Context-based values in the Pipeline Builder: P-02-TC20
+        Scenario: Code assistance for referencing Context-based values in the Pipeline Builder: P-02-TC19
             Given user is at pipelines page
              When user clicks on import YAML button
               And user enters yaml content from yaml file "pipelineRun-using_context_variables.yaml" in the editor
@@ -319,7 +301,7 @@ Feature: Create the pipeline from builder page
 
 
         @regression
-        Scenario: Code assistance for referencing Task Results in the Pipeline Builder: P-02-TC21
+        Scenario: Code assistance for referencing Task Results in the Pipeline Builder: P-02-TC20
             Given user has imported YAML "task-sum.yaml" and "task-multiply.yaml"
             # user uses yaml content "sum-and-multiply-pipeline/task-sum.yaml" and "sum-and-multiply-pipeline/task-multiply.yaml" in editor
               And user is at YAML view of Pipeline Builder page
@@ -332,3 +314,29 @@ Feature: Create the pipeline from builder page
               And user clicks on Create button
               And user clicks on Logs tab in PipelineRun details page
              Then user will be able to see the output in sum and multiply task
+
+
+        @regression @manual @odc-6377
+        Scenario: Disable Tektonhub integration in the pipeline builder : P-02-TC21
+            Given user is at Search page
+              And user searches 'TektonConfig' in Resources dropdown
+              And user selects config with apiVersion operator.openshift.io/v1 option from Resources dropdown
+              And user clicks on "config" Name in TektonConfigs
+              And user switches to YAML tab
+              And user adds value of "spec.hub.params.value" as "false"
+              And user clicks on Save button
+              And user clicks on Pipeline tab in navigation menu
+              And user clicks Create Pipeline button
+              And user clicks Add task button under Tasks section
+              And user types 'git'
+             Then user will see Task, clusterTask only
+
+
+        @regression @manual @odc-6236
+        Scenario: Pipeline builder to support local Tekton Hub instances : P-02-TC21
+            Given user has setup tektonhub instance
+            # Refer to document https://docs.google.com/document/d/1HImc2DdtFKMWgk5dTm8Ib-I3wgnVXxdHxzX8Cn0jrZA/edit?usp=sharing for setting up tektonhub insance
+              And user is at Pipeline Builder page
+             When user clicks on Add task button under Tasks section
+              And user searches a tasks that is available in the local tektonhub instance
+             Then user will see the intended community task

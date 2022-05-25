@@ -1,12 +1,12 @@
 import { FLAGS } from '@console/shared';
-import {
-  CUSTOM_FLAVOR,
-  TEMPLATE_BASE_IMAGE_NAME_PARAMETER,
-  TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER,
-} from '../../../../constants/vm';
+import { CUSTOM_FLAVOR } from '../../../../constants/vm';
 import { ProvisionSource } from '../../../../constants/vm/provision-source';
 import { DataVolumeWrapper } from '../../../../k8s/wrapper/vm/data-volume-wrapper';
-import { iGetAnnotation, iGetPrameterValue } from '../../../../selectors/immutable/common';
+import {
+  iGetAnnotation,
+  iGetPVCName,
+  iGetPVCNamespace,
+} from '../../../../selectors/immutable/common';
 import {
   getITemplateDefaultFlavor,
   getITemplateDefaultWorkload,
@@ -38,7 +38,7 @@ import {
   iGetVmSettingValue,
 } from '../../selectors/immutable/vm-settings';
 import { VMSettingsField, VMWizardProps, VMWizardStorage } from '../../types';
-import { asDisabled, asHidden, asRequired } from '../../utils/utils';
+import { asDisabled, asHidden, asRequired, findDataSourcePVC } from '../../utils/utils';
 import { vmWizardInternalActions } from '../internal-actions';
 import { InternalActionType, UpdateOptions } from '../types';
 import { prefillVmTemplateUpdater } from './prefill-vm-template-state-update';
@@ -144,12 +144,16 @@ const baseImageUpdater = ({ id, prevState, dispatch, getState }: UpdateOptions) 
   if (iGetCommonData(state, id, VMWizardProps.isProviderImport)) {
     return;
   }
+  const [dataSources, dataSourcesLoaded] = iGetCommonData(state, id, VMWizardProps.dataSources);
+  const [pvcs, pvcsLoaded] = iGetCommonData(state, id, VMWizardProps.pvcs);
   if (
     // Note(Yaacov Sep-16): We it is not allowd to change baseImage when changing the flavor
     // or workload, user should not see that we have a bug settings the image:
     // we are incurrectly setting the base image using templates instead of using just the os.
     // we should fix that in the future, but currently we should not expose users to that.
-    !hasVMSettingsValueChanged(prevState, state, id, VMSettingsField.OPERATING_SYSTEM)
+    !hasVMSettingsValueChanged(prevState, state, id, VMSettingsField.OPERATING_SYSTEM) &&
+    !pvcsLoaded &&
+    !dataSourcesLoaded
   ) {
     return;
   }
@@ -163,18 +167,23 @@ const baseImageUpdater = ({ id, prevState, dispatch, getState }: UpdateOptions) 
     const relevantOptions = iGetRelevantTemplateSelectors(state, id);
     const iCommonTemplates = iGetLoadedCommonData(state, id, VMWizardProps.commonTemplates);
     const iTemplate = iCommonTemplates && iGetRelevantTemplate(iCommonTemplates, relevantOptions);
-    const pvcName = iGetPrameterValue(iTemplate, TEMPLATE_BASE_IMAGE_NAME_PARAMETER);
-    const pvcNamespace = iGetPrameterValue(iTemplate, TEMPLATE_BASE_IMAGE_NAMESPACE_PARAMETER);
+    const pvcName = iGetPVCName(iTemplate);
+    const pvcNamespace = iGetPVCNamespace(iTemplate);
 
     const iBaseImages = iGetLoadedCommonData(state, id, VMWizardProps.openshiftCNVBaseImages);
     iBaseImage =
       pvcName &&
       iBaseImages &&
       iBaseImages
-        .valueSeq()
+        ?.valueSeq()
         .find((iPVC) => iGetName(iPVC) === pvcName && iGetNamespace(iPVC) === pvcNamespace);
     iBaseImageUploading =
       iGetAnnotation(iBaseImage, CDI_UPLOAD_POD_ANNOTATION) === CDI_PVC_PHASE_RUNNING;
+
+    if (!iBaseImage) {
+      const { dsBaseImage } = findDataSourcePVC(dataSources, pvcs, pvcName, pvcNamespace);
+      iBaseImage = dsBaseImage;
+    }
   }
 
   dispatch(

@@ -6,7 +6,7 @@ import { ALL_APPLICATIONS_KEY, ALL_NAMESPACES_KEY } from '@console/shared/src/co
 import { getNamespace } from '../components/utils/link';
 import { OverviewSpecialGroup } from '../components/overview/constants';
 import { RootState } from '../redux';
-import { getImpersonate, getUser } from '@console/dynamic-plugin-sdk';
+import { getUser } from '@console/dynamic-plugin-sdk';
 
 export type UIState = ImmutableMap<string, any>;
 
@@ -19,6 +19,13 @@ export default (state: UIState, action: UIAction): UIState => {
       activeNamespace: ALL_NAMESPACES_KEY,
       activeApplication: ALL_APPLICATIONS_KEY,
       createProjectMessage: '',
+      serviceLevel: ImmutableMap({
+        level: '',
+        daysRemaining: null,
+        trialDateEnd: null,
+        hasSecretAccess: false,
+        clusterID: '',
+      }),
       overview: ImmutableMap({
         metrics: {},
         resources: ImmutableMap({}),
@@ -60,6 +67,15 @@ export default (state: UIState, action: UIAction): UIState => {
       }
       return state.set('activeNamespace', ns);
     }
+
+    case ActionType.SetServiceLevel:
+      return state.set('serviceLevel', {
+        level: action.payload.serviceLevel,
+        daysRemaining: action.payload.daysRemaining,
+        clusterID: action.payload.clusterID,
+        trialDateEnd: action.payload.trialDateEnd,
+        hasSecretAccess: action.payload.hasSecretAccess,
+      });
 
     case ActionType.SortList:
       return state.mergeIn(
@@ -139,9 +155,6 @@ export const userStateToProps = (state: RootState) => {
   return { user: getUser(state) };
 };
 
-export const impersonateStateToProps = (state: RootState) => {
-  return { impersonate: getImpersonate(state) };
-};
 export const getActiveNamespace = ({ UI }: RootState): string => UI.get('activeNamespace');
 
 export const getActiveApplication = ({ UI }: RootState): string => UI.get('activeApplication');

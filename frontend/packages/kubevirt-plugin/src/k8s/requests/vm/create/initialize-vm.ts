@@ -25,7 +25,7 @@ import { VolumeWrapper } from '../../../wrapper/vm/volume-wrapper';
 import { CreateVMParams } from './types';
 
 const initializeStorage = (params: CreateVMParams, vm: VMWrapper) => {
-  const { vmSettings, storages, isTemplate } = params;
+  const { vmSettings, storages, isTemplate, sourceRef } = params;
   const settings = asSimpleSettings(vmSettings);
 
   const resolvedStorages = storages.map((storage) => {
@@ -46,15 +46,25 @@ const initializeStorage = (params: CreateVMParams, vm: VMWrapper) => {
         volumeWrapper.appendTypeData({ name: dataVolumeWrapper.getName() });
       }
     }
-
     if (volumeWrapper.getCloudInitNoCloud()) {
-      const cloudConfigHeader = volumeWrapper
+      const cloudInitNoCloudUserData = volumeWrapper
         .getCloudInitNoCloud()
-        ?.userData?.includes('#cloud-config');
-      !cloudConfigHeader &&
-        volumeWrapper.setCloudInitNoCloud({
-          userData: ['#cloud-config', volumeWrapper.getCloudInitNoCloud().userData].join('\n'),
-        });
+        ?.userData?.replace(/(password:\s)'(.*)'(\s)/g, '$1$2$3'); // remove extra single quotation marks
+
+      const cloudConfigHeader = cloudInitNoCloudUserData?.includes('#cloud-config');
+      volumeWrapper.setCloudInitNoCloud({
+        userData: cloudConfigHeader
+          ? cloudInitNoCloudUserData
+          : ['#cloud-config', cloudInitNoCloudUserData].join('\n'),
+      });
+    }
+
+    if (
+      sourceRef &&
+      dataVolumeWrapper &&
+      sourceRef?.spec?.source?.pvc?.name === dataVolumeWrapper?.getPersistentVolumeClaimName()
+    ) {
+      dataVolumeWrapper.setSourceRef(sourceRef);
     }
 
     return {

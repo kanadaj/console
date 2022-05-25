@@ -41,10 +41,10 @@ Backend binaries are output to `./bin`.
 
 The following instructions assume you have an existing cluster you can connect
 to. OpenShift 4.x clusters can be installed using the
-[OpenShift Installer](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/).
-You can also use [CodeReady Containers](https://github.com/code-ready/crc)
-for local installs. More information about installing OpenShift can be found at
+[OpenShift Installer](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/). More information about installing OpenShift can be found at
 <https://try.openshift.com/>.
+You can also use [CodeReady Containers](https://github.com/code-ready/crc)
+for local installs, or native Kubernetes clusters.
 
 #### Native Kubernetes
 

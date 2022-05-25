@@ -1,14 +1,13 @@
 import { JSONSchema7 } from 'json-schema';
-import { BadgeType, NodeAddress } from '@console/shared';
+import { NodeAddress } from '@console/shared';
 import {
   ObjectReference,
   ObjectMetadata,
   K8sResourceCommon,
   K8sVerb,
-  AccessReviewResourceAttributes,
 } from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import { EventInvolvedObject } from './event';
-import { Selector, MatchLabels } from '@console/dynamic-plugin-sdk/src/api/common-types';
+import { Selector, MatchLabels, K8sModel } from '@console/dynamic-plugin-sdk/src/api/common-types';
 
 export * from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 export * from '@console/dynamic-plugin-sdk/src/api/common-types';
@@ -769,11 +768,16 @@ export type MachineConfigPoolKind = {
   status: MachineConfigPoolStatus;
 } & K8sResourceKind;
 
-export type ClusterUpdate = {
-  force: boolean;
-  image: string;
+export type Release = {
   version: string;
+  image: string;
+  url?: string;
   channels?: string[];
+};
+
+export type ConditionalUpdate = {
+  release: Release;
+  conditions: K8sResourceCondition[];
 };
 
 export type UpdateHistory = {
@@ -799,18 +803,19 @@ export type ClusterVersionCondition = {
 } & K8sResourceCondition;
 
 type ClusterVersionStatus = {
-  availableUpdates: ClusterUpdate[];
-  conditions: ClusterVersionCondition[];
-  desired: ClusterUpdate;
+  desired: Release;
   history: UpdateHistory[];
   observedGeneration: number;
   versionHash: string;
+  conditions?: ClusterVersionCondition[];
+  availableUpdates: Release[];
+  conditionalUpdates?: ConditionalUpdate[];
 };
 
 type ClusterVersionSpec = {
   channel: string;
   clusterID: string;
-  desiredUpdate?: ClusterUpdate;
+  desiredUpdate?: Release;
   upstream?: string;
 };
 
@@ -886,21 +891,6 @@ export type OAuthKind = {
   };
 } & K8sResourceCommon;
 
-export type SelfSubjectAccessReviewKind = {
-  apiVersion: string;
-  kind: string;
-  metadata?: ObjectMetadata;
-  spec: {
-    resourceAttributes?: AccessReviewResourceAttributes;
-  };
-  status?: {
-    allowed: boolean;
-    denied?: boolean;
-    reason?: string;
-    evaluationError?: string;
-  };
-};
-
 export type ResourceAccessReviewRequest = {
   apiVersion: string;
   kind: string;
@@ -926,34 +916,10 @@ export type GroupKind = {
   users: string[];
 } & K8sResourceCommon;
 
-export type K8sKind = {
-  abbr: string;
-  kind: string;
-  label: string;
-  labelKey?: string;
-  labelPlural: string;
-  labelPluralKey?: string;
-  plural: string;
-  propagationPolicy?: 'Foreground' | 'Background';
-
-  id?: string;
-  crd?: boolean;
-  apiVersion: string;
-  apiGroup?: string;
-  namespaced?: boolean;
-  selector?: Selector;
-  labels?: { [key: string]: string };
-  annotations?: { [key: string]: string };
-  verbs?: K8sVerb[];
-  shortNames?: string[];
-  badge?: BadgeType;
-  color?: string;
-
-  // Legacy option for supporing plural names in URL paths when `crd: true`.
-  // This should not be set for new models, but is needed to avoid breaking
-  // existing links as we transition to using the API group in URL paths.
-  legacyPluralURL?: boolean;
-};
+/**
+ * @deprecated migrated to new type K8sModel, use K8sModel from dynamic-plugin-sdk over K8sKind
+ */
+export type K8sKind = K8sModel;
 
 export type Cause = {
   field: string;
@@ -1134,3 +1100,60 @@ export type ConsolePluginKind = K8sResourceCommon & {
     };
   };
 };
+
+export type K8sPodControllerKind = {
+  spec?: {
+    replicas?: number;
+    template?: PodTemplate;
+    jobTemplate?: {
+      spec?: {
+        template: PodTemplate;
+      };
+    };
+  };
+} & K8sResourceCommon;
+
+export type DaemonSetKind = {
+  spec: {
+    minReadySeconds?: number;
+    revisionHistoryLimit?: number;
+    selector: Selector;
+    template: PodTemplate;
+    updateStrategy?: DeploymentUpdateStrategy;
+  };
+  status?: {
+    collisionCount?: number;
+    conditions?: DeploymentCondition[];
+    currentNumberScheduled: number;
+    desiredNumberScheduled: number;
+    numberAvailable?: number;
+    numberMisscheduled: number;
+    numberReady: number;
+    numberUnavailable: number;
+    observedGeneration: number;
+    updatedNumberScheduled: number;
+  };
+} & K8sResourceCommon;
+
+/**
+ * Not a real resource kind. A shared resource kind between resources that control pods.
+ * eg. Deployment, Statefulset, ReplicaSet, etc..
+ */
+export type ReplicationControllerKind = {
+  spec?: {
+    minReadySeconds?: number;
+    replicas?: number;
+    selector: Selector;
+    template: PodTemplate;
+  };
+  status?: {
+    availableReplicas?: number;
+    conditions?: DeploymentCondition[];
+    fullyLabeledReplicas?: number;
+    observedGeneratio?: number;
+    readyReplicas?: number;
+    replicas: number;
+  };
+} & K8sResourceCommon;
+
+export type ReplicaSetKind = {} & ReplicationControllerKind;

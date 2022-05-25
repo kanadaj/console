@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 
+	"github.com/openshift/console/pkg/serverutils"
 	"github.com/openshift/console/pkg/version"
 )
 
@@ -21,7 +22,7 @@ type proxy struct {
 }
 
 type Proxy interface {
-	IndexFile(onlyCompatible bool) (*repo.IndexFile, error)
+	IndexFile(onlyCompatible bool, namespace string) (*repo.IndexFile, error)
 }
 
 type RestConfigProvider func() (*rest.Config, error)
@@ -57,7 +58,7 @@ func New(k8sConfig RestConfigProvider, kubeVersionGetter version.KubeVersionGett
 
 	p := &proxy{
 		config:      config,
-		kubeVersion: kubeVersionGetter.GetKubeVersion(),
+		kubeVersion: kubeVersionGetter.GetKubeVersion(serverutils.LocalClusterName),
 	}
 
 	if len(opts) == 0 {
@@ -71,8 +72,8 @@ func New(k8sConfig RestConfigProvider, kubeVersionGetter version.KubeVersionGett
 	return p, nil
 }
 
-func (p *proxy) IndexFile(onlyCompatible bool) (*repo.IndexFile, error) {
-	helmRepos, err := p.helmRepoGetter.List()
+func (p *proxy) IndexFile(onlyCompatible bool, namespace string) (*repo.IndexFile, error) {
+	helmRepos, err := p.helmRepoGetter.List(namespace)
 	if err != nil {
 		return nil, err
 	}

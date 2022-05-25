@@ -30,6 +30,7 @@ const ApplicationSelector: React.FC<ApplicationSelectorProps> = ({
   const [nameField] = useField(subPath ? `${subPath}.application.name` : 'application.name');
   const { setFieldValue, setFieldTouched } = useFormikContext<FormikValues>();
   const [applicationExists, setApplicationExists] = React.useState<boolean>(false);
+  const applicationNameInputRef = React.useRef<HTMLInputElement>();
   const fieldId = getFieldId('application-name', 'dropdown');
   const isValid = !(touched && error);
   const errorMessage = !isValid ? error : '';
@@ -59,23 +60,34 @@ const ApplicationSelector: React.FC<ApplicationSelectorProps> = ({
 
   const actionItems = [
     {
-      actionTitle: t('topology~Create Application'),
+      actionTitle: t('topology~Create application'),
       actionKey: CREATE_APPLICATION_KEY,
     },
     {
-      actionTitle: t('topology~No Application group'),
+      actionTitle: t('topology~No application group'),
       actionKey: UNASSIGNED_KEY,
     },
   ];
 
-  const handleAppChange = (event) => {
-    setApplicationExists(availableApplications.current.includes(event.target.value));
+  const handleAppChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setApplicationExists(availableApplications.current.includes(event.target.value.trim()));
+  };
+
+  const handleAppBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    const trimmedApplicationName = event.target.value.trim();
+    setFieldValue(nameField.name, trimmedApplicationName);
   };
 
   const label = t('topology~Application');
   const inputHelpText = applicationExists
-    ? t('topology~Warning: the Application grouping already exists.')
-    : t('topology~A unique name given to the Application grouping to label your resources.');
+    ? t('topology~Warning: the application grouping already exists.')
+    : t('topology~A unique name given to the application grouping to label your resources.');
+
+  React.useEffect(() => {
+    if (selectedKey.value === CREATE_APPLICATION_KEY) {
+      applicationNameInputRef.current?.focus();
+    }
+  }, [selectedKey.value]);
 
   return (
     <>
@@ -85,9 +97,7 @@ const ApplicationSelector: React.FC<ApplicationSelectorProps> = ({
           label={label}
           helperTextInvalid={errorMessage}
           validated={isValid ? 'default' : 'error'}
-          helperText={t(
-            'topology~Select an Application for your grouping or no Application group to not use an Application grouping.',
-          )}
+          helperText={t('topology~Select an Application to group this component.')}
         >
           <ApplicationDropdown
             id={fieldId}
@@ -108,11 +118,13 @@ const ApplicationSelector: React.FC<ApplicationSelectorProps> = ({
           type={TextInputTypes.text}
           required={selectedKey.value === CREATE_APPLICATION_KEY}
           name={nameField.name}
+          ref={applicationNameInputRef}
           label={t('topology~Application name')}
           data-test-id="application-form-app-input"
           helpText={inputHelpText}
           validated={applicationExists ? ValidatedOptions.warning : ValidatedOptions.default}
           onChange={handleAppChange}
+          onBlur={handleAppBlur}
         />
       )}
     </>

@@ -1,3 +1,4 @@
+export * from './useCanClusterUpgrade';
 export * from './formik-validation-fix';
 export * from './deep-compare-memoize';
 export * from './document-listener';
@@ -24,6 +25,7 @@ export * from './useUserSettingsCompatibility';
 export * from './hpa-hooks';
 export * from './usePinnedResources';
 export * from './perspectiveUtils';
+export * from './useActiveCluster';
 export * from './useActiveNamespace';
 export * from './useIsMobile';
 export * from './useResizeObserver';
@@ -33,3 +35,4 @@ export * from './useEventListener';
 export * from './useTelemetry';
 export * from './useForceRender';
 export * from './useUtilizationDuration';
+export * from './usePrometheusGate';

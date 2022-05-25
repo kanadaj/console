@@ -32,13 +32,16 @@ import {
   useResolvedExtensions,
   WatchK8sResource,
 } from '@console/dynamic-plugin-sdk';
-import { Gallery, GalleryItem } from '@patternfly/react-core';
-import { BlueArrowCircleUpIcon, FLAGS, getInfrastructurePlatform } from '@console/shared';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardLink from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardLink';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
+import {
+  Gallery,
+  GalleryItem,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardActions,
+} from '@patternfly/react-core';
+import { BlueArrowCircleUpIcon, FLAGS, useCanClusterUpgrade } from '@console/shared';
+
 import AlertsBody from '@console/shared/src/components/dashboard/status-card/AlertsBody';
 import HealthBody from '@console/shared/src/components/dashboard/status-card/HealthBody';
 import AlertItem, {
@@ -62,8 +65,6 @@ import {
 } from './health-item';
 import { useK8sWatchResource } from '../../../utils/k8s-watch-hook';
 import { useFlag } from '@console/shared/src/hooks/flag';
-import { ClusterDashboardContext } from './context';
-import { useAccessReview } from '../../../utils';
 import { useNotificationAlerts } from '@console/shared/src/hooks/useNotificationAlerts';
 
 const filterSubsystems = (
@@ -107,21 +108,10 @@ export const DashboardAlerts: React.FC<DashboardAlertsProps> = ({ labelSelector 
   const [cv, cvLoaded] = useK8sWatchResource<ClusterVersionKind>(
     hasCVResource ? cvResource : ({} as WatchK8sResource),
   );
-
-  const clusterVersionIsEditable =
-    useAccessReview({
-      group: ClusterVersionModel.apiGroup,
-      resource: ClusterVersionModel.plural,
-      verb: 'patch',
-      name: 'version',
-    }) && window.SERVER_FLAGS.branding !== 'dedicated';
+  const canUpgrade = useCanClusterUpgrade();
 
   const showClusterUpdate =
-    hasCVResource &&
-    cvLoaded &&
-    hasAvailableUpdates(cv) &&
-    clusterVersionIsEditable &&
-    !labelSelector;
+    canUpgrade && hasCVResource && cvLoaded && hasAvailableUpdates(cv) && !labelSelector;
   return (
     <AlertsBody error={!_.isEmpty(loadError)}>
       {showClusterUpdate && (
@@ -185,7 +175,6 @@ export const StatusCard = connect<StatusCardProps>(mapStateToProps)(({ k8sModels
       ),
     [subsystems],
   );
-  const { infrastructure, infrastructureLoaded } = React.useContext(ClusterDashboardContext);
   const { t } = useTranslation();
   const healthItems: { title: string; Component: React.ReactNode }[] = [];
   subsystems.forEach((subsystem) => {
@@ -201,11 +190,10 @@ export const StatusCard = connect<StatusCardProps>(mapStateToProps)(({ k8sModels
       isDashboardsOverviewHealthPrometheusSubsystem(subsystem) ||
       isResolvedDashboardsOverviewHealthPrometheusSubsystem(subsystem)
     ) {
-      const { disallowedProviders } = subsystem.properties;
+      const { disallowedControlPlaneTopology } = subsystem.properties;
       if (
-        disallowedProviders?.length &&
-        (!infrastructureLoaded ||
-          disallowedProviders.includes(getInfrastructurePlatform(infrastructure)))
+        disallowedControlPlaneTopology?.length &&
+        disallowedControlPlaneTopology.includes(window.SERVER_FLAGS.controlPlaneTopology)
       ) {
         return;
       }
@@ -248,22 +236,28 @@ export const StatusCard = connect<StatusCardProps>(mapStateToProps)(({ k8sModels
   }
 
   return (
-    <DashboardCard gradient data-test-id="status-card">
-      <DashboardCardHeader>
-        <DashboardCardTitle>{t('public~Status')}</DashboardCardTitle>
-        <DashboardCardLink to="/monitoring/alerts">{t('public~View alerts')}</DashboardCardLink>
-      </DashboardCardHeader>
-      <DashboardCardBody>
-        <HealthBody>
-          <Gallery className="co-overview-status__health" hasGutter>
-            {healthItems.map((item) => {
-              return <GalleryItem key={item.title}>{item.Component}</GalleryItem>;
-            })}
-          </Gallery>
-        </HealthBody>
-        <DashboardAlerts />
-      </DashboardCardBody>
-    </DashboardCard>
+    <Card data-test-id="status-card" className="co-overview-card--gradient">
+      <CardHeader>
+        <CardTitle>{t('public~Status')}</CardTitle>
+        <CardActions className="co-overview-card__actions">
+          <Link to="/monitoring/alerts" data-test="status-card-view-alerts">
+            {t('public~View alerts')}
+          </Link>
+        </CardActions>
+      </CardHeader>
+      <HealthBody>
+        <Gallery className="co-overview-status__health" hasGutter>
+          {healthItems.map((item) => {
+            return (
+              <GalleryItem key={item.title} data-test={item.title}>
+                {item.Component}
+              </GalleryItem>
+            );
+          })}
+        </Gallery>
+      </HealthBody>
+      <DashboardAlerts />
+    </Card>
   );
 });
 

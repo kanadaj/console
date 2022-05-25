@@ -7,8 +7,9 @@ import {
   ActionMenu,
   ActionMenuVariant,
   LazyActionMenu,
+  usePrometheusGate,
 } from '@console/shared';
-import { K8sResourceKind, referenceForModel, referenceFor } from '../module/k8s';
+import { DeploymentKind, K8sResourceKind, referenceForModel, referenceFor } from '../module/k8s';
 import { ResourceEventStream } from './events';
 import { DetailsPage, ListPage, Table, RowFunctionArgs } from './factory';
 
@@ -27,6 +28,7 @@ import {
 } from './utils';
 import { VolumesTable } from './volumes-table';
 import { StatefulSetModel } from '../models';
+import { PodDisruptionBudgetField } from '@console/app/src/components/pdb/PodDisruptionBudgetField';
 
 const { AddStorage, common, ModifyCount } = Kebab.factory;
 export const menuActions: KebabAction[] = [
@@ -65,6 +67,9 @@ const StatefulSetDetails: React.FC<StatefulSetDetailsProps> = ({ obj: ss }) => {
               <RuntimeClass obj={ss} />
             </ResourceSummary>
           </div>
+          <dl className="co-m-pane__details">
+            <PodDisruptionBudgetField obj={ss} />
+          </dl>
         </div>
       </div>
       <div className="co-m-pane__body">
@@ -115,16 +120,8 @@ const StatefulSetPods: React.FC<StatefulSetPodsProps> = (props) => (
   <PodsComponent {...props} showNodes />
 );
 
-const pages = [
-  navFactory.details(StatefulSetDetails),
-  navFactory.metrics(),
-  navFactory.editYaml(),
-  navFactory.pods(StatefulSetPods),
-  navFactory.envEditor(EnvironmentTab),
-  navFactory.events(ResourceEventStream),
-];
-
 export const StatefulSetsDetailsPage: React.FC<StatefulSetsDetailsPageProps> = (props) => {
+  const prometheusIsAvailable = usePrometheusGate();
   const customActionMenu = (kindObj, obj) => {
     const resourceKind = referenceForModel(kindObj);
     const context = { [resourceKind]: obj };
@@ -138,7 +135,21 @@ export const StatefulSetsDetailsPage: React.FC<StatefulSetsDetailsPageProps> = (
       </ActionServiceProvider>
     );
   };
-  return <DetailsPage {...props} kind={kind} customActionMenu={customActionMenu} pages={pages} />;
+  return (
+    <DetailsPage
+      {...props}
+      kind={kind}
+      customActionMenu={customActionMenu}
+      pages={[
+        navFactory.details(StatefulSetDetails),
+        ...(prometheusIsAvailable ? [navFactory.metrics()] : []),
+        navFactory.editYaml(),
+        navFactory.pods(StatefulSetPods),
+        navFactory.envEditor(EnvironmentTab),
+        navFactory.events(ResourceEventStream),
+      ]}
+    />
+  );
 };
 
 type EnvironmentPageProps = {
@@ -153,7 +164,7 @@ type EnvironmentTabProps = {
 };
 
 type StatefulSetDetailsProps = {
-  obj: K8sResourceKind;
+  obj: DeploymentKind;
 };
 
 type StatefulSetsPageProps = {

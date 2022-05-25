@@ -1,11 +1,10 @@
 import { Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
 import { detailsPage } from '@console/cypress-integration-tests/views/details-page';
-import { addOptions, pageTitle, sideBarTabs, nodeActions } from '../../constants';
+import { pageTitle, sideBarTabs, nodeActions } from '../../constants';
 import { monitoringPO, topologyPO, addHealthChecksPO } from '../../pageObjects';
 import {
-  addPage,
   addHealthChecksPage,
-  createGitWorkload,
+  createGitWorkloadIfNotExistsOnTopologyPage,
   createHelmChartFromAddPage,
   monitoringPage,
   topologyPage,
@@ -15,12 +14,16 @@ import {
 Given(
   'workload {string} with resource type {string} is present in topology page',
   (workloadName: string, resourceType: string) => {
-    createGitWorkload('https://github.com/sclorg/nodejs-ex.git', workloadName, resourceType);
+    createGitWorkloadIfNotExistsOnTopologyPage(
+      'https://github.com/sclorg/nodejs-ex.git',
+      workloadName,
+      resourceType,
+    );
     topologyPage.verifyWorkloadInTopologyPage(workloadName);
   },
 );
 
-Given('user has installed helm release {string}', (helmReleaseName: string) => {
+Given('helm release {string} is present in topology page', (helmReleaseName: string) => {
   createHelmChartFromAddPage(helmReleaseName);
   topologyPage.verifyWorkloadInTopologyPage(helmReleaseName);
 });
@@ -33,8 +36,21 @@ Given(
   },
 );
 
-When('user clicks on Monitoring tab', () => {
+When('user clicks on Observe tab', () => {
   topologySidePane.selectTab(sideBarTabs.Observe);
+});
+
+When('user clicks on Memory usage chart', () => {
+  cy.get('[data-test="memory-usage"]')
+    .contains('a', 'Inspect')
+    .click();
+});
+
+Then('page redirected to the Observe Metrics page for the chart', () => {
+  detailsPage.titleShouldContain('Observe');
+  cy.get('.co-m-horizontal-nav-item--active')
+    .find(monitoringPO.tabs.metrics)
+    .should('be.visible');
 });
 
 When('user selects {string} from Context Menu', (menuOption: string) => {
@@ -42,9 +58,7 @@ When('user selects {string} from Context Menu', (menuOption: string) => {
 });
 
 When('user clicks on View dashboard link', () => {
-  cy.get('a')
-    .contains('View dashboard')
-    .click({ force: true });
+  cy.get(topologyPO.sidePane.monitoringTab.viewMonitoringDashBoardLink).click({ force: true });
 });
 
 When('user selects {string} from topology sidebar Actions dropdown', (menuOption: string) => {
@@ -54,6 +68,41 @@ When('user selects {string} from topology sidebar Actions dropdown', (menuOption
 When('user clicks on the workload {string} to open the sidebar', (nodeName: string) => {
   topologyPage.clickOnNode(nodeName);
   topologySidePane.verify();
+});
+
+When(
+  'user clicks on the deployment of workload {string} to open the sidebar',
+  (nodeName: string) => {
+    topologyPage.clickOnDeploymentNode(nodeName);
+    topologySidePane.verify();
+  },
+);
+
+Then('user wont see Observe tab', () => {
+  topologySidePane.verifyTabNotVisible(sideBarTabs.Observe);
+});
+
+Then('page redirected to the Observe page', () => {
+  detailsPage.titleShouldContain('Observe');
+});
+
+Then('page redirected to the Dashboard tab of Observe page', () => {
+  detailsPage.titleShouldContain('Observe');
+  cy.get('.co-m-horizontal-nav-item--active')
+    .find(monitoringPO.tabs.dashboard)
+    .should('be.visible');
+});
+
+Then('user will see the {string} selected in the Dashboard dropdown', (dashboardName: string) => {
+  cy.get(monitoringPO.dashboardTab.dashboardDropdown).should('contain.text', dashboardName);
+});
+
+Then('user will see {string} option selected in the Workload dropdown', (workloadName: string) => {
+  cy.get(monitoringPO.dashboardTab.workloadsDropdown).should('contain.text', workloadName);
+});
+
+Then('user will see {string} option selected in the Type dropdown', (resourceType: string) => {
+  cy.get(monitoringPO.dashboardTab.typeDropdown).should('contain.text', resourceType);
 });
 
 When(
@@ -70,10 +119,6 @@ Then('page redirected to the Monitoring page', () => {
 Given('user is on the topology sidebar of the helm release {string}', (helmReleaseName: string) => {
   createHelmChartFromAddPage(helmReleaseName);
   topologyPage.clickOnHelmWorkload();
-});
-
-When('user clicks on From Git card', () => {
-  addPage.selectCardFromOptions(addOptions.Git);
 });
 
 When('user clicks on Add Readiness Probe', () => {

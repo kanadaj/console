@@ -41,7 +41,7 @@ export const iGetRelevantTemplates = (
 
   return ImmutableList<ITemplate>(
     (iCommonTemplates || ImmutableMap())
-      .valueSeq()
+      ?.valueSeq()
       .filter((iTemplate) => {
         const labels = iGetLabels(iTemplate);
 
@@ -119,11 +119,22 @@ export const iGetCommonTemplateDiskBus = (tmp: ITemplate, diskName: string) => {
   return iGetIn(disk, ['disk', 'bus']);
 };
 
+export const iGetCommonTemplateDataVolumeSize = (tmp: ITemplate, diskName: string) => {
+  const dataVolume = iGetIn(iSelectVM(tmp), ['spec', 'dataVolumeTemplates'])?.find(
+    (d) => iGetIn(d, ['metadata', 'name']) === diskName,
+  );
+
+  return (
+    iGetIn(dataVolume, ['spec', 'storage', 'resources', 'requests', 'storage']) ??
+    iGetIn(dataVolume, ['spec', 'pvc', 'resources', 'requests', 'storage'])
+  );
+};
+
 export const iGetDefaultTemplate = (
   iCommonTemplates: ImmutableMap<string, ITemplate>,
   os: string,
 ): ITemplate =>
-  (iCommonTemplates || ImmutableMap()).valueSeq().find((iTemplate) => {
+  (iCommonTemplates || ImmutableMap())?.valueSeq().find((iTemplate) => {
     const labels = iGetLabels(iTemplate);
     return labels && labels.get(getOsLabel(os)) && labels.get(TEMPLATE_DEFAULT_LABEL) === 'true';
   });

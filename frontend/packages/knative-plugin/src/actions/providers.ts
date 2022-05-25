@@ -26,10 +26,17 @@ import {
   TYPE_EVENT_SOURCE_LINK,
   TYPE_REVISION_TRAFFIC,
   TYPE_KAFKA_CONNECTION_LINK,
+  TYPE_EVENT_SINK,
+  TYPE_KAFKA_SINK,
 } from '../topology/const';
 import { isEventingChannelResourceKind } from '../utils/fetch-dynamic-eventsources-utils';
 import { AddBrokerAction } from './add-broker';
 import { AddChannelAction } from './add-channel';
+import {
+  AddEventSinkAction,
+  AddEventSinkMenuAction,
+  EVENT_SINK_ADD_CONNECTOR_ACTION,
+} from './add-event-sink';
 import { AddEventSourceAction } from './add-event-source';
 import { AddSubscriptionAction, SUBSCRIPTION_ACTION_ID } from './add-subscription';
 import { AddTriggerAction, TRIGGER_ACTION_ID } from './add-trigger';
@@ -82,7 +89,12 @@ export const useKnativeServiceActionsProvider = (resource: K8sResourceKind) => {
 export const useBrokerActionProvider = (resource: K8sResourceKind) => {
   const [kindObj, inFlight] = useK8sModel(referenceFor(resource));
   const actions = React.useMemo(() => {
-    return [addTriggerBroker(kindObj, resource), ...getCommonResourceActions(kindObj, resource)];
+    const connectorSource = `${referenceFor(resource)}/${resource.metadata.name}`;
+    return [
+      addTriggerBroker(kindObj, resource),
+      AddEventSinkMenuAction(resource.metadata.namespace, undefined, connectorSource),
+      ...getCommonResourceActions(kindObj, resource),
+    ];
   }, [kindObj, resource]);
 
   return [actions, !inFlight, undefined];
@@ -108,8 +120,10 @@ export const useCommonActionsProvider = (resource: K8sResourceKind) => {
 export const useChannelActionProvider = (resource: K8sResourceKind) => {
   const [kindObj, inFlight] = useK8sModel(referenceFor(resource));
   const actions = React.useMemo(() => {
+    const connectorSource = `${referenceFor(resource)}/${resource.metadata.name}`;
     return [
       addSubscriptionChannel(kindObj, resource),
+      AddEventSinkMenuAction(resource.metadata.namespace, undefined, connectorSource),
       ...getCommonResourceActions(kindObj, resource),
     ];
   }, [kindObj, resource]);
@@ -133,6 +147,7 @@ export const useTopologyActionsProvider = ({
       }
       const path = application ? 'add-to-application' : 'add-to-project';
       return [
+        AddEventSinkAction(namespace, application, undefined, path),
         AddEventSourceAction(namespace, application, undefined, path),
         AddChannelAction(namespace, application, path),
         AddBrokerAction(namespace, application, path),
@@ -144,7 +159,14 @@ export const useTopologyActionsProvider = ({
     const sourceKind = connectorSource.getData().data.kind;
     const connectorResource = connectorSource.getData().resource;
     if (isEventingChannelResourceKind(sourceKind)) {
-      return [AddSubscriptionAction(connectorResource)];
+      return [
+        AddSubscriptionAction(connectorResource),
+        AddEventSinkMenuAction(
+          namespace,
+          application,
+          `${sourceKind}/${connectorResource.metadata.name}`,
+        ),
+      ];
     }
     switch (sourceKind) {
       case referenceForModel(ServiceModel):
@@ -157,7 +179,14 @@ export const useTopologyActionsProvider = ({
           ),
         ].filter(disabledActionsFilter);
       case referenceForModel(EventingBrokerModel):
-        return [AddTriggerAction(connectorResource)];
+        return [
+          AddTriggerAction(connectorResource),
+          AddEventSinkMenuAction(
+            namespace,
+            application,
+            `${sourceKind}/${connectorResource.metadata.name}`,
+          ),
+        ];
       default:
         return [];
     }
@@ -268,9 +297,33 @@ export const topologyServerlessActionsFilter = (
 ) => {
   if (
     [TYPE_EVENT_SOURCE_KAFKA, TYPE_EVENT_PUB_SUB].includes(scope.connectorSource?.getData().type) &&
-    ![TRIGGER_ACTION_ID, SUBSCRIPTION_ACTION_ID].includes(action.id)
+    ![TRIGGER_ACTION_ID, SUBSCRIPTION_ACTION_ID, EVENT_SINK_ADD_CONNECTOR_ACTION].includes(
+      action.id,
+    )
   ) {
     return false;
   }
   return true;
+};
+
+export const useKnativeEventSinkActionProvider = (element: Node) => {
+  const resource = element.getData()?.resources?.obj || {};
+  const [k8sModel] = useK8sModel(referenceFor(resource));
+  const actions = React.useMemo(() => {
+    const type = element.getType();
+    if ((type !== TYPE_EVENT_SINK && type !== TYPE_KAFKA_SINK) || !k8sModel) return undefined;
+    return k8sModel && resource
+      ? [
+          getModifyApplicationAction(k8sModel, resource),
+          ...getCommonResourceActions(k8sModel, resource),
+        ]
+      : undefined;
+  }, [element, k8sModel, resource]);
+
+  return React.useMemo(() => {
+    if (!actions) {
+      return [[], true, undefined];
+    }
+    return [actions, true, undefined];
+  }, [actions]);
 };

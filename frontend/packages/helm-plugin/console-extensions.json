@@ -13,9 +13,22 @@
     }
   },
   {
-    "type": "console.flag",
+    "type": "console.model-metadata",
     "properties": {
-      "handler": { "$codeRef": "helmUtils.detectHelmChartRepositories" }
+      "model": {
+        "group": "helm.openshift.io",
+        "version": "v1beta1",
+        "kind": "ProjectHelmChartRepository"
+      },
+      "label": "%helm-plugin~Project Helm Chart Repository%",
+      "labelPlural": "%helm-plugin~Project Helm Chart Repositories%",
+      "abbr": "PHCR"
+    }
+  },
+  {
+    "type": "console.flag/hookProvider",
+    "properties": {
+      "handler": { "$codeRef": "helmProviders.useDetectHelmChartRepositories" }
     }
   },
   {
@@ -85,6 +98,22 @@
     }
   },
   {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": ["/ns/:ns/projecthelmchartrepositories/~new"],
+      "component": { "$codeRef": "helmComponents.ProjectHelmChartRepositoryForm" }
+    }
+  },
+  {
+    "type": "dev-console.add/action-group",
+    "properties": {
+      "id": "helm-chart-repositories",
+      "name": "%helm-plugin~Helm Chart repositories%",
+      "insertAfter": "local-machine"
+    }
+  },
+  {
     "type": "dev-console.add/action",
     "flags": {
       "required": ["OPENSHIFT_HELM"]
@@ -99,11 +128,25 @@
     }
   },
   {
+    "type": "dev-console.add/action",
+    "properties": {
+      "id": "project-helm-chart-repositories",
+      "groupId": "helm-chart-repositories",
+      "href": "/ns/:namespace/projecthelmchartrepositories/~new",
+      "label": "%helm-plugin~Helm Chart repositories%",
+      "description": "%helm-plugin~Add a Helm Chart Repository to extend the Developer Catalog%",
+      "icon": { "$codeRef": "helmUtils.helmChartRepositoriesIconElement" },
+      "accessReview": [
+        { "group": "helm.openshift.io", "resource": "ProjectHelmChartRepository", "verb": "create" }
+      ]
+    }
+  },
+  {
     "type": "console.catalog/item-type",
     "properties": {
       "type": "HelmChart",
       "title": "%helm-plugin~Helm Charts%",
-      "catalogDescription": "%helm-plugin~Browse for charts that help manage complex installations and upgrades. Cluster administrators can customize the content made available in the catalog.%",
+      "catalogDescription": { "$codeRef": "helmCatalog.getHelmCatalogTypeDescription" },
       "typeDescription": "%helm-plugin~**Helm Charts** are packages for deploying an Application or components of a larger Application.%",
       "filters": [
         {
@@ -125,6 +168,7 @@
     "properties": {
       "catalogId": "dev-catalog",
       "type": "HelmChart",
+      "title": "%helm-plugin~Helm Charts%",
       "provider": { "$codeRef": "helmCatalog.helmChartProvider" }
     },
     "flags": {
@@ -192,7 +236,20 @@
       "id": "helm-topology-model-factory",
       "priority": 400,
       "resources": {
-        "secrets": { "opts": { "isList": true, "kind": "Secret", "optional": true } }
+        "secrets": {
+          "opts": {
+            "isList": true,
+            "kind": "Secret",
+            "optional": true,
+            "selector": {
+              "matchLabels": { "owner": "helm" },
+              "matchExpressions": [
+                { "key": "status", "operator": "NotEquals", "values": ["superseded"] }
+              ]
+            },
+            "partialMetadata": true
+          }
+        }
       },
       "getDataModel": { "$codeRef": "helmTopology.getHelmTopologyDataModel" },
       "isResourceDepicted": { "$codeRef": "helmTopology.isHelmResourceInModel" }
@@ -231,7 +288,7 @@
     "properties": {
       "id": "helm-release-panel-tab-section-details",
       "tab": "topology-side-bar-tab-details",
-      "section": { "$codeRef": "helmTopologySidebar.getHelmReleasePanelDetailsTabSection" }
+      "provider": { "$codeRef": "helmTopologySidebar.useHelmReleasePanelDetailsTabSection" }
     },
     "flags": {
       "required": ["OPENSHIFT_HELM"]
@@ -242,7 +299,7 @@
     "properties": {
       "id": "helm-release-panel-tab-section-resource",
       "tab": "topology-side-bar-tab-resource",
-      "section": { "$codeRef": "helmTopologySidebar.getHelmReleasePanelResourceTabSection" }
+      "provider": { "$codeRef": "helmTopologySidebar.useHelmReleasePanelResourceTabSection" }
     },
     "flags": {
       "required": ["OPENSHIFT_HELM"]
@@ -253,10 +310,21 @@
     "properties": {
       "id": "helm-release-panel-tab-section-releaseNotes",
       "tab": "helm-release-panel-tab-releaseNotes",
-      "section": { "$codeRef": "helmTopologySidebar.getHelmReleasePanelReleaseNotesTabSection" }
+      "provider": { "$codeRef": "helmTopologySidebar.useHelmReleasePanelReleaseNotesTabSection" }
     },
     "flags": {
       "required": ["OPENSHIFT_HELM"]
+    }
+  },
+  {
+    "type": "console.page/resource/list",
+    "properties": {
+      "model": {
+        "group": "helm.openshift.io",
+        "version": "v1beta1",
+        "kind": "ProjectHelmChartRepository"
+      },
+      "component": { "$codeRef": "helmComponents.ProjectHelmChartRepositoryListPage" }
     }
   }
 ]

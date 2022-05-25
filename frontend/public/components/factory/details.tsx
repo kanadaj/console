@@ -15,6 +15,7 @@ import {
   useResolvedExtensions,
   ResourceTabPage as DynamicResourceTabPage,
   isResourceTabPage as isDynamicResourceTabPage,
+  K8sModel,
 } from '@console/dynamic-plugin-sdk';
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 import {
@@ -32,7 +33,6 @@ import {
   K8sResourceKind,
   K8sKind,
   referenceForModel,
-  referenceFor,
   referenceForExtensionModel,
 } from '../../module/k8s';
 import { ErrorBoundaryFallback } from '../error';
@@ -64,7 +64,7 @@ export const DetailsPage = withFallback<DetailsPageProps>(({ pages = [], ...prop
   const resourceKeys = _.map(props.resources, 'prop');
   const [pluginBreadcrumbs, setPluginBreadcrumbs] = React.useState(undefined);
   const [model] = useK8sModel(props.kind);
-  const kindObj = props.kindObj ?? model;
+  const kindObj: K8sModel = props.kindObj ?? model;
   const renderAsyncComponent = (page: ResourceTabPage, cProps: PageComponentProps) => (
     <AsyncComponent loader={page.properties.loader} {...cProps} />
   );
@@ -80,19 +80,20 @@ export const DetailsPage = withFallback<DetailsPageProps>(({ pages = [], ...prop
         .filter(
           (p) =>
             referenceForModel(p.properties.model) ===
-            (kindObj ? referenceFor(kindObj) : props.kind),
+            (kindObj ? referenceForModel(kindObj) : props.kind),
         )
         .map((p) => ({
           href: p.properties.href,
           name: p.properties.name,
           component: (cProps) => renderAsyncComponent(p, cProps),
         })),
+      /** @deprecated -- if there is a bug here, encourage `console.tab/horizontalNav` usage instead */
       ...dynamicResourcePageExtensions
         .filter((p) => {
           if (p.properties.model.version) {
             return (
               referenceForExtensionModel(p.properties.model) ===
-              (kindObj ? referenceFor(kindObj) : props.kind)
+              (kindObj ? referenceForModel(kindObj) : props.kind)
             );
           }
           return (
@@ -166,6 +167,7 @@ export const DetailsPage = withFallback<DetailsPageProps>(({ pages = [], ...prop
           label={props.label || (props.kind as any).label}
           resourceKeys={resourceKeys}
           customData={props.customData}
+          createRedirect={props.createRedirect}
         />
       </Firehose>
     </>
@@ -178,6 +180,7 @@ export type DetailsPageProps = {
   titleFunc?: (obj: K8sResourceKind) => string | JSX.Element;
   menuActions?: Function[] | KebabOptionsCreator; // FIXME should be "KebabAction[] |" refactor pipeline-actions.tsx, etc.
   buttonActions?: any[];
+  createRedirect?: boolean;
   customActionMenu?:
     | React.ReactNode
     | ((kindObj: K8sKind, obj: K8sResourceKind) => React.ReactNode); // Renders a custom action menu.

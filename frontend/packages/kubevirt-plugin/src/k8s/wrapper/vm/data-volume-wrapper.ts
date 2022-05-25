@@ -1,3 +1,4 @@
+import { humanizeBinaryBytes } from '@console/internal/components/utils';
 import {
   BinaryUnit,
   stringValueUnitSplit,
@@ -14,6 +15,7 @@ import {
   getDataVolumeVolumeMode,
 } from '../../../selectors/dv/selectors';
 import { V1alpha1DataVolume } from '../../../types/api';
+import { DataSourceKind } from '../../../types/vm/index';
 import { compareOwnerReference } from '../../../utils';
 import { K8sResourceObjectWithTypePropertyWrapper } from '../common/k8s-resource-object-with-type-property-wrapper';
 import { K8sInitAddon } from '../common/util/k8s-mixin';
@@ -68,6 +70,13 @@ export class DataVolumeWrapper extends K8sResourceObjectWithTypePropertyWrapper<
 
   getReadabableSize = () => {
     const { value, unit } = this.getSize();
+
+    // if only unit is undefined, the value has to be recalculated from B and the new unit set, for more readable output
+    if (value && !unit) {
+      const { value: newValue, unit: newUnit } = humanizeBinaryBytes(this.getSize().value);
+      return `${newValue} ${newUnit}`;
+    }
+
     return `${value} ${toIECUnit(unit) || BinaryUnit.B}`;
   };
 
@@ -84,6 +93,16 @@ export class DataVolumeWrapper extends K8sResourceObjectWithTypePropertyWrapper<
   getAccessModesEnum = () => {
     const accessModes = this.getAccessModes();
     return accessModes ? accessModes.map((mode) => AccessMode.fromString(mode)) : accessModes;
+  };
+
+  setSourceRef = (sourceRef: DataSourceKind) => {
+    delete this.data.spec.pvc;
+    this.data.spec.sourceRef = {
+      kind: sourceRef?.kind,
+      name: sourceRef?.metadata?.name,
+      namespace: sourceRef?.metadata?.namespace,
+    };
+    return this;
   };
 
   setPVCSize = (value: string | number, unit = 'Gi') => {

@@ -1,16 +1,19 @@
 import * as React from 'react';
+import { isUpstream } from '@console/internal/components/utils';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
 import { PersistentVolumeClaimModel, PodModel, TemplateModel } from '@console/internal/models';
 import { PersistentVolumeClaimKind, PodKind, TemplateKind } from '@console/internal/module/k8s';
 import {
   CDI_APP_LABEL,
+  KUBEVIRT_OS_IMAGES_NS,
+  OPENSHIFT_OS_IMAGES_NS,
   TEMPLATE_TYPE_BASE,
   TEMPLATE_TYPE_LABEL,
-  TEMPLATE_TYPE_VM,
 } from '../../../constants';
 import { useBaseImages } from '../../../hooks/use-base-images';
-import { DataVolumeModel } from '../../../models';
+import { DataSourceModel, DataVolumeModel } from '../../../models';
 import { kubevirtReferenceForModel } from '../../../models/kubevirtReferenceForModel';
+import { DataSourceKind } from '../../../types';
 import { V1alpha1DataVolume } from '../../../types/api';
 
 export const useVmTemplatesResources = (namespace: string): useVmTemplatesResourcesValues => {
@@ -18,8 +21,18 @@ export const useVmTemplatesResources = (namespace: string): useVmTemplatesResour
     kind: TemplateModel.kind,
     namespace,
     selector: {
-      matchLabels: { [TEMPLATE_TYPE_LABEL]: TEMPLATE_TYPE_VM },
+      matchExpressions: [
+        {
+          key: TEMPLATE_TYPE_LABEL,
+          operator: 'Exists',
+        },
+      ],
     },
+    isList: true,
+  });
+  const [dataSources] = useK8sWatchResource<DataSourceKind[]>({
+    namespace: isUpstream() ? KUBEVIRT_OS_IMAGES_NS : OPENSHIFT_OS_IMAGES_NS,
+    kind: kubevirtReferenceForModel(DataSourceModel),
     isList: true,
   });
   const [baseTemplates, btLoaded, btError] = useK8sWatchResource<TemplateKind[]>({
@@ -63,6 +76,7 @@ export const useVmTemplatesResources = (namespace: string): useVmTemplatesResour
       pods: allPods,
       dataVolumes: allDVs,
       pvcs: allPVCs,
+      dataSources,
       userTemplates,
       baseTemplates,
       resourcesLoaded,
@@ -75,6 +89,7 @@ export const useVmTemplatesResources = (namespace: string): useVmTemplatesResour
     baseDVs,
     pvcs,
     baseImages,
+    dataSources,
     userTemplates,
     baseTemplates,
     resourcesLoaded,
@@ -86,6 +101,7 @@ type useVmTemplatesResourcesValues = {
   pods: PodKind[];
   dataVolumes: V1alpha1DataVolume[];
   pvcs: PersistentVolumeClaimKind[];
+  dataSources: DataSourceKind[];
   userTemplates: TemplateKind[];
   baseTemplates: TemplateKind[];
   resourcesLoaded: boolean;

@@ -1,4 +1,9 @@
-import { CatalogItem } from '@console/dynamic-plugin-sdk/src/extensions';
+import * as _ from 'lodash';
+import {
+  CatalogItem,
+  CatalogItemDetails,
+  CatalogItemMetadataProviderFunction,
+} from '@console/dynamic-plugin-sdk/src/extensions';
 import { normalizeIconClass } from '@console/internal/components/catalog/catalog-item-icon';
 import { history } from '@console/internal/components/utils';
 import * as catalogImg from '@console/internal/imgs/logos/catalog-icon.svg';
@@ -29,6 +34,9 @@ export const getIconProps = (item: CatalogItem) => {
   }
   if (icon.class) {
     return { iconImg: null, iconClass: normalizeIconClass(icon.class) };
+  }
+  if (icon.node) {
+    return { iconImg: null, iconClass: null, icon: icon.node };
   }
   return { iconImg: catalogImg, iconClass: null };
 };
@@ -78,3 +86,42 @@ export const getCatalogTypeCounts = (
 
   return catalogTypeCounts;
 };
+
+export const customPropertyPresent = (
+  catalogItemDetails: CatalogItemDetails,
+  proppertyName: string,
+): boolean => {
+  return catalogItemDetails?.properties?.some((property) => property.label === proppertyName);
+};
+
+export const applyCatalogItemMetadata = (
+  catalogItems: CatalogItem[],
+  metadataProviderMap: {
+    [type: string]: { [id: string]: CatalogItemMetadataProviderFunction };
+  },
+) =>
+  catalogItems.map((item) => {
+    const metadataProviders = Object.values(metadataProviderMap[item.type] ?? {});
+    if (metadataProviders?.length) {
+      const metadata = metadataProviders
+        .map((metadataProvider) => metadataProvider(item))
+        .filter((x) => x);
+
+      const tags = _.flatten(metadata.map((m) => m.tags).filter((x) => x));
+      const badges = _.flatten(metadata.map((m) => m.badges).filter((x) => x));
+      const attributes = metadata.reduce(
+        (acc, m) => Object.assign(acc, m.attributes),
+        {} as CatalogItem['attributes'],
+      );
+      const attributeCount = Object.keys(attributes).length;
+      if (tags.length > 0 || badges.length > 0 || attributeCount > 0) {
+        return {
+          ...item,
+          tags: tags.length > 0 ? [...(item.tags ?? []), ...tags] : item.tags,
+          badges: badges.length > 0 ? [...(item.badges ?? []), ...badges] : item.badges,
+          attributes: attributeCount ? { ...item.attributes, ...attributes } : item.attributes,
+        };
+      }
+    }
+    return item;
+  });

@@ -31,6 +31,10 @@ export enum operators {
   WebTerminalOperator = 'Web Terminal',
   ApacheKafka = 'Red Hat Integration - AMQ Streams',
   RedHatCodereadyWorkspaces = 'Red Hat CodeReady Workspaces',
+  GitopsPrimer = 'gitops-primer',
+  ServiceBinding = 'Service Binding Operator',
+  CrunchyPostgresforKubernetes = 'Crunchy Postgres for Kubernetes',
+  QuayContainerSecurity = 'Quay Container Security',
 }
 
 export enum authenticationType {

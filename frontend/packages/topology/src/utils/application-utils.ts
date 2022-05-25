@@ -25,8 +25,16 @@ import {
   modelFor,
   referenceFor,
 } from '@console/internal/module/k8s';
-import { ServiceModel as KnativeServiceModel } from '@console/knative-plugin/src/models';
-import { isDynamicEventResourceKind } from '@console/knative-plugin/src/utils/fetch-dynamic-eventsources-utils';
+import {
+  CamelKameletBindingModel,
+  EventingBrokerModel,
+  KafkaSinkModel,
+  ServiceModel as KnativeServiceModel,
+} from '@console/knative-plugin/src/models';
+import {
+  fetchChannelsCrd,
+  isDynamicEventResourceKind,
+} from '@console/knative-plugin/src/utils/fetch-dynamic-eventsources-utils';
 import { getBuildConfigsForResource } from '@console/shared';
 import { CREATE_APPLICATION_KEY, UNASSIGNED_KEY } from '../const';
 import { listInstanceResources } from './connector-utils';
@@ -75,13 +83,13 @@ export const updateResourceApplication = (
 ): Promise<any> => {
   if (!resource) {
     return Promise.reject(
-      new Error(i18next.t('topology~Error: no resource provided to update Application for.')),
+      new Error(i18next.t('topology~Error: no resource provided to update application for.')),
     );
   }
   if (!resourceKind) {
     return Promise.reject(
       new Error(
-        i18next.t('topology~Error: invalid resource kind provided for updating Application.'),
+        i18next.t('topology~Error: invalid resource kind provided for updating application.'),
       ),
     );
   }
@@ -179,6 +187,8 @@ export const cleanUpWorkload = async (
   const reqs = [];
   const buildConfigs = await k8sList(BuildConfigModel, { ns: resource.metadata.namespace });
   const builds = await k8sList(BuildModel, { ns: resource.metadata.namespace });
+  const channelModels = await fetchChannelsCrd();
+  const resourceModel = modelFor(referenceFor(resource));
   const resources = {
     buildConfigs: {
       data: buildConfigs,
@@ -210,20 +220,28 @@ export const cleanUpWorkload = async (
   };
   if (isDynamicEventResourceKind(referenceFor(resource)))
     deleteRequest(modelFor(referenceFor(resource)), resource);
+  if (channelModels.find((channel) => channel.kind === resource.kind)) {
+    deleteRequest(resourceModel, resource);
+  }
   switch (resource.kind) {
     case DaemonSetModel.kind:
     case StatefulSetModel.kind:
     case JobModel.kind:
     case CronJobModel.kind:
-      deleteRequest(modelFor(resource.kind), resource);
+    case EventingBrokerModel.kind:
+      deleteRequest(resourceModel, resource);
       break;
     case DeploymentModel.kind:
     case DeploymentConfigModel.kind:
-      deleteRequest(modelFor(resource.kind), resource);
+      deleteRequest(resourceModel, resource);
       batchDeleteRequests(deleteModels, resource);
       break;
     case KnativeServiceModel.kind:
       batchDeleteRequests(knativeDeleteModels, resourceData);
+      break;
+    case CamelKameletBindingModel.kind:
+    case KafkaSinkModel.kind:
+      deleteRequest(resourceModel, resource);
       break;
     default:
       break;

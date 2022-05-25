@@ -5,14 +5,13 @@ import * as PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { useTranslation, withTranslation } from 'react-i18next';
 import { CaretDownIcon, MinusCircleIcon, PlusCircleIcon, StarIcon } from '@patternfly/react-icons';
+import { impersonateStateToProps, useSafetyFirst } from '@console/dynamic-plugin-sdk';
 import { useUserSettingsCompatibility } from '@console/shared';
 
-import { impersonateStateToProps } from '../../reducers/ui';
 import { checkAccess } from './rbac';
 import { history } from './router';
 import { KebabItems } from './kebab';
 import { ResourceName } from './resource-icon';
-import { useSafetyFirst } from '../safety-first';
 
 class DropdownMixin extends React.PureComponent {
   constructor(props) {
@@ -43,7 +42,8 @@ class DropdownMixin extends React.PureComponent {
 
   UNSAFE_componentWillReceiveProps({ selectedKey, items }) {
     if (selectedKey !== this.props.selectedKey) {
-      this.setState({ selectedKey, title: items[selectedKey] });
+      const title = items[selectedKey] || this.props.title;
+      this.setState({ selectedKey, title });
     }
   }
 

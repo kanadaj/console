@@ -4,12 +4,10 @@ export enum displayOptions {
   ApplicationGroupings = 'Application Groupings',
   HelmReleases = 'Helm Releases',
   KnativeServices = 'Knative Services',
-  ConnectivityMode = 'Connectivity',
-  ConsumptionMode = 'Consumption',
 }
 
 export enum nodeActions {
-  EditApplicationGrouping = 'Edit Application grouping',
+  EditApplicationGrouping = 'Edit application grouping',
   EditPodCount = 'Edit Pod count',
   PauseRollOuts = 'Pause rollouts',
   AddHealthChecks = 'Add Health Checks',
@@ -37,11 +35,13 @@ export enum nodeActions {
   EditRevision = 'Edit Revision',
   DeleteRevision = 'Delete Revision',
   MakeServerless = 'Make Serverless',
+  AddTrigger = 'Add Trigger',
+  CreateServiceBinding = 'Create Service Binding',
 }
 
 export enum applicationGroupingsActions {
-  DeleteApplication = 'Delete Application',
-  AddtoApplication = 'Add to Application',
+  DeleteApplication = 'Delete application',
+  AddtoApplication = 'Add to application',
 }
 
 export enum authenticationTypes {
@@ -50,9 +50,12 @@ export enum authenticationTypes {
 }
 
 export enum addToApplicationGroupings {
+  // TODO (ODC-6455): Tests should use latest UI labels like "Import from Git" instead of mapping strings
   FromGit = 'From Git',
   ContainerImage = 'Container Image',
+  // TODO (ODC-6455): Tests should use latest UI labels like "Import from Git" instead of mapping strings
   FromDockerfile = 'From Dockerfile',
+  // TODO (ODC-6455): Tests should use latest UI labels like "Import from Git" instead of mapping strings
   FromDevfile = 'From Devfile',
   UploadJarfile = 'Upload JAR file',
   EventSource = 'Event Source',

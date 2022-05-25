@@ -48,7 +48,7 @@
   {
     "type": "console.storage-provider",
     "properties": {
-      "name": "ObjectBucketClaim",
+      "name": "%ceph-storage-plugin~ObjectBucketClaim%",
       "Component": {
         "$codeRef": "storageProvider"
       }
@@ -70,7 +70,26 @@
       }
     },
     "flags": {
-      "required": ["MCG"]
+      "required": ["MCG"],
+      "disallowed": ["MCG_RESOURCE"]
+    }
+  },
+  /* Activates when RGW is present without MCG */
+  {
+    "type": "console.navigation/resource-cluster",
+    "properties": {
+      "id": "objectbuckets",
+      "section": "storage",
+      "name": "%ceph-storage-plugin~Object Buckets%",
+      "model": {
+        "group": "objectbucket.io",
+        "kind": "ObjectBucket",
+        "version": "v1alpha1"
+      }
+    },
+    "flags": {
+      "required": ["RGW"],
+      "disallowed": ["MCG", "MCG_RESOURCE"]
     }
   },
   {
@@ -86,7 +105,26 @@
       }
     },
     "flags": {
-      "required": ["MCG"]
+      "required": ["MCG"],
+      "disallowed": ["MCG_RESOURCE"]
+    }
+  },
+  /* Activates when RGW is present without MCG */
+  {
+    "type": "console.navigation/resource-ns",
+    "properties": {
+      "id": "objectbucketclaims",
+      "section": "storage",
+      "name": "%ceph-storage-plugin~Object Bucket Claims%",
+      "model": {
+        "group": "objectbucket.io",
+        "kind": "ObjectBucketClaim",
+        "version": "v1alpha1"
+      }
+    },
+    "flags": {
+      "required": ["RGW"],
+      "disallowed": ["MCG", "MCG_RESOURCE"]
     }
   },
   {
@@ -127,7 +165,8 @@
       }
     },
     "flags": {
-      "required": ["OCS"]
+      "required": ["OCS"],
+      "disallowed": ["BLOCK_POOL"]
     }
   },
   {
@@ -140,7 +179,8 @@
       }
     },
     "flags": {
-      "required": ["OCS"]
+      "required": ["OCS"],
+      "disallowed": ["BLOCK_POOL"]
     }
   },
   {
@@ -151,6 +191,9 @@
       "component": {
         "$codeRef": "bsCreate.default"
       }
+    },
+    "flags": {
+      "disallowed": ["MCG_RESOURCE"]
     }
   },
   {
@@ -161,6 +204,9 @@
       "component": {
         "$codeRef": "nssCreate.default"
       }
+    },
+    "flags": {
+      "disallowed": ["MCG_RESOURCE"]
     }
   },
   {
@@ -171,6 +217,9 @@
       "component": {
         "$codeRef": "bcCreate.default"
       }
+    },
+    "flags": {
+      "disallowed": ["MCG_RESOURCE"]
     }
   },
   {
@@ -181,6 +230,9 @@
       "component": {
         "$codeRef": "resourceDetailsPage.GenericDetailsPage"
       }
+    },
+    "flags": {
+      "disallowed": ["MCG_RESOURCE"]
     }
   },
   {
@@ -191,6 +243,9 @@
       "component": {
         "$codeRef": "odfSystemDashboard.default"
       }
+    },
+    "flags": {
+      "disallowed": ["ODF_DASHBOARD"]
     }
   },
   {
@@ -198,6 +253,9 @@
     "properties": {
       "contextId": "csv-actions",
       "provider": { "$codeRef": "actions.useCsvActions" }
+    },
+    "flags": {
+      "disallowed": ["COMMON_FLAG"]
     }
   }
 ]

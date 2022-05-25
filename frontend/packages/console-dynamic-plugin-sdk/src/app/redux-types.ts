@@ -1,4 +1,7 @@
+import { Map as ImmutableMap } from 'immutable';
 import { K8sResourceCommon } from '../extensions/console-types';
+
+export type K8sState = ImmutableMap<string, any>;
 
 export type UserKind = {
   fullName?: string;
@@ -12,10 +15,12 @@ export type ImpersonateKind = {
 };
 
 export type CoreState = {
+  activeCluster?: string;
   user?: UserKind;
   impersonate?: ImpersonateKind;
 };
 
 export type SDKStoreState = {
   sdkCore: CoreState;
+  k8s: K8sState;
 };

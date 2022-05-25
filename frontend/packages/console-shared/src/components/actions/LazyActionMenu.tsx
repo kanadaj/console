@@ -2,18 +2,12 @@ import * as React from 'react';
 import { Menu, Popper, MenuContent, MenuList } from '@patternfly/react-core';
 import * as _ from 'lodash';
 import { Action } from '@console/dynamic-plugin-sdk';
+import { LazyActionMenuProps } from '@console/dynamic-plugin-sdk/src/api/internal-types';
 import { checkAccess } from '@console/internal/components/utils';
 import ActionServiceProvider from './ActionServiceProvider';
 import ActionMenuContent from './menu/ActionMenuContent';
 import ActionMenuToggle from './menu/ActionMenuToggle';
-import { ActionContext, ActionMenuVariant } from './types';
-
-type LazyActionMenuProps = {
-  context: ActionContext;
-  variant?: ActionMenuVariant;
-  label?: string;
-  isDisabled?: boolean;
-};
+import { ActionMenuVariant } from './types';
 
 type LazyMenuRendererProps = {
   isOpen: boolean;
@@ -36,7 +30,10 @@ const LazyMenuRenderer: React.FC<LazyMenuRendererProps> = ({
     // This depends on `checkAccess` being memoized.
     _.each(actions, (action: Action) => {
       if (action.accessReview) {
-        checkAccess(action.accessReview);
+        checkAccess(action.accessReview).catch((e) =>
+          // eslint-disable-next-line no-console
+          console.warn('Could not check access for action menu', e),
+        );
       }
     });
   }, [actions]);

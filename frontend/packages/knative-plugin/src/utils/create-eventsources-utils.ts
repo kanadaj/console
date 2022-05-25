@@ -26,9 +26,10 @@ import {
   EventSourceFormData,
   EventSourceSyncFormData,
   SinkType,
-  EventSourceMetaData,
+  KnEventCatalogMetaData,
   YamlFormSyncData,
 } from '../components/add/import-types';
+import { craftResourceKey } from '../components/pub-sub/pub-sub-utils';
 import { CAMEL_K_PROVIDER_ANNOTATION } from '../const';
 import { CamelKameletModel } from '../models';
 import { getEventSourceIcon } from './get-knative-icon';
@@ -149,10 +150,6 @@ export const getCatalogEventSourceResource = (
 
 export const getEventSourceData = (source: string) => {
   const eventSourceData = {
-    [EventSources.CronJobSource]: {
-      data: '',
-      schedule: '',
-    },
     [EventSources.PingSource]: {
       jsonData: '',
       schedule: '',
@@ -275,7 +272,7 @@ export const sanitizeKafkaSourceResource = (formData: EventSourceFormData): Even
   };
 };
 
-export const getKameletMetadata = (kamelet: K8sResourceKind): EventSourceMetaData => {
+export const getKameletMetadata = (kamelet: K8sResourceKind): KnEventCatalogMetaData => {
   let normalizedKamelet = {};
   if (kamelet?.kind === CamelKameletModel.kind) {
     const {
@@ -292,10 +289,10 @@ export const getKameletMetadata = (kamelet: K8sResourceKind): EventSourceMetaDat
       iconUrl,
     };
   }
-  return normalizedKamelet as EventSourceMetaData;
+  return normalizedKamelet as KnEventCatalogMetaData;
 };
 
-export const getEventSourceMetadata = (eventSourceModel: K8sKind, t): EventSourceMetaData => {
+export const getEventSourceMetadata = (eventSourceModel: K8sKind, t): KnEventCatalogMetaData => {
   let normalizedSource = {};
   if (eventSourceModel) {
     const { kind, label: name } = eventSourceModel;
@@ -307,7 +304,7 @@ export const getEventSourceMetadata = (eventSourceModel: K8sKind, t): EventSourc
       iconUrl: getEventSourceIcon(referenceForModel(eventSourceModel)),
     };
   }
-  return normalizedSource as EventSourceMetaData;
+  return normalizedSource as KnEventCatalogMetaData;
 };
 
 export const getEventSourceModelsWithAccess = (
@@ -323,7 +320,11 @@ export const getEventSourceModelsWithAccess = (
       verb: 'create',
     })
       .then((result) => (result.status.allowed ? model : null))
-      .catch(() => null);
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.warn('Could not check access for event source models', e);
+        return null;
+      });
   });
 };
 
@@ -358,6 +359,7 @@ export const sanitizeSourceToForm = (
 ) => {
   const specData = newFormData.spec;
   const appGroupName = newFormData.metadata?.labels?.['app.kubernetes.io/part-of'];
+  const sinkRef = specData?.sink?.ref;
   const formData = {
     ...formDataValues,
     application: {
@@ -373,12 +375,15 @@ export const sanitizeSourceToForm = (
       }),
     },
     name: newFormData.metadata?.name,
-    sinkType: specData?.sink?.ref ? SinkType.Resource : SinkType.Uri,
+    sinkType: sinkRef ? SinkType.Resource : SinkType.Uri,
     sink: {
-      apiVersion: specData?.sink?.ref?.apiVersion,
-      kind: specData?.sink?.ref?.kind,
-      name: specData?.sink?.ref?.name,
-      key: `${specData?.sink?.ref?.kind}-${specData?.sink?.ref?.name}`,
+      apiVersion: sinkRef?.apiVersion,
+      kind: sinkRef?.kind,
+      name: sinkRef?.name,
+      key: craftResourceKey(sinkRef?.name, {
+        kind: sinkRef?.kind,
+        apiVersion: sinkRef?.apiVersion,
+      }),
       uri: specData?.sink?.uri || '',
     },
     data: {

@@ -13,7 +13,6 @@ Feature: Topology chart area
              Then user sees Topology page with message "No resources found"
               And user is able to see Start building your application, Add page links
               And Display options dropdown, Filter by resource and Find by name fields are disabled
-              And Zoom in, Zoom out, Fit to Screen, Reset view, layout icons are disabled
               And switch view is disabled
 
 
@@ -94,11 +93,11 @@ Feature: Topology chart area
               And user checks knative service having label "KSVC" and then the name of service
 
 
-        @smoke @to-do
+        @smoke
         Scenario: Context menu of node: T-06-TC09
-            Given user has created a workload named "nodejs-ex-git"
+            Given user has created a deployment workload "nodejs-ex-git3"
               And user is at the Topology page
-             When user right clicks on the node "nodejs-ex-git" to open context menu
+             When user right clicks on the node "nodejs-ex-git3" to open context menu
              Then user is able to see context menu options like Edit Application Grouping, Edit Pod Count, Pause Rollouts, Add Health Checks, Add Horizontal Pod Autoscaler, Add Storage, Edit Update Strategy, Edit Labels, Edit Annotations, Edit Deployment, Delete Deployment
 
 
@@ -152,43 +151,45 @@ Feature: Topology chart area
                   | DeploymentConfig |
 
 
-        @regression @to-do
+        @regression
         Scenario: Context menu on empty area: T-06-TC15
-            Given user is at the Topology page
+            Given user has installed OpenShift Serverless Operator
+              And user has installed Crunchy Postgres for Kubernetes operator
+              And user navigates to Topology Page
              When user right clicks on the empty chart area
               And user hovers on Add to Project
-             Then user is able to see options like Samples, From Git, Container Image, From Dockerfile, From Devfile, From Catalog, Database, Operator Backed, Helm Charts, Event Source, Channel
+             Then user is able to see options like Samples, Import from Git, Container Image, From Dockerfile, From Devfile, From Catalog, Database, Operator Backed, Helm Charts, Event Source, Channel
 
 
-        @regression @to-do
+        @regression
         Scenario: Add to Project in topology: T-06-TC16
             Given user is at the Topology page
              When user right clicks on the empty chart area
               And user hovers on Add to Project
               And user clicks on Samples
-              And user selects go sample and clicks Create
-              And user hovers on Add to Project and clicks on Import from Git
-              And user fills the form and clicks Create
-              And user hovers on Add to Project and clicks on Container Image
-              And user fills the form and clicks Create
-              And user fills the form and clicks Create
-              And user hovers on Add to Project and clicks on From Catalog
+              And user selects go sample
+              And user fills the "Go Sample" form and clicks Create
+              And user hovers on Add to Project and clicks on "Import from Git"
+              And user fills the "Import From Git" form and clicks Create
+              And user hovers on Add to Project and clicks on "Container Image"
+              And user fills the "Container Image" form and clicks Create
+              And user hovers on Add to Project and clicks on "From Catalog"
               And user selects Python Builder Image and clicks Create Application
-              And user fills the form and clicks Create
-              And user hovers on Add to Project and clicks on Database
-              And user selects Postgres Database and clicks on Create
-              And user fills the form and clicks Create
-              And user hovers on Add to Project and clicks on Operator Backed
+              And user fills the "Catalog" form and clicks Create
+              And user hovers on Add to Project and clicks on "Database"
+              And user selects Postgres Database and clicks on Instantiate Template
+              And user clicks on Create button
+              And user hovers on Add to Project and clicks on "Operator Backed"
               And user selects Postgres and clicks on Create
-              And user fills the form and clicks Create
-              And user hovers on Add to Project and clicks on Helm Charts
+              And user fills the "Operator Backed" form and clicks Create
+              And user hovers on Add to Project and clicks on "Helm Charts"
               And user selects Nodejs and clicks on Install Helm Charts
-              And user clicks on Install
-              And user hovers on Add to Project and clicks on From Event Source
+              And user fills the "Helm Chart" form and clicks Create
+              And user hovers on Add to Project and clicks on "Event Source"
               And user selects Api Server Source and clicks on Create Event Source
-              And user fills the form and clicks Create
-              And user hovers on Add to Project and clicks on From Channel
-              And user clicks on Create
+              And user fills the "Event Source" form and clicks Create
+              And user hovers on Add to Project and clicks on "Channel"
+              And user fills the "Channel" form and clicks Create
              Then user is able to see different applications created from Samples, Import from Git, Container Image, From Catalog, Database, Operator Backed, Helm Charts, Event Source, Channel
 
 
@@ -294,3 +295,96 @@ Feature: Topology chart area
               And user drag the connector from the deployment workload
               And user drops the connector on the enabled bindable resource
              Then user will see service binding connection
+
+
+        @regression @odc-6361
+        Scenario: Search with label: T-06-TC26
+            Given user has created a deployment workload "nodejs-1"
+              And user has created a deployment workload "nodejs-2"
+              And user is at Topology page chart view
+             When user selects "Label" option in filter menu
+              And user searches for label "app.kubernetes.io/component=nodejs-1"
+             Then user can see the workload "nodejs-1" visible
+
+
+        @regression @odc-6361
+        Scenario: Check last selected node in topology per project per session: T-06-TC27
+            Given user has created a deployment workload "nodejs-1"
+              And user has created a deployment workload "nodejs-2"
+              And user is at Topology page chart view
+             When user clicks on workload "nodejs-2" to open sidebar
+              And user opens the details page for "nodejs-2" by clicking on the title
+              And user navigate back to Topology page
+             Then user will see the the workload "nodejs-2" selected with sidebar open
+
+
+        @regression @odc-5947
+        Scenario: Create Service Binding option in nodes actions menu: T-06-TC27
+            Given user has installed Service Binding operator
+              And user has created or selected namespace "binding-service"
+              And user is at developer perspective
+              And user is at Topology page chart view
+              And user has created a deployment workload "node-js1"
+             When user right clicks on workload "node-js1"
+              And user clicks on "Create Service Binding" option from context menu
+             Then user will see "Create Service Binding" modal
+              And user will see alert "No bindable services available"
+
+
+        @regression @manual @odc-5947
+        Scenario: Bindable services options in Create Service Binding modal: T-06-TC28
+            Given user has installed Service Binding operator
+              And user is at Topology page chart view
+              And user has created a deployment workload "node-js2"
+            #Please refer to test case KM-01-TC01 for creating kafka connection
+              And user has created external bindable resource Kafka Connection "kafka-instance-ex"
+              And user has created operator-backed service of postgresSQL "example-pg"
+              And user has applied '/testdata/bindableresource1.yaml' yaml
+             When user right clicks on workload "node-js2"
+              And user clicks on "Create Service Binding" option from context menu
+              And user clicks on Bindable service dropdown
+             Then user will see postgres and kafka connection services options
+              And user is able to see service binding connector with name "node-js2-d-kafka-example-pg-pc" after clicking on create with "example-pg" option selected in Create Service Binding modal
+
+
+        @regression @manual @odc-5947
+        Scenario: Drag and drop connector to existing bindable resource: T-06-TC29
+            Given user has installed Service Binding operator
+              And user is at Topology page chart view
+              And user has created a deployment workload "node-s"
+            #Please refer to test case KM-01-TC01 for creating kafka connection
+              And user has created external bindable resource Kafka Connection "kafka-instance-ex"
+             When user drag and drop the connector to Kafka Connection
+              And user clicks on Create with name "node-s-d-kafka-instance-ex-akc"
+              And user clicks on connector
+             Then user will see the name as "node-s-d-kafka-instance-ex-akc"
+              And user will see Secret section with secret present
+
+
+        @regression @manual @odc-5947
+        Scenario: Specify the name and the bindable object to connect to in Create Service Binding modal: T-06-TC30
+            Given user has installed Service Binding operator
+              And user is at Topology page chart view
+              And user has created a deployment workload "node-js"
+             When user drag and drop the connector to empty area
+              And user selects Operator backed option
+              And user selects Kafka Connection
+              And user clicks on Create
+              And user clicks on Create button on Create Kafka Connection form
+              And user replaced the name "node-js-d-kafka-instance-ex-akc" with "node-kc-connection-1" in Create Service Binding modal
+              And user clicks on Create
+             Then user will see the connection between node workload and Kafka Connection
+              And user will see the name "node-kc-connection-1" in connector sidebar
+
+
+        @regression @manual @odc-5947
+        Scenario: Create connection to already existing service binding connection: T-06-TC31
+            Given user has installed Service Binding operator
+              And user is at Topology page chart view
+            #Please refer to test case KM-01-TC01 for creating kafka connection
+              And user has created service binding connnector between deployment workload "node-j" and Kafka Connection "kafka-instance-ex1"
+             When user right clicks on workload "node-j"
+              And user clicks on "Create Service Binding" option from context menu
+              And user selects Bindable service as "kafka-instance-ex1"
+              And user clicks on Save
+             Then user will see error "Service binding already exists. Select a different service to connect to."

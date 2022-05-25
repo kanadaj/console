@@ -31,15 +31,16 @@ import {
   referenceForModel,
   VolumeSnapshotKind,
 } from '../../module/k8s';
-import { impersonateStateToProps } from '../../reducers/ui';
+import { impersonateStateToProps, ImpersonateKind } from '@console/dynamic-plugin-sdk';
 import { connectToModel } from '../../kinds';
 import {
   BuildConfigModel,
+  ConfigMapModel,
   DeploymentConfigModel,
   DeploymentModel,
+  RouteModel,
   VolumeSnapshotModel,
 } from '../../models';
-import { ImpersonateKind } from '@console/dynamic-plugin-sdk';
 
 export const kebabOptionsToMenu = (options: KebabOption[]): KebabMenuOption[] => {
   const subs: { [key: string]: KebabSubMenu } = {};
@@ -285,12 +286,18 @@ const kebabFactory: KebabFactory = {
   Edit: (kind, obj) => {
     let href: string;
     switch (kind.kind) {
+      case ConfigMapModel.kind:
+        href = `${resourceObjPath(obj, kind.crd ? referenceForModel(kind) : kind.kind)}/edit`;
+        break;
       case BuildConfigModel.kind:
         href = `${resourceObjPath(obj, kind.crd ? referenceForModel(kind) : kind.kind)}/form`;
         break;
       case DeploymentModel.kind:
       case DeploymentConfigModel.kind:
         href = `/edit-deployment/ns/${obj.metadata.namespace}?name=${obj.metadata.name}&kind=${kind.kind}`;
+        break;
+      case RouteModel.kind:
+        href = `/k8s/ns/${obj.metadata.namespace}/routes/${obj.metadata.name}/edit`;
         break;
       default:
         href = `${resourceObjPath(obj, kind.crd ? referenceForModel(kind) : kind.kind)}/yaml`;
@@ -513,7 +520,10 @@ class KebabWithTranslation extends React.Component<
     // This depends on `checkAccess` being memoized.
     _.each(this.props.options, (option: KebabOption) => {
       if (option.accessReview) {
-        checkAccess(option.accessReview);
+        checkAccess(option.accessReview).catch((e) => {
+          // eslint-disable-next-line no-console
+          console.warn('Error while check action menu access review', e);
+        });
       }
     });
   };

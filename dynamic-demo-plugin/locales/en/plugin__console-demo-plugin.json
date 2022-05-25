@@ -1,4 +1,7 @@
 {
+  "{{count}} Worker Node": "{{count}} Worker Node",
+  "{{count}} Worker Node_plural": "{{count}} Worker Nodes",
+  "Worker Nodes": "Worker Nodes",
   "Example info alert": "Example info alert",
   "Example warning alert": "Example warning alert",
   "Example hint": "Example hint",
@@ -18,6 +21,10 @@
   "k8sUpdate": "k8sUpdate",
   "k8sList": "k8sList",
   "k8sDelete": "k8sDelete",
+  "Added title": "Added title",
+  "My value": "My value",
+  "Added title - error": "Added title - error",
+  "Error text": "Error text",
   "Utilities from Dynamic Plugin SDK": "Utilities from Dynamic Plugin SDK",
   "Utility: consoleFetchJSON": "Utility: consoleFetchJSON",
   "Demo": "Demo",
@@ -26,6 +33,11 @@
   "Dynamic Nav 2": "Dynamic Nav 2",
   "Test Consumer": "Test Consumer",
   "Test Utilities": "Test Utilities",
+  "Foo item": "Foo item",
+  "Bar item": "Bar item",
   "Dynamic Page 1": "Dynamic Page 1",
-  "Dynamic Page 2": "Dynamic Page 2"
+  "Dynamic Page 2": "Dynamic Page 2",
+  "Prometheus error": "Prometheus error",
+  "Prometheus loading": "Prometheus loading",
+  "Prometheus data": "Prometheus data"
 }

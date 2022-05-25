@@ -29,18 +29,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT_HAS_v1_API"]
-    }
-  },
-  {
-    "type": "console.navigation/section",
-    "properties": {
-      "id": "virtualization",
-      "name": "%kubevirt-plugin~Virtualization%",
-      "insertAfter": "workloads"
-    },
-    "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT_HAS_v1_API"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -54,7 +44,8 @@
       "prefixNamespaced": false
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT", "CAN_GET_NS", "OPENSHIFT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -68,7 +59,8 @@
       "component": { "$codeRef": "VirtualizationPage.VirtualizationPage" }
     },
     "flags": {
-      "required": ["KUBEVIRT_HAS_v1_API"]
+      "required": ["KUBEVIRT_HAS_v1_API"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -82,7 +74,8 @@
       "component": { "$codeRef": "VirtualizationPage.VirtualizationPage" }
     },
     "flags": {
-      "required": ["KUBEVIRT_HAS_v1alpha3_API"]
+      "required": ["KUBEVIRT_HAS_v1alpha3_API"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -98,7 +91,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT_HAS_v1_API"]
+      "required": ["KUBEVIRT_HAS_v1_API"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -114,7 +108,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT_HAS_v1alpha3_API"]
+      "required": ["KUBEVIRT_HAS_v1alpha3_API"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -127,7 +122,8 @@
       "component": { "$codeRef": "VirtualMachinesDetailsPage.VirtualMachinesDetailsPage" }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -141,7 +137,22 @@
       "prefixNamespaced": true
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": ["/k8s/ns/:ns/virtualmachinetemplates/~new/customize"],
+      "component": {
+        "$codeRef": "CreateVMWizardPage.CreateVMWizardPage"
+      }
+    },
+    "flags": {
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -154,7 +165,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -165,7 +177,8 @@
       "component": { "$codeRef": "standaloneConsole" }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -176,7 +189,8 @@
       "component": { "$codeRef": "standaloneConsole.VMConsolePage" }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -188,7 +202,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -204,7 +219,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -216,7 +232,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT", "CAN_GET_NS", "OPENSHIFT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -244,7 +261,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -284,6 +302,7 @@
     "properties": {
       "catalogId": "dev-catalog",
       "type": "VmTemplate",
+      "title": "%kubevirt-plugin~VM templates%",
       "provider": { "$codeRef": "createVM.catalogVMTemplateProvider" }
     },
     "flags": {
@@ -382,7 +401,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -406,7 +426,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -418,7 +439,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -435,7 +457,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -452,7 +475,8 @@
       }
     },
     "flags": {
-      "required": ["KUBEVIRT"]
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -485,10 +509,17 @@
     "type": "console.dashboards/overview/inventory/item",
     "properties": {
       "mapper": { "$codeRef": "dashboardInventory.getVMStatusGroups" },
-      "model": { "$codeRef": "models.VirtualMachineModel" },
-      "additionalResources": {
-        "$codeRef": "dashboardHealth.additionalResources"
-      }
+      "model": { "$codeRef": "models.VirtualMachineModel" }
+    },
+    "flags": {
+      "required": ["KUBEVIRT"]
+    }
+  },
+  {
+    "type": "console.dashboards/project/overview/item",
+    "properties": {
+      "mapper": { "$codeRef": "dashboardInventory.getVMStatusGroups" },
+      "model": { "$codeRef": "models.VirtualMachineModel" }
     },
     "flags": {
       "required": ["KUBEVIRT"]
@@ -512,20 +543,6 @@
       "isActivity": { "$codeRef": "dashboardActivity.isDVActivity" },
       "k8sResource": {
         "$codeRef": "dashboardActivity.k8sDVResource"
-      }
-    },
-    "flags": {
-      "required": ["KUBEVIRT"]
-    }
-  },
-  {
-    "type": "console.dashboards/overview/activity/resource",
-    "properties": {
-      "component": { "$codeRef": "dashboardActivity.V2VImportActivity" },
-      "getTimestamp": { "$codeRef": "dashboardActivity.getTimestamp" },
-      "isActivity": { "$codeRef": "dashboardActivity.isPodActivity" },
-      "k8sResource": {
-        "$codeRef": "dashboardActivity.k8sPodResource"
       }
     },
     "flags": {
@@ -589,13 +606,6 @@
             "optional": true
           }
         },
-        "vmImports": {
-          "model": { "kind": "VirtualMachineImport", "group": "v2v.kubevirt.io" },
-          "opts": {
-            "isList": true,
-            "optional": true
-          }
-        },
         "pods": {
           "opts": {
             "isList": true,
@@ -620,8 +630,8 @@
     "properties": {
       "id": "topology-tab-section-vm-details",
       "tab": "topology-side-bar-tab-details",
-      "section": {
-        "$codeRef": "topologySidebar.getVmSidePanelDetailsTabSection"
+      "provider": {
+        "$codeRef": "topologySidebar.useVmSidePanelDetailsTabSection"
       }
     },
     "flags": {
@@ -671,6 +681,19 @@
       "provider": {
         "$codeRef": "actions.useVmActionsProvider"
       }
+    },
+    "flags": {
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
+    }
+  },
+  {
+    "type": "console.action/provider",
+    "properties": {
+      "contextId": "topology-actions",
+      "provider": { "$codeRef": "actions.useModifyApplicationActionProvider" }
+    },
+    "flags": {
+      "required": ["KUBEVIRT"]
     }
   },
   {
@@ -684,6 +707,9 @@
       "provider": {
         "$codeRef": "actions.useVmiActionsProvider"
       }
+    },
+    "flags": {
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   },
   {
@@ -710,6 +736,21 @@
     },
     "flags": {
       "required": ["KUBEVIRT"]
+    }
+  },
+  {
+    "type": "console.navigation/section",
+    "properties": {
+      "perspective": "admin",
+      "id": "virtualization",
+      "name": "%kubevirt-plugin~Virtualization%",
+      "dataAttributes": { "data-quickstart-id": "qs-nav-virtualization" },
+      "insertBefore": "serverless",
+      "insertAfter": "workloads"
+    },
+    "flags": {
+      "required": ["KUBEVIRT"],
+      "disallowed": ["KUBEVIRT_DYNAMIC"]
     }
   }
 ]

@@ -8,8 +8,10 @@ import {
   ModalFooter,
   createModalLauncher,
 } from '@console/internal/components/factory/modal';
+import ExportViewLogButton from './ExportViewLogButton';
 
 export type ExportApplicationModalProps = ModalComponentProps & {
+  name: string;
   namespace: string;
   startTime?: string;
   onCancelExport?: () => Promise<boolean>;
@@ -18,7 +20,7 @@ export type ExportApplicationModalProps = ModalComponentProps & {
 
 export const ExportApplicationModal: React.FC<ExportApplicationModalProps> = (props) => {
   const { t } = useTranslation();
-  const { cancel, namespace, startTime, onCancelExport, onRestartExport } = props;
+  const { cancel, name, namespace, startTime, onCancelExport, onRestartExport } = props;
   const [errMessage, setErrMessage] = React.useState<string>('');
 
   const onCancel = async () => {
@@ -81,6 +83,9 @@ export const ExportApplicationModal: React.FC<ExportApplicationModalProps> = (pr
               </Button>
             </FlexItem>
           )}
+          <FlexItem>
+            <ExportViewLogButton name={name} namespace={namespace} onViewLog={cancel} />
+          </FlexItem>
           <FlexItem>
             <Button type="button" variant="primary" data-test="export-close-btn" onClick={cancel}>
               {t('topology~OK')}

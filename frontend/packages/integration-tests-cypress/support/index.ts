@@ -13,10 +13,7 @@ Cypress.Cookies.defaults({
 });
 
 Cypress.on('uncaught:exception', (err) => {
-  if (err.message.includes('> Unauthorized')) {
-    console.error('Cypress caught "> Unauthorized exception", continuing tests', err);
-    return false; // test continues
-  }
+  console.error('Uncaught exception', err);
   return true; // test fails
 });
 
@@ -90,6 +87,6 @@ export const create = (obj) => {
     `${obj.metadata.name}.${obj.kind.toLowerCase()}.json`,
   ].join('/');
   cy.writeFile(filename, JSON.stringify(obj));
-  cy.exec(`kubectl create -f ${filename}`);
+  cy.exec(`oc create -f ${filename}`);
   cy.exec(`rm ${filename}`);
 };

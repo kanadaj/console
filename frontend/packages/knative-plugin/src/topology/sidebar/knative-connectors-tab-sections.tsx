@@ -1,19 +1,27 @@
 import * as React from 'react';
 import { Edge } from '@patternfly/react-topology';
+import { DetailsTabSectionExtensionHook } from '@console/dynamic-plugin-sdk/src/extensions/topology-details';
 import TopologyEdgeResourcesPanel from '@console/topology/src/components/side-bar/TopologyEdgeResourcesPanel';
 import {
+  TYPE_EVENT_SINK_LINK,
   TYPE_EVENT_SOURCE_LINK,
   TYPE_KAFKA_CONNECTION_LINK,
   TYPE_REVISION_TRAFFIC,
 } from '../const';
 
-export const getKnativeConnectorSidepanelResourceSection = (element: Edge) => {
+export const useKnativeConnectorSidepanelResourceSection: DetailsTabSectionExtensionHook = (
+  element: Edge,
+) => {
   if (
-    ![TYPE_REVISION_TRAFFIC, TYPE_EVENT_SOURCE_LINK, TYPE_KAFKA_CONNECTION_LINK].includes(
-      element.getType(),
-    )
+    ![
+      TYPE_REVISION_TRAFFIC,
+      TYPE_EVENT_SOURCE_LINK,
+      TYPE_KAFKA_CONNECTION_LINK,
+      TYPE_EVENT_SINK_LINK,
+    ].includes(element.getType())
   ) {
-    return undefined;
+    return [undefined, true, undefined];
   }
-  return <TopologyEdgeResourcesPanel edge={element} />;
+  const section = <TopologyEdgeResourcesPanel edge={element} />;
+  return [section, true, undefined];
 };

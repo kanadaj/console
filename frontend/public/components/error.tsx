@@ -1,8 +1,18 @@
 import * as _ from 'lodash-es';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import i18next from 'i18next';
+import {
+  EmptyState,
+  EmptyStateBody,
+  EmptyStateIcon,
+  Stack,
+  StackItem,
+  Title,
+} from '@patternfly/react-core';
+import { ExclamationCircleIcon } from '@patternfly/react-icons';
+import { global_danger_color_100 as globalDangerColor100 } from '@patternfly/react-tokens';
 
 import { ErrorBoundaryFallbackProps } from '@console/shared/src/components/error/error-boundary';
 import { CopyToClipboard, getQueryArgument, PageHeading, ExpandCollapse } from './utils';
@@ -43,9 +53,9 @@ const ErrorComponent: React.SFC<ErrorComponentProps> = ({ title, message }) => {
   const { t } = useTranslation();
   return (
     <>
-      <PageHeading detail={true} title={t('public~Error')} />
+      <PageHeading title={t('public~Error')} detail />
       <div className="co-m-pane__body" data-test-id="error-page">
-        <h1 className="co-m-pane__heading co-m-pane__heading--center">{title}</h1>
+        <PageHeading title={title} centerText />
         {message && <div className="pf-u-text-align-center">{message}</div>}
       </div>
     </>
@@ -80,9 +90,7 @@ export const ErrorBoundaryFallback: React.SFC<ErrorBoundaryFallbackProps> = (pro
   const { t } = useTranslation();
   return (
     <div className="co-m-pane__body">
-      <h1 className="co-m-pane__heading co-m-pane__heading--center">
-        {t('public~Oh no! Something went wrong.')}
-      </h1>
+      <PageHeading title={t('public~Oh no! Something went wrong.')} centerText />
       <ExpandCollapse
         textCollapsed={t('public~Show details')}
         textExpanded={t('public~Hide details')}
@@ -116,3 +124,28 @@ export type ErrorComponentProps = {
 
 export type ErrorPageProps = {};
 export type ErrorPage404Props = Omit<ErrorComponentProps, 'title'>;
+
+export const ErrorState: React.FC = () => {
+  const { t } = useTranslation();
+  const DangerIcon = () => <ExclamationCircleIcon color={globalDangerColor100.value} size="sm" />;
+  return (
+    <EmptyState variant="xs">
+      <EmptyStateIcon variant="container" component={DangerIcon} />
+      <Title headingLevel="h6">{t('public~Something went wrong')}</Title>
+      <EmptyStateBody>
+        <Stack>
+          <StackItem>
+            {t('public~There was a problem processing the request. Please try again.')}
+          </StackItem>
+          <StackItem>
+            <Trans t={t} ns="public">
+              If the problem persists, contact{' '}
+              <a href="https://access.redhat.com/support">Red Hat Support</a> or check our{' '}
+              <a href="https://status.redhat.com">status page</a> for known outages.
+            </Trans>
+          </StackItem>
+        </Stack>
+      </EmptyStateBody>
+    </EmptyState>
+  );
+};

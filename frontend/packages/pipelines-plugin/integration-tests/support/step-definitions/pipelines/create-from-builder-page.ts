@@ -1,6 +1,7 @@
 import { And, Given, When, Then } from 'cypress-cucumber-preprocessor/steps';
 import * as yamlEditor from '@console/cypress-integration-tests/views/yaml-editor';
 import { devNavigationMenu } from '@console/dev-console/integration-tests/support/constants/global';
+import { quickSearchAddPO } from '@console/dev-console/integration-tests/support/pageObjects';
 import { navigateTo, sidePane } from '@console/dev-console/integration-tests/support/pages/app';
 import { safeYAMLToJS } from '@console/shared/src/utils/yaml';
 import {
@@ -57,20 +58,12 @@ Given('user is at Pipeline Builder page', () => {
 });
 
 When('user enters pipeline name as {string}', (pipelineName: string) => {
+  Cypress.env('PIPELINE_NAME', pipelineName);
   pipelineBuilderPage.enterPipelineName(pipelineName);
 });
 
 When('user selects {string} from Task drop down', (taskName: string) => {
   pipelineBuilderPage.selectTask(taskName);
-});
-
-When('user adds another task {string} in parallel', (taskName: string) => {
-  pipelineBuilderPage.selectParallelTask(taskName);
-  pipelineBuilderPage.addResource('git resource');
-  pipelineBuilderPage.clickOnTask(taskName);
-  cy.get(pipelineBuilderPO.formView.sidePane.inputResource).click();
-  cy.byTestDropDownMenu('git resource').click();
-  pipelineBuilderPage.clickCreateButton();
 });
 
 When('user clicks Create button on Pipeline Builder page', () => {
@@ -86,9 +79,6 @@ Then(
 
 When('user adds another task {string} in series', (taskName: string) => {
   pipelineBuilderPage.selectSeriesTask(taskName);
-  pipelineBuilderPage.addResource('git resource');
-  pipelineBuilderPage.clickOnTask(taskName);
-  cy.get(pipelineBuilderPO.formView.sidePane.inputResource).select('git resource');
   pipelineBuilderPage.clickCreateButton();
 });
 
@@ -131,6 +121,10 @@ When('user clicks on Add parameter link', () => {
 });
 
 When('user selects the {string} node', (taskName: string) => {
+  pipelineBuilderPage.clickOnTask(taskName);
+});
+
+When('user clicks the {string} node', (taskName: string) => {
   pipelineBuilderPage.clickOnTask(taskName);
 });
 
@@ -218,11 +212,10 @@ And('user clicks on Create', () => {
 });
 
 And(
-  'user is able to see finally tasks {string}, {string} and {string} mentioned under "Finally tasks" section in the Pipeline details page',
-  (tkn: string, openshift: string, kn: string) => {
-    cy.get(`[data-test="finally-task-node ${tkn}"]`).should('be.visible');
-    cy.get(`[data-test="finally-task-node ${openshift}"]`).should('be.visible');
-    cy.get(`[data-test="finally-task-node ${kn}"]`).should('be.visible');
+  'user is able to see finally tasks {string} and {string} mentioned under "Finally tasks" section in the Pipeline details page',
+  (tkn: string, kn: string) => {
+    cy.get(`[data-test-id="${tkn}"]`).should('be.visible');
+    cy.get(`[data-test-id="${kn}"]`).should('be.visible');
   },
 );
 
@@ -405,10 +398,10 @@ And('user enters url under Parameters section {string}', (url: string) => {
   cy.get('[data-test="parameter url"] [data-test~="value"]').type(url);
 });
 
-And('user adds workspace as {string}', (workspace: string) => {
-  cy.get('[data-test~="workspaces"]')
+And('user adds {string} workspace as {string}', (workspace: string, wName: string) => {
+  cy.get(`[data-test="workspaces ${workspace}"]`)
     .scrollIntoView()
-    .select(workspace);
+    .select(wName);
 });
 
 Given('user has applied yaml {string}', (yamlFile: string) => {
@@ -511,11 +504,16 @@ Then('user will be able to see the output in sum and multiply task', () => {
 });
 
 When('user clicks Add task button under Tasks section', () => {
-  cy.get(pipelineBuilderPO.formView.taskDropdown).click();
+  pipelineBuilderPage.clickAddTask();
 });
 
 When('user searches {string} in quick search bar', (searchItem: string) => {
   cy.get(pipelineBuilderPO.formView.quickSearch).type(searchItem);
+});
+
+When('user selects {string} from {string}', (taskName: string, publisher: string) => {
+  cy.get('[aria-label="Quick search list"]').should('be.visible');
+  cy.get(`[data-test="item-name-${taskName}-${publisher}"]`).click();
 });
 
 When('user selects {string} from git community', () => {
@@ -526,5 +524,80 @@ When('user selects {string} from git community', () => {
 });
 
 When('user clicks on Install and add button', () => {
+  cy.byTestID('task-cta').click();
+});
+
+When('user clicks on Add button', () => {
+  cy.byTestID('task-cta').click();
+});
+
+When('user clicks on Add in selected task', () => {
+  cy.byTestID('task-cta').click();
+});
+
+When('user adds a task in series', () => {
+  cy.mouseHover(pipelineBuilderPO.formView.task);
+  cy.get(pipelineBuilderPO.formView.plusTaskIcon)
+    .first()
+    .click({ force: true });
+});
+
+When('user should see the Create button enabled after installation', () => {
+  cy.byLegacyTestID('submit-button').should('not.be.disabled');
+});
+
+When('user selects {string} from Add task quick search', (searchItem: string) => {
+  cy.get('[data-test="task-list"]').click();
+  cy.get(pipelineBuilderPO.formView.quickSearch).type(searchItem);
+});
+
+When('user hovers over the newly added task', () => {
+  cy.mouseHover('[data-test="task-list"]');
+  cy.get('[data-test="task-list"] .odc-task-list-node__trigger-underline')
+    .trigger('mouseenter')
+    .invoke('show');
+});
+
+When('user clicks on delete icon', () => {
+  cy.get(pipelineBuilderPO.formView.deleteTaskIcon)
+    .first()
+    .click({ force: true });
+});
+
+Then('user can see the task in series gets removed', () => {
+  cy.get('[data-test="task-list"]').should('not.exist');
+});
+
+When(
+  'user searches and select {string} in the list of items based on the {string} provider in quick search bar',
+  (taskName: string, provider: string) => {
+    cy.get(pipelineBuilderPO.formView.quickSearch).type(taskName);
+    cy.get(quickSearchAddPO.quickSearchListItem(taskName, provider)).click();
+  },
+);
+
+When(
+  'user installs and removes {string} of {string} provider',
+  (task: string, provider: string) => {
+    pipelineBuilderPage.clickAddTask();
+    cy.get(pipelineBuilderPO.formView.quickSearch).type(task);
+    cy.get('[aria-label="Quick search list"]').should('be.visible');
+    cy.get(quickSearchAddPO.quickSearchListItem(task, provider)).click();
+    cy.byTestID('task-cta').click();
+    pipelineBuilderPage.clickOnTask(task);
+    pipelineBuilderSidePane.removeTask();
+  },
+);
+
+When('user changes version to {string}', (menuItem: string) => {
+  cy.get(pipelineBuilderPO.formView.versionTask).click();
+  cy.get("[role='menu']")
+    .find('li')
+    .contains(menuItem)
+    .should('be.visible')
+    .click();
+});
+
+When('user clicks on Update and Add button', () => {
   cy.byTestID('task-cta').click();
 });

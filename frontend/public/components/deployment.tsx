@@ -6,6 +6,7 @@ import {
   ActionMenu,
   ActionMenuVariant,
   Status,
+  usePrometheusGate,
 } from '@console/shared';
 import PodRingSet from '@console/shared/src/components/pod/PodRingSet';
 import { AddHealthChecks, EditHealthChecks } from '@console/app/src/actions/modify-health-checks';
@@ -46,6 +47,7 @@ import {
 import { ReplicaSetsPage } from './replicaset';
 import { WorkloadTableRow, WorkloadTableHeader } from './workload-table';
 import { restart } from './utils/workload-restart';
+import { PodDisruptionBudgetField } from '@console/app/src/components/pdb/PodDisruptionBudgetField';
 
 const deploymentsReference: K8sResourceKindReference = 'Deployment';
 const { ModifyCount, AddStorage, common } = Kebab.factory;
@@ -154,6 +156,7 @@ export const DeploymentDetailsList: React.FC<DeploymentDetailsListProps> = ({ de
           : t('public~Not configured')}
       </DetailsItem>
       <RuntimeClass obj={deployment} />
+      <PodDisruptionBudgetField obj={deployment} />
     </dl>
   );
 };
@@ -161,6 +164,7 @@ DeploymentDetailsList.displayName = 'DeploymentDetailsList';
 
 const DeploymentDetails: React.FC<DeploymentDetailsProps> = ({ obj: deployment }) => {
   const { t } = useTranslation();
+
   return (
     <>
       <div className="co-m-pane__body">
@@ -243,8 +247,8 @@ const ReplicaSetsTab: React.FC<ReplicaSetsTabProps> = ({ obj }) => {
   );
 };
 
-const { details, editYaml, pods, envEditor, events, metrics } = navFactory;
 export const DeploymentsDetailsPage: React.FC<DeploymentsDetailsPageProps> = (props) => {
+  const prometheusIsAvailable = usePrometheusGate();
   const customActionMenu = (kindObj, obj) => {
     const resourceKind = referenceForModel(kindObj);
     const context = { [resourceKind]: obj };
@@ -266,17 +270,17 @@ export const DeploymentsDetailsPage: React.FC<DeploymentsDetailsPageProps> = (pr
       kind={deploymentsReference}
       customActionMenu={customActionMenu}
       pages={[
-        details(DeploymentDetails),
-        metrics(),
-        editYaml(),
+        navFactory.details(DeploymentDetails),
+        ...(prometheusIsAvailable ? [navFactory.metrics()] : []),
+        navFactory.editYaml(),
         {
           href: 'replicasets',
           nameKey: 'public~ReplicaSets',
           component: ReplicaSetsTab,
         },
-        pods(),
-        envEditor(environmentComponent),
-        events(ResourceEventStream),
+        navFactory.pods(),
+        navFactory.envEditor(environmentComponent),
+        navFactory.events(ResourceEventStream),
       ]}
     />
   );

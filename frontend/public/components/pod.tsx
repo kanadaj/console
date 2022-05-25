@@ -9,7 +9,20 @@ import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import * as classNames from 'classnames';
 import * as _ from 'lodash-es';
-import { Button, Popover, Grid, GridItem } from '@patternfly/react-core';
+import {
+  Button,
+  Divider,
+  Popover,
+  Grid,
+  GridItem,
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  Text,
+  TextContent,
+  TextVariants,
+} from '@patternfly/react-core';
 import {
   Status,
   TableColumnsType,
@@ -18,13 +31,14 @@ import {
   ActionMenu,
   ActionMenuVariant,
   useUserSettingsCompatibility,
+  usePrometheusGate,
 } from '@console/shared';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import {
   COLUMN_MANAGEMENT_CONFIGMAP_KEY,
   COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
 } from '@console/shared/src/constants/common';
-import { RowFilter, RowProps, TableColumn } from '@console/dynamic-plugin-sdk';
+import { ListPageBody, RowFilter, RowProps, TableColumn } from '@console/dynamic-plugin-sdk';
 import * as UIActions from '../actions/ui';
 import { coFetchJSON } from '../co-fetch';
 import {
@@ -41,11 +55,12 @@ import {
   podPhaseFilterReducer,
   podReadiness,
   podRestarts,
+  isWindowsPod,
+  isContainerCrashLoopBackOff,
 } from '../module/k8s/pods';
 import { getContainerState, getContainerStatus } from '../module/k8s/container';
 import { ResourceEventStream } from './events';
 import { DetailsPage } from './factory';
-import ListPageBody from './factory/ListPage/ListPageBody';
 import ListPageHeader from './factory/ListPage/ListPageHeader';
 import ListPageFilter from './factory/ListPage/ListPageFilter';
 import ListPageCreate from './factory/ListPage/ListPageCreate';
@@ -77,17 +92,12 @@ import {
   Stack,
   PROMETHEUS_BASE_PATH,
   PROMETHEUS_TENANCY_BASE_PATH,
-  requirePrometheus,
   PrometheusResult,
 } from './graphs';
 import { VolumesTable } from './volumes-table';
 import { PodModel } from '../models';
 import { Conditions } from './conditions';
 import Dashboard from '@console/shared/src/components/dashboard/Dashboard';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
 
 // Key translations for oauth login templates
 // t('public~Log in to your account')
@@ -97,12 +107,13 @@ import DashboardCardBody from '@console/shared/src/components/dashboard/dashboar
 // t('public~Login is required. Please try again.')
 // t('public~Could not check CSRF token. Please try again.')
 // t('public~Invalid login or password. Please try again.')
+import { resourcePath } from './utils/resource-link';
 import { useK8sWatchResource } from './utils/k8s-watch-hook';
 import { useListPageFilter } from './factory/ListPage/filter-hook';
 import VirtualizedTable, { TableData } from './factory/Table/VirtualizedTable';
 import { sortResourceByValue } from './factory/Table/sort';
 import { useActiveColumns } from './factory/Table/active-columns-hook';
-
+import { PodDisruptionBudgetField } from '@console/app/src/components/pdb/PodDisruptionBudgetField';
 // Only request metrics if the device's screen width is larger than the
 // breakpoint where metrics are visible.
 const showMetrics =
@@ -483,6 +494,7 @@ export const ContainerRow: React.FC<ContainerRowProps> = ({ pod, container }) =>
     </div>
   );
 };
+ContainerRow.displayName = 'ContainerRow';
 
 export const PodContainerTable: React.FC<PodContainerTableProps> = ({
   heading,
@@ -518,17 +530,17 @@ const getNetworkName = (result: PrometheusResult) =>
   result?.metric?.network_name || 'unnamed interface';
 
 // TODO update to use QueryBrowser for each graph
-const PodMetrics = requirePrometheus(({ obj }) => {
+const PodMetrics: React.FC<PodMetricsProps> = ({ obj }) => {
   const { t } = useTranslation();
   return (
     <Dashboard className="resource-metrics-dashboard">
       <Grid hasGutter>
         <GridItem xl={6} lg={12}>
-          <DashboardCard className="resource-metrics-dashboard__card">
-            <DashboardCardHeader>
-              <DashboardCardTitle>{t('public~Memory usage')}</DashboardCardTitle>
-            </DashboardCardHeader>
-            <DashboardCardBody className="resource-metrics-dashboard__card-body">
+          <Card className="resource-metrics-dashboard__card">
+            <CardHeader>
+              <CardTitle>{t('public~Memory usage')}</CardTitle>
+            </CardHeader>
+            <CardBody className="resource-metrics-dashboard__card-body">
               <Area
                 ariaChartLinkLabel={t('public~View in query browser')}
                 humanize={humanizeBinaryBytes}
@@ -538,15 +550,15 @@ const PodMetrics = requirePrometheus(({ obj }) => {
                 limitQuery={`sum(kube_pod_resource_limit{resource='memory',pod='${obj.metadata.name}',namespace='${obj.metadata.namespace}'})`}
                 requestedQuery={`sum(kube_pod_resource_request{resource='memory',pod='${obj.metadata.name}',namespace='${obj.metadata.namespace}'}) BY (pod, namespace)`}
               />
-            </DashboardCardBody>
-          </DashboardCard>
+            </CardBody>
+          </Card>
         </GridItem>
         <GridItem xl={6} lg={12}>
-          <DashboardCard className="resource-metrics-dashboard__card">
-            <DashboardCardHeader>
-              <DashboardCardTitle>{t('public~CPU usage')}</DashboardCardTitle>
-            </DashboardCardHeader>
-            <DashboardCardBody className="resource-metrics-dashboard__card-body">
+          <Card className="resource-metrics-dashboard__card">
+            <CardHeader>
+              <CardTitle>{t('public~CPU usage')}</CardTitle>
+            </CardHeader>
+            <CardBody className="resource-metrics-dashboard__card-body">
               <Area
                 ariaChartLinkLabel={t('public~View in query browser')}
                 humanize={humanizeCpuCores}
@@ -555,15 +567,15 @@ const PodMetrics = requirePrometheus(({ obj }) => {
                 limitQuery={`sum(kube_pod_resource_limit{resource='cpu',pod='${obj.metadata.name}',namespace='${obj.metadata.namespace}'})`}
                 requestedQuery={`sum(kube_pod_resource_request{resource='cpu',pod='${obj.metadata.name}',namespace='${obj.metadata.namespace}'}) BY (pod, namespace)`}
               />
-            </DashboardCardBody>
-          </DashboardCard>
+            </CardBody>
+          </Card>
         </GridItem>
         <GridItem xl={6} lg={12}>
-          <DashboardCard className="resource-metrics-dashboard__card">
-            <DashboardCardHeader>
-              <DashboardCardTitle>{t('public~Filesystem')}</DashboardCardTitle>
-            </DashboardCardHeader>
-            <DashboardCardBody className="resource-metrics-dashboard__card-body">
+          <Card className="resource-metrics-dashboard__card">
+            <CardHeader>
+              <CardTitle>{t('public~Filesystem')}</CardTitle>
+            </CardHeader>
+            <CardBody className="resource-metrics-dashboard__card-body">
               <Area
                 ariaChartLinkLabel={t('public~View in query browser')}
                 humanize={humanizeBinaryBytes}
@@ -571,15 +583,15 @@ const PodMetrics = requirePrometheus(({ obj }) => {
                 namespace={obj.metadata.namespace}
                 query={`pod:container_fs_usage_bytes:sum{pod='${obj.metadata.name}',namespace='${obj.metadata.namespace}'}`}
               />
-            </DashboardCardBody>
-          </DashboardCard>
+            </CardBody>
+          </Card>
         </GridItem>
         <GridItem xl={6} lg={12}>
-          <DashboardCard className="resource-metrics-dashboard__card">
-            <DashboardCardHeader>
-              <DashboardCardTitle>{t('public~Network in')}</DashboardCardTitle>
-            </DashboardCardHeader>
-            <DashboardCardBody className="resource-metrics-dashboard__card-body">
+          <Card className="resource-metrics-dashboard__card">
+            <CardHeader>
+              <CardTitle>{t('public~Network in')}</CardTitle>
+            </CardHeader>
+            <CardBody className="resource-metrics-dashboard__card-body">
               <Stack
                 ariaChartLinkLabel={t('public~View in query browser')}
                 humanize={humanizeDecimalBytesPerSec}
@@ -587,15 +599,15 @@ const PodMetrics = requirePrometheus(({ obj }) => {
                 query={`(sum(irate(container_network_receive_bytes_total{pod='${obj.metadata.name}', namespace='${obj.metadata.namespace}'}[5m])) by (pod, namespace, interface))`}
                 description={getNetworkName}
               />
-            </DashboardCardBody>
-          </DashboardCard>
+            </CardBody>
+          </Card>
         </GridItem>
         <GridItem xl={6} lg={12}>
-          <DashboardCard className="resource-metrics-dashboard__card">
-            <DashboardCardHeader>
-              <DashboardCardTitle>{t('public~Network out')}</DashboardCardTitle>
-            </DashboardCardHeader>
-            <DashboardCardBody className="resource-metrics-dashboard__card-body">
+          <Card className="resource-metrics-dashboard__card">
+            <CardHeader>
+              <CardTitle>{t('public~Network out')}</CardTitle>
+            </CardHeader>
+            <CardBody className="resource-metrics-dashboard__card-body">
               <Stack
                 ariaChartLinkLabel={t('public~View in query browser')}
                 humanize={humanizeDecimalBytesPerSec}
@@ -603,22 +615,23 @@ const PodMetrics = requirePrometheus(({ obj }) => {
                 query={`(sum(irate(container_network_transmit_bytes_total{pod='${obj.metadata.name}', namespace='${obj.metadata.namespace}'}[5m])) by (pod, namespace, interface))`}
                 description={getNetworkName}
               />
-            </DashboardCardBody>
-          </DashboardCard>
+            </CardBody>
+          </Card>
         </GridItem>
       </Grid>
     </Dashboard>
   );
-});
+};
 
 const PodStatusPopover: React.FC<PodStatusPopoverProps> = ({
   bodyContent,
   headerContent,
+  footerContent,
   status,
 }) => {
   return (
-    <Popover headerContent={headerContent} bodyContent={bodyContent}>
-      <Button variant="link" isInline>
+    <Popover headerContent={headerContent} bodyContent={bodyContent} footerContent={footerContent}>
+      <Button variant="link" isInline data-test="popover-status-button">
         <Status status={status} />
       </Button>
     </Popover>
@@ -648,9 +661,58 @@ export const PodStatus: React.FC<PodStatusProps> = ({ pod }) => {
     (status === 'CrashLoopBackOff' || status === 'ErrImagePull' || status === 'ImagePullBackOff') &&
     containerStatusStateWaiting
   ) {
+    let footerLinks: React.ReactNode;
+    let headerTitle = '';
+    if (status === 'CrashLoopBackOff') {
+      headerTitle = t('public~Pod crash loop back-off');
+      const containers: ContainerSpec[] = pod.spec.containers;
+      footerLinks = (
+        <TextContent>
+          <Text component={TextVariants.p}>
+            {t(
+              'public~CrashLoopBackOff indicates that the application within the container is failing to start properly.',
+            )}
+          </Text>
+          <Text component={TextVariants.p}>
+            {t('public~To troubleshoot, view logs and events, then debug in terminal.')}
+          </Text>
+          <Text component={TextVariants.p}>
+            <Link to={`${resourcePath('Pod', pod.metadata.name, pod.metadata.namespace)}/logs`}>
+              {t('public~View logs')}
+            </Link>
+            &emsp;
+            <Link to={`${resourcePath('Pod', pod.metadata.name, pod.metadata.namespace)}/events`}>
+              {t('public~View events')}
+            </Link>
+          </Text>
+          <Divider />
+          {containers.map((container) => {
+            if (isContainerCrashLoopBackOff(pod, container.name) && !isWindowsPod(pod)) {
+              return (
+                <div key={container.name}>
+                  <Link
+                    to={`${resourcePath(
+                      'Pod',
+                      pod.metadata.name,
+                      pod.metadata.namespace,
+                    )}/containers/${container.name}/debug`}
+                    data-test={`popup-debug-container-link-${container.name}`}
+                  >
+                    {t('public~Debug container {{name}}', { name: container.name })}
+                  </Link>
+                </div>
+              );
+            }
+          })}
+        </TextContent>
+      );
+    }
+
     return (
       <PodStatusPopover
+        headerContent={headerTitle}
         bodyContent={containerStatusStateWaiting.state.waiting.message}
+        footerContent={footerLinks}
         status={status}
       />
     );
@@ -683,10 +745,24 @@ export const PodDetailsList: React.FC<PodDetailsListProps> = ({ pod }) => {
       <DetailsItem label={t('public~Node')} obj={pod} path="spec.nodeName" hideEmpty>
         <NodeLink name={pod.spec.nodeName} />
       </DetailsItem>
+      {pod.spec.imagePullSecrets && (
+        <DetailsItem label={t('public~Image pull secret')} obj={pod} path="spec.imagePullSecrets">
+          {pod.spec.imagePullSecrets.map((imagePullSecret) => (
+            <ResourceLink
+              key={imagePullSecret.name}
+              kind="Secret"
+              name={imagePullSecret.name}
+              namespace={pod.metadata.namespace}
+            />
+          ))}
+        </DetailsItem>
+      )}
       <RuntimeClass obj={pod} path="spec.runtimeClassName" />
+      <PodDisruptionBudgetField obj={pod} />
     </dl>
   );
 };
+PodDetailsList.displayName = 'PodDetailsList';
 
 export const PodResourceSummary: React.FC<PodResourceSummaryProps> = ({ pod }) => (
   <ResourceSummary
@@ -777,7 +853,12 @@ const PodEnvironmentComponent = (props) => (
   <EnvironmentPage obj={props.obj} rawEnvData={props.obj.spec} envPath={envPath} readOnly={true} />
 );
 
-export const PodExecLoader: React.FC<PodExecLoaderProps> = ({ obj, message }) => (
+export const PodExecLoader: React.FC<PodExecLoaderProps> = ({
+  obj,
+  message,
+  initialContainer,
+  infoMessage,
+}) => (
   <div className="co-m-pane__body">
     <div className="row">
       <div className="col-xs-12">
@@ -786,14 +867,16 @@ export const PodExecLoader: React.FC<PodExecLoaderProps> = ({ obj, message }) =>
             loader={() => import('./pod-exec').then((c) => c.PodExec)}
             obj={obj}
             message={message}
+            infoMessage={infoMessage}
+            initialContainer={initialContainer}
           />
         </div>
       </div>
     </div>
   </div>
 );
-
 export const PodsDetailsPage: React.FC<PodDetailsPageProps> = (props) => {
+  const prometheusIsAvailable = usePrometheusGate();
   const customActionMenu = (kindObj, obj) => {
     const resourceKind = referenceForModel(kindObj);
     const context = { [resourceKind]: obj };
@@ -807,8 +890,6 @@ export const PodsDetailsPage: React.FC<PodDetailsPageProps> = (props) => {
       </ActionServiceProvider>
     );
   };
-  // t('public~Terminal')
-  // t('public~Metrics')
   return (
     <DetailsPage
       {...props}
@@ -816,16 +897,12 @@ export const PodsDetailsPage: React.FC<PodDetailsPageProps> = (props) => {
       customActionMenu={customActionMenu}
       pages={[
         navFactory.details(Details),
-        navFactory.metrics(PodMetrics),
+        ...(prometheusIsAvailable ? [navFactory.metrics(PodMetrics)] : []),
         navFactory.editYaml(),
         navFactory.envEditor(PodEnvironmentComponent),
         navFactory.logs(PodLogs),
         navFactory.events(ResourceEventStream),
-        {
-          href: 'terminal',
-          nameKey: 'public~Terminal',
-          component: PodExecLoader,
-        },
+        navFactory.terminal(PodExecLoader),
       ]}
     />
   );
@@ -873,15 +950,15 @@ export const getFilters = (t: TFunction): RowFilter<PodKind>[] => [
     },
     reducer: podPhaseFilterReducer,
     items: [
-      { id: 'Running', title: 'Running' },
-      { id: 'Pending', title: 'Pending' },
-      { id: 'Terminating', title: 'Terminating' },
-      { id: 'CrashLoopBackOff', title: 'CrashLoopBackOff' },
+      { id: 'Running', title: t('public~Running') },
+      { id: 'Pending', title: t('public~Pending') },
+      { id: 'Terminating', title: t('public~Terminating') },
+      { id: 'CrashLoopBackOff', title: t('public~CrashLoopBackOff') },
       // Use title "Completed" to match what appears in the status column for the pod.
       // The pod phase is "Succeeded," but the container state is "Completed."
-      { id: 'Succeeded', title: 'Completed' },
-      { id: 'Failed', title: 'Failed' },
-      { id: 'Unknown', title: 'Unknown ' },
+      { id: 'Succeeded', title: t('public~Completed') },
+      { id: 'Failed', title: t('public~Failed') },
+      { id: 'Unknown', title: t('public~Unknown') },
     ],
   },
 ];
@@ -913,7 +990,7 @@ export const PodsPage: React.FC<PodPageProps> = ({
     if (showMetrics) {
       const updateMetrics = () =>
         fetchPodMetrics(namespace)
-          .then((metrics) => dispatch(UIActions.setPodMetrics(metrics)))
+          .then((result) => dispatch(UIActions.setPodMetrics(result)))
           .catch((e) => {
             // Just log the error here. Showing a warning alert could be more annoying
             // than helpful. It should be obvious there are no metrics in the list, and
@@ -1006,13 +1083,18 @@ type PodContainerTableProps = {
   pod: PodKind;
 };
 
+type PodMetricsProps = {
+  obj: PodKind;
+};
+
 type PodStatusPopoverProps = {
   bodyContent: string;
   headerContent?: string;
+  footerContent?: React.ReactNode | string;
   status: string;
 };
 
-type PodStatusProps = {
+export type PodStatusProps = {
   pod: PodKind;
 };
 
@@ -1020,13 +1102,15 @@ type PodResourceSummaryProps = {
   pod: PodKind;
 };
 
-type PodDetailsListProps = {
+export type PodDetailsListProps = {
   pod: PodKind;
 };
 
 type PodExecLoaderProps = {
   obj: PodKind;
   message?: React.ReactElement;
+  infoMessage?: React.ReactElement;
+  initialContainer?: string;
 };
 
 type PodDetailsProps = {

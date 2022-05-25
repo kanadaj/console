@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { StatusIconAndText } from '@console/shared';
+import { StatusIconAndText } from '@console/dynamic-plugin-sdk';
 import { ChartPie, ChartThemeColor } from '@patternfly/react-charts';
 import {
   ExpandableSection,
@@ -12,12 +12,13 @@ import {
   Button,
   List,
   ListItem,
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
 } from '@patternfly/react-core';
 import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
+
 import { StoragePoolKind } from 'packages/ceph-storage-plugin/src/types';
 import { MirroringCardBody } from './mirroring-card-body';
 import { MirroringCardItem } from './mirroring-card-item';
@@ -41,40 +42,34 @@ const MirroringImageStatePopover: React.FC<MirroringImageStatePopoverProps> = ({
           </ListItem>
           <ListItem>
             <Trans t={t} ns="ceph-storage-plugin">
-              {' '}
-              <strong>Starting replay:</strong> Initiating image (PV) replication process.{' '}
+              <strong>Starting replay:</strong> Initiating image (PV) replication process.
             </Trans>
           </ListItem>
           <ListItem>
             <Trans t={t} ns="ceph-storage-plugin">
-              {' '}
               <strong>Replaying:</strong> Image (PV) replication is ongoing or idle between
-              clusters.{' '}
+              clusters.
             </Trans>
           </ListItem>
           <ListItem>
             <Trans t={t} ns="ceph-storage-plugin">
-              {' '}
-              <strong>Stopping replay:</strong> Image (PV) replication process is shutting down.{' '}
+              <strong>Stopping replay:</strong> Image (PV) replication process is shutting down.
             </Trans>
           </ListItem>
           <ListItem>
             <Trans t={t} ns="ceph-storage-plugin">
-              {' '}
-              <strong>Stopped:</strong> Image (PV) replication process has shut down.{' '}
+              <strong>Stopped:</strong> Image (PV) replication process has shut down.
             </Trans>
           </ListItem>
           <ListItem>
             <Trans t={t} ns="ceph-storage-plugin">
-              {' '}
-              <strong>Error:</strong> Image (PV) replication process stopped due to an error.{' '}
+              <strong>Error:</strong> Image (PV) replication process stopped due to an error.
             </Trans>
           </ListItem>
           <ListItem>
             <Trans t={t} ns="ceph-storage-plugin">
-              {' '}
               <strong>Unknown:</strong> Unable to determine image (PV) state due to an error. Check
-              your network connection and remote cluster mirroring daemon.{' '}
+              your network connection and remote cluster mirroring daemon.
             </Trans>
           </ListItem>
         </List>
@@ -150,11 +145,11 @@ export const MirroringCard: React.FC = () => {
     : '-';
 
   return (
-    <DashboardCard data-test-id="mirroring-card">
-      <DashboardCardHeader>
-        <DashboardCardTitle>{t('ceph-storage-plugin~Mirroring')}</DashboardCardTitle>
-      </DashboardCardHeader>
-      <DashboardCardBody>
+    <Card data-test-id="mirroring-card">
+      <CardHeader>
+        <CardTitle>{t('ceph-storage-plugin~Mirroring')}</CardTitle>
+      </CardHeader>
+      <CardBody>
         <MirroringCardBody>
           <MirroringCardItem isLoading={!obj} title={t('ceph-storage-plugin~Mirroring status')}>
             {mirroringStatus ? t('ceph-storage-plugin~Enabled') : t('ceph-storage-plugin~Disabled')}
@@ -189,8 +184,8 @@ export const MirroringCard: React.FC = () => {
             </>
           )}
         </MirroringCardBody>
-      </DashboardCardBody>
-    </DashboardCard>
+      </CardBody>
+    </Card>
   );
 };
 

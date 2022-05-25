@@ -3,7 +3,7 @@ import { V1alpha1DataVolume, V1Disk, V1PersistentVolumeClaim, V1Volume } from '.
 import { UINetworkEditConfig, UINetworkInterfaceValidation } from '../../types/ui/nic';
 import { UIStorageEditConfig, UIStorageValidation } from '../../types/ui/storage';
 import { VMWizardInitialData } from '../../types/url';
-import { V1Network, V1NetworkInterface } from '../../types/vm';
+import { DataSourceKind, V1Network, V1NetworkInterface } from '../../types/vm';
 import { IDReferences } from '../../utils/redux/id-reference';
 
 export enum VMWizardTab {
@@ -23,6 +23,8 @@ export enum VMWizardProps {
   isTemplateInitialized = 'isTemplateInitialized',
   userTemplates = 'userTemplates',
   dataVolumes = 'dataVolumes',
+  dataSources = 'dataSources',
+  pvcs = 'pvcs',
   userTemplate = 'userTemplate',
   activeNamespace = 'activeNamespace',
   openshiftFlag = 'openshiftFlag',
@@ -34,6 +36,7 @@ export enum VMWizardProps {
   storageClassConfigMap = 'storageClassConfigMap',
   nads = 'nads',
   initialData = 'initialData',
+  cdRom = 'cdRom',
 }
 
 // order important
@@ -65,6 +68,7 @@ export enum VMSettingsField {
   CLONE_COMMON_BASE_DISK_IMAGE = 'CLONE_COMMON_BASE_DISK_IMAGE',
   CLONE_COMMON_BASE_DISK_IMAGE_TEMPLATE = 'CLONE_COMMON_BASE_DISK_IMAGE_TEMPLATE',
   MOUNT_WINDOWS_GUEST_TOOLS = 'MOUNT_WINDOWS_GUEST_TOOLS',
+  IS_CDROM_BOOT_SOURCE = 'IS_CDROM_BOOT_SOURCE',
   FLAVOR = 'FLAVOR',
   MEMORY = 'MEMORY',
   CPU = 'CPU',
@@ -235,8 +239,11 @@ export type ChangedCommonDataProp =
   | VMWizardProps.userTemplate
   | VMWizardProps.userTemplates
   | VMWizardProps.commonTemplates
+  | VMWizardProps.cdRom
   | VMWizardProps.openshiftCNVBaseImages
   | VMWizardProps.dataVolumes
+  | VMWizardProps.dataSources
+  | VMWizardProps.pvcs
   | VMWizardProps.storageClassConfigMap
   | VMWizardProps.nads
   | VMWareProviderProps.deployment
@@ -256,6 +263,8 @@ export type CommonDataProp =
   | VMWizardProps.isProviderImport
   | VMWizardProps.isTemplateInitialized
   | VMWizardProps.dataVolumes
+  | VMWizardProps.dataSources
+  | VMWizardProps.pvcs
   | VMWizardProps.initialData
   | ChangedCommonDataProp;
 
@@ -271,6 +280,8 @@ export const DetectCommonDataChanges = new Set<ChangedCommonDataProp>([
   VMWizardProps.storageClassConfigMap,
   VMWizardProps.openshiftCNVBaseImages,
   VMWizardProps.dataVolumes,
+  VMWizardProps.dataSources,
+  VMWizardProps.pvcs,
   VMWizardProps.nads,
   VMWareProviderProps.deployment,
   VMWareProviderProps.deploymentPods,
@@ -288,6 +299,8 @@ export const DirectCommonDataProps = new Set<ChangedCommonDataProp>([
   VMWizardProps.storageClassConfigMap,
   VMWizardProps.openshiftCNVBaseImages,
   VMWizardProps.dataVolumes,
+  VMWizardProps.dataSources,
+  VMWizardProps.pvcs,
 ]);
 
 export type CommonData = {
@@ -307,6 +320,8 @@ export type CommonData = {
       data: PersistentVolumeClaimKind[];
     };
     [VMWizardProps.dataVolumes]?: {};
+    [VMWizardProps.dataSources]?: [DataSourceKind[], boolean, string];
+    [VMWizardProps.pvcs]?: [PersistentVolumeClaimKind[], boolean, string];
     initialData: VMWizardInitialData;
   };
   dataIDReferences?: IDReferences;
@@ -362,4 +377,5 @@ export type VMWizardStorage = {
     devicePath?: string;
     fileName?: string;
   };
+  sourceRef?: DataSourceKind;
 };

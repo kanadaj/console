@@ -15,7 +15,7 @@ $co-affinity-row-margin: 15px;
 }
 
 .co-clusterserviceversion-details__field {
-  padding-bottom: 10px;
+  padding-bottom: var(--pf-global--spacer--lg);
 }
 
 .co-clusterserviceversion-details__field-description {
@@ -69,10 +69,8 @@ $co-affinity-row-margin: 15px;
 }
 
 .co-clusterserviceversion-logo__name__clusterserviceversion {
-  font-size: 15px;
-  font-weight: var(--pf-global--FontWeight--normal);
-  margin-bottom: 5px;
-  margin-top: 0;
+  font-size: 15px !important;
+  margin-bottom: 5px !important;
 }
 .co-m-pane__heading--logo .co-clusterserviceversion-logo__name__provider {
   font-size: var(--pf-global--FontSize--sm);
@@ -103,7 +101,7 @@ $co-affinity-row-margin: 15px;
 }
 
 .co-catalog-install-modal .modal-header .co-clusterserviceversion-logo__icon {
-  border: 1px solid #ddd;
+  border: var(--pf-global--BorderWidth--sm) solid var(--pf-global--BorderColor--100);
 }
 
 .co-catalog-details {
@@ -129,7 +127,7 @@ $co-affinity-row-margin: 15px;
 }
 
 .co-spec-descriptor--resource-requirements {
-  border: 1px solid #eee;
+  border: var(--pf-global--BorderWidth--sm) solid var(--pf-global--BorderColor--300);
   padding: 20px 0 20px 20px;
   margin-top: 5px;
 }
@@ -140,29 +138,23 @@ $co-affinity-row-margin: 15px;
   height: 25px;
 }
 
+// only used in packages and will be orphaned when packages move out
 .co-create-operand__header {
-  border-bottom: 1px solid #ddd;
-  padding: 0 15px 10px;
-  @media (min-width: $screen-sm-min) {
-    padding: 0 30px 15px;
+  border-bottom: var(--pf-global--BorderWidth--sm) solid var(--pf-global--BorderColor--100);
+  padding: 0 $pf-global-gutter var(--pf-global--spacer--lg);
+  @media (min-width: $pf-global--breakpoint--xl) {
+    padding-left: $pf-global-gutter--md;
+    padding-right: $pf-global-gutter--md;
   }
 }
 
-.co-create-operand__breadcrumbs {
-  align-items: baseline;
-  display: flex;
-  padding: 10px 15px;
-  @media (min-width: $screen-sm-min) {
-    padding: 0 30px 15px;
-  }
-}
-
+// only used in packages and will be orphaned when packages move out
 .co-create-operand__header-text {
-  margin: 0;
+  margin: var(--pf-global--spacer--lg) 0 0 !important;
 }
 
 .co-affinity-term {
-  border: 1px solid #eee;
+  border: var(--pf-global--BorderWidth--sm) solid var(--pf-global--BorderColor--300);
   display: flex;
   flex-direction: column;
   margin-bottom: 15px;
@@ -197,7 +189,7 @@ $co-affinity-row-margin: 15px;
 }
 
 .co-operand-field-group {
-  border: 1px solid #eee;
+  border: var(--pf-global--BorderWidth--sm) solid var(--pf-global--BorderColor--300);
   display: flex;
   flex-direction: column;
   margin-bottom: 15px;

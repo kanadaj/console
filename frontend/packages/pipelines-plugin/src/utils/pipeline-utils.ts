@@ -1,3 +1,4 @@
+import i18next from 'i18next';
 import * as _ from 'lodash';
 import { errorModal } from '@console/internal/components/modals/error-modal';
 import {
@@ -19,6 +20,7 @@ import {
 } from '@console/internal/module/k8s';
 import { PIPELINE_SERVICE_ACCOUNT, SecretAnnotationId } from '../components/pipelines/const';
 import { PipelineModalFormWorkspace } from '../components/pipelines/modals/common/types';
+import { getDuration } from '../components/pipelines/pipeline-metrics/pipeline-metrics-utils';
 import {
   PipelineRunModel,
   TaskRunModel,
@@ -83,11 +85,11 @@ export enum ListFilterId {
 }
 
 export const ListFilterLabels = {
-  [ListFilterId.Running]: 'Running',
-  [ListFilterId.Failed]: 'Failed',
-  [ListFilterId.Succeeded]: 'Succeeded',
-  [ListFilterId.Cancelled]: 'Cancelled',
-  [ListFilterId.Other]: 'Other',
+  [ListFilterId.Running]: i18next.t('pipelines-plugin~Running'),
+  [ListFilterId.Failed]: i18next.t('pipelines-plugin~Failed'),
+  [ListFilterId.Succeeded]: i18next.t('pipelines-plugin~Succeeded'),
+  [ListFilterId.Cancelled]: i18next.t('pipelines-plugin~Cancelled'),
+  [ListFilterId.Other]: i18next.t('pipelines-plugin~Other'),
 };
 
 export enum PipelineResourceListFilterId {
@@ -313,39 +315,22 @@ export const getPipelineRunWorkspaces = (
   );
 };
 
-export const calculateRelativeTime = (startTime: string, completionTime?: string) => {
+export const calculateDuration = (startTime: string, endTime?: string, long?: boolean) => {
   const start = new Date(startTime).getTime();
-  const end = completionTime ? new Date(completionTime).getTime() : new Date().getTime();
-  const secondsAgo = (end - start) / 1000;
-  const minutesAgo = secondsAgo / 60;
-  const hoursAgo = minutesAgo / 60;
-
-  if (minutesAgo > 90) {
-    const count = Math.round(hoursAgo);
-    return `about ${count} hours`;
-  }
-  if (minutesAgo > 45) {
-    return 'about an hour';
-  }
-  if (secondsAgo > 90) {
-    const count = Math.round(minutesAgo);
-    return `about ${count} minutes`;
-  }
-  if (secondsAgo > 45) {
-    return 'about a minute';
-  }
-  return 'a few seconds';
+  const end = endTime ? new Date(endTime).getTime() : new Date().getTime();
+  const durationInSeconds = (end - start) / 1000;
+  return getDuration(durationInSeconds, long);
 };
 
 export const pipelineRunDuration = (run: PipelineRunKind | TaskRunKind): string => {
-  const startTime = _.get(run, ['status', 'startTime'], null);
-  const completionTime = _.get(run, ['status', 'completionTime'], null);
+  const startTime = run?.status?.startTime ?? null;
+  const completionTime = run?.status?.completionTime ?? null;
 
   // Duration cannot be computed if start time is missing or a completed/failed pipeline/task has no end time
   if (!startTime || (!completionTime && pipelineRunStatus(run) !== 'Running')) {
     return '-';
   }
-  return calculateRelativeTime(startTime, completionTime);
+  return calculateDuration(startTime, completionTime, true);
 };
 
 export const updateServiceAccount = (

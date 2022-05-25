@@ -16,7 +16,11 @@ import {
   navigateTo,
   createForm,
 } from '@console/dev-console/integration-tests/support/pages/app';
-import { verifyAndInstallKnativeOperator } from '@console/dev-console/integration-tests/support/pages/functions/installOperatorOnCluster';
+import {
+  verifyAndInstallGitopsPrimerOperator,
+  verifyAndInstallKnativeOperator,
+  verifyAndInstallPipelinesOperator,
+} from '@console/dev-console/integration-tests/support/pages/functions/installOperatorOnCluster';
 import { topologyPO } from '@console/topology/integration-tests/support/page-objects/topology-po';
 import { topologyPage } from '@console/topology/integration-tests/support/pages/topology/topology-page';
 import { topologySidePane } from '@console/topology/integration-tests/support/pages/topology/topology-side-pane-page';
@@ -165,20 +169,20 @@ When('user enters {string} builder image in Quick Search bar', (searchItem: stri
   cy.get(topologyPO.quickSearch).type(searchItem);
 });
 
-When('user clicks Create Application on Quick Search Dialog', () => {
+When('user clicks Create application on Quick Search Dialog', () => {
   cy.get('.pf-c-spinner__tail-ball').should('not.exist');
   cy.get('ul[aria-label="Quick search list"] li')
     .contains('Builder Images', { timeout: 60000 })
     .click();
   cy.get('button')
-    .contains('Create Application')
+    .contains('Create')
     .click();
 });
 
 When(
   'user enters Git Repo URL as {string} in Create Source-to-Image Application',
   (gitUrl: string) => {
-    cy.byLegacyTestID('git-form-input-url').type(gitUrl);
+    gitPage.enterGitUrl(gitUrl);
     cy.get('#form-input-git-url-field-helper').should('have.text', 'Validated');
   },
 );
@@ -193,4 +197,12 @@ When('user enters Application Name as {string}', (appName: string) => {
 
 When('user enters Name as {string}', (name: string) => {
   gitPage.enterWorkloadName(name);
+});
+
+Given('user has installed Gitops primer Operator', () => {
+  verifyAndInstallGitopsPrimerOperator();
+});
+
+Given('user has installed OpenShift Pipelines Operator', () => {
+  verifyAndInstallPipelinesOperator();
 });

@@ -10,9 +10,21 @@ export type CatalogItemType = ExtensionDeclaration<
     /** Title for the catalog item. */
     title: string;
     /** Description for the type specific catalog. */
-    catalogDescription?: string;
+    catalogDescription?: string | CodeRef<React.ReactNode>;
     /** Description for the catalog item type. */
     typeDescription?: string;
+    /** Custom filters specific to the catalog item.  */
+    filters?: CatalogItemAttribute[];
+    /** Custom groupings specific to the catalog item. */
+    groupings?: CatalogItemAttribute[];
+  }
+>;
+
+export type CatalogItemTypeMetadata = ExtensionDeclaration<
+  'console.catalog/item-type-metadata',
+  {
+    /** Type for the catalog item. */
+    type: string;
     /** Custom filters specific to the catalog item.  */
     filters?: CatalogItemAttribute[];
     /** Custom groupings specific to the catalog item. */
@@ -27,6 +39,8 @@ export type CatalogItemProvider = ExtensionDeclaration<
     catalogId: string | string[];
     /** Type ID for the catalog item type. */
     type: string;
+    /** Title for the catalog item provider */
+    title: string;
     /** Fetch items and normalize it for the catalog. Value is a react effect hook. */
     provider: CodeRef<ExtensionHook<CatalogItem[], CatalogExtensionHookOptions>>;
     /** Priority for this provider. Defaults to 0. Higher priority providers may override catalog
@@ -47,12 +61,35 @@ export type CatalogItemFilter = ExtensionDeclaration<
   }
 >;
 
-export type SupportedCatalogExtensions = CatalogItemType | CatalogItemProvider | CatalogItemFilter;
+export type CatalogItemMetadataProvider = ExtensionDeclaration<
+  'console.catalog/item-metadata',
+  {
+    /** The unique identifier for the catalog this provider contributes to. */
+    catalogId: string | string[];
+    /** Type ID for the catalog item type. */
+    type: string;
+    /** A hook which returns a function that will be used to provide metadata to catalog items of a specific type. */
+    provider: CodeRef<
+      ExtensionHook<CatalogItemMetadataProviderFunction, CatalogExtensionHookOptions>
+    >;
+  }
+>;
+
+export type SupportedCatalogExtensions =
+  | CatalogItemType
+  | CatalogItemTypeMetadata
+  | CatalogItemProvider
+  | CatalogItemFilter
+  | CatalogItemMetadataProvider;
 
 // Type guards
 
 export const isCatalogItemType = (e: Extension): e is CatalogItemType => {
   return e.type === 'console.catalog/item-type';
+};
+
+export const isCatalogItemTypeMetadata = (e: Extension): e is CatalogItemTypeMetadata => {
+  return e.type === 'console.catalog/item-type-metadata';
 };
 
 export const isCatalogItemProvider = (e: Extension): e is CatalogItemProvider => {
@@ -61,6 +98,10 @@ export const isCatalogItemProvider = (e: Extension): e is CatalogItemProvider =>
 
 export const isCatalogItemFilter = (e: Extension): e is CatalogItemFilter => {
   return e.type === 'console.catalog/item-filter';
+};
+
+export const isCatalogItemMetadataProvider = (e: Extension): e is CatalogItemMetadataProvider => {
+  return e.type === 'console.catalog/item-metadata';
 };
 
 // Support types
@@ -101,16 +142,18 @@ export type CatalogItem<T extends any = any> = {
     class?: string;
     node?: React.ReactNode;
   };
-  details?: {
-    properties?: CatalogItemDetailsProperty[];
-    descriptions?: CatalogItemDetailsDescription[];
-  };
+  details?: CatalogItemDetails;
   // Optional text only badges for the catalog item which will be rendered on the tile and details panel.
   badges?: CatalogItemBadge[];
   // Optional data attached by the provider.
   // May be consumed by filters.
   // `data` for each `type` of CatalogItem should implement the same interface.
   data?: T;
+};
+
+export type CatalogItemDetails = {
+  properties?: CatalogItemDetailsProperty[];
+  descriptions?: CatalogItemDetailsDescription[];
 };
 
 export type CatalogItemDetailsProperty = {
@@ -126,6 +169,7 @@ export type CatalogItemDetailsDescription = {
 export type CatalogItemAttribute = {
   label: string;
   attribute: string;
+  description?: string;
 };
 
 export type CatalogItemBadge = {
@@ -134,3 +178,15 @@ export type CatalogItemBadge = {
   icon?: React.ReactNode;
   variant?: 'outline' | 'filled';
 };
+
+export type CatalogItemMetadataProviderFunction = (
+  item: CatalogItem,
+) =>
+  | {
+      tags?: string[];
+      badges?: CatalogItemBadge[];
+      attributes?: {
+        [key: string]: any;
+      };
+    }
+  | undefined;

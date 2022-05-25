@@ -2,11 +2,8 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getInfrastructurePlatform, useFlag } from '@console/shared';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
-import DetailItem from '@console/shared/src/components/dashboard/details-card/DetailItem';
+import { Card, CardBody, CardHeader, CardTitle } from '@patternfly/react-core';
+import { OverviewDetailItem } from '@openshift-console/plugin-shared/src';
 import {
   DashboardItemProps,
   withDashboardResources,
@@ -83,52 +80,55 @@ const DetailsCard: React.FC<DashboardItemProps> = ({
     ? t('ceph-storage-plugin~OpenShift Data Foundation')
     : t('ceph-storage-plugin~OpenShift Container Storage');
   return (
-    <DashboardCard>
-      <DashboardCardHeader>
-        <DashboardCardTitle>{t('ceph-storage-plugin~Details')}</DashboardCardTitle>
-      </DashboardCardHeader>
-      <DashboardCardBody>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('ceph-storage-plugin~Details')}</CardTitle>
+      </CardHeader>
+      <CardBody>
         <DetailsBody>
-          <DetailItem
-            key="service_name"
-            title={t('ceph-storage-plugin~Service name')}
-            isLoading={false}
-            error={false}
-          >
+          <OverviewDetailItem key="service_name" title={t('ceph-storage-plugin~Service name')}>
             <Link data-test="ocs-link" to={servicePath}>
               {serviceName}
             </Link>
-          </DetailItem>
-          <DetailItem
+          </OverviewDetailItem>
+          <OverviewDetailItem
             key="cluster_name"
             title={t('ceph-storage-plugin~Cluster name')}
-            error={!!ocsError}
+            error={ocsError ? t('ceph-storage-plugin~Not available') : undefined}
             isLoading={!ocsLoaded}
           >
             {ocsName}
-          </DetailItem>
-          <DetailItem
+          </OverviewDetailItem>
+          <OverviewDetailItem
             key="provider"
             title={t('ceph-storage-plugin~Provider')}
-            error={!!infrastructureError || (infrastructure && !infrastructurePlatform)}
+            error={
+              !!infrastructureError || (infrastructure && !infrastructurePlatform)
+                ? t('ceph-storage-plugin~Not available')
+                : undefined
+            }
             isLoading={!infrastructureLoaded}
           >
             {infrastructurePlatform}
-          </DetailItem>
-          <DetailItem title={t('ceph-storage-plugin~Mode')}>
+          </OverviewDetailItem>
+          <OverviewDetailItem title={t('ceph-storage-plugin~Mode')}>
             {t('ceph-storage-plugin~Internal')}
-          </DetailItem>
-          <DetailItem
+          </OverviewDetailItem>
+          <OverviewDetailItem
             key="version"
             title={t('ceph-storage-plugin~Version')}
             isLoading={!subscriptionLoaded}
-            error={subscriptionLoaded && !serviceVersion}
+            error={
+              subscriptionLoaded && !serviceVersion
+                ? t('ceph-storage-plugin~Not available')
+                : undefined
+            }
           >
             {serviceVersion}
-          </DetailItem>
+          </OverviewDetailItem>
         </DetailsBody>
-      </DashboardCardBody>
-    </DashboardCard>
+      </CardBody>
+    </Card>
   );
 };
 

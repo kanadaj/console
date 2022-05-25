@@ -1,7 +1,7 @@
 import { deviceTypeDropdownItems } from '@console/local-storage-operator-plugin/src/constants';
 import { StorageClassResourceKind, NodeKind } from '@console/internal/module/k8s';
-import { diskModeDropdownItems, KMSEmptyState } from '../../../constants';
-import { EncryptionType, KMSConfig, NetworkType } from '../../../types';
+import { diskModeDropdownItems, VaultEmptyState } from '../../../constants';
+import { EncryptionType, VaultConfig, NetworkType } from '../../../types';
 
 export const initialState: State = {
   // Step 1: Discover disks
@@ -47,7 +47,7 @@ export const initialState: State = {
       value: '',
       valid: true,
     },
-    token: {
+    authValue: {
       value: '',
       valid: true,
     },
@@ -59,12 +59,15 @@ export const initialState: State = {
       value: '',
       valid: true,
     },
+    authMethod: null,
     backend: '',
     caCert: null,
     tls: '',
     clientCert: null,
     clientKey: null,
     providerNamespace: '',
+    providerAuthPath: '',
+    providerAuthNamespace: '',
     hasHandled: true,
     caCertFile: '',
     clientCertFile: '',
@@ -112,7 +115,7 @@ export type State = {
   availablePvsCount: number;
   // Encryption state declare
   encryption: EncryptionType;
-  kms: KMSConfig;
+  kms: VaultConfig;
   networkType: NetworkType;
   clusterNetwork: string;
   publicNetwork: string;
@@ -155,7 +158,7 @@ export type Action =
   | { type: 'setAvailablePvsCount'; value: number }
   // Encryption state actions
   | { type: 'setEncryption'; value: EncryptionType }
-  | { type: 'setKmsEncryption'; value: KMSConfig }
+  | { type: 'setKmsEncryption'; value: VaultConfig }
   | { type: 'clearKmsState' }
   | { type: 'setNetworkType'; value: NetworkType }
   | { type: 'setClusterNetwork'; value: string }
@@ -231,7 +234,7 @@ export const reducer = (state: State, action: Action) => {
     case 'setKmsEncryption':
       return Object.assign({}, state, { kms: action.value });
     case 'clearKmsState':
-      return Object.assign({}, state, { kms: { ...KMSEmptyState } });
+      return Object.assign({}, state, { kms: { ...VaultEmptyState } });
     case 'setNetworkType':
       return Object.assign({}, state, { networkType: action.value });
     case 'setClusterNetwork':

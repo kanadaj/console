@@ -7,19 +7,16 @@ import {
   AlertsBodyProps,
   AlertItemProps,
   HealthItemProps,
-  DashboardCardProps,
-  DashboardCardBodyProps,
-  DashboardCardHeaderProps,
-  DashboardCardTitleProps,
-  DashboardGridProps,
   ResourceInventoryItemProps,
-  DetailItemProps,
   DetailsBodyProps,
   UtilizationItemProps,
   UtilizationBodyProps,
   UtilizationDurationDropdownProps,
   UseUtilizationDuration,
-  UsePrometheusPoll,
+  UseActiveNamespace,
+  VirtualizedGridProps,
+  LazyActionMenuProps,
+  UseDashboardResources,
 } from './internal-types';
 
 export const ActivityItem: React.FC<ActivityItemProps> = require('@console/shared/src/components/dashboard/activity-card/ActivityItem')
@@ -38,29 +35,25 @@ export const HealthItem: React.FC<HealthItemProps> = require('@console/shared/sr
   .default;
 export const HealthBody: React.FC = require('@console/shared/src/components/dashboard/status-card/HealthBody')
   .default;
-export const DashboardCard: React.FC<DashboardCardProps> = require('@console/shared/src/components/dashboard/dashboard-card/DashboardCard')
-  .default;
-export const DashboardCardBody: React.FC<DashboardCardBodyProps> = require('@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody')
-  .default;
-export const DashboardCardHeader: React.FC<DashboardCardHeaderProps> = require('@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader')
-  .default;
-export const DashboardCardTitle: React.FC<DashboardCardTitleProps> = require('@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle')
-  .default;
-export const DashboardGrid: React.FC<DashboardGridProps> = require('@console/shared/src/components/dashboard//DashboardGrid')
-  .default;
 export const ResourceInventoryItem: React.FC<ResourceInventoryItemProps> = require('@console/shared/src/components/dashboard/inventory-card/InventoryItem')
   .ResourceInventoryItem;
-export const DetailItem: React.FC<DetailItemProps> = require('@console/shared/src/components/dashboard/details-card/DetailItem')
-  .default;
 export const DetailsBody: React.FC<DetailsBodyProps> = require('@console/shared/src/components/dashboard/details-card/DetailsBody')
   .default;
 export const UtilizationItem: React.FC<UtilizationItemProps> = require('@console/shared/src/components/dashboard/utilization-card/UtilizationItem')
   .default;
 export const UtilizationBody: React.FC<UtilizationBodyProps> = require('@console/shared/src/components/dashboard/utilization-card/UtilizationBody')
   .default;
-export const useUtilizationDuration: UseUtilizationDuration = require('@console/shared/src/hooks/useUtilizationDuration')
-  .useUtilizationDuration;
 export const UtilizationDurationDropdown: React.FC<UtilizationDurationDropdownProps> = require('@console/shared/src/components/dashboard/utilization-card/UtilizationDurationDropdown')
   .UtilizationDurationDropdown;
-export const usePrometheusPoll: UsePrometheusPoll = require('@console/internal/components/graphs/prometheus-poll-hook')
-  .usePrometheusPoll;
+export const VirtualizedGrid: React.FC<VirtualizedGridProps> = require('@console/shared/src/components/virtualized-grid/VirtualizedGrid')
+  .default;
+export const LazyActionMenu: React.FC<LazyActionMenuProps> = require('@console/shared/src/components/actions/LazyActionMenu')
+  .default;
+
+export const useUtilizationDuration: UseUtilizationDuration = require('@console/shared/src/hooks/useUtilizationDuration')
+  .useUtilizationDuration;
+export const useActiveNamespace: UseActiveNamespace = require('@console/shared/src/hooks/useActiveNamespace')
+  .useActiveNamespace;
+export const ServicesList = require('@console/internal/components/service').ServicesList;
+export const useDashboardResources: UseDashboardResources = require('@console/shared/src/hooks/useDashboardResources')
+  .useDashboardResources;

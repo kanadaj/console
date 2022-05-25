@@ -25,9 +25,16 @@ import {
   PrometheusRulesResponse,
   AlertSeverity,
 } from '@console/internal/components/monitoring/types';
+
+import { getClusterID } from '../module/k8s/cluster-settings';
+
+import {
+  ServiceLevelNotification,
+  useShowServiceLevelNotifications,
+} from '@console/internal/components/utils/service-level';
 import { getAlertsAndRules, alertURL } from '@console/internal/components/monitoring/utils';
 import { NotificationAlerts } from '@console/internal/reducers/observe';
-import { RedExclamationCircleIcon } from '@console/shared';
+import { RedExclamationCircleIcon, useCanClusterUpgrade } from '@console/shared';
 import {
   getAlertDescription,
   getAlertMessage,
@@ -54,15 +61,14 @@ import {
 import { history } from '@console/internal/components/utils';
 import { coFetchJSON } from '../co-fetch';
 import {
-  ClusterUpdate,
   ClusterVersionKind,
   getNewerClusterVersionChannel,
   getSimilarClusterVersionChannels,
-  getSortedUpdates,
+  getSortedAvailableUpdates,
+  Release,
   splitClusterVersionChannel,
 } from '../module/k8s';
-import { ClusterVersionModel } from '../models';
-import { useAccessReview } from './utils/rbac';
+import { useAccessReview2 } from './utils/rbac';
 import { LinkifyExternal } from './utils';
 import { PrometheusEndpoint } from './graphs/helpers';
 import { LabelSelector } from '@console/internal/module/k8s/label-selector';
@@ -125,20 +131,21 @@ export const getAlertActions = (actionsExtensions: ResolvedExtension<AlertAction
 };
 
 const getUpdateNotificationEntries = (
+  canUpgrade: boolean,
   cv: ClusterVersionKind,
-  isEditable: boolean,
   toggleNotificationDrawer: () => void,
 ): React.ReactNode[] => {
-  if (!cv || !isEditable) {
+  if (!cv || !canUpgrade) {
     return [];
   }
-  const updateData: ClusterUpdate[] = getSortedUpdates(cv);
+  const updateData: Release[] = getSortedAvailableUpdates(cv);
   const currentChannel = cv?.spec?.channel;
   const currentPrefix = splitClusterVersionChannel(currentChannel)?.prefix;
   const similarChannels = getSimilarClusterVersionChannels(cv, currentPrefix);
   const newerChannel = getNewerClusterVersionChannel(similarChannels, currentChannel);
   const newerChannelVersion = splitClusterVersionChannel(newerChannel)?.version;
   const entries = [];
+
   if (!_.isEmpty(updateData)) {
     entries.push(
       <NotificationEntry
@@ -193,63 +200,76 @@ export const ConnectedNotificationDrawer_: React.FC<ConnectedNotificationDrawerP
 }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const [rulesAccess] = useAccessReview2({
+    group: 'monitoring.coreos.com',
+    resource: 'prometheusrules',
+    verb: 'list',
+  });
+  const clusterID = getClusterID(useClusterVersion());
+  const showServiceLevelNotification = useShowServiceLevelNotifications(clusterID);
+
   React.useEffect(() => {
-    const poll: NotificationPoll = (url, key: 'notificationAlerts' | 'silences', dataHandler) => {
-      dispatch(alertingLoading(key));
-      const notificationPoller = (): void => {
-        coFetchJSON(url)
-          .then((response) => dataHandler(response))
-          .then((data) => dispatch(alertingLoaded(key, data)))
-          .catch((e) => dispatch(alertingErrored(key, e)))
-          .then(() => (pollerTimeouts[key] = setTimeout(notificationPoller, 15 * 1000)));
+    if (rulesAccess) {
+      const poll: NotificationPoll = (url, key: 'notificationAlerts' | 'silences', dataHandler) => {
+        dispatch(alertingLoading(key));
+        const notificationPoller = (): void => {
+          coFetchJSON(url)
+            .then((response) => dataHandler(response))
+            .then((data) => dispatch(alertingLoaded(key, data)))
+            .catch((e) => dispatch(alertingErrored(key, e)))
+            .then(() => (pollerTimeouts[key] = setTimeout(notificationPoller, 15 * 1000)));
+        };
+        pollers[key] = notificationPoller;
+        notificationPoller();
       };
-      pollers[key] = notificationPoller;
-      notificationPoller();
-    };
-    const { alertManagerBaseURL, prometheusBaseURL } = window.SERVER_FLAGS;
+      const { alertManagerBaseURL, prometheusBaseURL } = window.SERVER_FLAGS;
 
-    if (prometheusBaseURL) {
-      poll(
-        `${prometheusBaseURL}/${PrometheusEndpoint.RULES}`,
-        'notificationAlerts',
-        (alertsResults: PrometheusRulesResponse): Alert[] =>
-          alertsResults
-            ? getAlertsAndRules(alertsResults.data)
-                .alerts.filter(
-                  (a) =>
-                    a.state === 'firing' &&
-                    getAlertName(a) !== 'Watchdog' &&
-                    getAlertName(a) !== 'UpdateAvailable',
-                )
-                .sort((a, b) => +new Date(getAlertTime(b)) - +new Date(getAlertTime(a)))
-            : [],
-      );
-    } else {
-      dispatch(
-        alertingErrored('notificationAlerts', new Error(t('public~prometheusBaseURL not set'))),
-      );
-    }
+      if (prometheusBaseURL) {
+        poll(
+          `${prometheusBaseURL}/${PrometheusEndpoint.RULES}`,
+          'notificationAlerts',
+          (alertsResults: PrometheusRulesResponse): Alert[] =>
+            alertsResults
+              ? getAlertsAndRules(alertsResults.data)
+                  .alerts.filter(
+                    (a) =>
+                      a.state === 'firing' &&
+                      getAlertName(a) !== 'Watchdog' &&
+                      getAlertName(a) !== 'UpdateAvailable',
+                  )
+                  .sort((a, b) => +new Date(getAlertTime(b)) - +new Date(getAlertTime(a)))
+              : [],
+        );
+      } else {
+        dispatch(
+          alertingErrored('notificationAlerts', new Error(t('public~prometheusBaseURL not set'))),
+        );
+      }
 
-    if (alertManagerBaseURL) {
-      poll(`${alertManagerBaseURL}/api/v2/silences`, 'silences', (silences) => {
-        // Set a name field on the Silence to make things easier
-        _.each(silences, (s) => {
-          s.name = _.get(_.find(s.matchers, { name: 'alertname' }), 'value');
-          if (!s.name) {
-            // No alertname, so fall back to displaying the other matchers
-            s.name = s.matchers
-              .map((m) => `${m.name}${m.isRegex ? '=~' : '='}${m.value}`)
-              .join(', ');
-          }
+      if (alertManagerBaseURL) {
+        poll(`${alertManagerBaseURL}/api/v2/silences`, 'silences', (silences) => {
+          // Set a name field on the Silence to make things easier
+          _.each(silences, (s) => {
+            s.name = _.get(_.find(s.matchers, { name: 'alertname' }), 'value');
+            if (!s.name) {
+              // No alertname, so fall back to displaying the other matchers
+              s.name = s.matchers
+                .map((m) => `${m.name}${m.isRegex ? '=~' : '='}${m.value}`)
+                .join(', ');
+            }
+          });
+          return silences;
         });
-        return silences;
-      });
-    } else {
-      dispatch(alertingErrored('silences', new Error(t('public~alertManagerBaseURL not set'))));
-    }
+      } else {
+        dispatch(alertingErrored('silences', new Error(t('public~alertManagerBaseURL not set'))));
+      }
 
-    return () => _.each(pollerTimeouts, clearTimeout);
-  }, [dispatch, t]);
+      return () => _.each(pollerTimeouts, clearTimeout);
+    }
+    dispatch(
+      alertingErrored('notificationAlerts', new Error(t('public~monitoring access not granted'))),
+    );
+  }, [dispatch, t, rulesAccess]);
   const clusterVersion: ClusterVersionKind = useClusterVersion();
   const [alerts, , loadError] = useNotificationAlerts();
   const alertIds = React.useMemo(() => alerts?.map((alert) => alert.rule.name) || [], [alerts]);
@@ -264,16 +284,10 @@ export const ConnectedNotificationDrawer_: React.FC<ConnectedNotificationDrawerP
     alertActionExtensions,
   ]);
 
-  const clusterVersionIsEditable =
-    useAccessReview({
-      group: ClusterVersionModel.apiGroup,
-      resource: ClusterVersionModel.plural,
-      verb: 'patch',
-      name: 'version',
-    }) && window.SERVER_FLAGS.branding !== 'dedicated';
+  const canUpgrade = useCanClusterUpgrade();
   const updateList: React.ReactNode[] = getUpdateNotificationEntries(
+    canUpgrade,
     clusterVersion,
-    clusterVersionIsEditable,
     toggleNotificationDrawer,
   );
 
@@ -392,6 +406,15 @@ export const ConnectedNotificationDrawer_: React.FC<ConnectedNotificationDrawerP
       </NotificationCategory>
     ) : null;
 
+  if (showServiceLevelNotification) {
+    updateList.push(
+      <ServiceLevelNotification
+        key="service-level-notification"
+        clusterID={clusterID}
+        toggleNotificationDrawer={toggleNotificationDrawer}
+      />,
+    );
+  }
   const recommendationsCategory: React.ReactElement = !_.isEmpty(updateList) ? (
     <NotificationCategory
       key="recommendations"

@@ -1,14 +1,19 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import * as _ from 'lodash';
-import { Gallery, GalleryItem, Flex, FlexItem } from '@patternfly/react-core';
+import {
+  Gallery,
+  GalleryItem,
+  Flex,
+  FlexItem,
+  Card,
+  CardHeader,
+  CardTitle,
+} from '@patternfly/react-core';
 import AlertsBody from '@console/shared/src/components/dashboard/status-card/AlertsBody';
 import AlertItem from '@console/shared/src/components/dashboard/status-card/AlertItem';
 import { alertURL } from '@console/internal/components/monitoring/utils';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
+
 import HealthBody from '@console/shared/src/components/dashboard/status-card/HealthBody';
 import HealthItem from '@console/shared/src/components/dashboard/status-card/HealthItem';
 import { PrometheusResponse } from '@console/internal/components/graphs';
@@ -64,7 +69,9 @@ const CephHealthCheck: React.FC<CephHealthCheckProps> = ({ cephHealthState, heal
             .icon
         }
       </FlexItem>
-      <FlexItem>{healthCheck?.details}</FlexItem>
+      <FlexItem>
+        <div data-test="healthcheck-message">{healthCheck?.details}</div>
+      </FlexItem>
       <FlexItem>
         {!!healthCheck.troubleshootLink && (
           <a className="ceph-health-check-card__link" href={healthCheck.troubleshootLink}>
@@ -109,6 +116,7 @@ export const StatusCard: React.FC<DashboardItemProps> = ({
   for (const key in cephDetails) {
     if (pattern.test(key)) {
       const healthCheckObject: CephHealthCheckType = {
+        id: key,
         details: cephDetails[key].message,
         troubleshootLink: whitelistedHealthChecksRef[key] ?? null,
       };
@@ -117,43 +125,42 @@ export const StatusCard: React.FC<DashboardItemProps> = ({
   }
 
   return (
-    <DashboardCard gradient>
-      <DashboardCardHeader>
-        <DashboardCardTitle>{t('ceph-storage-plugin~Status')}</DashboardCardTitle>
-      </DashboardCardHeader>
-      <DashboardCardBody>
-        <HealthBody>
-          <Gallery className="co-overview-status__health" hasGutter>
-            <GalleryItem>
-              <HealthItem
-                title={t('ceph-storage-plugin~Storage Cluster')}
-                state={cephHealthState.state}
-                details={cephHealthState.message}
-                popupTitle={healthChecks ? t('ceph-storage-plugin~Active health checks') : null}
-              >
-                {healthChecks?.map((healthCheck: CephHealthCheckType) => (
-                  <CephHealthCheck cephHealthState={cephHealthState} healthCheck={healthCheck} />
-                ))}
-              </HealthItem>
-            </GalleryItem>
-            <GalleryItem>
-              <HealthItem
-                title={t('ceph-storage-plugin~Data Resiliency')}
-                state={dataResiliencyState.state}
-                details={dataResiliencyState.message}
-              />
-            </GalleryItem>
-          </Gallery>
-        </HealthBody>
-        <CephAlerts />
-      </DashboardCardBody>
-    </DashboardCard>
+    <Card className="co-overview-card--gradient">
+      <CardHeader>
+        <CardTitle>{t('ceph-storage-plugin~Status')}</CardTitle>
+      </CardHeader>
+      <HealthBody>
+        <Gallery className="co-overview-status__health" hasGutter>
+          <GalleryItem>
+            <HealthItem
+              title={t('ceph-storage-plugin~Storage Cluster')}
+              state={cephHealthState.state}
+              details={cephHealthState.message}
+              popupTitle={healthChecks ? t('ceph-storage-plugin~Active health checks') : null}
+            >
+              {healthChecks?.map((healthCheck: CephHealthCheckType) => (
+                <CephHealthCheck cephHealthState={cephHealthState} healthCheck={healthCheck} />
+              ))}
+            </HealthItem>
+          </GalleryItem>
+          <GalleryItem>
+            <HealthItem
+              title={t('ceph-storage-plugin~Data Resiliency')}
+              state={dataResiliencyState.state}
+              details={dataResiliencyState.message}
+            />
+          </GalleryItem>
+        </Gallery>
+      </HealthBody>
+      <CephAlerts />
+    </Card>
   );
 };
 
 export default withDashboardResources(StatusCard);
 
 type CephHealthCheckType = {
+  id: string;
   details: string;
   troubleshootLink?: string;
 };

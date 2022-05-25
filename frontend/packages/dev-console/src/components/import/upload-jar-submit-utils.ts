@@ -18,6 +18,7 @@ import {
   getAppLabels,
   getCommonAnnotations,
   getPodLabels,
+  getRouteAnnotations,
   getTemplateLabels,
   getTriggerAnnotation,
   mergeData,
@@ -67,8 +68,10 @@ export const createOrUpdateDeployment = (
   const imageName = name;
   const annotations = {
     ...getCommonAnnotations(),
+    ...getRouteAnnotations(),
     'alpha.image.policy.openshift.io/resolve-names': '*',
     ...getTriggerAnnotation(name, imageName, namespace, imageChange),
+    jarFileName: fileName,
   };
   const podLabels = getPodLabels(name);
   const templateLabels = getTemplateLabels(originalDeployment);
@@ -91,7 +94,7 @@ export const createOrUpdateDeployment = (
       name,
       namespace,
       labels: { ...defaultLabels, ...userLabels },
-      annotations: { ...annotations, jarFileName: fileName },
+      annotations,
     },
     spec: {
       selector: {
@@ -319,7 +322,7 @@ export const instantiateBinaryBuild = (
     })
     .catch((err) => {
       // eslint-disable-next-line no-console
-      console.log(err);
+      console.log('Failed to upload binary file to trigger a new Build', err);
       window.removeEventListener('beforeunload', onBeforeUnload);
     });
 };
@@ -396,7 +399,7 @@ export const createOrUpdateJarFile = async (
   responses.push(buildConfigResponse);
 
   if (verb === 'create') {
-    responses.push(await createWebhookSecret(formData, 'generic', dryRun));
+    responses.push(await createWebhookSecret(formData, imageStream, 'generic', dryRun));
   }
 
   if (resources === Resources.KnativeService) {
@@ -409,10 +412,18 @@ export const createOrUpdateJarFile = async (
       namespace,
       imageChange,
     );
-    const annotations = {
-      ...originalAnnotations,
-      ...triggerAnnotations,
-    };
+    const annotations =
+      Object.keys(originalAnnotations).length > 0
+        ? {
+            ...originalAnnotations,
+            ...triggerAnnotations,
+          }
+        : {
+            ...getCommonAnnotations(),
+            ...getRouteAnnotations(),
+            ...originalAnnotations,
+            ...triggerAnnotations,
+          };
     const knDeploymentResource = getKnativeServiceDepResource(
       formData,
       imageStreamURL,

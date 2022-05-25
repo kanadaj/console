@@ -21,6 +21,18 @@ form.pf-c-form {
   }
 }
 
+.co-installed-operators .pf-c-table tbody > tr > * {
+  vertical-align: top; // PF defaults to baseline which doesn't align correctly when Operator logos are within the table
+}
+
+.co-toolbar-no-padding .pf-c-toolbar__content {
+  // use negative margins so that pf-c-toolbar__expandable-content extends to the edges at mobile
+  margin-left: -$pf-global-gutter;
+  margin-right: -$pf-global-gutter;
+  --pf-c-toolbar--PaddingTop: 0;
+  --pf-c-toolbar--RowGap: var(--pf-global--spacer--md);
+}
+
 // fix bug where monaco-aria-container is visible in Firefox but shouldn't be
 // bug occurs only if the suggestions overlay has been enabled
 .monaco-aria-container {
@@ -59,15 +71,6 @@ form.pf-c-form {
   font-family: var(--pf-global--FontFamily--sans-serif);
 }
 
-.pf-c-breadcrumb {
-  padding-bottom: 12px;
-  padding-top: 25px;
-
-  &--no-padding-top {
-    padding-top: 0;
-  }
-}
-
 .pf-c-button--align-right {
   margin-left: auto !important;
 }
@@ -103,10 +106,6 @@ form.pf-c-form {
   text-align: left; // override default .pf-c-button text centering
 }
 
-.pf-c-button.pf-m-link {
-  white-space: normal; // override default .pf-c-button to enable wrapping
-}
-
 .pf-c-button.pf-m-link--align-left {
   --pf-c-button--PaddingLeft: 0;
 }
@@ -128,7 +127,6 @@ form.pf-c-form {
 
 // Page
 .pf-c-page {
-
   &__header-brand-link {
     flex: 0 1 auto !important; // so link doesn't grow larger than logo
   }
@@ -152,25 +150,11 @@ form.pf-c-form {
   .pf-page__main-section--flex {
     display: flex;
     flex-direction: column;
+    height: 100%;
   }
 
-  // `.pf-c-page` specificity required
-  .pf-c-toolbar {
-    --pf-c-toolbar--PaddingTop: 0;
-    --pf-c-toolbar__content--PaddingLeft: 0;
-    --pf-c-toolbar__content--PaddingRight: 0;
-    --pf-c-toolbar--RowGap: var(--pf-global--spacer--md);
-  }
-}
-
-@-webkit-keyframes autofill-success {
-  to {
-    background: var(--pf-c-form-control--success--Background);
-  }
-}
-@-webkit-keyframes autofill-invalid {
-  to {
-    background: var(--pf-c-form-control--invalid--Background);
+  .pf-c-page__header {
+    background-color: var(--pf-global--palette--black-1000);
   }
 }
 
@@ -195,24 +179,13 @@ form.pf-c-form {
   .pf-c-form-control[aria-invalid='true'] {
     --pf-global--FontSize--md: #{$font-size-base};
   }
+}
 
-  .pf-c-form-control {
-    &:-webkit-autofill {
-      -webkit-animation-fill-mode: both;
-      &.pf-m-success {
-        -webkit-animation-name: autofill-success;
-      }
-      &[aria-invalid='true'] {
-        -webkit-animation-name: autofill-invalid;
-      }
-    }
-  }
+:where(:root:not(.pf-theme-dark)) .pf-c-page {
+  --pf-c-page__sidebar--BoxShadow: none;
 }
 
 .pf-c-page__sidebar {
-  @media screen and (min-width: $pf-global--breakpoint--xl) {
-    --pf-c-page__sidebar--BoxShadow: none;
-  }
 
   // Perspective switcher
   &.pf-m-dark .pf-c-dropdown {
@@ -246,75 +219,11 @@ form.pf-c-form {
   }
 }
 
-// pf table overrides
-
-.pf-c-table tr > th {
-  font-weight: var(--pf-global--FontWeight--bold);
-}
-
+// Reset our tables to our base font-size
 .pf-c-table {
-  --pf-c-table--cell--FontSize: #{$font-size-base};
-  --pf-c-table--cell--PaddingLeft: 12px;
-  --pf-c-table--cell--PaddingRight: 12px;
-  --pf-c-table--m-compact--cell--first-last-child--PaddingLeft: 12px;
-  --pf-c-table--m-compact--cell--first-last-child--PaddingRight: 12px;
-
   tr > * {
     --pf-c-table--cell--FontSize: $font-size-base;
-    --pf-c-table--cell--PaddingLeft: 12px;
-    --pf-c-table--cell--PaddingRight: 12px;
-    --pf-c-table--m-compact--cell--first-last-child--PaddingLeft: 12px;
-    --pf-c-table--m-compact--cell--first-last-child--PaddingRight: 12px;
-
-    // fix bug where .pf-c-table__button::before overlays entire page
-    // caused by conflict with Bootstrap 3
-    // see https://github.com/twbs/bootstrap/blob/v3.4.1/less/tables.less#L24
-    // and https://github.com/patternfly/patternfly/blob/prerelease-v4.16.7/src/patternfly/components/Table/table.scss#L252-L253
-    position: relative !important;
   }
-
-  tr > th {
-    --pf-c-table--cell--FontSize: var(--pf-global--FontWeight--bold);
-  }
-
-  // required because our tables use table-layout:fixed
-  .pf-c-table__action {
-    --pf-c-table--cell--PaddingTop: var(--pf-global--spacer--sm) !important;
-    --pf-c-table--cell--PaddingRight: 0 !important;
-    --pf-c-table--cell--PaddingBottom: var(--pf-global--spacer--sm) !important;
-    --pf-c-table--cell--PaddingLeft: 0 !important;
-    // Can not use PF vars --pf-c-table--cell--Width & --pf-c-table--cell--MaxWidth, because its selector specificity will be overridden by the default PF rule .pf-c-table tr > *:empty {width: auto}; for our empty <th>
-    max-width: 44px !important;
-    width: 44px !important;
-  }
-
-  table-layout: fixed;
-}
-
-.pf-c-table.pf-c-virtualized tr {
-  display: table;
-  table-layout: fixed;
-  width: 100%;
-
-  &:first-child::before {
-    content: none;
-    width: 0 !important;
-  }
-}
-
-// override .co-m-table-grid [class*='col-'], .co-m-table-grid .row
-.pf-c-table.pf-m-compact,
-.pf-c-table.pf-c-virtualized {
-  tr > td {
-    vertical-align: top;
-  }
-}
-
-// FIXME: Pass as `style` prop to `List` once this is resolved (https://github.com/bvaughn/react-virtualized/issues/876). This is for the kebab menus' overflow.
-.pf-c-window-scroller.ReactVirtualized__VirtualGrid,
-.pf-c-window-scroller .ReactVirtualized__VirtualGrid,
-.pf-c-window-scroller .ReactVirtualized__VirtualGrid__innerScrollContainer {
-  overflow: visible !important;
 }
 
 .table {
@@ -333,7 +242,7 @@ form.pf-c-form {
     border-bottom: 0;
   }
   tr:last-child {
-    border-bottom: 1px solid $table-border-color;
+    border-bottom: var(--pf-global--BorderWidth--sm) solid var(--pf-global--BorderColor--300);
   }
 }
 
@@ -346,10 +255,6 @@ form.pf-c-form {
 button.pf-c-dropdown__menu-item.pf-m-disabled {
   // enables tooltips for disabled menu items
   pointer-events: auto;
-}
-
-.pf-c-select__menu {
-  list-style-type: none;
 }
 
 #modal-container .pf-c-backdrop {
@@ -369,7 +274,27 @@ ul.pf-c-alert-group,
 .pf-c-nav__item,
 ul.pf-c-nav__list,
 ul.pf-c-options-menu__menu,
+ul.pf-c-select__menu,
 ul.pf-c-simple-list__list,
 ul.pf-c-tree-view__list {
   list-style: none !important;
+}
+
+.pfext-quick-start-content {
+  font-size: $font-size-base !important;
+}
+
+.odc-topology {
+  .pf-topology-content {
+    background-color: var(--pf-global--BackgroundColor--200);
+  }
+}
+
+.pfext-quick-start-footer {
+  background-color: var(--pf-global--BackgroundColor--100);
+}
+
+// TODO Remove this override when skip to content CSS is figured out.
+.pf-c-skip-to-content {
+  position: absolute !important;
 }

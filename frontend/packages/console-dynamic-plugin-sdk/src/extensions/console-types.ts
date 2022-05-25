@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { ButtonProps } from '@patternfly/react-core';
 import { TableGridBreakpoint, OnSelect, SortByDirection, ICell } from '@patternfly/react-table';
 import { RouteComponentProps } from 'react-router';
@@ -8,6 +9,7 @@ import {
   PrometheusValue,
   ResolvedExtension,
   Selector,
+  PrometheusEndpoint,
 } from '../api/common-types';
 import { Extension, ExtensionTypeGuard } from '../types';
 
@@ -144,6 +146,28 @@ export type PrometheusResponse = {
   warnings?: string[];
 };
 
+export type PrometheusPollProps = {
+  /** Delay between polling requests */
+  delay?: number;
+  /** One of the well-defined Prometheus API endpoints */
+  endpoint: PrometheusEndpoint;
+  namespace?: string;
+  /** Prometheus query, polling is skipped when empty or undefined */
+  query?: string;
+  /** A search parameter */
+  timeout?: string;
+  /** A vector-query search parameter */
+  endTime?: number;
+  /** A vector-query search parameter */
+  samples?: number;
+  /** A vector-query search parameter */
+  timespan?: number;
+};
+
+export type UsePrometheusPoll = (
+  props: PrometheusPollProps,
+) => [PrometheusResponse, boolean, unknown];
+
 export type WatchK8sResource = {
   /** @deprecated Use groupVersionKind instead. The kind property will be removed in a future release. */
   kind?: K8sResourceKindReference;
@@ -156,6 +180,8 @@ export type WatchK8sResource = {
   limit?: number;
   fieldSelector?: string;
   optional?: boolean;
+  partialMetadata?: boolean;
+  cluster?: string;
 };
 
 export type ResourcesObject = { [key: string]: K8sResourceCommon | K8sResourceCommon[] };
@@ -226,14 +252,45 @@ export type ConsoleFetch = (
   url: string,
   options?: RequestInit,
   timeout?: number,
+  cluster?: string,
 ) => Promise<Response>;
 
 export type ConsoleFetchJSON<T = any> = {
-  (url: string, method?: string, options?: RequestInit, timeout?: number): Promise<T>;
-  delete(url: string, json?: any, options?: RequestInit, timeout?: number): Promise<T>;
-  post(url: string, json: any, options?: RequestInit, timeout?: number): Promise<T>;
-  put(url: string, json: any, options?: RequestInit, timeout?: number): Promise<T>;
-  patch(url: string, json: any, options?: RequestInit, timeout?: number): Promise<T>;
+  (
+    url: string,
+    method?: string,
+    options?: RequestInit,
+    timeout?: number,
+    cluster?: string,
+  ): Promise<T>;
+  delete(
+    url: string,
+    json?: any,
+    options?: RequestInit,
+    timeout?: number,
+    cluster?: string,
+  ): Promise<T>;
+  post(
+    url: string,
+    json: any,
+    options?: RequestInit,
+    timeout?: number,
+    cluster?: string,
+  ): Promise<T>;
+  put(
+    url: string,
+    json: any,
+    options?: RequestInit,
+    timeout?: number,
+    cluster?: string,
+  ): Promise<T>;
+  patch(
+    url: string,
+    json: any,
+    options?: RequestInit,
+    timeout?: number,
+    cluster?: string,
+  ): Promise<T>;
 };
 
 export type ConsoleFetchText = (...args: Parameters<ConsoleFetch>) => Promise<string>;
@@ -456,4 +513,108 @@ export type Status = {
   metadata: any;
   reason: string;
   status: string;
+};
+
+export type StatusComponentProps = {
+  title?: string;
+  iconOnly?: boolean;
+  noTooltip?: boolean;
+  className?: string;
+  popoverTitle?: string;
+};
+
+export type OverviewProps = {
+  className?: string;
+  children: React.ReactNode;
+};
+
+export enum GridPosition {
+  MAIN = 'MAIN',
+  LEFT = 'LEFT',
+  RIGHT = 'RIGHT',
+}
+
+export type OverviewCardSpan = 4 | 6 | 12;
+
+export type OverviewGridCard = {
+  Card: React.ComponentType<any>;
+  span?: OverviewCardSpan;
+};
+
+export type OverviewGridProps = {
+  mainCards: OverviewGridCard[];
+  leftCards?: OverviewGridCard[];
+  rightCards?: OverviewGridCard[];
+};
+
+export type InventoryItemTitleProps = {
+  children: React.ReactNode;
+};
+
+export type InventoryItemBodyProps = {
+  error?: any;
+};
+
+export type InventoryItemStatusProps = {
+  count: number;
+  icon: React.ReactNode;
+  linkTo?: string;
+};
+
+export type HumanizeResult = {
+  string: string;
+  value: number;
+  unit: string;
+};
+
+export type Humanize = (
+  value: string | number,
+  initialUnit?: string,
+  preferredUnit?: string,
+) => HumanizeResult;
+
+export enum LIMIT_STATE {
+  'ERROR' = 'ERROR',
+  'WARN' = 'WARN',
+  'OK' = 'OK',
+}
+
+export type TopConsumerPopoverProps = {
+  current: string;
+  total?: string;
+  available?: string;
+  limit?: string;
+  limitState?: LIMIT_STATE;
+  requested?: string;
+  requestedState?: LIMIT_STATE;
+};
+
+export type QueryWithDescription = {
+  query: string;
+  desc: string;
+};
+
+export type SelfSubjectAccessReviewKind = {
+  apiVersion: string;
+  kind: string;
+  metadata?: ObjectMetadata;
+  spec: {
+    resourceAttributes?: AccessReviewResourceAttributes;
+  };
+  status?: {
+    allowed: boolean;
+    denied?: boolean;
+    reason?: string;
+    evaluationError?: string;
+  };
+};
+
+export type ResourceYAMLEditorProps = {
+  initialResource: string | { [key: string]: any };
+  header?: string;
+  onSave?: (content: string) => void;
+};
+
+export type ResourceEventStreamProps = {
+  resource: K8sResourceCommon;
 };

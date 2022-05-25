@@ -5,19 +5,19 @@ import { nav } from '../../../integration-tests-cypress/views/nav';
 import { GlobalInstalledNamespace, operator, TestOperandProps } from '../views/operator.view';
 
 const testOperator = {
-  name: 'Business Automation',
-  operatorHubCardTestID: 'businessautomation-operator-redhat-operators-openshift-marketplace',
+  name: 'Red Hat Integration - 3scale',
+  operatorHubCardTestID: '3scale-operator-redhat-operators-openshift-marketplace',
   installedNamespace: testName,
 };
 
 const testOperand: TestOperandProps = {
-  name: 'KieApp',
-  kind: 'KieApp',
-  tabName: 'KieApp',
-  exampleName: `example-kieappk`,
+  name: '3scale Backend Schema',
+  kind: 'Backend',
+  tabName: '3scale Backend',
+  exampleName: `backend1-sample`,
 };
 
-describe(`Installing "${testOperator.name}" operator in ${testOperator.installedNamespace}`, () => {
+describe(`Installing "${testOperator.name}" operator in test namespace`, () => {
   before(() => {
     cy.login();
     cy.visit('/');
@@ -37,7 +37,7 @@ describe(`Installing "${testOperator.name}" operator in ${testOperator.installed
     cy.logout();
   });
 
-  it(`Installs ${testOperator.name} operator in ${testOperator.installedNamespace} and creates ${testOperand.name} operand instance`, () => {
+  it(`Installs ${testOperator.name} operator in test namespace and creates ${testOperand.name} operand instance`, () => {
     operator.install(
       testOperator.name,
       testOperator.operatorHubCardTestID,

@@ -1,8 +1,15 @@
 import * as React from 'react';
 import { ChartDonut, ChartLegend, ChartLabel } from '@patternfly/react-charts';
 import { Stack, StackItem } from '@patternfly/react-core';
+import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { ExternalLink, isUpstream, openshiftHelpBase } from '@console/internal/components/utils';
+import { ErrorState } from '@console/internal/components/error';
+import {
+  ExternalLink,
+  isUpstream,
+  openshiftHelpBase,
+  Timestamp,
+} from '@console/internal/components/utils';
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import { PrometheusHealthPopupProps } from '@console/plugin-sdk';
 import {
@@ -11,27 +18,48 @@ import {
   legendColorScale,
   riskSorting,
   mapMetrics,
-  isWaitingOrDisabled as _isWaitingOrDisabled,
-  isError as _isError,
+  isWaiting,
+  isError,
+  mapConditions,
+  errorUpload,
 } from './mappers';
-import './style.scss';
 
 const DataComponent: React.FC<DataComponentProps> = ({ x, y, datum }) => {
   const Icon = riskIcons[datum.id];
   return <Icon x={x} y={y - 5} fill={legendColorScale[datum.id]} />;
 };
 
+const LabelComponent = ({ clusterID, ...props }) => (
+  <ExternalLink
+    href={`https://console.redhat.com/openshift/insights/advisor/clusters/${clusterID}?total_risk=${riskSorting[
+      props.datum.id
+    ] + 1}`}
+  >
+    <ChartLabel {...props} style={{ fill: 'var(--pf-global--link--Color)' }} />
+  </ExternalLink>
+);
+
+const SubTitleComponent = (props) => (
+  <ChartLabel {...props} style={{ fill: 'var(--pf-chart-color-black-500)' }} />
+);
+
 export const InsightsPopup: React.FC<PrometheusHealthPopupProps> = ({ responses, k8sResult }) => {
+  const [
+    { response: metricsResponse, error: metricsError },
+    { response: operatorStatusResponse, error: operatorStatusError },
+    { response: lastGatherResponse },
+  ] = responses;
   const { t } = useTranslation();
-  const metrics = mapMetrics(responses[0].response);
+  const metrics = mapMetrics(metricsResponse);
+  const conditions = mapConditions(operatorStatusResponse);
   const clusterID = (k8sResult as K8sResourceKind)?.data?.spec?.clusterID || '';
   const riskEntries = Object.entries(metrics).sort(
-    ([k1], [k2]) => riskSorting[k1] - riskSorting[k2],
+    ([k1], [k2]) => riskSorting[k2] - riskSorting[k1],
   );
   const numberOfIssues = Object.values(metrics).reduce((acc, cur) => acc + cur, 0);
-
-  const isWaitingOrDisabled = _isWaitingOrDisabled(metrics);
-  const isError = _isError(metrics);
+  const waiting = isWaiting(metrics) || !metricsResponse || !operatorStatusResponse;
+  const error = isError(metrics) || metricsError || operatorStatusError;
+  const disabled = !!conditions.Disabled;
 
   const insightsLink = isUpstream()
     ? `${openshiftHelpBase}support/remote_health_monitoring/using-insights-to-identify-issues-with-your-cluster.html`
@@ -48,80 +76,97 @@ export const InsightsPopup: React.FC<PrometheusHealthPopupProps> = ({ responses,
     critical: 'insights-plugin~critical',
   };
 
-  return (
+  const lastRefreshTime = parseInt(lastGatherResponse?.data?.result?.[0]?.value?.[1] || '0', 10);
+
+  return errorUpload(conditions) ? (
+    <ErrorState />
+  ) : (
     <Stack hasGutter>
       <StackItem>
+        {t('insights-plugin~Last refresh')}: <Timestamp timestamp={lastRefreshTime} isUnix simple />
+      </StackItem>
+      <StackItem className="text-muted">
         {t(
           'insights-plugin~Insights Advisor identifies and prioritizes risks to security, performance, availability, and stability of your clusters.',
         )}
       </StackItem>
-      {isError && <StackItem>{t('insights-plugin~Temporary unavailable.')}</StackItem>}
-      {isWaitingOrDisabled && (
-        <StackItem>{t('insights-plugin~Disabled or waiting for results.')}</StackItem>
-      )}
-      <StackItem>
-        {!isWaitingOrDisabled && !isError && (
+      {error ? (
+        <StackItem className="text-muted">
+          {t('insights-plugin~Temporarily unavailable.')}
+        </StackItem>
+      ) : disabled ? (
+        <StackItem className="text-muted">{t('insights-plugin~Disabled.')}</StackItem>
+      ) : waiting ? (
+        <StackItem className="text-muted">{t('insights-plugin~Waiting for results.')}</StackItem>
+      ) : (
+        <StackItem>
           <div>
             <ChartDonut
+              innerRadius={67}
+              ariaTitle="Insights recommendations chart"
+              ariaDesc="Donut chart that shows Insights recommendations divided by severities"
               data={riskEntries.map(([k, v]) => ({
-                label: `${v} ${k}`,
-                x: k,
+                x: `${_.capitalize(t(riskKeys[k]))}`,
                 y: v,
               }))}
               title={`${numberOfIssues}`}
               subTitle={t('insights-plugin~Total issue', { count: numberOfIssues })}
-              legendData={Object.entries(metrics).map(([k, v]) => ({ name: `${k}: ${v}` }))}
               legendOrientation="vertical"
-              width={304}
-              height={152}
+              width={320}
+              height={180}
+              radius={80}
               colorScale={colorScale}
+              subTitleComponent={<SubTitleComponent />}
               constrainToVisibleArea
               legendComponent={
                 <ChartLegend
-                  title={t('insights-plugin~Total Risk')}
+                  title={t('insights-plugin~Total risk')}
                   titleComponent={
-                    <ChartLabel dx={13} style={{ fontWeight: 'bold', fontSize: '14px' }} />
+                    <ChartLabel dx={13} dy={-10} style={{ fontWeight: 'bold', fontSize: '14px' }} />
                   }
                   data={riskEntries.map(([k, v]) => ({
-                    name: `${v} ${t(riskKeys[k])}`,
+                    name: `${v} ${_.capitalize(t(riskKeys[k]))}`,
                     id: k,
                   }))}
                   dataComponent={<DataComponent />}
-                  x={-13}
+                  labelComponent={<LabelComponent clusterID={clusterID} />}
+                  x={-10}
+                  rowGutter={-3}
                 />
               }
               padding={{
-                bottom: 20,
-                left: 145,
-                right: 20, // Adjusted to accommodate legend
+                bottom: 0,
+                left: 135,
+                right: 10, // Adjusted to accommodate legend
                 top: 0,
               }}
+              labels={({ datum }) => `${datum.x}: ${datum.y}`}
+              padAngle={0}
             />
           </div>
-        )}
-        {!isWaitingOrDisabled && !isError && clusterID && (
-          <>
-            <h6 className="pf-c-title pf-m-md">{t('insights-plugin~Fixable issues')}</h6>
+          {clusterID ? (
+            <>
+              <h6 className="pf-c-title pf-m-md">{t('insights-plugin~Fixable issues')}</h6>
+              <div>
+                <ExternalLink
+                  href={`https://console.redhat.com/openshift/insights/advisor/clusters/${clusterID}`}
+                  text={t('insights-plugin~View all recommendations in Insights Advisor')}
+                />
+              </div>
+            </>
+          ) : (
             <div>
               <ExternalLink
-                href={`https://console.redhat.com/openshift/details/${clusterID}#insights`}
-                text={t('insights-plugin~View all in OpenShift Cluster Manager')}
+                href={`https://console.redhat.com/openshift/insights/advisor`}
+                text={t('insights-plugin~View more in Insights Advisor')}
               />
             </div>
-          </>
-        )}
-        {!isWaitingOrDisabled && !isError && !clusterID && (
-          <div>
-            <ExternalLink
-              href={`https://console.redhat.com/openshift/`}
-              text={t('insights-plugin~Go to OpenShift Cluster Manager')}
-            />
-          </div>
-        )}
-        {(isWaitingOrDisabled || isError) && (
-          <ExternalLink href={insightsLink} text={t('insights-plugin~More about Insights')} />
-        )}
-      </StackItem>
+          )}
+        </StackItem>
+      )}
+      {(waiting || disabled || error) && (
+        <ExternalLink href={insightsLink} text={t('insights-plugin~More about Insights')} />
+      )}
     </Stack>
   );
 };

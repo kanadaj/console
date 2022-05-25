@@ -23,11 +23,19 @@ import {
   Modal,
   useUserSettingsCompatibility,
 } from '@console/shared';
+import { getURLWithParams } from '@console/shared/src/components/catalog/utils';
+import { isModifiedEvent } from '@console/shared/src/utils';
 import { DefaultCatalogSource, DefaultCatalogSourceDisplayName } from '../../const';
 import { SubscriptionModel } from '../../models';
 import { communityOperatorWarningModal } from './operator-hub-community-provider-modal';
 import { OperatorHubItemDetails } from './operator-hub-item-details';
-import { OperatorHubItem, InstalledState, CapabilityLevel, InfraFeatures } from './index';
+import {
+  OperatorHubItem,
+  InstalledState,
+  CapabilityLevel,
+  InfraFeatures,
+  ValidSubscriptionValue,
+} from './index';
 
 const osBaseLabel = 'operatorframework.io/os.';
 const targetGOOSLabel = window.SERVER_FLAGS.GOOS ? `${osBaseLabel}${window.SERVER_FLAGS.GOOS}` : '';
@@ -84,7 +92,7 @@ const Badge = ({ text }) => (
 );
 
 /**
- * Filter property white list
+ * Filter property allow list
  */
 const operatorHubFilterGroups = [
   'catalogSourceDisplayName',
@@ -92,6 +100,7 @@ const operatorHubFilterGroups = [
   'installState',
   'capabilityLevel',
   'infraFeatures',
+  'validSubscriptionFilters',
 ];
 
 const ignoredProviderTails = [', Inc.', ', Inc', ' Inc.', ' Inc', ', LLC', ' LLC'];
@@ -206,6 +215,21 @@ const infraFeaturesSort = (infrastructure) => {
   }
 };
 
+const validSubscriptionSort = (validSubscription) => {
+  switch (validSubscription.value) {
+    case ValidSubscriptionValue.OpenShiftKubernetesEngine:
+      return 0;
+    case ValidSubscriptionValue.OpenShiftContainerPlatform:
+      return 1;
+    case ValidSubscriptionValue.OpenShiftPlatformPlus:
+      return 2;
+    case ValidSubscriptionValue.RequiresSeparateSubscription:
+      return 3;
+    default:
+      return 4;
+  }
+};
+
 const sortFilterValues = (values, field) => {
   let sorter: any = ['value'];
 
@@ -227,6 +251,10 @@ const sortFilterValues = (values, field) => {
 
   if (field === 'infraFeatures') {
     sorter = infraFeaturesSort;
+  }
+
+  if (field === 'validSubscriptionFilters') {
+    sorter = validSubscriptionSort;
   }
 
   return _.sortBy(values, sorter);
@@ -352,7 +380,12 @@ const OperatorHubTile: React.FC<OperatorHubTileProps> = ({ item, onClick }) => {
       icon={icon}
       vendor={vendor}
       description={description}
-      onClick={() => onClick(item)}
+      onClick={(e: React.MouseEvent<HTMLElement>) => {
+        if (isModifiedEvent(e)) return;
+        e.preventDefault();
+        onClick(item);
+      }}
+      href={getURLWithParams('details-item', item.uid)}
       footer={
         installed && !item.isInstalling ? (
           <span>
@@ -436,7 +469,7 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
         return url.toString();
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error(error.message);
+        console.error('Error while setting utm_source to remote workflow URL', error.message);
       }
     }
     return null;
@@ -471,6 +504,7 @@ export const OperatorHubTileView: React.FC<OperatorHubTileViewProps> = (props) =
     installState: t('olm~Install state'),
     capabilityLevel: t('olm~Capability level'),
     infraFeatures: t('olm~Infrastructure features'),
+    validSubscriptionFilters: t('olm~Valid subscription'),
   };
 
   return (

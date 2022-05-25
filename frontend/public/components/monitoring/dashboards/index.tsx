@@ -1,5 +1,16 @@
 import * as _ from 'lodash-es';
-import { Button, Label, Select, SelectOption } from '@patternfly/react-core';
+import {
+  Button,
+  Label,
+  Select,
+  SelectOption,
+  Card as PFCard,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  CardActions,
+  Tooltip,
+} from '@patternfly/react-core';
 import { AngleDownIcon, AngleRightIcon } from '@patternfly/react-icons';
 import * as React from 'react';
 import { Helmet } from 'react-helmet';
@@ -8,18 +19,18 @@ import { useTranslation } from 'react-i18next';
 // @ts-ignore
 import { useDispatch, useSelector } from 'react-redux';
 import { Map as ImmutableMap } from 'immutable';
+import { Link } from 'react-router-dom';
+import * as classNames from 'classnames';
 
+import { PrometheusEndpoint } from '@console/dynamic-plugin-sdk/src/api/common-types';
 import { RedExclamationCircleIcon } from '@console/shared';
 import ErrorAlert from '@console/shared/src/components/alerts/error';
 import Dashboard from '@console/shared/src/components/dashboard/Dashboard';
-import DashboardCard from '@console/shared/src/components/dashboard/dashboard-card/DashboardCard';
-import DashboardCardBody from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardBody';
-import DashboardCardHeader from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardHeader';
-import DashboardCardLink from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardLink';
-import DashboardCardTitle from '@console/shared/src/components/dashboard/dashboard-card/DashboardCardTitle';
+
 import { withFallback } from '@console/shared/src/components/error/error-boundary';
 
 import {
+  DashboardsClearVariables,
   dashboardsPatchAllVariables,
   dashboardsPatchVariable,
   dashboardsSetEndTime,
@@ -30,7 +41,7 @@ import {
 } from '../../../actions/observe';
 import { ErrorBoundaryFallback } from '../../error';
 import { RootState } from '../../../redux';
-import { getPrometheusURL, PrometheusEndpoint } from '../../graphs/helpers';
+import { getPrometheusURL } from '../../graphs/helpers';
 import {
   getQueryArgument,
   history,
@@ -60,6 +71,11 @@ import { getActivePerspective, getAllVariables } from './monitoring-dashboard-ut
 
 const NUM_SAMPLES = 30;
 
+const intervalVariableRegExps = ['__interval', '__rate_interval', '__auto_interval_[a-z]+'];
+
+const isIntervalVariable = (itemKey: string): boolean =>
+  _.some(intervalVariableRegExps, (re) => itemKey?.match(new RegExp(`\\$${re}`, 'g')));
+
 const evaluateTemplate = (
   template: string,
   variables: ImmutableMap<string, Variable>,
@@ -69,22 +85,25 @@ const evaluateTemplate = (
     return undefined;
   }
 
-  // Handle the special `$__interval` and `$__rate_interval` variables
+  const range: Variable = { value: `${Math.floor(timespan / 1000)}s` };
+  const allVariables = {
+    ...variables.toJS(),
+    __range: range,
+    /* eslint-disable camelcase */
+    __range_ms: range,
+    __range_s: range,
+    /* eslint-enable camelcase */
+  };
+
+  // Handle the special "interval" variables
   const intervalMS = timespan / NUM_SAMPLES;
   const intervalMinutes = Math.floor(intervalMS / 1000 / 60);
   // Use a minimum of 5m to make sure we have enough data to perform `irate` calculations, which
   // require 2 data points each. Otherwise, there could be gaps in the graph.
   const interval: Variable = { value: `${Math.max(intervalMinutes, 5)}m` };
-  const allVariables = {
-    ...variables.toJS(),
-    __interval: interval,
-    // eslint-disable-next-line camelcase
-    __rate_interval: interval,
-
-    // This is last to ensure it is applied after all other variable substitutions (because the
-    // other variable substitutions may result in "$__auto_interval_*" being inserted)
-    '__auto_interval_[a-z]+': interval,
-  };
+  // Add these last to ensure they are applied after other variable substitutions (because the other
+  // variable substitutions may result in interval variables like $__interval being inserted)
+  intervalVariableRegExps.forEach((k) => (allVariables[k] = interval));
 
   let result = template;
   _.each(allVariables, (v, k) => {
@@ -146,7 +165,19 @@ const FilterSelect: React.FC<FilterSelectProps> = ({
       onSelect={onSelect}
       onToggle={onToggle}
       onTypeaheadInputChanged={(v) => setFilterText(v.toLowerCase())}
-      placeholderText={items[selectedKey]}
+      placeholderText={
+        Object.keys(items).includes(selectedKey) ? (
+          isIntervalVariable(selectedKey) ? (
+            'Auto interval'
+          ) : (
+            items[selectedKey]
+          )
+        ) : (
+          <>
+            <RedExclamationCircleIcon /> {t('public~Select a dashboard from the dropdown')}
+          </>
+        )
+      }
     >
       {_.map(filteredItems, (v, k) => (
         <OptionComponent key={k} itemKey={k} />
@@ -155,11 +186,18 @@ const FilterSelect: React.FC<FilterSelectProps> = ({
   );
 };
 
-const VariableOption = ({ itemKey }) => (
-  <SelectOption key={itemKey} value={itemKey}>
-    {itemKey === MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY ? 'All' : itemKey}
-  </SelectOption>
-);
+const VariableOption = ({ itemKey }) =>
+  isIntervalVariable(itemKey) ? (
+    <Tooltip content={itemKey}>
+      <SelectOption key={itemKey} value={itemKey}>
+        Auto interval
+      </SelectOption>
+    </Tooltip>
+  ) : (
+    <SelectOption key={itemKey} value={itemKey}>
+      {itemKey === MONITORING_DASHBOARDS_VARIABLE_ALL_OPTION_KEY ? 'All' : itemKey}
+    </SelectOption>
+  );
 
 const VariableDropdown: React.FC<VariableDropdownProps> = ({ id, name, namespace }) => {
   const { t } = useTranslation();
@@ -192,7 +230,7 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({ id, name, namespace
         endpoint: PrometheusEndpoint.QUERY_RANGE,
         query: prometheusQuery,
         samples: NUM_SAMPLES,
-        timeout: '30s',
+        timeout: '60s',
         timespan,
         namespace,
       });
@@ -250,7 +288,10 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({ id, name, namespace
   });
 
   return (
-    <div className="form-group monitoring-dashboards__dropdown-wrap">
+    <div
+      className="form-group monitoring-dashboards__dropdown-wrap"
+      data-test={`${name.toLowerCase()}-dropdown`}
+    >
       <label htmlFor={`${id}-dropdown`} className="monitoring-dashboards__dropdown-title">
         {name}
       </label>
@@ -310,7 +351,7 @@ const DashboardDropdown: React.FC<DashboardDropdownProps> = React.memo(
     const OptionComponent = ({ itemKey }) => (
       <SelectOption className="monitoring-dashboards__dashboard_dropdown_item" value={itemKey}>
         {items[itemKey]?.title}
-        {items[itemKey]?.tags.map((tag, i) => (
+        {items[itemKey]?.tags?.map((tag, i) => (
           <Tag
             color={tagColors[_.indexOf(uniqueTags, tag) % tagColors.length]}
             key={i}
@@ -323,7 +364,10 @@ const DashboardDropdown: React.FC<DashboardDropdownProps> = React.memo(
     const selectItems = _.mapValues(items, 'title');
 
     return (
-      <div className="form-group monitoring-dashboards__dropdown-wrap">
+      <div
+        className="form-group monitoring-dashboards__dropdown-wrap"
+        data-test="dashboard-dropdown"
+      >
         <label
           className="monitoring-dashboards__dropdown-title"
           htmlFor="monitoring-board-dropdown"
@@ -406,7 +450,7 @@ const QueryBrowserLink = ({ queries }) => {
   const namespace = React.useContext(NamespaceContext);
 
   return (
-    <DashboardCardLink
+    <Link
       aria-label={t('public~Inspect')}
       to={
         namespace
@@ -415,7 +459,7 @@ const QueryBrowserLink = ({ queries }) => {
       }
     >
       {t('public~Inspect')}
-    </DashboardCardLink>
+    </Link>
   );
 };
 
@@ -450,11 +494,6 @@ const getPanelClassModifier = (panel: Panel): string => {
   }
 };
 
-// Matches Prometheus labels surrounded by {{ }} in the graph legend label templates.
-// The regex pattern is inspired from https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
-// with additional matchers to consider leading and trailing spaces.
-const legendTemplateOptions = { interpolate: /{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}/g };
-
 const Card: React.FC<CardProps> = React.memo(({ panel }) => {
   const namespace = React.useContext(NamespaceContext);
   const activePerspective = getActivePerspective(namespace);
@@ -473,15 +512,17 @@ const Card: React.FC<CardProps> = React.memo(({ panel }) => {
 
   const formatSeriesTitle = React.useCallback(
     (labels, i) => {
-      const legendFormat = panel.targets?.[i]?.legendFormat;
-      const compiled = _.template(legendFormat, legendTemplateOptions);
-      try {
-        return compiled(labels);
-      } catch (e) {
-        // If we can't format the label (e.g. if one of it's variables is missing from `labels`),
-        // show the template string instead
-        return legendFormat;
+      const title = panel.targets?.[i]?.legendFormat;
+      if (_.isNil(title)) {
+        return _.isEmpty(labels) ? '{}' : '';
       }
+      // Replace Prometheus labels surrounded by {{ }} in the graph legend label templates
+      // Regex is based on https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
+      // with additional matchers to allow leading and trailing whitespace
+      return title.replace(
+        /{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}/g,
+        (match, key) => labels[key] ?? '',
+      );
     },
     [panel],
   );
@@ -520,16 +561,20 @@ const Card: React.FC<CardProps> = React.memo(({ panel }) => {
     <div
       className={`monitoring-dashboards__panel monitoring-dashboards__panel--${panelClassModifier}`}
     >
-      <DashboardCard
-        className="monitoring-dashboards__card"
-        gradient={panel.type === 'grafana-piechart-panel'}
+      <PFCard
+        className={classNames('monitoring-dashboards__card', {
+          'co-overview-card--gradient': panel.type === 'grafana-piechart-panel',
+        })}
+        data-test={`${panel.title.toLowerCase().replace(/\s+/g, '-')}-chart`}
       >
-        <DashboardCardHeader className="monitoring-dashboards__card-header">
-          <DashboardCardTitle>{panel.title}</DashboardCardTitle>
-          {!isLoading && <QueryBrowserLink queries={queries} />}
-        </DashboardCardHeader>
-        <DashboardCardBody className="co-dashboard-card__body--dashboard">
-          <div className="monitoring-dashboards__card-body-content " ref={ref}>
+        <CardHeader className="monitoring-dashboards__card-header">
+          <CardTitle>{panel.title}</CardTitle>
+          <CardActions className="co-overview-card__actions">
+            {!isLoading && <QueryBrowserLink queries={queries} />}
+          </CardActions>
+        </CardHeader>
+        <CardBody className="co-dashboard-card__body--dashboard">
+          <div className="monitoring-dashboards__card-body-content" ref={ref}>
             {isLoading || !wasEverVisible ? (
               <div className={panel.type === 'graph' ? 'query-browser__wrapper' : ''}>
                 <LoadingInline />
@@ -570,8 +615,8 @@ const Card: React.FC<CardProps> = React.memo(({ panel }) => {
               </>
             )}
           </div>
-        </DashboardCardBody>
-      </DashboardCard>
+        </CardBody>
+      </PFCard>
     </div>
   );
 });
@@ -630,11 +675,21 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
   // Clear queries on unmount
   React.useEffect(() => () => dispatch(queryBrowserDeleteAllQueries()), [dispatch]);
 
+  // Clear variables on unmount for dev perspective
+  React.useEffect(
+    () => () => {
+      if (activePerspective === 'dev') {
+        dispatch(DashboardsClearVariables(activePerspective));
+      }
+    },
+    [activePerspective, dispatch],
+  );
+
   const boardItems = React.useMemo(
     () =>
-      _.mapValues(_.mapKeys(boards, 'name'), (b) => ({
-        tags: b.data.tags,
-        title: b.data.title,
+      _.mapValues(_.mapKeys(boards, 'name'), (b, name) => ({
+        tags: b.data?.tags,
+        title: b.data?.title ?? name,
       })),
     [boards],
   );
@@ -713,8 +768,10 @@ const MonitoringDashboardsPage: React.FC<MonitoringDashboardsPageProps> = ({ mat
     return data?.rows?.length
       ? data.rows
       : data?.panels?.reduce((acc, panel) => {
-          if (panel.type === 'row' || acc.length === 0) {
+          if (panel.type === 'row') {
             acc.push(_.cloneDeep(panel));
+          } else if (acc.length === 0) {
+            acc.push({ panels: [panel] });
           } else {
             const row = acc[acc.length - 1];
             if (_.isNil(row.panels)) {

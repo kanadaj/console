@@ -13,7 +13,7 @@ import {
   getFlavors,
   getWorkloadProfiles,
 } from '../../../../selectors/vm-template/combined-dependent';
-import { OperatingSystemRecord } from '../../../../types';
+import { OperatingSystemRecord, OperationSystemField } from '../../../../types';
 import {
   iGet,
   iGetIsLoaded,
@@ -35,7 +35,7 @@ import { iGetFieldValue } from '../../selectors/immutable/field';
 import { iGetName, iGetNamespace } from '../../selectors/immutable/selectors';
 import { VMSettingsField } from '../../types';
 import { getFieldId } from '../../utils/renderable-field-utils';
-import { nullOnEmptyChange } from '../../utils/utils';
+import { findDataSourcePVC, nullOnEmptyChange } from '../../utils/utils';
 
 export const OS: React.FC<OSProps> = React.memo(
   ({
@@ -48,6 +48,8 @@ export const OS: React.FC<OSProps> = React.memo(
     flavor,
     workloadProfile,
     cnvBaseImages,
+    dataSources,
+    pvcs,
     onChange,
     openshiftFlag,
     goToStorageStep,
@@ -59,6 +61,8 @@ export const OS: React.FC<OSProps> = React.memo(
     const cloneBaseDiskImage = iGetFieldValue(cloneBaseDiskImageField);
     const mountWindowsGuestTools = iGetFieldValue(mountWindowsGuestToolsField);
     const isUserTemplateValid = iGetIsLoaded(iUserTemplate) && !iGetLoadError(iUserTemplate);
+    const [dataSourcesData] = dataSources;
+    const [pvcsData] = pvcs;
 
     const params = {
       flavor,
@@ -131,13 +135,14 @@ export const OS: React.FC<OSProps> = React.memo(
       (operatingSystem: OperatingSystemRecord) => {
         const pvcName = operatingSystem?.baseImageName;
         const pvcNamespace = operatingSystem?.baseImageNamespace;
-        const baseImageFoundInCluster = loadedBaseImages?.find(
-          (pvc) => iGetName(pvc) === pvcName && iGetNamespace(pvc) === pvcNamespace,
-        );
+        const baseImageFoundInCluster =
+          loadedBaseImages?.find(
+            (pvc) => iGetName(pvc) === pvcName && iGetNamespace(pvc) === pvcNamespace,
+          ) || findDataSourcePVC(dataSourcesData, pvcsData, pvcName, pvcNamespace)?.dsBaseImage;
         const isBaseImageUploading =
           iGetAnnotation(baseImageFoundInCluster, CDI_UPLOAD_POD_ANNOTATION) ===
           CDI_PVC_PHASE_RUNNING;
-        const osField: any = {
+        const osField: OperationSystemField = {
           id: operatingSystem.id,
           name: operatingSystem.name,
           baseImageFoundInCluster,
@@ -189,7 +194,20 @@ export const OS: React.FC<OSProps> = React.memo(
         return osField;
       },
     );
-    const baseImage = operatingSystemBaseImages.find((image) => image.id === os);
+    const [baseImage, setBaseImage] = React.useState<OperationSystemField>();
+
+    React.useEffect(() => {
+      const osImage = operatingSystemBaseImages.find((image) => image.id === os);
+      const { dsBaseImage: matchingDataSourcePVC } = findDataSourcePVC(
+        dataSources,
+        pvcs,
+        osImage?.pvcName,
+        osImage?.pvcNamespace,
+      );
+      if (osImage && dataSources && pvcs && !baseImage) {
+        setBaseImage({ ...osImage, pvcName: iGetName(matchingDataSourcePVC) || osImage.pvcName });
+      }
+    }, [baseImage, dataSources, operatingSystemBaseImages, os, pvcs]);
 
     const numOfMountedDisks = cloneBaseDiskImage + mountWindowsGuestTools; // using boolean addition operator to count true
     const mountedDisksHelpMsg = numOfMountedDisks > 0 && (
@@ -315,6 +333,8 @@ type OSProps = {
   mountWindowsGuestToolsField: any;
   workloadProfile: string;
   cnvBaseImages: any;
+  dataSources: any;
+  pvcs: any;
   openshiftFlag: boolean;
   onChange: (key: string, value: string | boolean) => void;
   goToStorageStep: () => void;

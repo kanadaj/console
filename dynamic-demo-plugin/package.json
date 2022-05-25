@@ -14,6 +14,7 @@
   "devDependencies": {
     "@openshift-console/dynamic-plugin-sdk": "file:../frontend/packages/console-dynamic-plugin-sdk/dist/core",
     "@openshift-console/dynamic-plugin-sdk-webpack": "file:../frontend/packages/console-dynamic-plugin-sdk/dist/webpack",
+    "@openshift-console/plugin-shared": "file:../frontend/packages/console-plugin-shared/dist",
     "@patternfly/react-core": "4.162.2",
     "@patternfly/react-table": "4.31.7",
     "@types/react": "16.8.13",
@@ -24,6 +25,7 @@
     "file-loader": "1.1.11",
     "http-server": "0.12.x",
     "i18next-parser": "^3.3.0",
+    "js-yaml": "^4.1.0",
     "react": "17.0.1",
     "react-dom": "17.0.1",
     "react-helmet": "^6.1.0",
@@ -35,7 +37,7 @@
     "ts-loader": "9.x",
     "ts-node": "5.0.1",
     "typescript": "4.x",
-    "webpack": "^5.62.1",
+    "webpack": "^5.68.0",
     "webpack-cli": "4.9.x"
   },
   "consolePlugin": {
@@ -53,7 +55,13 @@
       "exampleProxyPage": "./components/ExampleProxyPage",
       "K8sAPIConsumer": "./components/k8sConsumer/K8sAPIConsumer",
       "navPage": "./components/Nav",
-      "listPage": "./components/ListPage"
+      "listPage": "./components/ListPage",
+      "projectTabContent": "./components/ProjectTabExtensionContent",
+      "clusterInventoryOverview": "./components/ClusterOverview/Inventory",
+      "clusterOverview": "./utils/cluster-overview",
+      "yamlEditor": "./components/YAMLEditorPage",
+      "events": "./components/APIServerEvents",
+      "overviewDetailItem": "./components/OverviewDetailItem"
     },
     "dependencies": {
       "@console/pluginAPI": "*"

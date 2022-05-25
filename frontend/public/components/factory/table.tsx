@@ -13,6 +13,7 @@ import {
   OnSelect,
   TableProps as PfTableProps,
 } from '@patternfly/react-table';
+import * as classNames from 'classnames';
 import { CellMeasurerCache, CellMeasurer } from 'react-virtualized';
 import {
   AutoSizer,
@@ -43,6 +44,7 @@ import { defaultChannelFor } from '@console/operator-lifecycle-manager/src/compo
 import { RowFilter as RowFilterExt } from '@console/dynamic-plugin-sdk';
 import { RowFilter } from '../filter-toolbar';
 import * as UIActions from '../../actions/ui';
+import { Target } from '../monitoring/types';
 import {
   alertingRuleSource,
   alertingRuleStateOrder,
@@ -64,15 +66,13 @@ import {
   K8sResourceKind,
   K8sResourceKindReference,
   NodeKind,
-  planExternalName,
   PodKind,
   podPhase,
   podReadiness,
   podRestarts,
-  serviceCatalogStatus,
-  serviceClassDisplayName,
   MachineKind,
   VolumeSnapshotKind,
+  ClusterOperator,
 } from '../../module/k8s';
 import { useTableData } from './table-data-hook';
 
@@ -87,7 +87,6 @@ const sorts = {
     _.toInteger(_.get(daemonset, 'status.currentNumberScheduled')),
   dataSize: (resource) => _.size(_.get(resource, 'data')) + _.size(_.get(resource, 'binaryData')),
   ingressValidHosts,
-  serviceCatalogStatus,
   instanceType: (obj): string => getMachineSetInstanceType(obj),
   jobCompletionsSucceeded: (job) => job?.status?.succeeded || 0,
   jobType: (job) => getJobTypeAndCompletions(job).type,
@@ -97,7 +96,6 @@ const sorts = {
     return _.get(readiness, 'status');
   },
   numReplicas: (resource) => _.toInteger(_.get(resource, 'status.replicas')),
-  planExternalName,
   namespaceCPU: (ns: K8sResourceKind): number => UIActions.getNamespaceMetric(ns, 'cpu'),
   namespaceMemory: (ns: K8sResourceKind): number => UIActions.getNamespaceMetric(ns, 'memory'),
   podCPU: (pod: PodKind): number => UIActions.getPodMetric(pod, 'cpu'),
@@ -107,13 +105,13 @@ const sorts = {
   podRestarts,
   pvStorage: (pv) => _.toInteger(convertToBaseValue(pv?.spec?.capacity?.storage)),
   pvcStorage: (pvc) => _.toInteger(convertToBaseValue(pvc?.status?.capacity?.storage)),
-  serviceClassDisplayName,
   silenceFiringAlertsOrder,
   silenceStateOrder,
+  targetScrapeDuration: (target: Target): number => target?.lastScrapeDuration,
   string: (val) => JSON.stringify(val),
   number: (val) => _.toNumber(val),
-  getClusterOperatorStatus,
-  getClusterOperatorVersion,
+  getClusterOperatorStatus: (operator: ClusterOperator) => getClusterOperatorStatus(operator),
+  getClusterOperatorVersion: (operator: ClusterOperator) => getClusterOperatorVersion(operator),
   getTemplateInstanceStatus,
   nodeRoles: (node: NodeKind): string => {
     const roles = getNodeRoles(node);
@@ -310,7 +308,7 @@ const VirtualBody: React.FC<VirtualBodyProps> = (props) => {
   return (
     <VirtualTableBody
       autoHeight
-      className="pf-c-table pf-m-compact pf-m-border-rows pf-c-virtualized pf-c-window-scroller"
+      className="pf-c-table pf-m-compact pf-m-border-rows pf-c-window-scroller"
       deferredMeasurementCache={cellMeasurementCache}
       rowHeight={cellMeasurementCache.rowHeight}
       height={height || 0}
@@ -580,36 +578,38 @@ export const Table: React.FC<TableProps> = ({
   const children = mock ? (
     <EmptyBox label={label} />
   ) : (
-    <TableWrapper virtualize={virtualize} ariaLabel={ariaLabel} ariaRowCount={ariaRowCount}>
-      <PfTable
-        cells={columns}
-        rows={
-          virtualize
-            ? []
-            : Rows({
-                componentProps,
-                selectedResourcesForKind,
-                customData,
-              })
-        }
-        gridBreakPoint={gridBreakPoint}
-        onSort={onSort}
-        onSelect={onSelect}
-        sortBy={sortBy}
-        className="pf-m-compact pf-m-border-rows"
-        role={virtualize ? 'presentation' : 'grid'}
-        aria-label={virtualize ? null : ariaLabel}
-      >
-        <TableHeader role="rowgroup" />
-        {!virtualize && <TableBody />}
-      </PfTable>
-      {virtualize &&
-        (scrollNode ? (
-          renderVirtualizedTable(scrollNode)
-        ) : (
-          <WithScrollContainer>{renderVirtualizedTable}</WithScrollContainer>
-        ))}
-    </TableWrapper>
+    <div className={classNames({ 'co-virtualized-table': virtualize })}>
+      <TableWrapper virtualize={virtualize} ariaLabel={ariaLabel} ariaRowCount={ariaRowCount}>
+        <PfTable
+          cells={columns}
+          rows={
+            virtualize
+              ? []
+              : Rows({
+                  componentProps,
+                  selectedResourcesForKind,
+                  customData,
+                })
+          }
+          gridBreakPoint={gridBreakPoint}
+          onSort={onSort}
+          onSelect={onSelect}
+          sortBy={sortBy}
+          className="pf-m-compact pf-m-border-rows"
+          role={virtualize ? 'presentation' : 'grid'}
+          aria-label={virtualize ? null : ariaLabel}
+        >
+          <TableHeader role="rowgroup" />
+          {!virtualize && <TableBody />}
+        </PfTable>
+        {virtualize &&
+          (scrollNode ? (
+            renderVirtualizedTable(scrollNode)
+          ) : (
+            <WithScrollContainer>{renderVirtualizedTable}</WithScrollContainer>
+          ))}
+      </TableWrapper>
+    </div>
   );
   return (
     <div className="co-m-table-grid co-m-table-grid--bordered">

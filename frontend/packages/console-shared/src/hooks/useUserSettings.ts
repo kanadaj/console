@@ -8,6 +8,7 @@ import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watc
 import { ConfigMapModel } from '@console/internal/models';
 import { K8sResourceKind } from '@console/internal/module/k8s';
 import { RootState } from '@console/internal/redux';
+import { HUB_CLUSTER_NAME } from '@console/shared/src/constants/common';
 import {
   createConfigMap,
   deseralizeData,
@@ -39,39 +40,49 @@ export const useUserSettings = <T>(
   defaultValue?: T,
   sync: boolean = false,
 ): [T, React.Dispatch<React.SetStateAction<T>>, boolean] => {
-  const impersonate = useSelector((state: RootState) => !!getImpersonate(state));
-  const keyRef = React.useRef<string>(key);
+  // Mount status for safty state updates
+  const mounted = React.useRef(true);
+  React.useEffect(() => () => (mounted.current = false), []);
+
+  // Keys and values
+  const keyRef = React.useRef<string>(key?.replace(/[^-._a-zA-Z0-9]/g, '_'));
   const defaultValueRef = React.useRef<T>(defaultValue);
+
+  // Settings
+  const [settings, setSettingsUnsafe] = React.useState<T>();
+  const setSettings: typeof setSettingsUnsafe = React.useCallback(
+    (...args) => mounted.current && setSettingsUnsafe(...args),
+    [setSettingsUnsafe],
+  );
+  const settingsRef = React.useRef<T>(settings);
+  settingsRef.current = settings;
+
+  // Loaded
+  const [loaded, setLoadedUnsafe] = React.useState(false);
+  const setLoaded: typeof setLoadedUnsafe = React.useCallback(
+    (...args) => mounted.current && setLoadedUnsafe(...args),
+    [setLoadedUnsafe],
+  );
+
+  // Request counter
   const [isRequestPending, increaseRequest, decreaseRequest] = useCounterRef();
+
+  // User and impersonate
   const userUid = useSelector(
     (state: RootState) =>
       getImpersonate(state)?.name ?? getUser(state)?.metadata?.uid ?? 'kubeadmin',
   );
+  const impersonate: boolean = useSelector((state: RootState) => !!getImpersonate(state));
 
-  const [fallbackLocalStorage, setFallbackLocalStorage] = React.useState<boolean>(
+  // Fallback
+  const [fallbackLocalStorage, setFallbackLocalStorageUnsafe] = React.useState<boolean>(
     alwaysUseFallbackLocalStorage,
   );
-
-  const isLocalStorage = fallbackLocalStorage || impersonate;
-
-  const configMapResource = React.useMemo(
-    () =>
-      isLocalStorage
-        ? null
-        : {
-            kind: ConfigMapModel.kind,
-            namespace: USER_SETTING_CONFIGMAP_NAMESPACE,
-            isList: false,
-            name: `user-settings-${userUid}`,
-          },
-    [userUid, isLocalStorage],
+  const setFallbackLocalStorage: typeof setFallbackLocalStorageUnsafe = React.useCallback(
+    (...args) => mounted.current && setFallbackLocalStorageUnsafe(...args),
+    [setFallbackLocalStorageUnsafe],
   );
-  const [cfData, cfLoaded, cfLoadError] = useK8sWatchResource<K8sResourceKind>(configMapResource);
-  const [settings, setSettings] = React.useState<T>();
-  const settingsRef = React.useRef<T>(settings);
-  settingsRef.current = settings;
-  const [loaded, setLoaded] = React.useState(false);
-
+  const isLocalStorage = fallbackLocalStorage || impersonate;
   const [lsData, setLsDataCallback] = useUserSettingsLocalStorage(
     alwaysUseFallbackLocalStorage && !impersonate
       ? 'console-user-settings'
@@ -82,17 +93,40 @@ export const useUserSettings = <T>(
     impersonate,
   );
 
+  const configMapResource = React.useMemo(
+    () =>
+      isLocalStorage
+        ? null
+        : {
+            kind: ConfigMapModel.kind,
+            namespace: USER_SETTING_CONFIGMAP_NAMESPACE,
+            isList: false,
+            name: `user-settings-${userUid}`,
+            cluster: HUB_CLUSTER_NAME,
+          },
+    [userUid, isLocalStorage],
+  );
+  const [cfData, cfLoaded, cfLoadError] = useK8sWatchResource<K8sResourceKind>(configMapResource);
+
   React.useEffect(() => {
     if (isLocalStorage) {
       return;
     }
-    if (cfLoadError?.response?.status === 404 || (!cfData && cfLoaded)) {
+    if (
+      // Expected load error (404 Not found) for kubeadmin or other admins,
+      // who have access to the complete openshift-console-user-settings namespace.
+      cfLoadError?.response?.status === 404 ||
+      // Expected load error (403 Forbidden) for all other (restricted) users,
+      // which have no access to non-existing ConfigMaps in openshift-console-user-settings namespace.
+      cfLoadError?.response?.status === 403 ||
+      (!cfData && cfLoaded)
+    ) {
       (async () => {
         try {
           await createConfigMap();
         } catch (err) {
           // eslint-disable-next-line no-console
-          console.error(err);
+          console.error('Could not create ConfigMap for user settings:', err);
           setFallbackLocalStorage(true);
         }
       })();
@@ -116,7 +150,15 @@ export const useUserSettings = <T>(
       cfLoaded &&
       !cfData.data?.hasOwnProperty(keyRef.current)
     ) {
-      updateConfigMap(cfData, keyRef.current, seralizeData(defaultValueRef.current));
+      // Trigger update also when unmounted
+      increaseRequest();
+      updateConfigMap(cfData, keyRef.current, seralizeData(defaultValueRef.current))
+        .then(() => {
+          decreaseRequest();
+        })
+        .catch(() => {
+          decreaseRequest();
+        });
       setSettings(defaultValueRef.current);
       setLoaded(true);
     } else if (cfLoaded && !cfLoadError) {
@@ -147,7 +189,7 @@ export const useUserSettings = <T>(
           });
       }
     },
-    [cfData, cfLoaded, decreaseRequest, increaseRequest],
+    [cfData, cfLoaded, decreaseRequest, increaseRequest, setSettings],
   );
 
   const resultedSettings = React.useMemo(() => {

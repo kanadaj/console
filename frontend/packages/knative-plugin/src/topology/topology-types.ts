@@ -5,19 +5,27 @@ import { KnativeItem } from '../utils/get-knative-resources';
 
 export enum NodeType {
   EventSource = 'event-source',
+  EventSink = 'event-sink',
   KnService = 'knative-service',
   Revision = 'knative-revision',
   PubSub = 'event-pubsub',
   SinkUri = 'sink-uri',
   EventSourceKafka = 'event-source-kafka',
   Kafka = 'knative-kafka',
+  KafkaSink = 'kafka-sink',
 }
 
 export enum EdgeType {
   Traffic = 'revision-traffic',
   EventSource = 'event-source-link',
+  EventSink = 'event-sink-link',
   EventPubSubLink = 'event-pubsub-link',
   EventSourceKafkaLink = 'event-source-kafka-link',
+}
+
+export enum KameletType {
+  Sink = 'Sink',
+  Source = 'Source',
 }
 
 export type RevK8sResourceKind = K8sResourceKind & {
@@ -52,10 +60,6 @@ export type KnativeServiceOverviewItem = OverviewItem &
     previous?: PodControllerOverviewItem;
     isRollingOut?: boolean;
   };
-
-export type KnativeDeploymentOverviewItem = OverviewItem & {
-  associatedDeployment: K8sResourceKind;
-};
 
 export interface KnativeTopologyDataObject<O extends OverviewItem, D = {}>
   extends TopologyDataObject<D> {

@@ -216,22 +216,22 @@ Feature: Pipeline Runs
               And existing pipeline runs contains the old pipeline graph
 
 
-        @regression @to-do
+        @regression
         Scenario: Display failure details on pipeline run details: P-07-TC22
             Given user is at pipeline page in developer perspective
               And a failed pipeline is present
-             When user goes to failed pipeline run
+             When user goes to failed pipeline run of pipeline "golang-ex"
               And user opens pipeline run details
              Then user can see status as Failure
               And user can view failure message under Message heading
               And user can see Log snippet to get know what taskruns failed
 
 
-        @regression @to-do
+        @regression
         Scenario: Display failure details of pipeline run in topology sidebar: P-07-TC23
-            Given user is at Topology page
-              And a node with an associated pipeline that has failed is present
-             When user opens sidebar of the node
+            Given user is at the Topology page
+              And a node with an associated pipeline "golang-ex" is present
+             When user opens sidebar of the node "golang-ex"
               And user scrolls down to pipeline runs section
              Then user will see the pipeline run name with failed status
               And user will see failure message below pipeline runs
@@ -266,7 +266,6 @@ Feature: Pipeline Runs
               And user navigates to Workspaces section
               And user selects "VolumeClaimTemplate" option from workspace dropdown
               And user clicks Show VolumeClaimTemplate options
-              And user selects StorageClass as "gp2"
               And user clicks on Start
              Then user will be redirected to Pipeline Run Details page
               And user will see VolumeClaimTemplate Workspace in Pipeline Run Details page
@@ -290,11 +289,11 @@ Feature: Pipeline Runs
               And user can see failed task before finally task
 
 
-        @regression @to-do
+        @regression
         Scenario: Pipeline Run results on Pipeline Run details page for passed pipeline run: P-07-TC29
             #Run oc apply -f ../../testData/pipelines-workspaces/sum-three-pipeline.yaml
-            Given user has passed pipeline run for pipeline "sum-three-pipeline"
-              And user is on Pipeline Run details page
+            Given user has passed pipeline run
+              And user is on Pipeline Run details page of "sum-three-pipeline-run" pipeline run
              When user scrolls to the Pipeline Run results section
              Then user can see Name and Value column under Pipeline Run results
 
@@ -323,3 +322,16 @@ Feature: Pipeline Runs
              When user hovers over the diamond before the skipped Conditional task
              Then user can see tooltip with "When expression was not met" mentioned on it
               And user can see grey color associated with the diamond to represent condition not met
+
+
+        @regression @manual @odc-6303
+        Scenario: Show failed PipelineRun log snippet on the log page: P-07-TC33
+        # petclinic-pipeline-all.yaml can be found here in /testData/petclinic-pipeline-all.yaml
+            Given pipeline is 'petclinic-pipeline-all.yaml' present on Pipeline Details page
+             When user selects "Start" option from kebab menu
+              And user selects 'maven-cache-pvc' PVC for maven-cache workspace
+              And user selects 'maven-settings' ConfigMap for maven-settings workspace
+              And user selects 'app-source-pvc' PVC for app-source workspace
+              And user clicks on Start button
+              And user navigates to pipelineRun logs tab
+             Then user is able to see log snippet for failure of "build-image" task

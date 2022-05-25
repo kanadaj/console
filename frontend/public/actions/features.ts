@@ -141,15 +141,6 @@ const ssarChecks = [
       verb: 'list',
     },
   },
-  {
-    flag: FLAGS.CAN_LIST_CHARGEBACK_REPORTS,
-    resourceAttributes: {
-      group: 'metering.openshift.io',
-      resource: 'reports',
-      namespace: 'openshift-metering',
-      verb: 'list',
-    },
-  },
   // TODO: Move into Core Plugin
   {
     flag: FLAGS.CAN_LIST_VSC,
@@ -285,7 +276,7 @@ export const detectFeatures = () => (dispatch: Dispatch) => {
   ].forEach((detect) => detect(dispatch));
 };
 
-const featureFlagController: SetFeatureFlag = (flag, enabled) => {
+export const featureFlagController: SetFeatureFlag = (flag, enabled) => {
   store.dispatch(setFlag(flag, enabled));
 };
 
@@ -298,7 +289,7 @@ subscribeToExtensions<DynamicFeatureFlag>(
         })
         .catch((error) => {
           // eslint-disable-next-line no-console
-          console.error(error);
+          console.error('Resolve extension failed:', error);
         });
     });
   }),

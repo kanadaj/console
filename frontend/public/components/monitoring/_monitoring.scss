@@ -1,4 +1,12 @@
-$tooltip-background-color: var(--pf-global--BackgroundColor--dark-100);
+%tooltip-background-color-theme-dark {
+  .pf-theme-dark & {
+    --pf-global--BackgroundColor--dark-100: var(--pf-global--palette--black-1000);
+  }
+}
+
+.co-alert-manager {
+  margin-bottom: var(--pf-global--spacer--md);
+}
 
 .co-alert-manager-config__edit-alert-routing-btn {
   margin-bottom: 10px;
@@ -36,6 +44,38 @@ $tooltip-background-color: var(--pf-global--BackgroundColor--dark-100);
 
   &--with-legend {
     min-height: 305px;
+  }
+}
+
+.horizontal-scroll {
+  overflow-x: auto;
+  padding-left: var(--pf-global--spacer--md);
+  padding-right: var(--pf-global--spacer--md);
+
+  &:before, &:after {
+    bottom: 0;
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    width: var(--pf-global--spacer--md);
+    z-index: 1;
+  }
+  &:before {
+    background: linear-gradient(
+      to right,
+      var(--pf-global--BackgroundColor--100),
+      rgba(255, 255, 255, 0)
+    );
+    left: 0;
+  }
+  &:after {
+    background: linear-gradient(
+      to left,
+      var(--pf-global--BackgroundColor--100),
+      rgba(255, 255, 255, 0)
+    );
+    right: 0;
   }
 }
 
@@ -119,25 +159,9 @@ $tooltip-background-color: var(--pf-global--BackgroundColor--dark-100);
 .monitoring-dashboards__legend-wrap {
   $legend-content-height: 65px;
   height: $legend-content-height + 10px; // Add space for the horizontal scrollbar
-  overflow-x: auto;
-  padding-right: var(--pf-global--spacer--lg);
   padding-top: 1px;
   svg {
     max-height: $legend-content-height; // Required for Chrome to prevent vertical scrolling
-  }
-  &:after {
-    background: linear-gradient(
-      to left,
-      var(--pf-global--BackgroundColor--100),
-      rgba(255, 255, 255, 0)
-    );
-    content: '';
-    height: $legend-content-height;
-    pointer-events: none;
-    position: absolute;
-    right: 0;
-    top: 0;
-    width: var(--pf-global--spacer--lg);
   }
 }
 
@@ -214,7 +238,8 @@ $screen-phone-landscape-min-width: 567px;
 }
 
 .monitoring-dashboards__variable-dropdown {
-  .pf-c-dropdown__menu, .pf-c-select__menu {
+  .pf-c-dropdown__menu,
+  .pf-c-select__menu {
     max-height: 60vh;
     overflow-y: auto;
   }
@@ -267,10 +292,6 @@ $monitoring-line-height: 18px;
   margin-right: 10px;
 }
 
-.monitoring-query {
-  color: $pf-color-blue-400;
-}
-
 .monitoring-silence-alert {
   max-width: 950px;
 
@@ -281,6 +302,10 @@ $monitoring-line-height: 18px;
     @media (min-width: $pf-global--breakpoint--md) {
       padding-top: 26px;
     }
+  }
+
+  &__paragraph {
+    margin-bottom: var(--pf-c-content--MarginBottom);
   }
 }
 
@@ -325,6 +350,10 @@ $monitoring-line-height: 18px;
 
 .query-browser__controls--left {
   display: flex;
+}
+
+.query-browser__reduced-resolution.pf-c-alert{
+  align-content: center;
 }
 
 .query-browser__controls--right {
@@ -375,34 +404,46 @@ $monitoring-line-height: 18px;
   line-height: 1;
   margin: 0 15px 0 0;
   width: 100%;
+
+  .pf-c-form__helper-text {
+    margin-top: var(--pf-global--spacer--xs);
+  }
 }
 
 .query-browser__query-controls {
   align-items: center;
-  border: solid $color-grey-background-border;
+  border: solid var(--pf-global--BorderColor--100);
   border-width: 1px 0;
   display: flex;
   padding: 10px 0;
 }
 
-.query-browser__query-input {
+.query-browser__query > .query-browser__query-input {
   padding-right: 28px !important;
   resize: vertical;
+  font-family: var(--pf-c-code-block__pre--FontFamily), monospace;
+  font-size: var(--pf-c-code-block__pre--FontSize);
+
+  &:focus-within {
+    --pf-c-form-control--BorderBottomColor: var(--pf-c-form-control--focus--BorderBottomColor);
+    padding-bottom: var(--pf-c-form-control--focus--PaddingBottom);
+    border-bottom-width: var(--pf-c-form-control--focus--BorderBottomWidth);
+  }
 }
 
 .query-browser__series-btn {
-  border: 1px solid transparent;
+  border: var(--pf-global--BorderWidth--sm) solid transparent;
   border-radius: var(--pf-global--BorderRadius--sm);
   height: 20px;
   padding: 0 !important;
   width: 20px;
   &--disabled {
-    border: 1px solid #888 !important;
+    border: var(--pf-global--BorderWidth--sm) solid #888 !important;
   }
 }
 
 .query-browser__series-btn-wrap {
-  border: 1px solid transparent;
+  border: var(--pf-global--BorderWidth--sm) solid transparent;
   border-radius: var(--pf-global--BorderRadius--sm);
   display: flex;
   height: 26px;
@@ -415,12 +456,12 @@ $monitoring-line-height: 18px;
 }
 
 .query-browser__span-dropdown-menu {
-  right: 0;
+  right: 1px;
   width: 130px;
 }
 
 .query-browser__span-text {
-  max-width: 87px;
+  max-width: 79px;
 }
 
 .query-browser__table {
@@ -432,19 +473,15 @@ $monitoring-line-height: 18px;
   }
 
   tr > :first-child {
-    width: 40px;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    vertical-align: middle;
   }
 }
 
-.query-browser__table-cell {
-  @include co-break-word;
-  min-width: 120px;
-  --pf-c-table-cell--PaddingRight: 0;
-  --pf-c-table__sort-indicator--MarginLeft: 4px;
-}
-
 .query-browser__table-wrapper {
-  overflow-x: auto;
+  position: relative;
   width: 100%;
 
   table {
@@ -453,7 +490,7 @@ $monitoring-line-height: 18px;
 }
 
 .query-browser__table-message {
-  border-bottom: solid 1px $color-grey-background-border;
+  border-bottom: solid 1px var(--pf-global--BorderColor--100);
   padding: 10px 20px;
 }
 
@@ -463,7 +500,8 @@ $monitoring-line-height: 18px;
 }
 
 .query-browser__tooltip {
-  background-color: $tooltip-background-color;
+  background-color: var(--pf-global--BackgroundColor--dark-100);
+  @extend %tooltip-background-color-theme-dark;
   color: #eee;
   font-size: 12px;
   overflow-x: hidden;
@@ -472,14 +510,16 @@ $monitoring-line-height: 18px;
 
 .query-browser__tooltip-arrow {
   border-bottom: 12px solid transparent;
-  border-right: 12px solid $tooltip-background-color;
+  border-right: 12px solid var(--pf-global--BackgroundColor--dark-100);
+  @extend %tooltip-background-color-theme-dark;
   border-top: 12px solid transparent;
   height: 0;
   width: 0;
 }
 
 .query-browser__tooltip-line {
-  stroke: $tooltip-background-color;
+  stroke: var(--pf-global--BackgroundColor--dark-100);
+  @extend %tooltip-background-color-theme-dark;
 }
 
 .query-browser__tooltip-series {
@@ -513,14 +553,15 @@ $monitoring-line-height: 18px;
     flex-direction: row-reverse;
 
     .query-browser__tooltip-arrow {
-      border-left: 12px solid $tooltip-background-color;
+      border-left: 12px solid var(--pf-global--BackgroundColor--dark-100);
+      @extend %tooltip-background-color-theme-dark;
       border-right: none;
     }
   }
 }
 
 .query-browser__wrapper {
-  border: 1px solid $color-grey-background-border;
+  border: var(--pf-global--BorderWidth--sm) solid var(--pf-global--BorderColor--100);
   margin: 0 0 20px 0;
   overflow: visible;
   padding: 10px;

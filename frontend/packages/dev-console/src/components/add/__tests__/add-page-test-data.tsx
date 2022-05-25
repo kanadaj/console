@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { CatalogIcon } from '@patternfly/react-icons';
+import { CatalogIcon, SignOutAltIcon } from '@patternfly/react-icons';
 import { AddActionGroup, ResolvedExtension, AddAction } from '@console/dynamic-plugin-sdk';
 import { LoadedExtension } from '@console/plugin-sdk/src';
 
@@ -28,7 +28,7 @@ const database: AddActionExtension = {
   pluginID: '@console/dev-console',
   pluginName: '@console/dev-console',
   properties: {
-    description: 'Browse the catalog to discover database services to add to your Application',
+    description: 'Browse the catalog to discover database services to add to your application',
     groupId: 'developer-catalog',
     href: '/catalog/ns/:namespace?category=databases',
     icon: <CatalogIcon />,
@@ -172,7 +172,7 @@ const eventSource: AddActionExtension = {
       'Create an Event source to register interest in a class of events from a particular system',
     groupId: 'developer-catalog',
     href: '/catalog/ns/:namespace?catalogType=EventSource',
-    icon: 'static/assets/event-source.svg',
+    icon: <SignOutAltIcon />,
     id: 'knative-event-source',
     label: 'Event Source',
   },
@@ -241,7 +241,7 @@ const pipelinesAction: AddActionExtension = {
         verb: 'create',
       },
     ],
-    description: 'Create a Tekton Pipeline to automate delivery of your Application',
+    description: 'Create a Tekton Pipeline to automate delivery of your application',
     groupId: 'pipelines',
     href: '/k8s/ns/:namespace/tekton.dev~v1beta1~Pipeline/~new/builder',
     icon: 'static/assets/pipeline.svg',

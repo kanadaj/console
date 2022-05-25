@@ -15,7 +15,9 @@ import {
   ToolbarChip,
   ToolbarContent,
   ToolbarFilter,
+  ToolbarGroup,
   ToolbarItem,
+  ToolbarToggleGroup,
   Tooltip,
 } from '@patternfly/react-core';
 import { FilterIcon, ColumnsIcon } from '@patternfly/react-icons';
@@ -30,12 +32,14 @@ import {
   setOrRemoveQueryArgument,
 } from '@console/internal/components/utils';
 import { useTranslation } from 'react-i18next';
-import { filterList } from '../actions/k8s';
 import AutocompleteInput from './autocomplete';
 import { storagePrefix } from './row-filter';
 import { createColumnManagementModal } from './modals';
 import { useDebounceCallback, useDeepCompareMemoize } from '@console/shared/src';
 import { TextFilter } from './factory';
+import { filterList } from '@console/dynamic-plugin-sdk/src/app/k8s/actions/k8s';
+import useRowFilterFix from './useRowFilterFix';
+import useLabelSelectionFix from './useLabelSelectionFix';
 
 /**
  * Housing both the row filter and name/label filter in the same file.
@@ -67,6 +71,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
   hideNameLabelFilters,
   columnLayout,
   nameFilterPlaceholder,
+  nameFilterTitle,
   labelFilterPlaceholder,
   textFilter = filterTypeMap[FilterType.NAME],
   labelFilter = filterTypeMap[FilterType.LABEL],
@@ -79,10 +84,13 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
   const location = useLocation();
 
   const { t } = useTranslation();
+
+  const translatedNameFilterTitle = nameFilterTitle ?? t('public~Name');
+
   const translateFilterType = (value: string) => {
     switch (value) {
       case 'Name':
-        return t('public~Name');
+        return translatedNameFilterTitle;
       case 'Label':
         return t('public~Label');
       default:
@@ -90,7 +98,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     }
   };
   const filterDropdownItems = {
-    NAME: t('public~Name'),
+    NAME: translatedNameFilterTitle,
     LABEL: t('public~Label'),
   };
 
@@ -102,7 +110,6 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     ? `${uniqueFilterName}-${labelFilter}`
     : labelFilter;
   const params = new URLSearchParams(location.search);
-  const labelFilters = params.get(labelFilterQueryArgumentKey)?.split(',') ?? [];
   const [filterType, setFilterType] = React.useState(FilterType.NAME);
   const [isOpen, setOpen] = React.useState(false);
   const [nameInputText, setNameInputText] = React.useState(
@@ -161,11 +168,15 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
       ),
     [generatedRowFilters],
   );
-
-  // Parse selected row filters from url query params
-  const selectedRowFilters = React.useMemo(
-    () => _.flatMap(filterKeys, (f) => params.get(f)?.split(',') ?? []),
-    [filterKeys, params],
+  const [selectedRowFilters, onRowFilterSearchParamChange, rowFiltersInitialized] = useRowFilterFix(
+    params,
+    filters,
+    filterKeys,
+    defaultSelections,
+  );
+  const [labelSelection, onLabelSelectionChange, labelSelectionInitialized] = useLabelSelectionFix(
+    params,
+    labelFilterQueryArgumentKey,
   );
 
   // Map row filters to select groups
@@ -207,18 +218,9 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     });
   };
 
-  const setRowFilterQueryParameters = (selected: string[]) => {
-    if (!_.isEmpty(selectedRowFilters) || !_.isEmpty(selected)) {
-      _.forIn(filters, (value, key) => {
-        const recognized = _.filter(selected, (item) => value.includes(item));
-        setOrRemoveQueryArgument(filterKeys[key], recognized.join(','));
-      });
-    }
-  };
-
   const updateRowFilterSelected = (id: string[]) => {
     const selectedNew = _.xor(selectedRowFilters, id);
-    setRowFilterQueryParameters(selectedNew);
+    onRowFilterSearchParamChange(selectedNew);
     applyRowFilter(selectedNew);
   };
 
@@ -232,7 +234,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
   const applyLabelFilters = (values: string[]) => {
     setLabelInputText('');
-    setOrRemoveQueryArgument(labelFilterQueryArgumentKey, values.join(','));
+    onLabelSelectionChange(values);
     applyFilters(labelFilter, { all: values });
   };
 
@@ -261,152 +263,165 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
   // Run once on mount to apply filters from query params
   React.useEffect(() => {
     if (!hideNameLabelFilters || !hideLabelFilter) {
-      applyFilters(labelFilter, { all: labelFilters });
+      applyFilters(labelFilter, { all: labelSelection });
     }
     if (!hideNameLabelFilters) {
       applyFilters(textFilter, { selected: [nameInputText] });
     }
-    if (_.isEmpty(selectedRowFilters)) {
-      updateRowFilterSelected(defaultSelections);
-    } else {
-      applyRowFilter(selectedRowFilters);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Initialize any external data filters based on the hack-fix data when they are finished init
+   * TODO: Remove during https://issues.redhat.com/browse/CONSOLE-3147
+   */
+  React.useEffect(() => {
+    if (rowFiltersInitialized && labelSelectionInitialized) {
+      applyFilters(labelFilter, { all: labelSelection });
+      applyRowFilter(selectedRowFilters);
+    }
+    // Trigger the update only when we are initialized to sync the url params with the data
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowFiltersInitialized, labelSelectionInitialized]);
+
   return (
     <Toolbar
+      className="co-toolbar-no-padding pf-m-toggle-group-container"
       data-test="filter-toolbar"
       id="filter-toolbar"
       clearAllFilters={clearAll}
       clearFiltersButtonText={t('public~Clear all filters')}
     >
       <ToolbarContent>
-        {rowFilters?.length > 0 && (
-          <ToolbarItem>
-            {_.reduce(
-              Object.keys(filters),
-              (acc, key) => (
-                <ToolbarFilter
-                  key={key}
-                  chips={_.intersection(selectedRowFilters, filters[key]).map((item) => {
-                    return {
-                      key: item,
-                      node: filtersNameMap[item],
-                    };
-                  })}
-                  deleteChip={(filter, chip: ToolbarChip) => updateRowFilterSelected([chip.key])}
-                  categoryName={key}
-                  deleteChipGroup={() => clearAllRowFilter(key)}
-                  chipGroupCollapsedText={t('public~{{numRemaining}} more', {
-                    numRemaining: '${remaining}',
-                  })}
-                  chipGroupExpandedText={t('public~Show less')}
-                >
-                  {acc}
-                </ToolbarFilter>
-              ),
-              <div data-test-id="filter-dropdown-toggle">
-                <Select
-                  placeholderText={
-                    <span>
-                      <FilterIcon className="span--icon__right-margin" />
-                      {t('public~Filter')}
-                    </span>
-                  }
-                  isOpen={isOpen}
-                  onToggle={() => {
-                    setOpen(!isOpen);
-                  }}
-                  onSelect={onRowFilterSelect}
-                  variant={SelectVariant.checkbox}
-                  selections={selectedRowFilters}
-                  isCheckboxSelectionBadgeHidden
-                  isGrouped
-                  maxHeight="60vh"
-                >
-                  {dropdownItems}
-                </Select>
-              </div>,
-            )}
-          </ToolbarItem>
-        )}
-        {!hideNameLabelFilters && (
-          <ToolbarItem className="co-filter-search--full-width">
-            <ToolbarFilter
-              deleteChipGroup={() => {
-                setLabelInputText('');
-                applyLabelFilters([]);
-              }}
-              chips={labelFilters}
-              deleteChip={(f, chip: string) => {
-                setLabelInputText('');
-                applyLabelFilters(_.difference(labelFilters, [chip]));
-              }}
-              categoryName={t('public~Label')}
-            >
+        <ToolbarToggleGroup toggleIcon={<FilterIcon />} breakpoint="md">
+          {rowFilters?.length > 0 && (
+            <ToolbarItem>
+              {_.reduce(
+                Object.keys(filters),
+                (acc, key) => (
+                  <ToolbarFilter
+                    key={key}
+                    chips={_.intersection(selectedRowFilters, filters[key]).map((item) => {
+                      return {
+                        key: item,
+                        node: filtersNameMap[item],
+                      };
+                    })}
+                    deleteChip={(filter, chip: ToolbarChip) => updateRowFilterSelected([chip.key])}
+                    categoryName={key}
+                    deleteChipGroup={() => clearAllRowFilter(key)}
+                    chipGroupCollapsedText={t('public~{{numRemaining}} more', {
+                      numRemaining: '${remaining}',
+                    })}
+                    chipGroupExpandedText={t('public~Show less')}
+                  >
+                    {acc}
+                  </ToolbarFilter>
+                ),
+                <div data-test-id="filter-dropdown-toggle">
+                  <Select
+                    placeholderText={
+                      <span>
+                        <FilterIcon className="span--icon__right-margin" />
+                        {t('public~Filter')}
+                      </span>
+                    }
+                    isOpen={isOpen}
+                    onToggle={() => {
+                      setOpen(!isOpen);
+                    }}
+                    onSelect={onRowFilterSelect}
+                    variant={SelectVariant.checkbox}
+                    selections={selectedRowFilters}
+                    isCheckboxSelectionBadgeHidden
+                    isGrouped
+                    maxHeight="60vh"
+                  >
+                    {dropdownItems}
+                  </Select>
+                </div>,
+              )}
+            </ToolbarItem>
+          )}
+          {!hideNameLabelFilters && (
+            <ToolbarItem className="co-filter-search--full-width">
               <ToolbarFilter
-                chips={nameInputText ? [nameInputText] : []}
-                deleteChip={() => {
-                  setNameInputText('');
-                  applyNameFilter('');
+                deleteChipGroup={() => {
+                  setLabelInputText('');
+                  applyLabelFilters([]);
                 }}
-                categoryName={t('public~Name')}
+                chips={labelSelection}
+                deleteChip={(f, chip: string) => {
+                  setLabelInputText('');
+                  applyLabelFilters(_.difference(labelSelection, [chip]));
+                }}
+                categoryName={t('public~Label')}
               >
-                <div className="pf-c-input-group">
-                  {!hideLabelFilter && (
-                    <DropdownInternal
-                      items={filterDropdownItems}
-                      onChange={(type) => setFilterType(FilterType[type])}
-                      selectedKey={filterType}
-                      title={translateFilterType(filterType)}
-                    />
-                  )}
-                  {filterType === FilterType.LABEL ? (
-                    <AutocompleteInput
-                      className="co-text-node"
-                      onSuggestionSelect={(selected) => {
-                        applyLabelFilters(_.uniq([...labelFilters, selected]));
-                      }}
-                      showSuggestions
-                      textValue={labelInputText}
-                      setTextValue={setLabelInputText}
-                      placeholder={labelFilterPlaceholder ?? t('public~Search by label...')}
-                      data={data}
-                      labelPath={labelPath}
-                    />
-                  ) : (
-                    <TextFilter
-                      data-test="name-filter-input"
-                      value={nameInputText}
-                      onChange={(value: string) => {
-                        setNameInputText(value);
-                        debounceApplyNameFilter(value);
-                      }}
-                      placeholder={nameFilterPlaceholder ?? t('public~Search by name...')}
-                    />
-                  )}
-                </div>
+                <ToolbarFilter
+                  chips={nameInputText ? [nameInputText] : []}
+                  deleteChip={() => {
+                    setNameInputText('');
+                    applyNameFilter('');
+                  }}
+                  categoryName={translatedNameFilterTitle}
+                >
+                  <div className="pf-c-input-group">
+                    {!hideLabelFilter && (
+                      <DropdownInternal
+                        items={filterDropdownItems}
+                        onChange={(type) => setFilterType(FilterType[type])}
+                        selectedKey={filterType}
+                        title={translateFilterType(filterType)}
+                      />
+                    )}
+                    {filterType === FilterType.LABEL ? (
+                      <AutocompleteInput
+                        className="co-text-node"
+                        onSuggestionSelect={(selected) => {
+                          applyLabelFilters(_.uniq([...labelSelection, selected]));
+                        }}
+                        showSuggestions
+                        textValue={labelInputText}
+                        setTextValue={setLabelInputText}
+                        placeholder={labelFilterPlaceholder ?? t('public~Search by label...')}
+                        data={data}
+                        labelPath={labelPath}
+                      />
+                    ) : (
+                      <TextFilter
+                        data-test="name-filter-input"
+                        value={nameInputText}
+                        onChange={(value: string) => {
+                          setNameInputText(value);
+                          debounceApplyNameFilter(value);
+                        }}
+                        placeholder={nameFilterPlaceholder ?? t('public~Search by name...')}
+                      />
+                    )}
+                  </div>
+                </ToolbarFilter>
               </ToolbarFilter>
-            </ToolbarFilter>
-          </ToolbarItem>
-        )}
+            </ToolbarItem>
+          )}
+        </ToolbarToggleGroup>
         {columnLayout?.id && !hideColumnManagement && (
-          <ToolbarItem>
-            <Tooltip content={t('public~Manage columns')}>
-              <Button
-                variant="plain"
-                onClick={() =>
-                  createColumnManagementModal({
-                    columnLayout,
-                  })
-                }
-                aria-label={t('public~Column management')}
-              >
-                <ColumnsIcon />
-              </Button>
-            </Tooltip>
-          </ToolbarItem>
+          <ToolbarGroup>
+            <ToolbarItem>
+              <Tooltip content={t('public~Manage columns')}>
+                <Button
+                  variant="plain"
+                  onClick={() =>
+                    createColumnManagementModal({
+                      columnLayout,
+                    })
+                  }
+                  aria-label={t('public~Column management')}
+                >
+                  <ColumnsIcon />
+                </Button>
+              </Tooltip>
+            </ToolbarItem>
+          </ToolbarGroup>
         )}
       </ToolbarContent>
     </Toolbar>
@@ -445,6 +460,7 @@ type FilterToolbarProps = {
   labelPath?: string;
   columnLayout?: ColumnLayout;
   nameFilterPlaceholder?: string;
+  nameFilterTitle?: string;
   labelFilterPlaceholder?: string;
   // Used when multiple tables are in the same page
   uniqueFilterName?: string;

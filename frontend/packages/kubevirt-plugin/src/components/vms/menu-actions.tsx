@@ -149,14 +149,15 @@ export const VmActionFactory = {
       accessReview: asAccessReview(kindObj, vm, 'patch'),
     };
   },
-  Pause: (kindObj: K8sKind, vm: VMKind, { vmi }: ActionArgs): Action => {
+  Pause: (kindObj: K8sKind, vm: VMKind, { vmi, vmStatusBundle }: ActionArgs): Action => {
     return {
       id: 'vm-action-pause',
       label: i18next.t('kubevirt-plugin~Pause'),
       disabled:
         (!isVMError(vm) && isVMProcessing(vm, vmi)) ||
         isVMIPaused(vmi) ||
-        !isVMRunningOrExpectedRunning(vm, vmi),
+        !isVMRunningOrExpectedRunning(vm, vmi) ||
+        vmStatusBundle?.status?.isImporting(),
       cta: () =>
         confirmModal({
           title: i18next.t('kubevirt-plugin~Pause'),
@@ -164,6 +165,7 @@ export const VmActionFactory = {
           btnText: i18next.t('kubevirt-plugin~Pause'),
           executeFn: () => pauseVMI(vmi),
         }),
+      accessReview: asAccessReview(kindObj, vm, 'patch'),
     };
   },
   Unpause: (kindObj: K8sKind, vm: VMKind, { vmi }: ActionArgs): Action => {
@@ -208,6 +210,7 @@ export const VmActionFactory = {
           btnText: i18next.t('kubevirt-plugin~Migrate Node to Node'),
           executeFn: () => startVMIMigration(vmi),
         }),
+      accessReview: asAccessReview(kindObj, vm, 'patch'),
     };
   },
   CancelMigration: (kindObj: K8sKind, vm: VMKind, { vmStatusBundle }: ActionArgs): Action => {
@@ -311,7 +314,7 @@ export const VmImportActionFactory = {
       return innerArgs?.vm ? (
         <>
           {t(
-            'kubevirt-plugin~Are you sure you want to cancel importing {{vmImportElem}}? It will also delete the newly created {{vmElem}} in the {{nsElem}} namespace?',
+            'kubevirt-plugin~Are you sure you want to cancel importing {{vmImportElem}}? It will also delete the newly created {{vmElem}} in the {{nsElem}} namespace.',
             { vmImportElem, vmElem, nsElem },
           )}
         </>

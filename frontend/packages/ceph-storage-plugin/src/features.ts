@@ -19,6 +19,7 @@ import {
   OCS_OPERATOR,
   NOOBAA_PROVISIONER,
   ODF_MANAGED_LABEL,
+  OCS_DISABLED_ANNOTATION,
 } from './constants';
 
 export const OCS_INDEPENDENT_FLAG = 'OCS_INDEPENDENT';
@@ -39,7 +40,7 @@ export const OCS_FLAG = 'OCS';
 
 export const MCG_STANDALONE = 'MCG_STANDALONE';
 
-export enum GUARDED_FEATURES {
+export enum FEATURES {
   // Flag names to be prefixed with "OCS_" so as to seperate from console flags
   OCS_MULTUS = 'OCS_MULTUS',
   OCS_ARBITER = 'OCS_ARBITER',
@@ -50,19 +51,40 @@ export enum GUARDED_FEATURES {
   OCS_POOL_MANAGEMENT = 'OCS_POOL_MANAGEMENT',
   OCS_NAMESPACE_STORE = 'OCS_NAMESPACE_STORE',
   ODF_MCG_STANDALONE = 'ODF_MCG_STANDALONE',
+  ODF_HPCS_KMS = 'ODF_HPCS_KMS',
+  ODF_VAULT_SA_KMS = 'ODF_VAULT_SA_KMS',
+  SS_LIST = 'ODF_SS_LIST',
+  ADD_CAPACITY = 'ODF_ADD_CAPACITY',
+  ODF_WIZARD = 'ODF_WIZARD',
+  BLOCK_POOL = 'BLOCK_POOL',
+  MCG_RESOURCE = 'MCG_RESOURCE',
+  ODF_DASHBOARD = 'ODF_DASHBOARD',
+  COMMON_FLAG = 'COMMON_FLAG',
 }
 
 const OCS_FEATURE_FLAGS = {
   // [flag name]: <value of flag in csv annotation>
-  [GUARDED_FEATURES.OCS_MULTUS]: 'multus',
-  [GUARDED_FEATURES.OCS_ARBITER]: 'arbiter',
-  [GUARDED_FEATURES.OCS_KMS]: 'kms',
-  [GUARDED_FEATURES.OCS_FLEXIBLE_SCALING]: 'flexible-scaling',
-  [GUARDED_FEATURES.OCS_TAINT_NODES]: 'taint-nodes',
-  [GUARDED_FEATURES.OCS_THICK_PROVISION]: 'thick-provision',
-  [GUARDED_FEATURES.OCS_POOL_MANAGEMENT]: 'pool-management',
-  [GUARDED_FEATURES.OCS_NAMESPACE_STORE]: 'namespace-store',
-  [GUARDED_FEATURES.ODF_MCG_STANDALONE]: 'mcg-standalone',
+  [FEATURES.OCS_MULTUS]: 'multus',
+  [FEATURES.OCS_ARBITER]: 'arbiter',
+  [FEATURES.OCS_KMS]: 'kms',
+  [FEATURES.OCS_FLEXIBLE_SCALING]: 'flexible-scaling',
+  [FEATURES.OCS_TAINT_NODES]: 'taint-nodes',
+  [FEATURES.OCS_THICK_PROVISION]: 'thick-provision',
+  [FEATURES.OCS_POOL_MANAGEMENT]: 'pool-management',
+  [FEATURES.OCS_NAMESPACE_STORE]: 'namespace-store',
+  [FEATURES.ODF_MCG_STANDALONE]: 'mcg-standalone',
+  [FEATURES.ODF_HPCS_KMS]: 'hpcs-kms',
+  [FEATURES.ODF_VAULT_SA_KMS]: 'vault-sa-kms',
+};
+
+export const ODF_BLOCK_FLAG = {
+  [FEATURES.SS_LIST]: 'ss-list',
+  [FEATURES.ADD_CAPACITY]: 'add-capacity',
+  [FEATURES.ODF_WIZARD]: 'install-wizard',
+  [FEATURES.BLOCK_POOL]: 'block-pool',
+  [FEATURES.MCG_RESOURCE]: 'mcg-resource',
+  [FEATURES.ODF_DASHBOARD]: 'odf-dashboard',
+  [FEATURES.COMMON_FLAG]: 'common',
 };
 
 const handleError = (res: any, flags: string[], dispatch: Dispatch, cb: FeatureDetector) => {
@@ -145,39 +167,49 @@ export const detectManagedODF: FeatureDetector = async (dispatch) => {
 };
 
 export const detectComponents: FeatureDetector = async (dispatch) => {
-  let id = null;
-  let noobaaFound = false;
-  let cephFound = false;
-  const detector = async () => {
+  let cephIntervalId = null;
+  let noobaaIntervalId = null;
+  const cephDetector = async () => {
     try {
-      if (!cephFound) {
-        const cephClusters = await k8sList(CephClusterModel, { ns: CEPH_STORAGE_NAMESPACE });
-        if (cephClusters?.length > 0) {
-          dispatch(setFlag(CEPH_FLAG, true));
-          dispatch(setFlag(MCG_FLAG, true));
-          cephFound = true;
-        }
-      }
-      if (!noobaaFound) {
-        const noobaaSystems = await k8sList(NooBaaSystemModel, { ns: CEPH_STORAGE_NAMESPACE });
-        if (noobaaSystems?.length > 0) {
-          dispatch(setFlag(MCG_FLAG, true));
-          noobaaFound = true;
-          clearInterval(id);
-        }
+      const cephClusters = await k8sList(CephClusterModel, { ns: CEPH_STORAGE_NAMESPACE });
+      if (cephClusters?.length > 0) {
+        dispatch(setFlag(CEPH_FLAG, true));
+        clearInterval(cephIntervalId);
       }
     } catch {
       dispatch(setFlag(CEPH_FLAG, false));
+    }
+  };
+  const noobaaDetector = async () => {
+    try {
+      const noobaaSystems = await k8sList(NooBaaSystemModel, { ns: CEPH_STORAGE_NAMESPACE });
+      if (noobaaSystems?.length > 0) {
+        dispatch(setFlag(MCG_FLAG, true));
+        clearInterval(noobaaIntervalId);
+        clearInterval(cephIntervalId);
+      }
+    } catch {
       dispatch(setFlag(MCG_FLAG, false));
     }
   };
-  id = setInterval(detector, 15 * SECOND);
+
+  // calling first time instantaneously
+  // else it will wait for 15s before start polling
+  cephDetector();
+  noobaaDetector();
+  cephIntervalId = setInterval(cephDetector, 15 * SECOND);
+  noobaaIntervalId = setInterval(noobaaDetector, 15 * SECOND);
 };
 
 const detectFeatures = (dispatch, csv: ClusterServiceVersionKind) => {
   const support = JSON.parse(getAnnotations(csv)?.[OCS_SUPPORT_ANNOTATION]);
   _.keys(OCS_FEATURE_FLAGS).forEach((feature) => {
     dispatch(setFlag(feature, support.includes(OCS_FEATURE_FLAGS[feature])));
+  });
+  // Todo(bipuladh): Remove array string after CI starts using ODF 4.10
+  const disabled = JSON.parse(getAnnotations(csv)?.[OCS_DISABLED_ANNOTATION] || '[]');
+  _.keys(ODF_BLOCK_FLAG).forEach((feature) => {
+    dispatch(setFlag(feature, disabled.includes(ODF_BLOCK_FLAG[feature])));
   });
 };
 

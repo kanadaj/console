@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import * as _ from 'lodash-es';
 import { Helmet } from 'react-helmet';
 import * as classNames from 'classnames';
-import { ActionGroup, Button } from '@patternfly/react-core';
+import { ActionGroup, Button, Divider } from '@patternfly/react-core';
 /* eslint-disable import/named */
 import { useTranslation, withTranslation, WithTranslation } from 'react-i18next';
 
@@ -22,9 +22,10 @@ import {
   ExternalLink,
   Firehose,
   history,
-  LoadingBox,
   LoadError,
+  LoadingBox,
   NsDropdown,
+  PageHeading,
 } from './utils';
 import { SecretModel, TemplateInstanceModel } from '../models';
 import {
@@ -44,7 +45,7 @@ const TemplateResourceDetails: React.FC<TemplateResourceDetailsProps> = ({ templ
 
   return (
     <>
-      <hr />
+      <Divider className="co-divider" />
       <p>The following resources will be created:</p>
       <ul>
         {resources.map((kind: string) => (
@@ -280,7 +281,7 @@ class TemplateForm_ extends React.Component<
               }: TemplateParameter) => {
                 const value = this.state.parameters[name] || '';
                 const helpID = description ? `${name}-help` : '';
-                const placeholder = generate ? '(generated if empty)' : '';
+                const placeholder = generate ? t('public~(generated if empty)') : '';
                 // Only set required for parameters not generated.
                 const requiredInput = requiredParam && !generate;
                 return (
@@ -359,8 +360,8 @@ export const InstantiateTemplatePage: React.FC<{}> = (props) => {
       <Helmet>
         <title>{title}</title>
       </Helmet>
-      <div className="co-m-pane__body">
-        <h1 className="co-m-pane__heading">{title}</h1>
+      <PageHeading title={title} />
+      <div className="co-m-pane__body co-m-pane__body--no-top-margin">
         <Firehose resources={resources}>
           <TemplateForm preselectedNamespace={preselectedNamespace} {...(props as any)} />
         </Firehose>
